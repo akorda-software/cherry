@@ -1,4 +1,3 @@
-export * from "./drawer-content";
 export * from "./placeholder-screen";
 export * from "./routes";
 export * from "./shell-scaffold";

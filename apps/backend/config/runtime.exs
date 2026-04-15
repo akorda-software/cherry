@@ -70,6 +70,42 @@ config :snack, :stripe_mobile,
   merchant_identifier: System.get_env("STRIPE_MERCHANT_IDENTIFIER"),
   url_scheme: System.get_env("STRIPE_URL_SCHEME", "snack")
 
+if config_env() != :test do
+  google_web_client_id =
+    System.get_env(
+      "GOOGLE_WEB_CLIENT_ID",
+      "414928358738-g300v21mbs6gj3uem03q042gp598p5t5.apps.googleusercontent.com"
+    )
+
+  google_ios_client_id =
+    System.get_env(
+      "GOOGLE_IOS_CLIENT_ID",
+      "414928358738-ukkt9l07e4r2pkb47ohnrj14rdiefvp1.apps.googleusercontent.com"
+    )
+
+  google_audiences =
+    [google_web_client_id, google_ios_client_id]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.reject(&(&1 == ""))
+
+  google_provider_config =
+    if google_audiences == [] do
+      Snack.Identity.Providers.Google
+    else
+      [
+        module: Snack.Identity.Providers.Google,
+        audiences: google_audiences,
+        issuers: ["https://accounts.google.com", "accounts.google.com"]
+      ]
+    end
+
+  config :snack, Snack.Auth,
+    providers: %{
+      google: google_provider_config,
+      apple: Snack.Identity.Providers.Apple
+    }
+end
+
 if config_env() == :prod do
   access_token_salt =
     System.get_env("AUTH_ACCESS_TOKEN_SALT") ||

@@ -2,14 +2,9 @@ import type { PropsWithChildren } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Redirect, Slot, Stack } from "expo-router";
 
-import { useLogoutAction, useSessionShell } from "../../src/features/auth/presentation";
+import { useSessionShell } from "../../src/features/auth/presentation";
 import { SubscriptionFeatureProvider } from "../../src/features/subscriptions/presentation";
-import { useFeatureFlag } from "../../src/shared/config";
-import { DrawerContent, ShellScaffold } from "../../src/shared/ui/app-shell";
-
-interface PrivateLayoutProps extends PropsWithChildren {
-  subscriptionEnabled?: boolean | null;
-}
+import { ShellScaffold } from "../../src/shared/ui/app-shell";
 
 function PrivateGuard({ children }: PropsWithChildren) {
   const { state } = useSessionShell();
@@ -29,18 +24,11 @@ function PrivateGuard({ children }: PropsWithChildren) {
   return <>{children}</>;
 }
 
-export function PrivateLayout({ children, subscriptionEnabled = null }: PrivateLayoutProps) {
-  const logout = useLogoutAction();
-  const runtimeSubscriptionFlag = useFeatureFlag("subscriptions");
-  const resolvedSubscriptionEnabled = subscriptionEnabled ?? runtimeSubscriptionFlag.enabled;
-
+export function PrivateLayout({ children }: PropsWithChildren) {
   return (
     <PrivateGuard>
       <SubscriptionFeatureProvider>
-        <ShellScaffold
-          onLogout={() => void logout()}
-          subscriptionEnabled={resolvedSubscriptionEnabled}
-        >
+        <ShellScaffold>
           {children ?? <Slot />}
         </ShellScaffold>
       </SubscriptionFeatureProvider>

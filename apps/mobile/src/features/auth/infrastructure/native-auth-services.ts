@@ -66,10 +66,14 @@ export function createNativeAuthServices({
   googleWebClientId,
   googleIosClientId
 }: CreateNativeAuthServicesOptions): SessionShellServices {
+  const extra = (Constants.expoConfig?.extra as Record<string, string> | undefined) ?? {};
+
   const webClientId =
     googleWebClientId ??
-    (Constants.expoConfig?.extra as Record<string, string> | undefined)?.googleWebClientId ??
+    extra.googleWebClientId ??
     "";
+
+  const resolvedGoogleIosClientId = googleIosClientId ?? extra.googleIosClientId;
 
   const storage = createSecureSessionStorage({
     secureStore: SecureStore,
@@ -82,7 +86,7 @@ export function createNativeAuthServices({
   const nativeGoogle = createGoogleNativeAdapter({
     module: GoogleSignin,
     webClientId,
-    iosClientId: googleIosClientId
+    iosClientId: resolvedGoogleIosClientId
   });
 
   const nativeApple = createAppleNativeAdapter({
@@ -103,7 +107,7 @@ export function createNativeAuthServices({
 
   return assembleAuthServices({
     googleWebClientId: webClientId,
-    googleIosClientId,
+    googleIosClientId: resolvedGoogleIosClientId,
     storage,
     authApi,
     sessionApi,

@@ -13,7 +13,10 @@
     },
     "plugins": [
       [
-        "@react-native-google-signin/google-signin"
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.414928358738-ukkt9l07e4r2pkb47ohnrj14rdiefvp1"
+        }
       ],
       [
         "expo-apple-authentication"
@@ -21,7 +24,8 @@
       "expo-secure-store"
     ],
     "extra": {
-      "googleWebClientId": "414928358738-lhnd162uc4t4ei03oajmitktqa8uvf2i.apps.googleusercontent.com"
+      "googleWebClientId": "414928358738-g300v21mbs6gj3uem03q042gp598p5t5.apps.googleusercontent.com",
+      "googleIosClientId": "414928358738-ukkt9l07e4r2pkb47ohnrj14rdiefvp1.apps.googleusercontent.com"
     }
   }
 }

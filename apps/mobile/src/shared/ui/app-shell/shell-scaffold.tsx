@@ -1,54 +1,47 @@
 import type { PropsWithChildren } from "react";
-import { usePathname, useRouter } from "expo-router";
-import { View } from "react-native";
+import { usePathname } from "expo-router";
+import { StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppHeader } from "../composites/app-header";
-import { IconButton } from "../primitives/icon-button";
-import { Screen } from "../primitives/screen";
+import { useTheme } from "../providers/theme-provider";
+import { createContentWidth } from "../primitives/shared";
 import { Stack } from "../primitives/stack";
-import { DrawerContent } from "./drawer-content";
-import { appShellRoutes, getShellTitle, tabItems } from "./routes";
+import { getShellTitle } from "./routes";
 
-interface ShellScaffoldProps {
-  onLogout(): void;
-  subscriptionEnabled?: boolean;
-}
-
-// Tabs render for any route under the (tabs) group. Derive the prefix from the
-// canonical home path so renames in routes.ts stay in one place.
-const TABS_PATH_PREFIX = appShellRoutes.home.replace(/\/home$/, "/");
+interface ShellScaffoldProps {}
 
 export function ShellScaffold({
-  children,
-  onLogout,
-  subscriptionEnabled = false
+  children
 }: PropsWithChildren<ShellScaffoldProps>) {
   const pathname = usePathname();
-  const router = useRouter();
-  const showTabs = pathname.startsWith(TABS_PATH_PREFIX);
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const styles = StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: theme.semantic.color.screenBackground
+    },
+    header: {
+      ...createContentWidth(theme),
+      paddingHorizontal: theme.primitives.spacing.lg,
+      paddingTop: insets.top + theme.primitives.spacing.md
+    },
+    body: {
+      flex: 1,
+      minHeight: 0
+    }
+  });
 
   return (
-    <Screen>
-      <Stack>
-        <AppHeader title={getShellTitle(pathname)} />
-        <DrawerContent onLogout={onLogout} subscriptionEnabled={subscriptionEnabled} />
-        {showTabs ? (
-          <View accessibilityLabel="Tab navigation" role="tablist">
-            <Stack>
-              {tabItems.map((item) => (
-                <IconButton
-                  key={item.href}
-                  icon={item.icon}
-                  label={item.label}
-                  onPress={() => router.replace(item.href)}
-                  selected={pathname === item.href}
-                />
-              ))}
-            </Stack>
-          </View>
-        ) : null}
-        <View>{children}</View>
+    <View style={styles.root}>
+      <Stack style={styles.body}>
+        <View style={styles.header}>
+          <AppHeader title={getShellTitle(pathname)} />
+        </View>
+        <View style={styles.body}>{children}</View>
       </Stack>
-    </Screen>
+    </View>
   );
 }

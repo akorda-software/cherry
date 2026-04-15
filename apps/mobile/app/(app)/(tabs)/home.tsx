@@ -5,7 +5,7 @@ export default function HomeRoute() {
     <PlaceholderScreen
       description="Authenticated shell landing content stays feature-owned."
       testId="home-screen"
-      title="Home overview"
+      title="Home"
     >
       <EmptyState
         description="Reusable sections can swap themes without changing this route's ownership."

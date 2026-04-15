@@ -1,18 +1,25 @@
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactElement } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
 import { Slot } from "expo-router";
 import Constants from "expo-constants";
-import { StripeProvider } from "@stripe/stripe-react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import type { BootstrapConfig } from "@snack/contracts";
 import { createConfigApi, createFeatureFlagReader, type FeatureFlagReader } from "@snack/mobile-shared";
 
-import { createNativeAuthServices } from "../src/features/auth/infrastructure";
 import { SessionShellProvider, type SessionShellServices } from "../src/features/auth/presentation";
 import { createJsonHttpClient } from "../src/shared/api";
 import { RuntimeConfigProvider } from "../src/shared/config";
 import { ThemeProvider } from "../src/shared/ui";
+
+type StripeProviderProps = PropsWithChildren<{
+  publishableKey: string;
+  merchantIdentifier?: string;
+  urlScheme?: string;
+}>;
+
+type StripeProviderComponent = (props: StripeProviderProps) => ReactElement;
 
 function resolveApiBaseUrl() {
   const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string | undefined>;
@@ -26,6 +33,10 @@ function resolveApiBaseUrl() {
   }
 
   return extra.apiBaseUrlWeb ?? "";
+}
+
+function isExpoGo() {
+  return Constants.executionEnvironment === "storeClient";
 }
 
 export function RootLayout({
@@ -43,6 +54,41 @@ export function RootLayout({
   featureFlagLoading?: boolean;
 }>) {
   const stripeConfig = bootstrapConfig?.services?.stripe;
+  const [StripeProviderComponent, setStripeProviderComponent] = useState<StripeProviderComponent | null>(
+    null
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (isExpoGo()) {
+      setStripeProviderComponent(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void import("@stripe/stripe-react-native").then(
+      (mod) => {
+        if (cancelled) {
+          return;
+        }
+
+        setStripeProviderComponent(() => mod.StripeProvider as StripeProviderComponent);
+      },
+      () => {
+        if (cancelled) {
+          return;
+        }
+
+        setStripeProviderComponent(null);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const content = (
     <RuntimeConfigProvider
@@ -56,35 +102,67 @@ export function RootLayout({
   );
 
   return (
-    <ThemeProvider>
-      {stripeConfig ? (
-        <StripeProvider
-          publishableKey={stripeConfig.publishableKey}
-          merchantIdentifier={stripeConfig.merchantIdentifier}
-          urlScheme={stripeConfig.urlScheme}
-        >
-          {content}
-        </StripeProvider>
-      ) : (
-        content
-      )}
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        {stripeConfig && StripeProviderComponent ? (
+          <StripeProviderComponent
+            publishableKey={stripeConfig.publishableKey}
+            merchantIdentifier={stripeConfig.merchantIdentifier}
+            urlScheme={stripeConfig.urlScheme}
+          >
+            {content}
+          </StripeProviderComponent>
+        ) : (
+          content
+        )}
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
 export default function RootLayoutRoute() {
   const apiBaseUrl = useMemo(() => resolveApiBaseUrl(), []);
+  const [services, setServices] = useState<SessionShellServices | undefined>(undefined);
   const [bootstrapConfig, setBootstrapConfig] = useState<BootstrapConfig | null>(null);
   const [featureFlagReader, setFeatureFlagReader] = useState<FeatureFlagReader | null>(null);
   const [featureFlagLoading, setFeatureFlagLoading] = useState(true);
 
-  const services = useMemo(() => {
+  useEffect(() => {
+    let cancelled = false;
     const httpClient = createJsonHttpClient({ apiBaseUrl });
 
-    return createNativeAuthServices({
-      apiBaseUrl,
-      httpClient
-    });
+    if (isExpoGo()) {
+      setServices(undefined);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void import("../src/features/auth/infrastructure/native-auth-services").then(
+      ({ createNativeAuthServices }) => {
+        if (cancelled) {
+          return;
+        }
+
+        setServices(
+          createNativeAuthServices({
+            apiBaseUrl,
+            httpClient
+          })
+        );
+      },
+      () => {
+        if (cancelled) {
+          return;
+        }
+
+        setServices(undefined);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
   }, [apiBaseUrl]);
 
   useEffect(() => {

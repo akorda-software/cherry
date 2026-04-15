@@ -14,3 +14,6 @@ export function useStripe() {
     presentPaymentSheet: presentPaymentSheetMock
   };
 }
+
+export const initPaymentSheet = initPaymentSheetMock;
+export const presentPaymentSheet = presentPaymentSheetMock;

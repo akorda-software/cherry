@@ -1,4 +1,4 @@
-import { useStripe } from "@stripe/stripe-react-native";
+import Constants from "expo-constants";
 
 import type { BillingCheckoutResponse } from "@snack/contracts";
 
@@ -9,9 +9,40 @@ export type PaymentSheetResult =
   | { status: "canceled" }
   | { status: "failed"; message: string };
 
+type StripePaymentSheetModule = {
+  initPaymentSheet?: (options: {
+    customerId: string;
+    customerEphemeralKeySecret: string;
+    paymentIntentClientSecret: string;
+    merchantDisplayName: string;
+    returnURL?: string;
+  }) => Promise<{ error?: { message: string } }>;
+  presentPaymentSheet?: () => Promise<{
+    error?: { code?: string; message: string };
+  }>;
+};
+
+let stripeModulePromise: Promise<StripePaymentSheetModule | null> | null = null;
+
+function loadStripePaymentSheetModule() {
+  if (Constants.executionEnvironment === "storeClient") {
+    return Promise.resolve(null);
+  }
+
+  if (stripeModulePromise) {
+    return stripeModulePromise;
+  }
+
+  stripeModulePromise = import("@stripe/stripe-react-native").then(
+    (mod) => mod as StripePaymentSheetModule,
+    () => null
+  );
+
+  return stripeModulePromise;
+}
+
 export function useStripePaymentSheet() {
   const stripeConfig = useStripeRuntimeConfig();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   return {
     async presentCheckout(session: BillingCheckoutResponse): Promise<PaymentSheetResult> {
@@ -22,7 +53,16 @@ export function useStripePaymentSheet() {
         };
       }
 
-      const initResult = await initPaymentSheet({
+      const stripeModule = await loadStripePaymentSheetModule();
+
+      if (!stripeModule?.initPaymentSheet || !stripeModule.presentPaymentSheet) {
+        return {
+          status: "failed",
+          message: "Stripe PaymentSheet is not available in this build (use a development build, not Expo Go)"
+        };
+      }
+
+      const initResult = await stripeModule.initPaymentSheet({
         customerId: session.customerId,
         customerEphemeralKeySecret: session.customerEphemeralKeySecret,
         paymentIntentClientSecret: session.paymentIntentClientSecret,
@@ -37,7 +77,7 @@ export function useStripePaymentSheet() {
         };
       }
 
-      const presentResult = await presentPaymentSheet();
+      const presentResult = await stripeModule.presentPaymentSheet();
 
       if (!presentResult.error) {
         return { status: "completed" };

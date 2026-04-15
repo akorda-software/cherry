@@ -1,11 +1,11 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { usePathname } from "expo-router";
 
 import { PrivateLayout } from "../../app/(app)/_layout";
 import SettingsRoute from "../../app/(app)/settings";
 import HomeRoute from "../../app/(app)/(tabs)/home";
-import UserRoute from "../../app/(app)/(tabs)/user";
+import ProfileRoute from "../../app/(app)/(tabs)/profile";
 import { PlaceholderScreen } from "../../src/shared/ui/app-shell";
 import { renderRoute } from "./render-route";
 import { sessionFixture } from "./session-shell.fixture";
@@ -13,10 +13,10 @@ import { sessionFixture } from "./session-shell.fixture";
 function AppRouteHost() {
   const pathname = usePathname();
 
-  if (pathname === "/(app)/(tabs)/user") {
+  if (pathname === "/(app)/(tabs)/profile") {
     return (
       <PrivateLayout>
-        <UserRoute />
+        <ProfileRoute />
       </PrivateLayout>
     );
   }
@@ -37,7 +37,7 @@ function AppRouteHost() {
 }
 
 describe("private shell", () => {
-  it("keeps Home and User tab-owned while exposing matching drawer entries", async () => {
+  it("renders home content inside the private shell", async () => {
     renderRoute(
       <AppRouteHost />,
       {
@@ -50,36 +50,8 @@ describe("private shell", () => {
       }
     );
 
-    expect(await screen.findByRole("button", { name: "Tab Home" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tab User" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Drawer Home" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Drawer User" })).toBeInTheDocument();
+    expect(await screen.findAllByTestId("home-screen")).toHaveLength(1);
     expect(screen.getByRole("banner")).toHaveTextContent("Home");
-    expect(screen.getAllByTestId("home-screen")).toHaveLength(1);
-    expect(screen.getByRole("heading", { name: "Home overview" })).toBeInTheDocument();
-  });
-
-  it("routes drawer Home/User actions to the canonical tab paths", async () => {
-    renderRoute(
-      <AppRouteHost />,
-      {
-        initialPath: "/(app)/(tabs)/home",
-        services: {
-          bootstrapSession: {
-            execute: async () => sessionFixture
-          }
-        }
-      }
-    );
-
-    fireEvent.click(await screen.findByRole("button", { name: "Drawer User" }));
-
-    expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/(tabs)/user");
-
-    fireEvent.click(screen.getByRole("button", { name: "Drawer Home" }));
-
-    expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/(tabs)/home");
-    expect(screen.getByRole("heading", { name: "Home overview" })).toBeInTheDocument();
     expect(screen.getByText("Authenticated shell landing content stays feature-owned.")).toBeInTheDocument();
   });
 
@@ -102,9 +74,8 @@ describe("private shell", () => {
       }
     );
 
-    expect(await screen.findByRole("navigation", { name: "Drawer navigation" })).toBeInTheDocument();
+    expect(await screen.findByTestId("future-feature-screen")).toBeInTheDocument();
     expect(screen.getByRole("banner")).toHaveTextContent("Settings");
-    expect(screen.getByTestId("future-feature-screen")).toBeInTheDocument();
     expect(
       screen.getByText("Future feature content can change without rebuilding the private shell.")
     ).toBeInTheDocument();
@@ -114,7 +85,7 @@ describe("private shell", () => {
     renderRoute(
       <AppRouteHost />,
       {
-        initialPath: "/(app)/(tabs)/user",
+        initialPath: "/(app)/(tabs)/profile",
         services: {
           bootstrapSession: {
             execute: async () => sessionFixture
@@ -123,15 +94,15 @@ describe("private shell", () => {
       }
     );
 
-    expect(await screen.findAllByTestId("user-screen")).toHaveLength(1);
+    expect(await screen.findAllByTestId("profile-screen")).toHaveLength(1);
     expect(screen.getByText("Signed in as User")).toBeInTheDocument();
   });
 
-  it("renders themed user and settings structures without changing route ownership", async () => {
+  it("renders the profile structure with a logout action", async () => {
     renderRoute(
       <AppRouteHost />,
       {
-        initialPath: "/(app)/(tabs)/user",
+        initialPath: "/(app)/(tabs)/profile",
         services: {
           bootstrapSession: {
             execute: async () => sessionFixture
@@ -140,13 +111,8 @@ describe("private shell", () => {
       }
     );
 
-    expect(await screen.findByRole("heading", { name: "User details" })).toBeInTheDocument();
+    expect(await screen.findByRole("banner")).toHaveTextContent("Profile");
     expect(screen.getByText("Signed in as User")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Drawer Settings" }));
-
-    expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/settings");
-    expect(screen.getByRole("banner")).toHaveTextContent("Settings");
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
   });
 });

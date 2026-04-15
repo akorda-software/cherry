@@ -10,3 +10,7 @@ apps/backend/.elixir_ls/
 apps/backend/cover/
 apps/backend/.mix/
 erl_crash.dump
+apps/mobile/.expo/
+apps/mobile/build/
+apps/mobile/ios/
+apps/mobile/android/

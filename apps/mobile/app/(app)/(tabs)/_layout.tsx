@@ -1,8 +1,34 @@
-import { Slot } from "expo-router";
+import { Text } from "react-native";
+import { Tabs } from "expo-router";
 
-// Tab UI is owned by ShellScaffold, which renders the tab bar for every route
-// under (tabs) using the shared design system. This layout just forwards the
-// nested route via Slot so the (tabs) group exists for URL purposes.
 export default function TabsLayoutRoute() {
-  return <Slot />;
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: "#2563eb",
+        tabBarInactiveTintColor: "#64748b",
+        tabBarStyle: {
+          height: 62,
+          paddingBottom: 8,
+          paddingTop: 8
+        }
+      }}
+    >
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>⌂</Text>
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>👤</Text>
+        }}
+      />
+    </Tabs>
+  );
 }

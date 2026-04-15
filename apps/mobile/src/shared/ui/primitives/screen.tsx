@@ -15,6 +15,7 @@ export function Screen({ children, description, testId, title }: ScreenProps) {
 
   const styles = StyleSheet.create({
     root: {
+      flex: 1,
       ...createContentWidth(theme),
       backgroundColor: theme.semantic.color.screenBackground,
       gap: theme.primitives.spacing.lg,

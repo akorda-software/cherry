@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Plan, Subscription } from "@snack/contracts";
 
-import SubscriptionsRoute from "./subscriptions";
+import SubscriptionsRoute from "../../app/(app)/subscriptions";
 import { SubscriptionShellProvider } from "../../src/features/subscriptions/presentation";
 import { RuntimeConfigProvider } from "../../src/shared/config";
 import { ThemeProvider } from "../../src/shared/ui";
-import { RouterProvider } from "../../test/mocks/expo-router";
+import { RouterProvider } from "../mocks/expo-router";
 
 const plans: Plan[] = [
   {

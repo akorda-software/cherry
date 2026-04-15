@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Snack",
+    "slug": "snack",
+    "scheme": "snack",
+    "version": "0.0.0",
+    "platforms": ["android", "ios", "web"],
+    "android": {
+      "package": "app.snack.mobile"
+    },
+    "ios": {
+      "bundleIdentifier": "app.snack.mobile"
+    },
+    "plugins": [
+      [
+        "@react-native-google-signin/google-signin"
+      ],
+      [
+        "expo-apple-authentication"
+      ],
+      "expo-secure-store"
+    ],
+    "extra": {
+      "googleWebClientId": "414928358738-lhnd162uc4t4ei03oajmitktqa8uvf2i.apps.googleusercontent.com"
+    }
+  }
+}

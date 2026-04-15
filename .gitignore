@@ -1,0 +1,12 @@
+node_modules/
+.pnpm-store/
+.turbo/
+.atl/
+coverage/
+dist/
+apps/backend/_build/
+apps/backend/deps/
+apps/backend/.elixir_ls/
+apps/backend/cover/
+apps/backend/.mix/
+erl_crash.dump

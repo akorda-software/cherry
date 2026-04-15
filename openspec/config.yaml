@@ -1,0 +1,51 @@
+schema: spec-driven
+
+context: |
+  Stack: pnpm v10 monorepo with Turbo.
+  Frontend/mobile: TypeScript workspace in `apps/mobile` with Vitest and tsconfig path aliases.
+  Backend: Phoenix 1.8 / Elixir 1.18 in `apps/backend` with Ecto + PostgreSQL.
+  Shared packages: `@snack/contracts` and `@snack/mobile-shared`.
+  Architecture: polyglot monorepo; mobile uses presentation/application/domain/infrastructure layers.
+  Style: TS strict mode plus Phoenix/Elixir conventions from `apps/backend/AGENTS.md`.
+
+strict_tdd: true
+
+testing:
+  orchestrator_command: "pnpm test"
+  runners:
+    - name: "Vitest"
+      command: "pnpm test:mobile"
+    - name: "ExUnit"
+      command: "pnpm test:backend"
+  layers:
+    unit: "Vitest + ExUnit"
+    integration: "Phoenix.ConnTest + Ecto SQL Sandbox"
+    e2e: "not installed"
+  coverage: "cd apps/backend && MIX_ENV=test mix test --cover"
+  quality:
+    linter: "not configured"
+    type_checker: "pnpm --dir apps/mobile exec tsc --noEmit"
+    formatter: "cd apps/backend && mix format"
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+  apply:
+    - Follow existing code patterns and conventions
+    - Load relevant coding skills for the project stack
+  verify:
+    - Run tests if test infrastructure exists
+    - Compare implementation against every spec scenario
+  archive:
+    - Warn before merging destructive deltas (large removals)

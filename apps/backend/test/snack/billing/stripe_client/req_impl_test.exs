@@ -34,7 +34,7 @@ defmodule Snack.Billing.StripeClient.ReqImplTest do
     test "returns error when Stripe API is unreachable" do
       result =
         ReqImpl.create_payment_sheet_session(
-          %{customer_id: "cus_1", amount_cents: 999, currency: "usd"},
+          %{customer_id: "cus_1", price_id: "price_1"},
           []
         )
 

@@ -65,6 +65,37 @@ The Phoenix backend currently owns:
 - billing plans and subscription state
 - Stripe Payment Sheet session initialization
 
+### Stripe Subscription Flow
+
+The starter wires a real recurring subscription, not a one-off charge:
+
+1. `POST /api/billing/subscribe` creates a Stripe `Subscription` with
+   `payment_behavior=default_incomplete` and `expand[]=latest_invoice.payment_intent`.
+   Stripe returns the subscription id and an embedded `PaymentIntent` client
+   secret.
+2. Backend persists a local row with `status="pending"` and the **real**
+   `stripe_subscription_id`.
+3. Mobile confirms the `PaymentIntent` via Payment Sheet.
+4. Stripe fires `customer.subscription.updated` with `status="active"`. The
+   webhook handler resolves the local row by `stripe_subscription_id` and
+   promotes it from `pending` to `active`.
+5. Subsequent state transitions (`past_due`, `unpaid`, etc.) flow through
+   the same webhook.
+6. `POST /api/billing/cancel` updates the Stripe subscription with
+   `cancel_at_period_end=true`
+   and marks the local row `canceling`. `customer.subscription.deleted`
+   later finalizes it to `canceled`.
+7. `POST /api/billing/abandon-pending` is the path for "user closed Payment
+   Sheet without paying" — it best-effort cancels the Stripe-side
+   incomplete subscription and removes the local pending row.
+
+Cancel only operates on `active` / `canceling` rows. Pending rows must go
+through the abandon path. Plans seeded in `billing_plans` must reference
+real Stripe `Price` IDs (`stripe_price_id`) for the subscription creation
+to succeed in production. `past_due` subscriptions still block new subscribe
+attempts until they are resolved or canceled, so the starter does not create
+duplicate Stripe subscriptions for the same user.
+
 ## Enabling Subscriptions
 
 Subscriptions are controlled by the backend runtime flag:

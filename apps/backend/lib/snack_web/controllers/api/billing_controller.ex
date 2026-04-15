@@ -49,6 +49,11 @@ defmodule SnackWeb.Controllers.Api.BillingController do
         |> put_status(404)
         |> json(%{error: "plan_not_found"})
 
+      {:error, {:stripe_cancel_failed, _reason}} ->
+        conn
+        |> put_status(502)
+        |> json(%{error: "stripe_unavailable"})
+
       {:error, reason} ->
         conn
         |> put_status(422)
@@ -67,6 +72,11 @@ defmodule SnackWeb.Controllers.Api.BillingController do
         conn
         |> put_status(404)
         |> json(%{error: "not_found"})
+
+      {:error, {:stripe_cancel_failed, _reason}} ->
+        conn
+        |> put_status(502)
+        |> json(%{error: "stripe_unavailable"})
 
       {:error, reason} ->
         conn
@@ -91,6 +101,11 @@ defmodule SnackWeb.Controllers.Api.BillingController do
         conn
         |> put_status(409)
         |> json(%{error: "invalid_state"})
+
+      {:error, {:stripe_cancel_failed, _reason}} ->
+        conn
+        |> put_status(502)
+        |> json(%{error: "stripe_unavailable"})
 
       {:error, reason} ->
         conn

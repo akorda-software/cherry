@@ -13,7 +13,7 @@ export interface Subscription {
   id: string;
   planId: string;
   status: SubscriptionStatus;
-  currentPeriodEnd: string;
+  currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
 }
 

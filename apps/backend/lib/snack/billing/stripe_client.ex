@@ -16,12 +16,20 @@ defmodule Snack.Billing.StripeClient do
                %{
                  customer_id: String.t(),
                  customer_ephemeral_key_secret: String.t(),
-                 payment_intent_client_secret: String.t()
+                 current_period_end: DateTime.t() | nil,
+                 payment_intent_client_secret: String.t(),
+                 stripe_subscription_id: String.t()
                }}
               | {:error, term()}
 
   @callback cancel_subscription(subscription_id :: String.t(), opts()) ::
-              {:ok, %{status: String.t()}} | {:error, term()}
+              {:ok,
+               %{
+                 cancel_at_period_end: boolean(),
+                 current_period_end: DateTime.t() | nil,
+                 status: String.t()
+               }}
+              | {:error, term()}
 
   @callback list_prices(opts()) ::
               {:ok, [map()]} | {:error, term()}

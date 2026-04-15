@@ -40,4 +40,18 @@ describe("BillingScreen", () => {
       screen.queryByRole("button", { name: /cancel subscription/i })
     ).not.toBeInTheDocument();
   });
+
+  it("shows a fallback billing message when Stripe has not returned a period end yet", () => {
+    render(
+      <BillingScreen
+        subscription={{ ...subscription, status: "pending", currentPeriodEnd: null }}
+        planName="Pro"
+        onCancel={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByText("Billing schedule will update after Stripe confirms the current cycle.")
+    ).toBeInTheDocument();
+  });
 });

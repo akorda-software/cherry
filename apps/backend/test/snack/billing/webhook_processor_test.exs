@@ -59,20 +59,19 @@ defmodule Snack.Billing.WebhookProcessorTest do
       assert {:ok, :already_processed} = WebhookProcessor.process(event)
     end
 
-    test "processes checkout.session.completed event", %{user: user, plan: plan} do
-      {:ok, _} = Billing.subscribe(user, plan.id)
-      customer = Repo.get_by(Customer, user_id: user.id)
+    test "promotes pending sub to active on customer.subscription.updated",
+         %{user: user, plan: plan} do
+      {:ok, %{stripe_subscription_id: real_stripe_sub_id}} = Billing.subscribe(user, plan.id)
 
-      event_id = "evt_checkout_#{System.unique_integer([:positive])}"
-      real_stripe_sub_id = "sub_from_checkout_#{System.unique_integer([:positive])}"
+      event_id = "evt_activated_#{System.unique_integer([:positive])}"
 
       event = %{
         "id" => event_id,
-        "type" => "checkout.session.completed",
+        "type" => "customer.subscription.updated",
         "data" => %{
           "object" => %{
-            "customer" => customer.stripe_customer_id,
-            "subscription" => real_stripe_sub_id
+            "id" => real_stripe_sub_id,
+            "status" => "active"
           }
         }
       }

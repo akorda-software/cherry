@@ -14,7 +14,11 @@ interface BillingScreenProps {
   error?: string | null;
 }
 
-function formatDate(isoDate: string): string {
+function formatDate(isoDate: string | null): string | null {
+  if (isoDate === null) {
+    return null;
+  }
+
   return new Date(isoDate).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -29,6 +33,8 @@ export function BillingScreen({
   canceling,
   error = null
 }: BillingScreenProps) {
+  const billingDate = formatDate(subscription.currentPeriodEnd);
+
   return (
     <Screen title="Subscription">
       <Card title="Current Plan">
@@ -40,14 +46,17 @@ export function BillingScreen({
             </FormMessage>
           ) : null}
           <Text>
-            {subscription.cancelAtPeriodEnd
-              ? `Cancels on ${formatDate(subscription.currentPeriodEnd)}`
-              : `Renews on ${formatDate(subscription.currentPeriodEnd)}`}
+            {billingDate === null
+              ? "Billing schedule will update after Stripe confirms the current cycle."
+              : subscription.cancelAtPeriodEnd
+                ? `Cancels on ${billingDate}`
+                : `Renews on ${billingDate}`}
           </Text>
           {error ? <FormMessage tone="critical">{error}</FormMessage> : null}
-          {subscription.status === "canceling" || subscription.cancelAtPeriodEnd ? (
+          {billingDate !== null &&
+          (subscription.status === "canceling" || subscription.cancelAtPeriodEnd) ? (
             <FormMessage tone="info">
-              Your subscription will remain active until {formatDate(subscription.currentPeriodEnd)}
+              Your subscription will remain active until {billingDate}
             </FormMessage>
           ) : null}
           {!subscription.cancelAtPeriodEnd &&

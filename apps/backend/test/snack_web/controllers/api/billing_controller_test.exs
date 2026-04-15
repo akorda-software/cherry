@@ -1,8 +1,11 @@
 defmodule SnackWeb.Controllers.Api.BillingControllerTest do
   use SnackWeb.ConnCase, async: false
 
+  import Ecto.Query
+
   alias Snack.Accounts
   alias Snack.Billing.Plan
+  alias Snack.Billing.Subscription
   alias Snack.Repo
   alias Snack.Sessions
 
@@ -88,6 +91,29 @@ defmodule SnackWeb.Controllers.Api.BillingControllerTest do
   end
 
   describe "POST /api/billing/cancel" do
+    test "returns canceling state for active subscriptions", %{
+      authed_conn: conn,
+      user: user,
+      plan: plan
+    } do
+      Application.put_env(:snack, :features, subscriptions: true)
+
+      {:ok, _} = Snack.Billing.subscribe(user, plan.id)
+
+      sub =
+        Repo.one(from(s in Subscription, limit: 1, order_by: [desc: s.inserted_at]))
+
+      sub
+      |> Subscription.changeset(%{
+        status: "active",
+        stripe_event_id: "evt_ctrl_cancel_#{System.unique_integer([:positive])}"
+      })
+      |> Repo.update!()
+
+      conn = post(conn, "/api/billing/cancel")
+      assert %{"status" => "canceling"} = json_response(conn, 200)
+    end
+
     test "returns 404 when no active subscription", %{authed_conn: conn} do
       Application.put_env(:snack, :features, subscriptions: true)
 

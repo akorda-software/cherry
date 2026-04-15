@@ -8,7 +8,16 @@ defmodule Snack.BillingTest do
   alias Snack.Billing.Subscription
 
   setup do
+    original_stripe_client = Application.get_env(:snack, :stripe_client)
     Application.put_env(:snack, :stripe_client, Snack.Billing.MockStripeClient)
+
+    on_exit(fn ->
+      if original_stripe_client do
+        Application.put_env(:snack, :stripe_client, original_stripe_client)
+      else
+        Application.delete_env(:snack, :stripe_client)
+      end
+    end)
 
     {:ok, user} =
       Accounts.create_user(%{email: "billing_test@example.com", display_name: "Billing Tester"})
@@ -90,14 +99,66 @@ defmodule Snack.BillingTest do
   end
 
   describe "cancel/1" do
-    test "cancels active subscription", %{user: user, plan: plan} do
+    test "cancels an active subscription", %{user: user, plan: plan} do
       {:ok, _} = Billing.subscribe(user, plan.id)
 
-      assert {:ok, %{status: "canceling"}} = Billing.cancel(user)
+      # Simulate Stripe webhook promoting the pending sub to active.
+      customer = Repo.get_by(Customer, user_id: user.id)
+
+      sub =
+        Repo.one(from(s in Subscription, where: s.customer_id == ^customer.id, limit: 1))
+
+      sub
+      |> Subscription.changeset(%{
+        status: "active",
+        current_period_end: DateTime.from_unix!(1_850_000_000),
+        stripe_event_id: "evt_promote_cancel_#{System.unique_integer([:positive])}"
+      })
+      |> Repo.update!()
+
+      assert {:ok, canceled} = Billing.cancel(user)
+      assert canceled.status == "canceling"
+      assert canceled.cancel_at_period_end == true
+      assert canceled.current_period_end == DateTime.from_unix!(1_800_000_000)
     end
 
-    test "returns 404 when no active subscription", %{user: user} do
+    test "refuses to cancel a pending subscription (must use abandon_pending)",
+         %{user: user, plan: plan} do
+      {:ok, _} = Billing.subscribe(user, plan.id)
+
+      # Nothing has promoted the pending sub to active yet, so cancel must 404.
       assert {:error, :not_found} = Billing.cancel(user)
+    end
+
+    test "returns 404 when no subscription exists", %{user: user} do
+      assert {:error, :not_found} = Billing.cancel(user)
+    end
+
+    test "keeps the local subscription untouched when Stripe cancellation fails", %{
+      user: user,
+      plan: plan
+    } do
+      Application.put_env(:snack, :stripe_client, Snack.Billing.FailingStripeClient)
+
+      {:ok, _} = Billing.subscribe(user, plan.id)
+
+      customer = Repo.get_by(Customer, user_id: user.id)
+
+      sub =
+        Repo.one(from(s in Subscription, where: s.customer_id == ^customer.id, limit: 1))
+
+      sub
+      |> Subscription.changeset(%{
+        status: "active",
+        stripe_event_id: "evt_promote_cancel_fail_#{System.unique_integer([:positive])}"
+      })
+      |> Repo.update!()
+
+      assert {:error, {:stripe_cancel_failed, :stripe_down}} = Billing.cancel(user)
+
+      persisted = Repo.get!(Subscription, sub.id)
+      assert persisted.status == "active"
+      assert persisted.cancel_at_period_end == false
     end
   end
 
@@ -113,24 +174,41 @@ defmodule Snack.BillingTest do
       assert subscription != nil
       assert subscription.status in ["pending", "active"]
     end
+
+    test "treats past_due as a blocking subscription state", %{user: user, plan: plan} do
+      {:ok, %{stripe_subscription_id: stripe_subscription_id}} = Billing.subscribe(user, plan.id)
+
+      event = %{
+        "id" => "evt_past_due_#{System.unique_integer([:positive])}",
+        "type" => "customer.subscription.updated",
+        "data" => %{
+          "object" => %{
+            "id" => stripe_subscription_id,
+            "status" => "past_due"
+          }
+        }
+      }
+
+      assert {:ok, updated} = Billing.handle_event(event)
+      assert updated.status == "past_due"
+      assert {:error, :already_subscribed} = Billing.subscribe(user, plan.id)
+    end
   end
 
   describe "handle_event/1" do
-    test "promotes the pending subscription to active on checkout.session.completed",
+    test "promotes the pending subscription to active on customer.subscription.updated",
          %{user: user, plan: plan} do
-      {:ok, _} = Billing.subscribe(user, plan.id)
+      {:ok, %{stripe_subscription_id: real_stripe_sub_id}} = Billing.subscribe(user, plan.id)
 
-      customer = Repo.get_by(Customer, user_id: user.id)
-      real_stripe_sub_id = "sub_live_#{System.unique_integer([:positive])}"
-      event_id = "evt_completed_#{System.unique_integer([:positive])}"
+      event_id = "evt_activated_#{System.unique_integer([:positive])}"
 
       event = %{
         "id" => event_id,
-        "type" => "checkout.session.completed",
+        "type" => "customer.subscription.updated",
         "data" => %{
           "object" => %{
-            "customer" => customer.stripe_customer_id,
-            "subscription" => real_stripe_sub_id
+            "id" => real_stripe_sub_id,
+            "status" => "active"
           }
         }
       }
@@ -139,23 +217,6 @@ defmodule Snack.BillingTest do
       assert updated.status == "active"
       assert updated.stripe_subscription_id == real_stripe_sub_id
       assert updated.stripe_event_id == event_id
-    end
-
-    test "skips checkout.session.completed when the stripe customer is unknown" do
-      event_id = "evt_unknown_customer_#{System.unique_integer([:positive])}"
-
-      event = %{
-        "id" => event_id,
-        "type" => "checkout.session.completed",
-        "data" => %{
-          "object" => %{
-            "customer" => "cus_not_in_db",
-            "subscription" => "sub_whatever"
-          }
-        }
-      }
-
-      assert {:ok, {:skipped, :customer_not_found}} = Billing.handle_event(event)
     end
 
     test "updates only the subscription whose stripe id matches the event",

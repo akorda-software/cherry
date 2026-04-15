@@ -38,20 +38,51 @@ defmodule Snack.Billing do
     end
   end
 
+  @doc """
+  Cancel the caller's active subscription.
+
+  Only `active` and `canceling` subscriptions go through the cancel flow — a
+  pending subscription (payment not yet confirmed) must be released via
+  `abandon_pending_subscription/2`, which is the path the mobile client uses
+  when the user closes the Payment Sheet without paying.
+
+  The Stripe call is only performed when we hold a real Stripe subscription
+  id; if, for any reason, the local row has a local placeholder (e.g.
+  migrations from older data), we skip the Stripe call to avoid 404s against
+  non-existent resources.
+  """
   def cancel(user) do
-    case get_active_subscription(user.id) do
+    case get_cancelable_subscription(user.id) do
       nil ->
         {:error, :not_found}
 
       subscription ->
-        stripe_client().cancel_subscription(subscription.stripe_subscription_id, [])
+        case maybe_cancel_stripe_subscription(subscription.stripe_subscription_id) do
+          {:error, reason} ->
+            {:error, {:stripe_cancel_failed, reason}}
 
-        subscription
-        |> Subscription.changeset(%{status: "canceling", cancel_at_period_end: true})
-        |> Repo.update()
+          result ->
+            cancel_attrs =
+              subscription
+              |> cancel_attrs_from_stripe_result(result)
+              |> Map.put(:status, "canceling")
+              |> Map.put(:cancel_at_period_end, true)
+
+            subscription
+            |> Subscription.changeset(cancel_attrs)
+            |> Repo.update()
+        end
     end
   end
 
+  @doc """
+  Abandon a local pending subscription whose Payment Sheet was dismissed.
+
+  Best-effort cancels the matching Stripe-side subscription (created with
+  `payment_behavior=default_incomplete` and otherwise auto-canceled by Stripe
+  after 24 h) and then deletes the local row so the user can start a new
+  subscribe attempt immediately.
+  """
   def abandon_pending_subscription(user, subscription_id) do
     case Repo.one(
            from(s in Subscription,
@@ -64,11 +95,43 @@ defmodule Snack.Billing do
         {:error, :not_found}
 
       %Subscription{status: "pending"} = subscription ->
-        Repo.delete(subscription)
+        case maybe_cancel_stripe_subscription(subscription.stripe_subscription_id) do
+          {:error, reason} -> {:error, {:stripe_cancel_failed, reason}}
+          _result -> Repo.delete(subscription)
+        end
 
       _subscription ->
         {:error, :invalid_state}
     end
+  end
+
+  defp maybe_cancel_stripe_subscription(stripe_subscription_id) do
+    cond do
+      not is_binary(stripe_subscription_id) ->
+        :skip
+
+      String.starts_with?(stripe_subscription_id, "sub_local_") ->
+        :skip
+
+      true ->
+        stripe_client().cancel_subscription(stripe_subscription_id, [])
+    end
+  end
+
+  defp cancel_attrs_from_stripe_result(subscription, {:ok, stripe_subscription}) do
+    %{}
+    |> Map.put(
+      :current_period_end,
+      stripe_subscription.current_period_end || subscription.current_period_end
+    )
+    |> Map.put(:cancel_at_period_end, stripe_subscription.cancel_at_period_end)
+  end
+
+  defp cancel_attrs_from_stripe_result(subscription, :skip) do
+    %{
+      current_period_end: subscription.current_period_end,
+      cancel_at_period_end: subscription.cancel_at_period_end
+    }
   end
 
   def get_subscription(user) do
@@ -116,19 +179,21 @@ defmodule Snack.Billing do
       stripe_client().create_payment_sheet_session(
         %{
           customer_id: customer.stripe_customer_id,
-          amount_cents: plan.amount_cents,
-          currency: plan.currency,
           price_id: plan.stripe_price_id
         },
         []
       )
     end)
-    |> Multi.run(:subscription, fn repo, %{customer: customer} ->
+    |> Multi.run(:subscription, fn repo, %{customer: customer, payment_sheet: payment_sheet} ->
       %Subscription{}
       |> Subscription.changeset(%{
-        stripe_subscription_id: "sub_pending_#{Ecto.UUID.generate()}",
-        stripe_event_id: "evt_pending_#{Ecto.UUID.generate()}",
+        stripe_subscription_id: payment_sheet.stripe_subscription_id,
+        # Local marker used only to satisfy the NOT NULL constraint on
+        # stripe_event_id before Stripe has actually emitted any event for
+        # this subscription. The first real event will overwrite it.
+        stripe_event_id: "evt_local_pending_#{Ecto.UUID.generate()}",
         status: "pending",
+        current_period_end: payment_sheet.current_period_end,
         customer_id: customer.id,
         plan_id: plan.id
       })
@@ -169,17 +234,21 @@ defmodule Snack.Billing do
     Repo.one(
       from(s in Subscription,
         where: s.customer_id in subquery(customer_ids_for_user(user_id)),
-        where: s.status in ["pending", "active", "canceling"],
+        where: s.status in ["pending", "active", "canceling", "past_due"],
         select: count(s.id)
       )
     ) > 0
   end
 
-  defp get_active_subscription(user_id) do
+  # Subscriptions eligible for the cancel flow. A `pending` sub represents a
+  # Payment Sheet that has not completed yet, and goes through
+  # `abandon_pending_subscription/2` — not this path — so it is deliberately
+  # excluded here.
+  defp get_cancelable_subscription(user_id) do
     Repo.one(
       from(s in Subscription,
         where: s.customer_id in subquery(customer_ids_for_user(user_id)),
-        where: s.status in ["pending", "active", "canceling"],
+        where: s.status in ["active", "canceling"],
         preload: [:plan],
         limit: 1
       )
@@ -199,38 +268,30 @@ defmodule Snack.Billing do
     ) > 0
   end
 
-  # checkout.session.completed fires after the mobile client confirms a
-  # Payment Sheet. Resolve the local pending subscription via the Stripe
-  # customer id from the event, then promote it to "active" with the real
-  # Stripe subscription id.
-  defp do_handle_event(%{"type" => "checkout.session.completed"} = event, event_id) do
-    with {:ok, stripe_customer_id} <- fetch_event_string(event, ["data", "object", "customer"]),
-         {:ok, customer} <- fetch_customer_by_stripe_id(stripe_customer_id),
-         {:ok, pending} <- fetch_pending_subscription(customer.id) do
-      stripe_sub_id = get_in(event, ["data", "object", "subscription"])
-
-      attrs =
-        %{status: "active", stripe_event_id: event_id}
-        |> maybe_put(:stripe_subscription_id, stripe_sub_id)
-
-      pending
-      |> Subscription.changeset(attrs)
-      |> Repo.update()
-    else
-      {:error, reason} -> log_and_ack(event_id, "checkout.session.completed", reason)
-    end
-  end
-
-  # customer.subscription.updated must mutate the exact local row that
-  # corresponds to the event's `data.object.id`. Anything else risks
-  # cross-user state corruption.
+  # customer.subscription.updated is the event that Stripe fires after a
+  # Payment Sheet confirms the initial invoice of a subscription created with
+  # `payment_behavior=default_incomplete`. It carries the canonical status
+  # transitions (incomplete -> active, active -> past_due, etc.). It must
+  # mutate the exact local row that corresponds to `data.object.id` — picking
+  # any other row would corrupt another user's state.
   defp do_handle_event(%{"type" => "customer.subscription.updated"} = event, event_id) do
     with {:ok, stripe_subscription_id} <- fetch_event_string(event, ["data", "object", "id"]),
          {:ok, subscription} <- fetch_subscription_by_stripe_id(stripe_subscription_id) do
       new_status = get_in(event, ["data", "object", "status"]) || subscription.status
+      cancel_at_period_end = get_in(event, ["data", "object", "cancel_at_period_end"])
+      current_period_end = current_period_end_from_event(event)
 
       subscription
-      |> Subscription.changeset(%{status: new_status, stripe_event_id: event_id})
+      |> Subscription.changeset(%{
+        status: normalize_stripe_subscription_status(new_status, cancel_at_period_end),
+        stripe_event_id: event_id,
+        cancel_at_period_end:
+          if(is_boolean(cancel_at_period_end),
+            do: cancel_at_period_end,
+            else: subscription.cancel_at_period_end
+          ),
+        current_period_end: current_period_end || subscription.current_period_end
+      })
       |> Repo.update()
     else
       {:error, reason} -> log_and_ack(event_id, "customer.subscription.updated", reason)
@@ -243,7 +304,13 @@ defmodule Snack.Billing do
     with {:ok, stripe_subscription_id} <- fetch_event_string(event, ["data", "object", "id"]),
          {:ok, subscription} <- fetch_subscription_by_stripe_id(stripe_subscription_id) do
       subscription
-      |> Subscription.changeset(%{status: "canceled", stripe_event_id: event_id})
+      |> Subscription.changeset(%{
+        status: "canceled",
+        stripe_event_id: event_id,
+        cancel_at_period_end: false,
+        current_period_end:
+          current_period_end_from_event(event) || subscription.current_period_end
+      })
       |> Repo.update()
     else
       {:error, reason} -> log_and_ack(event_id, "customer.subscription.deleted", reason)
@@ -261,27 +328,6 @@ defmodule Snack.Billing do
     end
   end
 
-  defp fetch_customer_by_stripe_id(stripe_customer_id) do
-    case Repo.get_by(Customer, stripe_customer_id: stripe_customer_id) do
-      nil -> {:error, :customer_not_found}
-      customer -> {:ok, customer}
-    end
-  end
-
-  defp fetch_pending_subscription(customer_id) do
-    case Repo.one(
-           from(s in Subscription,
-             where: s.customer_id == ^customer_id,
-             where: s.status == "pending",
-             order_by: [desc: s.inserted_at],
-             limit: 1
-           )
-         ) do
-      nil -> {:error, :no_pending_subscription}
-      subscription -> {:ok, subscription}
-    end
-  end
-
   defp fetch_subscription_by_stripe_id(stripe_subscription_id) do
     case Repo.get_by(Subscription, stripe_subscription_id: stripe_subscription_id) do
       nil -> {:error, :subscription_not_found}
@@ -289,8 +335,20 @@ defmodule Snack.Billing do
     end
   end
 
-  defp maybe_put(attrs, _key, value) when value in [nil, ""], do: attrs
-  defp maybe_put(attrs, key, value) when is_binary(value), do: Map.put(attrs, key, value)
+  defp current_period_end_from_event(event) do
+    case get_in(event, ["data", "object", "current_period_end"]) do
+      unix when is_integer(unix) -> DateTime.from_unix!(unix)
+      _ -> nil
+    end
+  end
+
+  defp normalize_stripe_subscription_status(_status, true), do: "canceling"
+  defp normalize_stripe_subscription_status("active", _), do: "active"
+  defp normalize_stripe_subscription_status("trialing", _), do: "active"
+  defp normalize_stripe_subscription_status("past_due", _), do: "past_due"
+  defp normalize_stripe_subscription_status("unpaid", _), do: "past_due"
+  defp normalize_stripe_subscription_status("canceled", _), do: "canceled"
+  defp normalize_stripe_subscription_status(_, _), do: "pending"
 
   # Events we cannot reconcile (missing fields, unknown customer, etc.) are
   # logged and acknowledged so Stripe does not retry forever. True failures

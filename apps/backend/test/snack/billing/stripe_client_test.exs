@@ -22,15 +22,16 @@ defmodule Snack.Billing.StripeClientTest do
   end
 
   describe "MockStripeClient.create_payment_sheet_session/2" do
-    test "returns payment sheet session data" do
+    test "returns payment sheet session data with stripe_subscription_id" do
       assert {:ok,
               %{
                 customer_id: "cus_mock_1",
                 customer_ephemeral_key_secret: "ek_mock_" <> _,
-                payment_intent_client_secret: "pi_mock_secret_" <> _
+                payment_intent_client_secret: "pi_mock_secret_" <> _,
+                stripe_subscription_id: "sub_mock_" <> _
               }} =
                Snack.Billing.MockStripeClient.create_payment_sheet_session(
-                 %{customer_id: "cus_mock_1", amount_cents: 999, currency: "usd"},
+                 %{customer_id: "cus_mock_1", price_id: "price_mock_pro"},
                  []
                )
     end
@@ -38,7 +39,8 @@ defmodule Snack.Billing.StripeClientTest do
 
   describe "MockStripeClient.cancel_subscription/2" do
     test "returns cancellation confirmation" do
-      assert {:ok, %{status: "canceling"}} =
+      assert {:ok,
+              %{status: "active", cancel_at_period_end: true, current_period_end: %DateTime{}}} =
                Snack.Billing.MockStripeClient.cancel_subscription("sub_mock_1", [])
     end
   end

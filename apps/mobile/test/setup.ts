@@ -12,6 +12,9 @@ vi.mock("expo-application", async () => import("./mocks/expo-application"));
 vi.mock("expo-device", async () => import("./mocks/expo-device"));
 vi.mock("expo-constants", async () => import("./mocks/expo-constants"));
 vi.mock("@stripe/stripe-react-native", async () => import("./mocks/stripe-react-native"));
+vi.mock("react-native-safe-area-context", async () =>
+  import("./mocks/react-native-safe-area-context")
+);
 
 afterEach(() => {
   cleanup();

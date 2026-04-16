@@ -1,4 +1,4 @@
-import type { PropsWithChildren, ReactElement } from "react";
+import type { PropsWithChildren } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
 import { Slot } from "expo-router";
@@ -12,14 +12,6 @@ import { SessionShellProvider, type SessionShellServices } from "../src/features
 import { createJsonHttpClient } from "../src/shared/api";
 import { RuntimeConfigProvider } from "../src/shared/config";
 import { ThemeProvider } from "../src/shared/ui";
-
-type StripeProviderProps = PropsWithChildren<{
-  publishableKey: string;
-  merchantIdentifier?: string;
-  urlScheme?: string;
-}>;
-
-type StripeProviderComponent = (props: StripeProviderProps) => ReactElement;
 
 function resolveApiBaseUrl() {
   const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string | undefined>;
@@ -53,68 +45,17 @@ export function RootLayout({
   featureFlagReader: FeatureFlagReader | null;
   featureFlagLoading?: boolean;
 }>) {
-  const stripeConfig = bootstrapConfig?.services?.stripe;
-  const [StripeProviderComponent, setStripeProviderComponent] = useState<StripeProviderComponent | null>(
-    null
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    if (isExpoGo()) {
-      setStripeProviderComponent(null);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    void import("@stripe/stripe-react-native").then(
-      (mod) => {
-        if (cancelled) {
-          return;
-        }
-
-        setStripeProviderComponent(() => mod.StripeProvider as StripeProviderComponent);
-      },
-      () => {
-        if (cancelled) {
-          return;
-        }
-
-        setStripeProviderComponent(null);
-      }
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const content = (
-    <RuntimeConfigProvider
-      apiBaseUrl={apiBaseUrl}
-      bootstrapConfig={bootstrapConfig}
-      reader={featureFlagReader}
-      loading={featureFlagLoading}
-    >
-      <SessionShellProvider services={services}>{children ?? <Slot />}</SessionShellProvider>
-    </RuntimeConfigProvider>
-  );
-
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        {stripeConfig && StripeProviderComponent ? (
-          <StripeProviderComponent
-            publishableKey={stripeConfig.publishableKey}
-            merchantIdentifier={stripeConfig.merchantIdentifier}
-            urlScheme={stripeConfig.urlScheme}
-          >
-            {content}
-          </StripeProviderComponent>
-        ) : (
-          content
-        )}
+        <RuntimeConfigProvider
+          apiBaseUrl={apiBaseUrl}
+          bootstrapConfig={bootstrapConfig}
+          reader={featureFlagReader}
+          loading={featureFlagLoading}
+        >
+          <SessionShellProvider services={services}>{children ?? <Slot />}</SessionShellProvider>
+        </RuntimeConfigProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

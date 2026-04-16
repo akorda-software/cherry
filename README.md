@@ -8,13 +8,13 @@ This repository is organized around a stable mobile base:
 - Session bootstrap and refresh
 - Reusable UI primitives and shell navigation
 - Runtime feature flags
-- Optional Stripe subscriptions module
-- Phoenix backend that exposes auth, config, session, and billing APIs
+- Phoenix backend that exposes auth, config, and session APIs for the base starter
+- Optional Stripe subscriptions add-on module
 
 ## Workspace Layout
 
 - `apps/mobile` — Expo app and reusable mobile feature modules
-- `apps/backend` — Phoenix backend for auth, runtime config, and billing
+- `apps/backend` — Phoenix backend for auth, runtime config, sessions, and optional billing
 - `packages/contracts` — shared request/response contracts between backend and mobile
 - `packages/mobile-shared` — reusable mobile-only API and storage helpers
 - `docs` — starter guides and setup notes
@@ -26,6 +26,7 @@ Treat this repo as a productized starter, not as a single app.
 
 - `auth` is part of the base
 - `shared/ui` is part of the base
+- `shared/config` and session management are part of the base
 - `subscriptions` is optional
 - app-specific product logic should be added on top of this base, not mixed into it
 
@@ -34,11 +35,12 @@ When the `subscriptions` flag is disabled, the shell behaves as if the subscript
 ## Quick Start
 
 1. Install dependencies with `pnpm install`
-2. Start backend setup in `apps/backend` with `mix setup`
-3. Run backend tests with `pnpm test:backend`
-4. Run mobile and contracts tests with `pnpm test:mobile`
-5. Start the Phoenix API from `apps/backend`
-6. Start the Expo app from `apps/mobile`
+2. Use `apps/mobile/.env.example` and `apps/backend/.env.example` as templates for local env vars
+3. Start backend setup in `apps/backend` with `mix setup`
+4. Run backend tests with `pnpm test:backend`
+5. Run mobile and contracts tests with `pnpm test:mobile`
+6. Start the Phoenix API from `apps/backend`
+7. Start the Expo app from `apps/mobile`
 
 ## Test Commands
 

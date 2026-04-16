@@ -1,5 +1,31 @@
 import Config
 
+if config_env() == :dev do
+  [".env", ".env.local"]
+  |> Enum.map(&Path.expand(&1, __DIR__ <> "/.."))
+  |> Enum.filter(&File.exists?/1)
+  |> Enum.each(fn path ->
+    path
+    |> File.read!()
+    |> String.split(["\n", "\r\n"], trim: true)
+    |> Enum.each(fn line ->
+      trimmed = String.trim(line)
+
+      if trimmed != "" and not String.starts_with?(trimmed, "#") do
+        case String.split(trimmed, "=", parts: 2) do
+          [key, value] ->
+            if System.get_env(key) == nil do
+              System.put_env(key, value)
+            end
+
+          _parts ->
+            :ok
+        end
+      end
+    end)
+  end)
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
@@ -71,33 +97,20 @@ config :snack, :stripe_mobile,
   url_scheme: System.get_env("STRIPE_URL_SCHEME", "snack")
 
 if config_env() != :test do
-  google_web_client_id =
-    System.get_env(
-      "GOOGLE_WEB_CLIENT_ID",
-      "414928358738-g300v21mbs6gj3uem03q042gp598p5t5.apps.googleusercontent.com"
-    )
+  google_web_client_id = System.get_env("GOOGLE_WEB_CLIENT_ID")
 
-  google_ios_client_id =
-    System.get_env(
-      "GOOGLE_IOS_CLIENT_ID",
-      "414928358738-ukkt9l07e4r2pkb47ohnrj14rdiefvp1.apps.googleusercontent.com"
-    )
+  google_ios_client_id = System.get_env("GOOGLE_IOS_CLIENT_ID")
 
   google_audiences =
     [google_web_client_id, google_ios_client_id]
     |> Enum.reject(&is_nil/1)
     |> Enum.reject(&(&1 == ""))
 
-  google_provider_config =
-    if google_audiences == [] do
-      Snack.Identity.Providers.Google
-    else
-      [
-        module: Snack.Identity.Providers.Google,
-        audiences: google_audiences,
-        issuers: ["https://accounts.google.com", "accounts.google.com"]
-      ]
-    end
+  google_provider_config = [
+    module: Snack.Identity.Providers.Google,
+    audiences: google_audiences,
+    issuers: ["https://accounts.google.com", "accounts.google.com"]
+  ]
 
   config :snack, Snack.Auth,
     providers: %{
@@ -105,6 +118,9 @@ if config_env() != :test do
       apple: Snack.Identity.Providers.Apple
     }
 end
+
+config :snack, Snack.Identity.Providers.GoogleJwksCache,
+  ttl_ms: String.to_integer(System.get_env("GOOGLE_JWKS_CACHE_TTL_MS", "600000"))
 
 if config_env() == :prod do
   access_token_salt =

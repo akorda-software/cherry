@@ -9,8 +9,14 @@ apps/backend/deps/
 apps/backend/.elixir_ls/
 apps/backend/cover/
 apps/backend/.mix/
+apps/backend/.env
+apps/backend/.env.local
+apps/backend/.env.*.local
 erl_crash.dump
 apps/mobile/.expo/
 apps/mobile/build/
 apps/mobile/ios/
 apps/mobile/android/
+apps/mobile/.env
+apps/mobile/.env.local
+apps/mobile/.env.*.local

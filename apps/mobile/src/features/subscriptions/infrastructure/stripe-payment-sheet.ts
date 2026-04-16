@@ -1,8 +1,8 @@
 import Constants from "expo-constants";
 
-import type { BillingCheckoutResponse } from "@snack/contracts";
+import type { BillingCheckoutResponse, StripeMobileConfig } from "@snack/contracts";
 
-import { useStripeRuntimeConfig } from "../../../shared/config";
+import { useRuntimeConfig } from "../../../shared/config";
 
 export type PaymentSheetResult =
   | { status: "completed" }
@@ -24,6 +24,11 @@ type StripePaymentSheetModule = {
 
 let stripeModulePromise: Promise<StripePaymentSheetModule | null> | null = null;
 
+function useSubscriptionStripeRuntimeConfig(): StripeMobileConfig | null {
+  const { bootstrapConfig } = useRuntimeConfig();
+  return bootstrapConfig?.services?.stripe ?? null;
+}
+
 function loadStripePaymentSheetModule() {
   if (Constants.executionEnvironment === "storeClient") {
     return Promise.resolve(null);
@@ -42,7 +47,7 @@ function loadStripePaymentSheetModule() {
 }
 
 export function useStripePaymentSheet() {
-  const stripeConfig = useStripeRuntimeConfig();
+  const stripeConfig = useSubscriptionStripeRuntimeConfig();
 
   return {
     async presentCheckout(session: BillingCheckoutResponse): Promise<PaymentSheetResult> {

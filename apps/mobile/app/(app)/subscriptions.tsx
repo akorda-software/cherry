@@ -4,6 +4,7 @@ import { Redirect } from "expo-router";
 import {
   BillingScreen,
   PlanPickerScreen,
+  SubscriptionModuleProvider,
   useSubscriptionShell
 } from "../../src/features/subscriptions/presentation";
 import { useStripePaymentSheet } from "../../src/features/subscriptions/infrastructure";
@@ -11,7 +12,7 @@ import { useFeatureFlag } from "../../src/shared/config";
 import { Screen } from "../../src/shared/ui/primitives/screen";
 import { Text } from "../../src/shared/ui/primitives/text";
 
-export default function SubscriptionsRoute() {
+export function SubscriptionsRouteContent() {
   const { enabled, loading: featureFlagLoading } = useFeatureFlag("subscriptions");
   const { state, subscribeToPlan, abandonPendingCheckout, cancelSubscription, refresh } =
     useSubscriptionShell();
@@ -115,5 +116,13 @@ export default function SubscriptionsRoute() {
       onRetry={() => void refresh()}
       subscribing={subscribing}
     />
+  );
+}
+
+export default function SubscriptionsRoute() {
+  return (
+    <SubscriptionModuleProvider>
+      <SubscriptionsRouteContent />
+    </SubscriptionModuleProvider>
   );
 }

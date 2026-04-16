@@ -1,7 +1,12 @@
+export type SessionUserRole = string;
+export type SessionUserTier = string;
+
 export interface SessionUser {
   id: string;
   email: string;
   displayName: string | null;
+  roles?: SessionUserRole[];
+  tier?: SessionUserTier | null;
 }
 
 export interface SessionBundle {

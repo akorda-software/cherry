@@ -1,6 +1,6 @@
 import { createContext, type PropsWithChildren, useContext, useMemo } from "react";
 
-import type { BootstrapConfig, StripeMobileConfig } from "@snack/contracts";
+import type { BootstrapConfig } from "@snack/contracts";
 import type { FeatureFlagReader } from "@snack/mobile-shared";
 
 interface RuntimeConfigContextValue {
@@ -46,11 +46,6 @@ export function useRuntimeConfig() {
   return useContext(RuntimeConfigContext);
 }
 
-export function useStripeRuntimeConfig(): StripeMobileConfig | null {
-  const { bootstrapConfig } = useRuntimeConfig();
-  return bootstrapConfig?.services?.stripe ?? null;
-}
-
 export function useFeatureFlag(flagKey: string): { enabled: boolean; loading: boolean } {
   const { reader, loading } = useRuntimeConfig();
 
@@ -60,5 +55,3 @@ export function useFeatureFlag(flagKey: string): { enabled: boolean; loading: bo
 
   return { enabled: reader.isEnabled(flagKey), loading: false };
 }
-
-export { canAccess } from "../../features/subscriptions/domain/access-rules";

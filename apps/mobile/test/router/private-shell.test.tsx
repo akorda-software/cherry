@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { usePathname } from "expo-router";
 
@@ -79,6 +79,22 @@ describe("private shell", () => {
     expect(
       screen.getByText("Future feature content can change without rebuilding the private shell.")
     ).toBeInTheDocument();
+  });
+
+  it("renders optional module navigation from the registry inside settings", async () => {
+    renderRoute(<AppRouteHost />, {
+      initialPath: "/(app)/settings",
+      featureFlags: { subscriptions: true },
+      services: {
+        bootstrapSession: {
+          execute: async () => sessionFixture
+        }
+      }
+    });
+
+    expect(await screen.findByRole("button", { name: "Manage subscription" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Manage subscription" }));
+    expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/subscriptions");
   });
 
   it("resolves authenticated deep links to a single canonical screen instance", async () => {

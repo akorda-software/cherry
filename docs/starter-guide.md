@@ -40,7 +40,10 @@ Keep these rules stable when extending the starter:
 2. Runtime config comes from backend `/api/config`, not from ad-hoc props.
 3. Shared shell code stays generic and must not own product-specific business logic.
 4. Optional modules should disappear cleanly when their feature flag is disabled.
-5. App-specific product features should follow the same `presentation/application/domain/infrastructure` split used by subscriptions.
+5. App-specific product features should follow the same `presentation/application/domain/infrastructure` split used by the optional modules.
+
+Optional routes and optional navigation entries should register themselves through the add-on registry instead of being hardcoded directly into the authenticated shell.
+Domain visibility rules should live in reusable helpers and evaluate session data such as `user.roles` and `user.tier`, not ad-hoc booleans scattered across screens.
 
 ## Mobile Bootstrap Flow
 
@@ -51,9 +54,10 @@ At startup the mobile app:
 3. Builds the runtime feature flag reader
 4. Mounts `RuntimeConfigProvider`
 5. Mounts `SessionShellProvider`
-6. Mounts `StripeProvider` only when Stripe runtime config exists
+6. Mounts add-on providers only when the active module needs them
 
-This lets the same app tree support apps with or without subscriptions.
+This keeps the base app tree stable while optional modules mount their own runtime only when used.
+The settings screen can resolve addon entry points from the same registry, which keeps future optional menus out of the shell core.
 
 ## Backend Responsibilities
 
@@ -62,8 +66,13 @@ The Phoenix backend currently owns:
 - provider callback completion for Google and Apple auth
 - session refresh and revoke flows
 - runtime config bootstrap
+
+Optional billing add-on responsibilities:
+
 - billing plans and subscription state
 - Stripe Payment Sheet session initialization
+
+The mobile root no longer mounts Stripe. The subscriptions route owns the billing runtime so the SDK is loaded only when that add-on is active.
 
 ### Stripe Subscription Flow
 
@@ -124,19 +133,41 @@ If `ENABLE_SUBSCRIPTIONS=false`, the mobile shell hides subscription navigation 
 
 Mobile auth expects Expo/native configuration to be present.
 
-Current mobile app config lives in `apps/mobile/app.json`.
+Current mobile app config lives in `apps/mobile/app.config.ts` and should be driven by env vars.
 
 Important values:
 
 - `expo.scheme` — used for native redirects and Stripe return URLs
 - `expo.extra.googleWebClientId`
+- `expo.extra.googleIosClientId`
 - iOS bundle identifier and Android package name
+
+Recommended mobile env vars:
+
+- `EXPO_APP_NAME`
+- `EXPO_APP_SLUG`
+- `EXPO_APP_SCHEME`
+- `EXPO_ANDROID_PACKAGE`
+- `EXPO_IOS_BUNDLE_IDENTIFIER`
+- `EXPO_PUBLIC_API_BASE_URL_ANDROID`
+- `EXPO_PUBLIC_API_BASE_URL_IOS`
+- `EXPO_PUBLIC_API_BASE_URL_WEB`
+- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`
+- `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`
+- `GOOGLE_IOS_URL_SCHEME`
+
+Backend Google token verification expects matching provider audiences:
+
+- `GOOGLE_WEB_CLIENT_ID`
+- `GOOGLE_IOS_CLIENT_ID`
+
+Backend runtime variables are documented in `apps/backend/.env.example`.
 
 When cloning this starter into a new app idea, update these identifiers before shipping.
 
 ## Creating a New App on Top of This Starter
 
-1. Rename app identity in `apps/mobile/app.json`
+1. Rename app identity in `apps/mobile/.env` or your deploy env vars
 2. Update bundle/package identifiers
 3. Point mobile to the correct backend base URL if needed
 4. Configure auth provider credentials
@@ -159,6 +190,7 @@ Avoid:
 - hardcoding feature flags in layouts
 - bypassing shared contracts with one-off payload shapes
 - putting app-specific domain logic into `shared/ui` or shell navigation
+- mixing role/tier visibility checks directly into random screens when the same rule can live in `src/shared/authz`
 
 ## Verification Workflow
 

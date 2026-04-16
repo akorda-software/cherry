@@ -2,19 +2,15 @@ defmodule Snack.Identity.Providers.Google do
   @moduledoc false
 
   alias Snack.Identity.ProviderClaims
+  alias Snack.Identity.Providers.GoogleJwksCache
   alias Snack.Identity.Providers.JwtVerifier
-
-  @jwks_url "https://www.googleapis.com/oauth2/v3/certs"
 
   def verify(%{"provider_token" => provider_token}), do: verify(%{provider_token: provider_token})
 
   def verify(%{provider_token: provider_token})
       when is_binary(provider_token) and provider_token != "" do
-    provider_config =
-      Snack.Auth.provider_config(:google)
-      |> Keyword.put(:jwks, fetch_google_jwks())
-
-    with {:ok, %{header: header, claims: claims}} <-
+    with {:ok, provider_config} <- provider_config(),
+         {:ok, %{header: header, claims: claims}} <-
            JwtVerifier.verify(provider_token, provider_config),
          {:ok, subject} <- required_claim(claims, "sub"),
          {:ok, email} <- required_claim(claims, "email") do
@@ -35,16 +31,17 @@ defmodule Snack.Identity.Providers.Google do
 
   def verify(_params), do: {:error, :invalid_provider_token}
 
-  defp fetch_google_jwks do
-    case Req.get(@jwks_url) do
-      {:ok, %Req.Response{status: 200, body: %{"keys" => keys}}} when is_list(keys) ->
-        keys
+  defp provider_config do
+    provider_config = Snack.Auth.provider_config(:google)
 
-      {:ok, %Req.Response{status: _status}} ->
-        []
+    case Keyword.fetch(provider_config, :jwks) do
+      {:ok, _jwks} ->
+        {:ok, provider_config}
 
-      {:error, _reason} ->
-        []
+      :error ->
+        with {:ok, jwks} <- GoogleJwksCache.get() do
+          {:ok, Keyword.put(provider_config, :jwks, jwks)}
+        end
     end
   end
 

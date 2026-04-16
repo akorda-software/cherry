@@ -1,9 +1,10 @@
+import { resolveOptionalShellTitle } from "../../../features/optional-modules";
+
 export const appShellRoutes = {
   login: "/(public)/login",
   home: "/(app)/(tabs)/home",
   profile: "/(app)/(tabs)/profile",
-  settings: "/(app)/settings",
-  subscriptions: "/(app)/subscriptions"
+  settings: "/(app)/settings"
 } as const;
 
 export const tabItems = [
@@ -20,8 +21,10 @@ export function getShellTitle(pathname: string) {
     return "Settings";
   }
 
-  if (pathname === appShellRoutes.subscriptions) {
-    return "Subscription";
+  const optionalTitle = resolveOptionalShellTitle(pathname);
+
+  if (optionalTitle !== null) {
+    return optionalTitle;
   }
 
   return "Home";

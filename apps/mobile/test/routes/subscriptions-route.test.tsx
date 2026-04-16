@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Plan, Subscription } from "@snack/contracts";
 
-import SubscriptionsRoute from "../../app/(app)/subscriptions";
+import { SubscriptionsRouteContent } from "../../app/(app)/subscriptions";
 import { SubscriptionShellProvider } from "../../src/features/subscriptions/presentation";
 import { RuntimeConfigProvider } from "../../src/shared/config";
 import { ThemeProvider } from "../../src/shared/ui";
@@ -65,7 +65,7 @@ function TestProviders({
       <ThemeProvider>
         <RuntimeConfigProvider
           apiBaseUrl="http://localhost:4000"
-          bootstrapConfig={{ features: {} }}
+          bootstrapConfig={{ features: {}, services: {} }}
           reader={reader}
           loading={false}
         >
@@ -82,7 +82,7 @@ describe("SubscriptionsRoute", () => {
 
     render(
       <TestProviders featureFlags={{ subscriptions: false }} services={services}>
-        <SubscriptionsRoute />
+        <SubscriptionsRouteContent />
       </TestProviders>
     );
 
@@ -96,7 +96,7 @@ describe("SubscriptionsRoute", () => {
 
     render(
       <TestProviders featureFlags={{ subscriptions: true }} services={services}>
-        <SubscriptionsRoute />
+        <SubscriptionsRouteContent />
       </TestProviders>
     );
 
@@ -112,7 +112,7 @@ describe("SubscriptionsRoute", () => {
 
     render(
       <TestProviders featureFlags={{ subscriptions: true }} services={services}>
-        <SubscriptionsRoute />
+        <SubscriptionsRouteContent />
       </TestProviders>
     );
 

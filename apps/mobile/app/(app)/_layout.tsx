@@ -3,7 +3,7 @@ import { ActivityIndicator, View } from "react-native";
 import { Redirect, Slot, Stack } from "expo-router";
 
 import { useSessionShell } from "../../src/features/auth/presentation";
-import { SubscriptionFeatureProvider } from "../../src/features/subscriptions/presentation";
+import { optionalStackScreens } from "../../src/features/optional-modules";
 import { ShellScaffold } from "../../src/shared/ui/app-shell";
 
 function PrivateGuard({ children }: PropsWithChildren) {
@@ -27,11 +27,7 @@ function PrivateGuard({ children }: PropsWithChildren) {
 export function PrivateLayout({ children }: PropsWithChildren) {
   return (
     <PrivateGuard>
-      <SubscriptionFeatureProvider>
-        <ShellScaffold>
-          {children ?? <Slot />}
-        </ShellScaffold>
-      </SubscriptionFeatureProvider>
+      <ShellScaffold>{children ?? <Slot />}</ShellScaffold>
     </PrivateGuard>
   );
 }
@@ -42,7 +38,9 @@ export default function PrivateLayoutRoute() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ title: "Home" }} />
         <Stack.Screen name="settings" options={{ title: "Settings" }} />
-        <Stack.Screen name="subscriptions" options={{ title: "Subscription" }} />
+        {optionalStackScreens.map((screen) => (
+          <Stack.Screen key={screen.name} name={screen.name} options={{ title: screen.title }} />
+        ))}
       </Stack>
     </PrivateLayout>
   );

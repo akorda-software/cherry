@@ -15,7 +15,7 @@ defmodule Snack.Sessions do
 
     Multi.new()
     |> Multi.run(:device, fn repo, _changes ->
-      {:ok, upsert_device(repo, user, device_attrs, current_time)}
+      upsert_device(repo, user, device_attrs, current_time)
     end)
     |> Multi.run(:session_family, fn repo, %{device: device} ->
       %SessionFamily{}
@@ -150,20 +150,14 @@ defmodule Snack.Sessions do
            )
          ) do
       nil ->
-        {:ok, device} =
-          %Device{}
-          |> Device.changeset(Map.merge(attrs, %{last_seen_at: current_time, user: user}))
-          |> repo.insert()
-
-        device
+        %Device{}
+        |> Device.changeset(Map.merge(attrs, %{last_seen_at: current_time, user: user}))
+        |> repo.insert()
 
       %Device{} = device ->
-        {:ok, updated_device} =
-          device
-          |> Device.changeset(Map.merge(attrs, %{last_seen_at: current_time, user: user}))
-          |> repo.update()
-
-        updated_device
+        device
+        |> Device.changeset(Map.merge(attrs, %{last_seen_at: current_time, user: user}))
+        |> repo.update()
     end
   end
 

@@ -20,14 +20,22 @@ defmodule Snack.Billing.StripeClient.ReqImpl do
     }
   end
 
+  @doc "Builds Stripe request headers, including optional idempotency keys."
+  @spec request_headers(config(), Keyword.t()) :: [{String.t(), String.t()}]
+  def request_headers(config, opts \\ []) do
+    [{"authorization", "Bearer #{config.api_key}"}]
+    |> maybe_put_header("idempotency-key", Keyword.get(opts, :idempotency_key))
+    |> Kernel.++(Keyword.get(opts, :extra_headers, []))
+  end
+
   @impl true
-  def create_customer(%{email: email}, _opts) do
+  def create_customer(%{email: email}, opts) do
     config = stripe_config()
 
     case Req.post(
            "#{config.base_url}/v1/customers",
            form: [email: email],
-           headers: [{"authorization", "Bearer #{config.api_key}"}],
+           headers: request_headers(config, opts),
            receive_timeout: 5_000
          ) do
       {:ok, %{status: 200, body: %{"id" => id}}} ->
@@ -52,7 +60,7 @@ defmodule Snack.Billing.StripeClient.ReqImpl do
   @impl true
   def create_payment_sheet_session(
         %{customer_id: customer_id, price_id: price_id},
-        _opts
+        opts
       ) do
     config = stripe_config()
 
@@ -60,10 +68,11 @@ defmodule Snack.Billing.StripeClient.ReqImpl do
            Req.post(
              "#{config.base_url}/v1/ephemeral_keys",
              form: [customer: customer_id],
-             headers: [
-               {"authorization", "Bearer #{config.api_key}"},
-               {"stripe-version", "2024-06-20"}
-             ],
+             headers:
+               request_headers(
+                 config,
+                 opts |> Keyword.put(:extra_headers, [{"stripe-version", "2024-06-20"}])
+               ),
              receive_timeout: 5_000
            ),
          {:ok, %{status: 200, body: subscription_body}} <-
@@ -76,7 +85,7 @@ defmodule Snack.Billing.StripeClient.ReqImpl do
                {"payment_settings[save_default_payment_method]", "on_subscription"},
                {"expand[]", "latest_invoice.payment_intent"}
              ],
-             headers: [{"authorization", "Bearer #{config.api_key}"}],
+             headers: request_headers(config, opts),
              receive_timeout: 5_000
            ),
          {:ok, stripe_subscription_id} <- fetch_subscription_id(subscription_body),
@@ -118,13 +127,13 @@ defmodule Snack.Billing.StripeClient.ReqImpl do
   end
 
   @impl true
-  def cancel_subscription(subscription_id, _opts) do
+  def cancel_subscription(subscription_id, opts) do
     config = stripe_config()
 
     case Req.post(
            "#{config.base_url}/v1/subscriptions/#{subscription_id}",
            form: [cancel_at_period_end: true],
-           headers: [{"authorization", "Bearer #{config.api_key}"}],
+           headers: request_headers(config, opts),
            receive_timeout: 5_000
          ) do
       {:ok, %{status: 200, body: body}} ->
@@ -172,4 +181,8 @@ defmodule Snack.Billing.StripeClient.ReqImpl do
         {:error, reason}
     end
   end
+
+  defp maybe_put_header(headers, _name, nil), do: headers
+  defp maybe_put_header(headers, _name, ""), do: headers
+  defp maybe_put_header(headers, name, value), do: [{name, value} | headers]
 end

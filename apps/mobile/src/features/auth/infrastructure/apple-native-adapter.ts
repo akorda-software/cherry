@@ -1,3 +1,7 @@
+import * as Crypto from "expo-crypto";
+
+import { createAppleAuthNonce } from "./apple-auth-nonce";
+
 interface AppleCredential {
   providerToken: string;
   authorizationCode: string;
@@ -39,9 +43,10 @@ const APPLE_AUTH_SCOPE_EMAIL = 1;
 
 interface CreateAppleNativeAdapterOptions {
   module: AppleSignInModule;
+  cryptoModule?: typeof Crypto;
 }
 
-export function createAppleNativeAdapter({ module }: CreateAppleNativeAdapterOptions) {
+export function createAppleNativeAdapter({ module, cryptoModule = Crypto }: CreateAppleNativeAdapterOptions) {
   return {
     async signIn(): Promise<AppleCredential> {
       const available = await module.isAvailableAsync();
@@ -50,8 +55,11 @@ export function createAppleNativeAdapter({ module }: CreateAppleNativeAdapterOpt
         throw new Error("Apple Sign-In is not available on this device");
       }
 
+      const { rawNonce, hashedNonce } = await createAppleAuthNonce(cryptoModule);
+
       const credential = await module.signInAsync({
-        requestedScopes: [APPLE_AUTH_SCOPE_FULL_NAME, APPLE_AUTH_SCOPE_EMAIL]
+        requestedScopes: [APPLE_AUTH_SCOPE_FULL_NAME, APPLE_AUTH_SCOPE_EMAIL],
+        nonce: hashedNonce
       });
 
       if (credential.identityToken === null) {
@@ -66,7 +74,7 @@ export function createAppleNativeAdapter({ module }: CreateAppleNativeAdapterOpt
         providerToken: credential.identityToken,
         authorizationCode: credential.authorizationCode,
         idToken: credential.identityToken,
-        nonce: "requested" // expo-apple-authentication v8 doesn't expose a returned nonce; the nonce we send is used for server-side validation
+        nonce: rawNonce
       };
     }
   };

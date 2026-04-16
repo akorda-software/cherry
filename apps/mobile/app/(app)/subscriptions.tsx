@@ -4,11 +4,14 @@ import { Redirect } from "expo-router";
 import {
   BillingScreen,
   PlanPickerScreen,
-  SubscriptionModuleProvider,
+  SubscriptionFeatureProvider,
   useSubscriptionShell
 } from "../../src/features/subscriptions/presentation";
-import { useStripePaymentSheet } from "../../src/features/subscriptions/infrastructure";
-import { useFeatureFlag } from "../../src/shared/config";
+import {
+  SubscriptionStripeProvider,
+  useStripePaymentSheet
+} from "../../src/features/subscriptions/infrastructure";
+import { useFeatureFlag, useRuntimeConfig } from "../../src/shared/config";
 import { Screen } from "../../src/shared/ui/primitives/screen";
 import { Text } from "../../src/shared/ui/primitives/text";
 
@@ -120,9 +123,13 @@ export function SubscriptionsRouteContent() {
 }
 
 export default function SubscriptionsRoute() {
+  const { bootstrapConfig } = useRuntimeConfig();
+
   return (
-    <SubscriptionModuleProvider>
-      <SubscriptionsRouteContent />
-    </SubscriptionModuleProvider>
+    <SubscriptionStripeProvider stripeConfig={bootstrapConfig?.services?.stripe ?? null}>
+      <SubscriptionFeatureProvider>
+        <SubscriptionsRouteContent />
+      </SubscriptionFeatureProvider>
+    </SubscriptionStripeProvider>
   );
 }

@@ -2,6 +2,7 @@ defmodule Snack.Identity.Providers.Apple do
   @moduledoc false
 
   alias Snack.Identity.ProviderClaims
+  alias Snack.Identity.Providers.AppleJwksCache
   alias Snack.Identity.Providers.JwtVerifier
 
   def verify(%{"provider_token" => provider_token, "id_token" => id_token, "nonce" => nonce}) do
@@ -27,8 +28,9 @@ defmodule Snack.Identity.Providers.Apple do
   def verify(_params), do: {:error, :invalid_provider_token}
 
   defp verify_identity_token(token, nonce) do
-    with {:ok, %{header: header, claims: claims}} <-
-           JwtVerifier.verify(token, Snack.Auth.provider_config(:apple)),
+    with {:ok, provider_config} <- provider_config(),
+         {:ok, %{header: header, claims: claims}} <-
+           JwtVerifier.verify(token, provider_config),
          :ok <- validate_nonce(claims, nonce),
          {:ok, subject} <- required_claim(claims, "sub"),
          {:ok, email} <- required_claim(claims, "email") do
@@ -47,8 +49,22 @@ defmodule Snack.Identity.Providers.Apple do
     end
   end
 
+  defp provider_config do
+    provider_config = Snack.Auth.provider_config(:apple)
+
+    case Keyword.fetch(provider_config, :jwks) do
+      {:ok, _jwks} ->
+        {:ok, provider_config}
+
+      :error ->
+        with {:ok, jwks} <- AppleJwksCache.get() do
+          {:ok, Keyword.put(provider_config, :jwks, jwks)}
+        end
+    end
+  end
+
   defp validate_nonce(claims, nonce) do
-    if claims["nonce"] == nonce do
+    if claims["nonce"] == hash_nonce(nonce) do
       :ok
     else
       {:error, :invalid_nonce}
@@ -67,6 +83,12 @@ defmodule Snack.Identity.Providers.Apple do
       value when is_binary(value) and value != "" -> {:ok, value}
       _value -> {:error, :invalid_provider_token}
     end
+  end
+
+  defp hash_nonce(nonce) do
+    :sha256
+    |> :crypto.hash(nonce)
+    |> Base.encode16(case: :lower)
   end
 
   defp humanize(value) do

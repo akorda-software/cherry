@@ -1,12 +1,15 @@
 import type { AuthCallbackPayload, SessionBundle } from "@snack/contracts";
 import type { AuthProvider } from "@snack/mobile-shared";
 
+import { createBootstrapSession } from "../application/bootstrap-session";
+import { createCompleteAuthCallback } from "../application/complete-auth-callback";
+import { createLogoutSession } from "../application/logout-session";
 import { createSessionManager } from "../application/session-manager";
 import type { SessionShellServices } from "../presentation";
+import { createAppleProvider } from "./apple-provider";
+import { createGoogleProvider } from "./google-provider";
 
 interface AuthDependencies {
-  googleWebClientId: string;
-  googleIosClientId?: string;
   storage: {
     read(): Promise<SessionBundle | null>;
     write(session: SessionBundle): Promise<void>;
@@ -50,73 +53,39 @@ export function assembleAuthServices(deps: AuthDependencies): SessionShellServic
     navigation
   });
 
-  const googleProvider = {
-    async authenticate() {
-      const [credential, deviceInfo] = await Promise.all([
-        nativeGoogle.signIn(),
-        device.getDevice()
-      ]);
+  const googleProvider = createGoogleProvider({
+    signIn: nativeGoogle.signIn,
+    getDevice: device.getDevice
+  });
 
-      return {
-        provider: "google" as const,
-        payload: {
-          providerToken: credential.providerToken,
-          device: deviceInfo
-        } satisfies AuthCallbackPayload
-      };
+  const appleProvider = createAppleProvider({
+    signIn: nativeApple.signIn,
+    getDevice: device.getDevice
+  });
+
+  const completeAuthGoogle = createCompleteAuthCallback({
+    provider: "google",
+    authApi,
+    storage
+  });
+
+  const completeAuthApple = createCompleteAuthCallback({
+    provider: "apple",
+    authApi,
+    storage
+  });
+
+  const bootstrapSession = createBootstrapSession({
+    storage: {
+      ...storage,
+      read: () => sessionManager.bootstrap()
     }
-  };
+  });
 
-  const appleProvider = {
-    async authenticate() {
-      const [credential, deviceInfo] = await Promise.all([
-        nativeApple.signIn(),
-        device.getDevice()
-      ]);
-
-      return {
-        provider: "apple" as const,
-        payload: {
-          providerToken: credential.providerToken,
-          authorizationCode: credential.authorizationCode,
-          idToken: credential.idToken,
-          nonce: credential.nonce,
-          device: deviceInfo
-        } satisfies AuthCallbackPayload
-      };
-    }
-  };
-
-  const completeAuthGoogle = {
-    async execute(payload: AuthCallbackPayload): Promise<SessionBundle> {
-      const session = await authApi.completeCallback("google", payload);
-      await storage.write(session);
-      return session;
-    }
-  };
-
-  const completeAuthApple = {
-    async execute(payload: AuthCallbackPayload): Promise<SessionBundle> {
-      const session = await authApi.completeCallback("apple", payload);
-      await storage.write(session);
-      return session;
-    }
-  };
-
-  const bootstrapSession = {
-    async execute(): Promise<SessionBundle | null> {
-      return sessionManager.bootstrap();
-    }
-  };
-
-  const logoutSession = {
-    async execute(session: SessionBundle | null): Promise<void> {
-      await storage.clear();
-      if (session !== null) {
-        await sessionApi.revoke(session.refreshToken);
-      }
-    }
-  };
+  const logoutSession = createLogoutSession({
+    storage,
+    sessionApi
+  });
 
   return {
     bootstrapSession,

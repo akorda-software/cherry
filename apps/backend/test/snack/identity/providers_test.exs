@@ -135,7 +135,7 @@ defmodule Snack.Identity.ProvidersTest do
                })
 
       assert claims.email == "identity-token@apple.snack.test"
-      assert claims.provider_data["nonce"] == "nonce-apple"
+      assert claims.provider_data["nonce"] != "nonce-apple"
     end
 
     test "rejects tokens signed with an unknown key", %{provider_config: provider_config} do

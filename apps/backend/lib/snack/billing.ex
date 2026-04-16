@@ -13,6 +13,7 @@ defmodule Snack.Billing do
   alias Ecto.Multi
   alias Snack.Billing.Customer
   alias Snack.Billing.Plan
+  alias Snack.Billing.ProcessedEvent
   alias Snack.Billing.Subscription
   alias Snack.Repo
 
@@ -114,7 +115,10 @@ defmodule Snack.Billing do
         :skip
 
       true ->
-        stripe_client().cancel_subscription(stripe_subscription_id, [])
+        stripe_client().cancel_subscription(
+          stripe_subscription_id,
+          idempotency_key: cancel_idempotency_key(stripe_subscription_id)
+        )
     end
   end
 
@@ -159,14 +163,26 @@ defmodule Snack.Billing do
   Stripe's retry behaviour.
   """
   def handle_event(event) do
-    event_id = event["id"]
+    case fetch_event_id(event) do
+      {:ok, event_id} ->
+        Multi.new()
+        |> Multi.run(:processed_event, fn repo, _changes ->
+          repo
+          |> insert_processed_event(event_id, event["type"])
+          |> normalize_processed_event_insert()
+        end)
+        |> Multi.run(:event_result, fn _repo, _changes ->
+          do_handle_event(event, event_id)
+        end)
+        |> Repo.transaction()
+        |> case do
+          {:ok, %{event_result: result}} -> {:ok, result}
+          {:error, :processed_event, :already_processed, _changes} -> {:ok, :already_processed}
+          {:error, _step, reason, _changes} -> {:error, reason}
+        end
 
-    case event_already_processed?(event_id) do
-      true ->
-        {:ok, :already_processed}
-
-      false ->
-        do_handle_event(event, event_id)
+      :error ->
+        {:ok, {:skipped, :missing_event_id}}
     end
   end
 
@@ -181,7 +197,7 @@ defmodule Snack.Billing do
           customer_id: customer.stripe_customer_id,
           price_id: plan.stripe_price_id
         },
-        []
+        idempotency_key: subscription_idempotency_key(customer.id, plan.id)
       )
     end)
     |> Multi.run(:subscription, fn repo, %{customer: customer, payment_sheet: payment_sheet} ->
@@ -212,7 +228,11 @@ defmodule Snack.Billing do
   defp get_or_create_customer(repo, user) do
     case repo.get_by(Customer, user_id: user.id) do
       nil ->
-        {:ok, stripe_customer} = stripe_client().create_customer(%{email: user.email}, [])
+        {:ok, stripe_customer} =
+          stripe_client().create_customer(
+            %{email: user.email},
+            idempotency_key: customer_idempotency_key(user.id)
+          )
 
         {:ok, customer} =
           %Customer{}
@@ -259,13 +279,41 @@ defmodule Snack.Billing do
     from(c in Customer, where: c.user_id == ^user_id, select: c.id)
   end
 
-  defp event_already_processed?(event_id) do
-    Repo.one(
-      from(s in Subscription,
-        where: s.stripe_event_id == ^event_id,
-        select: count(s.id)
-      )
-    ) > 0
+  defp fetch_event_id(%{"id" => event_id}) when is_binary(event_id) and event_id != "",
+    do: {:ok, event_id}
+
+  defp fetch_event_id(_event), do: :error
+
+  defp insert_processed_event(repo, event_id, event_type) do
+    %ProcessedEvent{}
+    |> ProcessedEvent.changeset(%{event_id: event_id, event_type: event_type})
+    |> repo.insert()
+  end
+
+  defp normalize_processed_event_insert({:ok, processed_event}), do: {:ok, processed_event}
+
+  defp normalize_processed_event_insert({:error, %Ecto.Changeset{} = changeset}) do
+    case Keyword.get(changeset.errors, :event_id) do
+      {_message, details} when is_list(details) ->
+        if Keyword.get(details, :constraint) == :unique do
+          {:error, :already_processed}
+        else
+          {:error, changeset}
+        end
+
+      _ ->
+        {:error, changeset}
+    end
+  end
+
+  defp customer_idempotency_key(user_id), do: "billing:customer:create:user:#{user_id}"
+
+  defp subscription_idempotency_key(customer_id, plan_id) do
+    "billing:subscription:create:customer:#{customer_id}:plan:#{plan_id}"
+  end
+
+  defp cancel_idempotency_key(stripe_subscription_id) do
+    "billing:subscription:cancel:#{stripe_subscription_id}"
   end
 
   # customer.subscription.updated is the event that Stripe fires after a

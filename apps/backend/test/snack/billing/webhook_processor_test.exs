@@ -29,7 +29,7 @@ defmodule Snack.Billing.WebhookProcessorTest do
   end
 
   describe "process/1" do
-    test "deduplicates by stripe_event_id", %{user: user, plan: plan} do
+    test "deduplicates by processed event id", %{user: user, plan: plan} do
       {:ok, _} = Billing.subscribe(user, plan.id)
 
       customer = Repo.get_by(Customer, user_id: user.id)

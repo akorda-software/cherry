@@ -31,7 +31,6 @@ defmodule Snack.Billing.Subscription do
       :plan_id
     ])
     |> validate_required([:stripe_subscription_id, :stripe_event_id, :customer_id, :plan_id])
-    |> unique_constraint(:stripe_event_id)
     |> unique_constraint(:stripe_subscription_id)
   end
 end

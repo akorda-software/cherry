@@ -71,7 +71,7 @@ defmodule Snack.TestSupport.ProviderTokenFactory do
         "aud" => "snack-apple-service-id",
         "sub" => "apple-user-123",
         "email" => "apple-user@example.com",
-        "nonce" => nonce,
+        "nonce" => hash_nonce(nonce),
         "iat" => now,
         "exp" => now + 3600
       },
@@ -124,5 +124,11 @@ defmodule Snack.TestSupport.ProviderTokenFactory do
     value
     |> :binary.encode_unsigned()
     |> Base.url_encode64(padding: false)
+  end
+
+  defp hash_nonce(nonce) do
+    :sha256
+    |> :crypto.hash(nonce)
+    |> Base.encode16(case: :lower)
   end
 end

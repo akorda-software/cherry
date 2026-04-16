@@ -59,7 +59,7 @@ defmodule Snack.Billing.SubscriptionTest do
       assert Ecto.Changeset.get_field(changeset, :status) == nil or changeset.valid?
     end
 
-    test "enforces unique stripe_event_id", %{customer: customer, plan: plan} do
+    test "allows stripe_event_id reuse across subscriptions", %{customer: customer, plan: plan} do
       event_id = "evt_unique_#{System.unique_integer([:positive])}"
 
       {:ok, _} =
@@ -73,7 +73,7 @@ defmodule Snack.Billing.SubscriptionTest do
         })
         |> Repo.insert()
 
-      {:error, changeset} =
+      {:ok, second_subscription} =
         %Subscription{}
         |> Subscription.changeset(%{
           stripe_subscription_id: "sub_second",
@@ -84,7 +84,7 @@ defmodule Snack.Billing.SubscriptionTest do
         })
         |> Repo.insert()
 
-      assert "has already been taken" in errors_on(changeset).stripe_event_id
+      assert second_subscription.stripe_event_id == event_id
     end
 
     test "requires stripe_subscription_id", %{customer: customer, plan: plan} do

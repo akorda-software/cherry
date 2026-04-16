@@ -65,4 +65,21 @@ defmodule Snack.Billing.StripeClient.ReqImplTest do
       assert config.base_url == "https://api.stripe.com"
     end
   end
+
+  describe "request_headers/2" do
+    test "adds idempotency-key when present" do
+      headers =
+        ReqImpl.request_headers(ReqImpl.stripe_config(), idempotency_key: "billing-key-123")
+
+      assert {"authorization", "Bearer sk_test_123"} in headers
+      assert {"idempotency-key", "billing-key-123"} in headers
+    end
+
+    test "omits idempotency-key when absent" do
+      headers = ReqImpl.request_headers(ReqImpl.stripe_config())
+
+      assert {"authorization", "Bearer sk_test_123"} in headers
+      refute Enum.any?(headers, fn {name, _value} -> name == "idempotency-key" end)
+    end
+  end
 end

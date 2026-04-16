@@ -16,11 +16,8 @@ defmodule SnackWeb.Controllers.Api.ConfigController do
       end
 
     services =
-      case Map.get(stripe_config, :publishable_key) do
-        nil ->
-          %{}
-
-        publishable_key ->
+      case {Features.enabled?(:subscriptions), Map.get(stripe_config, :publishable_key)} do
+        {true, publishable_key} when is_binary(publishable_key) and publishable_key != "" ->
           %{
             stripe: %{
               publishableKey: publishable_key,
@@ -29,6 +26,9 @@ defmodule SnackWeb.Controllers.Api.ConfigController do
               urlScheme: Map.get(stripe_config, :url_scheme)
             }
           }
+
+        _ ->
+          %{}
       end
 
     json(conn, %{features: features_map, services: services})

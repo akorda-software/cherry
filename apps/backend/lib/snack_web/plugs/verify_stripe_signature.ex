@@ -7,6 +7,8 @@ defmodule SnackWeb.Plugs.VerifyStripeSignature do
 
   import Plug.Conn
 
+  @signature_tolerance_seconds 300
+
   @spec init(any()) :: any()
   def init(opts), do: opts
 
@@ -62,19 +64,35 @@ defmodule SnackWeb.Plugs.VerifyStripeSignature do
   end
 
   defp verify_signature(timestamp, payload, expected_signature) do
-    case get_webhook_secret() do
-      secret when is_binary(secret) and byte_size(secret) > 0 ->
-        signed_payload = "#{timestamp}.#{payload}"
-        computed = compute_hmac(signed_payload, secret)
+    with {:ok, parsed_timestamp} <- parse_timestamp(timestamp),
+         :ok <- validate_timestamp(parsed_timestamp),
+         secret when is_binary(secret) and byte_size(secret) > 0 <- get_webhook_secret() do
+      signed_payload = "#{timestamp}.#{payload}"
+      computed = compute_hmac(signed_payload, secret)
 
-        if Plug.Crypto.secure_compare(computed, expected_signature) do
-          :ok
-        else
-          {:error, :invalid_signature}
-        end
+      if Plug.Crypto.secure_compare(computed, expected_signature) do
+        :ok
+      else
+        {:error, :invalid_signature}
+      end
+    else
+      nil -> {:error, :missing_webhook_secret}
+      _error -> {:error, :invalid_signature}
+    end
+  end
 
-      _ ->
-        {:error, :missing_webhook_secret}
+  defp parse_timestamp(timestamp) do
+    case Integer.parse(timestamp) do
+      {parsed, ""} -> {:ok, parsed}
+      _ -> {:error, :invalid_timestamp}
+    end
+  end
+
+  defp validate_timestamp(timestamp) do
+    if abs(System.system_time(:second) - timestamp) <= @signature_tolerance_seconds do
+      :ok
+    else
+      {:error, :stale_timestamp}
     end
   end
 

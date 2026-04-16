@@ -61,13 +61,15 @@ defmodule SnackWeb.Controllers.Api.ConfigControllerTest do
 
     test "returns subscriptions enabled: false when flag is explicitly false" do
       Application.put_env(:snack, :features, subscriptions: false)
+      Application.put_env(:snack, :stripe_mobile, %{publishable_key: "pk_test_runtime"})
 
       conn = get(build_conn(), "/api/config")
 
       assert %{
                "features" => %{
                  "subscriptions" => %{"enabled" => false}
-               }
+               },
+               "services" => %{}
              } = json_response(conn, 200)
     end
 

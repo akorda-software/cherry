@@ -23,7 +23,13 @@ describe("createAppleNativeAdapter", () => {
           email: "john@privaterelay.appleid.com",
           realUserStatus: 2
         }))
-      }
+      },
+      cryptoModule: {
+        CryptoDigestAlgorithm: { SHA256: "sha256" },
+        CryptoEncoding: { HEX: "hex" },
+        getRandomBytes: vi.fn(() => Uint8Array.from([0xaa, 0xbb, 0xcc])),
+        digestStringAsync: vi.fn(async () => "hashed-nonce")
+      } as never
     });
 
     const result = await adapter.signIn();
@@ -32,11 +38,11 @@ describe("createAppleNativeAdapter", () => {
       providerToken: "apple-identity-token",
       authorizationCode: "auth-code-123",
       idToken: "apple-identity-token",
-      nonce: "requested"
+      nonce: "aabbcc"
     });
   });
 
-  it("passes requestedScopes with FULL_NAME and EMAIL", async () => {
+  it("passes requestedScopes with FULL_NAME and EMAIL plus the hashed nonce", async () => {
     const signInAsync = vi.fn(async () => ({
       user: "id",
       state: null,
@@ -51,13 +57,20 @@ describe("createAppleNativeAdapter", () => {
       module: {
         isAvailableAsync: vi.fn(async () => true),
         signInAsync
-      }
+      },
+      cryptoModule: {
+        CryptoDigestAlgorithm: { SHA256: "sha256" },
+        CryptoEncoding: { HEX: "hex" },
+        getRandomBytes: vi.fn(() => Uint8Array.from([0x01, 0x02, 0x03])),
+        digestStringAsync: vi.fn(async () => "hashed-010203")
+      } as never
     });
 
     await adapter.signIn();
 
     expect(signInAsync).toHaveBeenCalledWith({
-      requestedScopes: [0, 1]
+      requestedScopes: [0, 1],
+      nonce: "hashed-010203"
     });
   });
 
@@ -66,7 +79,13 @@ describe("createAppleNativeAdapter", () => {
       module: {
         isAvailableAsync: vi.fn(async () => false),
         signInAsync: vi.fn()
-      }
+      },
+      cryptoModule: {
+        CryptoDigestAlgorithm: { SHA256: "sha256" },
+        CryptoEncoding: { HEX: "hex" },
+        getRandomBytes: vi.fn(),
+        digestStringAsync: vi.fn()
+      } as never
     });
 
     await expect(adapter.signIn()).rejects.toThrow("Apple Sign-In is not available");
@@ -85,7 +104,13 @@ describe("createAppleNativeAdapter", () => {
           email: null,
           realUserStatus: 1
         }))
-      }
+      },
+      cryptoModule: {
+        CryptoDigestAlgorithm: { SHA256: "sha256" },
+        CryptoEncoding: { HEX: "hex" },
+        getRandomBytes: vi.fn(() => Uint8Array.from([0x01])),
+        digestStringAsync: vi.fn(async () => "hashed")
+      } as never
     });
 
     await expect(adapter.signIn()).rejects.toThrow("Apple Sign-In did not return an identity token");
@@ -104,7 +129,13 @@ describe("createAppleNativeAdapter", () => {
           email: null,
           realUserStatus: 1
         }))
-      }
+      },
+      cryptoModule: {
+        CryptoDigestAlgorithm: { SHA256: "sha256" },
+        CryptoEncoding: { HEX: "hex" },
+        getRandomBytes: vi.fn(() => Uint8Array.from([0x01])),
+        digestStringAsync: vi.fn(async () => "hashed")
+      } as never
     });
 
     await expect(adapter.signIn()).rejects.toThrow(

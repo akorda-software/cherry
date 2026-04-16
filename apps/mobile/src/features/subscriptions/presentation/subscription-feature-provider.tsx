@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { createBillingApi } from "@snack/mobile-shared";
 
 import { useSessionShell } from "../../auth/presentation";
-import { createSubscriptionApiAdapter } from "../infrastructure/subscription-api";
 import { SubscriptionShellProvider } from "./subscription-shell-provider";
 import { useFeatureFlag, useRuntimeConfig } from "../../../shared/config";
 import { createJsonHttpClient } from "../../../shared/api";
@@ -28,15 +27,14 @@ export function SubscriptionFeatureProvider({ children }: PropsWithChildren) {
     });
 
     const billingApi = createBillingApi(httpClient);
-    const subscriptionApi = createSubscriptionApiAdapter({ billingApi });
 
     return {
       featureFlagEnabled: enabled,
-      fetchPlans: subscriptionApi.fetchPlans,
-      getSubscription: subscriptionApi.getSubscription,
-      subscribe: subscriptionApi.subscribe,
-      abandonPendingSubscription: subscriptionApi.abandonPendingSubscription,
-      cancel: subscriptionApi.cancel
+      fetchPlans: billingApi.fetchPlans,
+      getSubscription: billingApi.getSubscription,
+      subscribe: billingApi.subscribe,
+      abandonPendingSubscription: billingApi.abandonPendingSubscription,
+      cancel: billingApi.cancel
     };
   }, [apiBaseUrl, enabled, state]);
 

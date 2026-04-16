@@ -50,6 +50,20 @@ config :snack, SnackWeb.Endpoint, http: [port: String.to_integer(System.get_env(
 
 subscriptions_enabled? = System.get_env("ENABLE_SUBSCRIPTIONS") == "true"
 
+split_csv_env = fn var, fallback ->
+  System.get_env(var, fallback)
+  |> case do
+    nil ->
+      []
+
+    value ->
+      value
+      |> String.split(",", trim: true)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+  end
+end
+
 config :snack,
   features: [
     subscriptions: subscriptions_enabled?
@@ -112,15 +126,30 @@ if config_env() != :test do
     issuers: ["https://accounts.google.com", "accounts.google.com"]
   ]
 
+  apple_audiences =
+    split_csv_env.(
+      "APPLE_AUDIENCES",
+      System.get_env("EXPO_IOS_BUNDLE_IDENTIFIER", "app.snack.mobile")
+    )
+
+  apple_provider_config = [
+    module: Snack.Identity.Providers.Apple,
+    audiences: apple_audiences,
+    issuers: ["https://appleid.apple.com"]
+  ]
+
   config :snack, Snack.Auth,
     providers: %{
       google: google_provider_config,
-      apple: Snack.Identity.Providers.Apple
+      apple: apple_provider_config
     }
 end
 
 config :snack, Snack.Identity.Providers.GoogleJwksCache,
   ttl_ms: String.to_integer(System.get_env("GOOGLE_JWKS_CACHE_TTL_MS", "600000"))
+
+config :snack, Snack.Identity.Providers.AppleJwksCache,
+  ttl_ms: String.to_integer(System.get_env("APPLE_JWKS_CACHE_TTL_MS", "600000"))
 
 if config_env() == :prod do
   access_token_salt =

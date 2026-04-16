@@ -10,6 +10,7 @@ import { createSecureSessionStorage } from "@snack/mobile-shared";
 import { createGoogleNativeAdapter } from "../infrastructure/google-native-adapter";
 import { createAppleNativeAdapter } from "../infrastructure/apple-native-adapter";
 import { assembleAuthServices } from "../infrastructure/auth-assembly";
+import { createNativeDevice } from "../infrastructure/native-device";
 import type { SessionShellServices } from "../presentation";
 import type { DevicePlatform } from "@snack/contracts";
 
@@ -93,21 +94,15 @@ export function createNativeAuthServices({
     module: AppleAuthentication
   });
 
-  const device = {
-    async getDevice() {
-      const installationId = await getInstallationIdAsync();
-
-      return {
-        installationId,
-        platform: resolvePlatform(),
-        deviceName: Device.deviceName ?? "Unknown"
-      };
+  const device = createNativeDevice({
+    getInstallationId: getInstallationIdAsync,
+    getPlatform: resolvePlatform,
+    async getDeviceName() {
+      return Device.deviceName ?? "Unknown";
     }
-  };
+  });
 
   return assembleAuthServices({
-    googleWebClientId: webClientId,
-    googleIosClientId: resolvedGoogleIosClientId,
     storage,
     authApi,
     sessionApi,

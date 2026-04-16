@@ -5,6 +5,7 @@ defmodule Snack.BillingTest do
   alias Snack.Billing
   alias Snack.Billing.Customer
   alias Snack.Billing.Plan
+  alias Snack.Billing.ProcessedEvent
   alias Snack.Billing.Subscription
 
   setup do
@@ -323,7 +324,10 @@ defmodule Snack.BillingTest do
       assert updated.status == "canceled"
     end
 
-    test "is idempotent by stripe_event_id", %{user: user, plan: plan} do
+    test "stores processed webhook events and treats retries as idempotent", %{
+      user: user,
+      plan: plan
+    } do
       {:ok, _} = Billing.subscribe(user, plan.id)
 
       customer = Repo.get_by(Customer, user_id: user.id)
@@ -351,6 +355,39 @@ defmodule Snack.BillingTest do
 
       assert {:ok, _} = Billing.handle_event(event)
       assert {:ok, :already_processed} = Billing.handle_event(event)
+      assert Repo.aggregate(ProcessedEvent, :count, :id) == 1
+    end
+
+    test "does not reprocess an older event after a newer one updated the same subscription", %{
+      user: user,
+      plan: plan
+    } do
+      {:ok, %{stripe_subscription_id: stripe_subscription_id}} = Billing.subscribe(user, plan.id)
+
+      first_event = %{
+        "id" => "evt_old_#{System.unique_integer([:positive])}",
+        "type" => "customer.subscription.updated",
+        "data" => %{"object" => %{"id" => stripe_subscription_id, "status" => "active"}}
+      }
+
+      second_event = %{
+        "id" => "evt_new_#{System.unique_integer([:positive])}",
+        "type" => "customer.subscription.updated",
+        "data" => %{"object" => %{"id" => stripe_subscription_id, "status" => "past_due"}}
+      }
+
+      assert {:ok, updated_once} = Billing.handle_event(first_event)
+      assert updated_once.status == "active"
+
+      assert {:ok, updated_twice} = Billing.handle_event(second_event)
+      assert updated_twice.status == "past_due"
+
+      assert {:ok, :already_processed} = Billing.handle_event(first_event)
+
+      persisted = Repo.get!(Subscription, updated_twice.id)
+      assert persisted.status == "past_due"
+      assert persisted.stripe_event_id == second_event["id"]
+      assert Repo.aggregate(ProcessedEvent, :count, :id) == 2
     end
   end
 end

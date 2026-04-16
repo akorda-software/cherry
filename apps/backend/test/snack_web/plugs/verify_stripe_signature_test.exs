@@ -5,8 +5,6 @@ defmodule SnackWeb.Plugs.VerifyStripeSignatureTest do
 
   @webhook_secret "whsec_test_secret_key_12345"
   @test_payload ~s({"id":"evt_test","type":"test.event"})
-  @test_timestamp "1234567890"
-
   setup do
     original = Application.get_env(:snack, :stripe)
 
@@ -27,8 +25,9 @@ defmodule SnackWeb.Plugs.VerifyStripeSignatureTest do
 
   describe "call/2" do
     test "passes through with valid signature" do
-      signature = compute_signature(@test_timestamp, @test_payload, @webhook_secret)
-      header = "t=#{@test_timestamp},v1=#{signature}"
+      timestamp = Integer.to_string(System.system_time(:second))
+      signature = compute_signature(timestamp, @test_payload, @webhook_secret)
+      header = "t=#{timestamp},v1=#{signature}"
 
       conn =
         Phoenix.ConnTest.build_conn()
@@ -40,11 +39,13 @@ defmodule SnackWeb.Plugs.VerifyStripeSignatureTest do
     end
 
     test "halts with 401 for invalid signature" do
+      timestamp = Integer.to_string(System.system_time(:second))
+
       conn =
         Phoenix.ConnTest.build_conn()
         |> Plug.Conn.put_req_header(
           "stripe-signature",
-          "t=#{@test_timestamp},v1=invalid_signature"
+          "t=#{timestamp},v1=invalid_signature"
         )
         |> Plug.Conn.put_private(:raw_body, @test_payload)
         |> VerifyStripeSignature.call([])
@@ -56,6 +57,23 @@ defmodule SnackWeb.Plugs.VerifyStripeSignatureTest do
     test "halts with 401 when signature header is missing" do
       conn =
         Phoenix.ConnTest.build_conn()
+        |> Plug.Conn.put_private(:raw_body, @test_payload)
+        |> VerifyStripeSignature.call([])
+
+      assert conn.halted == true
+      assert conn.status == 401
+    end
+
+    test "halts with 401 for stale timestamp even with valid signature" do
+      stale_timestamp = Integer.to_string(System.system_time(:second) - 301)
+      signature = compute_signature(stale_timestamp, @test_payload, @webhook_secret)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Plug.Conn.put_req_header(
+          "stripe-signature",
+          "t=#{stale_timestamp},v1=#{signature}"
+        )
         |> Plug.Conn.put_private(:raw_body, @test_payload)
         |> VerifyStripeSignature.call([])
 

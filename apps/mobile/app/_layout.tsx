@@ -72,6 +72,14 @@ export default function RootLayoutRoute() {
     let cancelled = false;
     const httpClient = createJsonHttpClient({ apiBaseUrl });
 
+    if (process.env.EXPO_PUBLIC_MOCK_AUTH === "true") {
+      const { createMockAuthServices } = require("../src/features/auth/infrastructure/mock-auth-services");
+      setServices(createMockAuthServices());
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (isExpoGo()) {
       setServices(undefined);
       return () => {

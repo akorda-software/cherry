@@ -7,6 +7,10 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "start": "expo start",
+    "start:dev-client": "expo start --dev-client",
+    "start:clear": "expo start --clear",
+    "prebuild": "expo prebuild",
     "android": "expo run:android",
     "ios": "expo run:ios"
   },

@@ -3,6 +3,7 @@ import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
 vi.mock("react-native", async () => import("./mocks/react-native"));
+vi.mock("react-native-svg", async () => import("./mocks/react-native-svg"));
 vi.mock("expo-router", async () => import("./mocks/expo-router"));
 vi.mock("expo-router/drawer", async () => import("./mocks/expo-router-drawer"));
 vi.mock("@react-native-google-signin/google-signin", async () => import("./mocks/google-signin"));

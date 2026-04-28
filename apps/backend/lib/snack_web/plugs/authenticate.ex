@@ -6,9 +6,8 @@ defmodule SnackWeb.Plugs.Authenticate do
 
   import Plug.Conn
 
-  alias Snack.Accounts
-  alias Snack.Auth
   alias Snack.Dating
+  alias SnackWeb.TokenAuth
 
   @spec init(any()) :: any()
   def init(opts), do: opts
@@ -17,19 +16,13 @@ defmodule SnackWeb.Plugs.Authenticate do
   def call(conn, _opts) do
     case get_bearer_token(conn) do
       {:ok, token} ->
-        case verify_token(token) do
-          {:ok, claims} ->
-            case fetch_user(claims) do
-              {:ok, user} ->
-                profile = Dating.get_profile_by_user(user.id)
+        case TokenAuth.authenticate(token) do
+          {:ok, %{user: user}} ->
+            profile = Dating.get_profile_by_user(user.id)
 
-                conn
-                |> assign(:current_user, user)
-                |> assign(:current_profile, profile)
-
-              _error ->
-                halt_unauthorized(conn)
-            end
+            conn
+            |> assign(:current_user, user)
+            |> assign(:current_profile, profile)
 
           _error ->
             halt_unauthorized(conn)
@@ -52,23 +45,6 @@ defmodule SnackWeb.Plugs.Authenticate do
         {:error, :missing_header}
     end
   end
-
-  defp verify_token(token) do
-    case Phoenix.Token.verify(SnackWeb.Endpoint, Auth.access_token_salt(), token, []) do
-      {:ok, claims} -> {:ok, claims}
-      {:error, _reason} -> {:error, :invalid_token}
-    end
-  end
-
-  defp fetch_user(%{sub: user_id}) do
-    case Accounts.get_user!(user_id) do
-      user -> {:ok, user}
-    end
-  rescue
-    Ecto.NoResultsError -> {:error, :user_not_found}
-  end
-
-  defp fetch_user(_claims), do: {:error, :invalid_claims}
 
   defp halt_unauthorized(conn) do
     conn

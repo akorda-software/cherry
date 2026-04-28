@@ -45,6 +45,67 @@ defmodule SnackWeb.Router do
     get("/config", ConfigController, :show)
   end
 
+  scope "/api", SnackWeb.Controllers.Api do
+    pipe_through(:authenticated_api)
+
+    get("/bootstrap", BootstrapController, :show)
+  end
+
+  scope "/api/me", SnackWeb.Controllers.Api do
+    pipe_through(:authenticated_api)
+
+    get("/profile", ProfileController, :show)
+    put("/profile", ProfileController, :update)
+
+    get("/discovery-preferences", ProfileController, :show_discovery_preferences)
+    put("/discovery-preferences", ProfileController, :update_discovery_preferences)
+
+    get("/photos", ProfileController, :list_photos)
+    post("/photos", ProfileController, :create_photo)
+    delete("/photos/:id", ProfileController, :delete_photo)
+
+    get("/tags", ProfileController, :get_tags)
+    put("/tags", ProfileController, :set_tags)
+
+    get("/blocked-tags", ProfileController, :get_blocked_tags)
+    put("/blocked-tags", ProfileController, :set_blocked_tags)
+
+    post("/location", ProfileController, :update_location)
+
+    post("/pause", SettingsController, :pause)
+    post("/unpause", SettingsController, :unpause)
+    delete("/account", SettingsController, :delete_account)
+  end
+
+  scope "/api/discovery", SnackWeb.Controllers.Api do
+    pipe_through(:authenticated_api)
+
+    get("/feed", DiscoveryController, :feed)
+    post("/actions", DiscoveryController, :create_action)
+  end
+
+  scope "/api/matches", SnackWeb.Controllers.Api do
+    pipe_through(:authenticated_api)
+
+    get("/", MatchController, :index)
+    post("/:id/unmatch", MatchController, :unmatch)
+  end
+
+  scope "/api/conversations", SnackWeb.Controllers.Api do
+    pipe_through(:authenticated_api)
+
+    get("/", ChatController, :index)
+    get("/:id/messages", ChatController, :messages)
+    post("/:id/messages", ChatController, :create_message)
+  end
+
+  scope "/api/users/:profile_id", SnackWeb.Controllers.Api do
+    pipe_through(:authenticated_api)
+
+    post("/block", SafetyController, :block)
+    post("/report", SafetyController, :report)
+  end
+
   scope "/api/billing", SnackWeb.Controllers.Api do
     pipe_through([:authenticated_api, :require_subscriptions])
 

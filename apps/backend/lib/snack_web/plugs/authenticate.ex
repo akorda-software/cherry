@@ -8,6 +8,7 @@ defmodule SnackWeb.Plugs.Authenticate do
 
   alias Snack.Accounts
   alias Snack.Auth
+  alias Snack.Dating
 
   @spec init(any()) :: any()
   def init(opts), do: opts
@@ -19,8 +20,15 @@ defmodule SnackWeb.Plugs.Authenticate do
         case verify_token(token) do
           {:ok, claims} ->
             case fetch_user(claims) do
-              {:ok, user} -> assign(conn, :current_user, user)
-              _error -> halt_unauthorized(conn)
+              {:ok, user} ->
+                profile = Dating.get_profile_by_user(user.id)
+
+                conn
+                |> assign(:current_user, user)
+                |> assign(:current_profile, profile)
+
+              _error ->
+                halt_unauthorized(conn)
             end
 
           _error ->

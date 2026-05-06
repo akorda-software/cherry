@@ -56,7 +56,8 @@ describe("SessionShellProvider", () => {
           },
           logoutSession: {
             execute
-          }
+          },
+          executeAuthenticated: async (request) => request(sessionFixture.accessToken)
         }}
       >
         <SessionProbe />

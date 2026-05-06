@@ -8,6 +8,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import type { BootstrapConfig } from "@snack/contracts";
 import { createConfigApi, createFeatureFlagReader, type FeatureFlagReader } from "@snack/mobile-shared";
 
+import {
+  AppBootstrapProvider,
+  createBackendAppBootstrapService,
+  createMockAppBootstrapService,
+  type AppBootstrapService
+} from "../src/features/app-bootstrap";
 import { SessionShellProvider, type SessionShellServices } from "../src/features/auth/presentation";
 import { createJsonHttpClient } from "../src/shared/api";
 import { RuntimeConfigProvider } from "../src/shared/config";
@@ -34,6 +40,7 @@ function isExpoGo() {
 export function RootLayout({
   children,
   services,
+  appBootstrapService,
   apiBaseUrl,
   bootstrapConfig,
   featureFlagReader,
@@ -44,7 +51,13 @@ export function RootLayout({
   bootstrapConfig: BootstrapConfig | null;
   featureFlagReader: FeatureFlagReader | null;
   featureFlagLoading?: boolean;
+  appBootstrapService?: AppBootstrapService;
 }>) {
+  const resolvedAppBootstrapService = useMemo(
+    () => appBootstrapService ?? createBackendAppBootstrapService(apiBaseUrl),
+    [apiBaseUrl, appBootstrapService]
+  );
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>
@@ -54,7 +67,11 @@ export function RootLayout({
           reader={featureFlagReader}
           loading={featureFlagLoading}
         >
-          <SessionShellProvider services={services}>{children ?? <Slot />}</SessionShellProvider>
+          <SessionShellProvider services={services}>
+            <AppBootstrapProvider service={resolvedAppBootstrapService}>
+              {children ?? <Slot />}
+            </AppBootstrapProvider>
+          </SessionShellProvider>
         </RuntimeConfigProvider>
       </ThemeProvider>
     </SafeAreaProvider>
@@ -64,6 +81,9 @@ export function RootLayout({
 export default function RootLayoutRoute() {
   const apiBaseUrl = useMemo(() => resolveApiBaseUrl(), []);
   const [services, setServices] = useState<SessionShellServices | undefined>(undefined);
+  const [appBootstrapService, setAppBootstrapService] = useState<AppBootstrapService | undefined>(
+    undefined
+  );
   const [bootstrapConfig, setBootstrapConfig] = useState<BootstrapConfig | null>(null);
   const [featureFlagReader, setFeatureFlagReader] = useState<FeatureFlagReader | null>(null);
   const [featureFlagLoading, setFeatureFlagLoading] = useState(true);
@@ -75,6 +95,7 @@ export default function RootLayoutRoute() {
     if (process.env.EXPO_PUBLIC_MOCK_AUTH === "true") {
       const { createMockAuthServices } = require("../src/features/auth/infrastructure/mock-auth-services");
       setServices(createMockAuthServices());
+      setAppBootstrapService(createMockAppBootstrapService());
       return () => {
         cancelled = true;
       };
@@ -99,6 +120,7 @@ export default function RootLayoutRoute() {
             httpClient
           })
         );
+        setAppBootstrapService(createBackendAppBootstrapService(apiBaseUrl));
       },
       () => {
         if (cancelled) {
@@ -106,6 +128,7 @@ export default function RootLayoutRoute() {
         }
 
         setServices(undefined);
+        setAppBootstrapService(undefined);
       }
     );
 
@@ -150,6 +173,7 @@ export default function RootLayoutRoute() {
   return (
     <RootLayout
       services={services}
+      appBootstrapService={appBootstrapService}
       apiBaseUrl={apiBaseUrl}
       bootstrapConfig={bootstrapConfig}
       featureFlagReader={featureFlagReader}

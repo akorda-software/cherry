@@ -2,6 +2,7 @@ import { usePathname } from "expo-router";
 import type { PropsWithChildren, ReactElement } from "react";
 import { render } from "@testing-library/react";
 
+import { AppBootstrapProvider, createMockAppBootstrapService } from "../../src/features/app-bootstrap";
 import {
   SessionShellProvider,
   type SessionShellServices
@@ -15,6 +16,7 @@ interface RenderRouteOptions {
   initialPath?: string;
   services?: Partial<SessionShellServices>;
   featureFlags?: Record<string, boolean>;
+  onboardingRequired?: boolean;
 }
 
 function PathProbe() {
@@ -25,7 +27,8 @@ function TestProviders({
   children,
   initialPath,
   services,
-  featureFlags = {}
+  featureFlags = {},
+  onboardingRequired = false
 }: PropsWithChildren<RenderRouteOptions>) {
   const reader = {
     isEnabled(flagKey: string) {
@@ -43,8 +46,17 @@ function TestProviders({
           loading={false}
         >
           <SessionShellProvider services={createSessionShellServices(services)}>
-            {children}
-            <PathProbe />
+            <AppBootstrapProvider
+              service={createMockAppBootstrapService({
+                onboardingRequired,
+                isComplete: !onboardingRequired,
+                isDiscoverable: !onboardingRequired,
+                nextOnboardingStep: onboardingRequired ? "name" : null
+              })}
+            >
+              {children}
+              <PathProbe />
+            </AppBootstrapProvider>
           </SessionShellProvider>
         </RuntimeConfigProvider>
       </ThemeProvider>
@@ -58,6 +70,7 @@ export function renderRoute(route: ReactElement, options: RenderRouteOptions = {
       initialPath={options.initialPath}
       services={options.services}
       featureFlags={options.featureFlags}
+      onboardingRequired={options.onboardingRequired}
     >
       {route}
     </TestProviders>

@@ -41,12 +41,14 @@ export interface SessionShellServices {
   completeAuth: Record<AuthProvider, CompleteAuthService>;
   authProviders: Record<AuthProvider, NativeAuthService>;
   logoutSession: LogoutSessionService;
+  executeAuthenticated?<T>(request: (accessToken: string) => Promise<T>): Promise<T>;
 }
 
 interface SessionShellContextValue {
   state: AuthShellState;
   signInWith(provider: AuthProvider): Promise<void>;
   signOut(): Promise<void>;
+  executeAuthenticated<T>(request: (accessToken: string) => Promise<T>): Promise<T>;
 }
 
 const defaultServices: SessionShellServices = {
@@ -63,7 +65,8 @@ const defaultServices: SessionShellServices = {
       authenticate: async () => Promise.reject(new Error("Apple provider is not configured"))
     }
   },
-  logoutSession: { execute: async () => undefined }
+  logoutSession: { execute: async () => undefined },
+  executeAuthenticated: async () => Promise.reject(new Error("Authenticated requests are not configured"))
 };
 
 const SessionShellContext = createContext<SessionShellContextValue | null>(null);
@@ -143,13 +146,29 @@ export function SessionShellProvider({
     setState({ status: "signed-out", session: null, error: null, busyProvider: null });
   }, [services, state]);
 
+  const executeAuthenticated = useCallback(
+    async <T,>(request: (accessToken: string) => Promise<T>) => {
+      if (services.executeAuthenticated) {
+        return services.executeAuthenticated(request);
+      }
+
+      if (state.status !== "signed-in") {
+        throw new Error("missing_session");
+      }
+
+      return request(state.session.accessToken);
+    },
+    [services, state]
+  );
+
   const value = useMemo(
     () => ({
       state,
       signInWith,
-      signOut
+      signOut,
+      executeAuthenticated
     }),
-    [signInWith, signOut, state]
+    [executeAuthenticated, signInWith, signOut, state]
   );
 
   return <SessionShellContext.Provider value={value}>{children}</SessionShellContext.Provider>;

@@ -7,6 +7,7 @@ defmodule Snack.Sessions do
   alias Snack.Accounts.User
   alias Snack.Repo
   alias Snack.Sessions.Device
+  alias Snack.Sessions.PushToken
   alias Snack.Sessions.RefreshToken
   alias Snack.Sessions.SessionFamily
 
@@ -66,6 +67,108 @@ defmodule Snack.Sessions do
     case get_refresh_token(plain_refresh_token) do
       nil -> :ok
       token -> revoke_family(token.session_family_id)
+    end
+  end
+
+  def active_session_family?(session_family_id, user_id)
+      when is_binary(session_family_id) and is_binary(user_id) do
+    Repo.exists?(
+      from(session_family in SessionFamily,
+        where:
+          session_family.id == ^session_family_id and session_family.user_id == ^user_id and
+            is_nil(session_family.revoked_at)
+      )
+    )
+  end
+
+  def active_session_family?(_session_family_id, _user_id), do: false
+
+  def register_push_token(%User{} = user, session_family_id, attrs) do
+    with {:ok, normalized_attrs} <- normalize_push_token_attrs(attrs),
+         %SessionFamily{} = session_family <-
+           get_active_session_family(session_family_id, user.id),
+         :ok <- validate_push_token_device(session_family, normalized_attrs) do
+      now = now()
+
+      push_token_attrs = %{
+        expo_push_token: normalized_attrs.expo_push_token,
+        platform: normalized_attrs.platform,
+        installation_id: normalized_attrs.installation_id,
+        status: "active",
+        last_seen_at: now,
+        disabled_at: nil,
+        user_id: user.id,
+        device_id: session_family.device_id,
+        session_family_id: session_family.id
+      }
+
+      Multi.new()
+      |> Multi.update_all(
+        :inactive_duplicate_tokens,
+        from(push_token in PushToken,
+          where:
+            push_token.expo_push_token == ^normalized_attrs.expo_push_token and
+              push_token.session_family_id != ^session_family.id and push_token.status == "active"
+        ),
+        set: [status: "inactive", disabled_at: now]
+      )
+      |> Multi.run(:push_token, fn repo, _changes ->
+        case repo.get_by(PushToken, session_family_id: session_family.id) do
+          nil -> %PushToken{}
+          push_token -> push_token
+        end
+        |> PushToken.changeset(push_token_attrs)
+        |> repo.insert_or_update()
+      end)
+      |> Repo.transaction()
+      |> case do
+        {:ok, %{push_token: push_token}} -> {:ok, push_token}
+        {:error, :push_token, changeset, _changes} -> {:error, changeset}
+      end
+    else
+      nil -> {:error, :session_revoked}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp get_active_session_family(session_family_id, user_id)
+       when is_binary(session_family_id) and is_binary(user_id) do
+    Repo.one(
+      from(session_family in SessionFamily,
+        where:
+          session_family.id == ^session_family_id and session_family.user_id == ^user_id and
+            is_nil(session_family.revoked_at),
+        preload: [:device]
+      )
+    )
+  end
+
+  defp get_active_session_family(_session_family_id, _user_id), do: nil
+
+  defp normalize_push_token_attrs(attrs) do
+    attrs = %{
+      expo_push_token:
+        Map.get(attrs, "expoPushToken") || Map.get(attrs, "expo_push_token") ||
+          Map.get(attrs, :expo_push_token),
+      platform: Map.get(attrs, "platform") || Map.get(attrs, :platform),
+      installation_id:
+        Map.get(attrs, "installationId") || Map.get(attrs, "installation_id") ||
+          Map.get(attrs, :installation_id)
+    }
+
+    if is_binary(attrs.expo_push_token) and is_binary(attrs.platform) and
+         is_binary(attrs.installation_id) do
+      {:ok, attrs}
+    else
+      {:error, :invalid_push_token_payload}
+    end
+  end
+
+  defp validate_push_token_device(%SessionFamily{device: %Device{} = device}, attrs) do
+    cond do
+      device.installation_id != attrs.installation_id -> {:error, :device_mismatch}
+      device.platform != attrs.platform -> {:error, :device_mismatch}
+      true -> :ok
     end
   end
 

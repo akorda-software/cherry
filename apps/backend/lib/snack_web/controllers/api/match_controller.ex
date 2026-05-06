@@ -24,8 +24,11 @@ defmodule SnackWeb.Controllers.Api.MatchController do
 
       if match && Dating.Match.other_profile(match, profile.id) do
         case Dating.unmatch(match_id) do
-          {:ok, _} -> json(conn, %{ok: true})
-          {:error, changeset} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+          {:ok, _} ->
+            json(conn, %{ok: true})
+
+          {:error, changeset} ->
+            conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
         end
       else
         conn

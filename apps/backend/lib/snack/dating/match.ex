@@ -52,7 +52,13 @@ defmodule Snack.Dating.Match do
     end
   end
 
-  def other_profile(%__MODULE__{profile_a_id: a_id, profile_b_id: b_id}, profile_id) when a_id == profile_id, do: b_id
-  def other_profile(%__MODULE__{profile_a_id: a_id, profile_b_id: b_id}, profile_id) when b_id == profile_id, do: a_id
+  def other_profile(%__MODULE__{profile_a_id: a_id, profile_b_id: b_id}, profile_id)
+      when a_id == profile_id,
+      do: b_id
+
+  def other_profile(%__MODULE__{profile_a_id: a_id, profile_b_id: b_id}, profile_id)
+      when b_id == profile_id,
+      do: a_id
+
   def other_profile(_, _), do: nil
 end

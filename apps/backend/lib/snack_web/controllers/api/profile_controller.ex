@@ -16,26 +16,60 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
         completeness: Dating.profile_complete?(profile)
       })
     else
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "profile_not_found"})
+      json(conn, %{profile: nil, completeness: false})
     end
   end
 
   def update(conn, params) do
+    user = conn.assigns.current_user
+
+    case Dating.upsert_profile_for_user(user.id, params) do
+      {:ok, updated} ->
+        Dating.sync_completed_profile_state(updated)
+
+        updated =
+          Snack.Repo.preload(updated, [
+            :photos,
+            :tags,
+            :blocked_tags,
+            :discovery_preference,
+            :location
+          ])
+
+        json(conn, %{profile: serialize_profile(updated)})
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: format_errors(changeset)})
+    end
+  end
+
+  def complete(conn, _params) do
     profile = conn.assigns.current_profile
 
     if profile do
-      case Dating.update_profile(profile, params) do
-        {:ok, updated} ->
-          Dating.set_profile_complete(updated)
-          updated = Snack.Repo.preload(updated, [:photos, :tags, :blocked_tags, :discovery_preference, :location])
-          json(conn, %{profile: serialize_profile(updated)})
+      case Dating.complete_profile(profile) do
+        {:ok, completed} ->
+          completed =
+            Snack.Repo.preload(completed, [
+              :photos,
+              :tags,
+              :blocked_tags,
+              :discovery_preference,
+              :location
+            ])
 
-        {:error, changeset} ->
+          json(conn, %{profile: serialize_profile(completed), onboardingRequired: false})
+
+        {:error, %{error: :profile_incomplete} = reason} ->
           conn
           |> put_status(:unprocessable_entity)
-          |> json(%{errors: format_errors(changeset)})
+          |> json(%{
+            error: "profile_incomplete",
+            missing: Enum.map(reason.missing, &Atom.to_string/1),
+            nextOnboardingStep: reason.next_onboarding_step
+          })
       end
     else
       conn
@@ -63,7 +97,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     if profile do
       case Dating.upsert_discovery_preference(profile.id, params) do
         {:ok, pref} ->
-          Dating.set_profile_complete(profile)
+          Dating.sync_completed_profile_state(profile)
           json(conn, %{discoveryPreferences: serialize_discovery_preference(pref)})
 
         {:error, changeset} ->
@@ -99,8 +133,77 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
 
       case Dating.create_photo(attrs) do
         {:ok, photo} ->
-          Dating.set_profile_complete(profile)
+          Dating.sync_completed_profile_state(profile)
           json(conn, %{photo: serialize_photo(photo)})
+
+        {:error, changeset} ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{errors: format_errors(changeset)})
+      end
+    else
+      conn
+      |> put_status(:not_found)
+      |> json(%{error: "profile_not_found"})
+    end
+  end
+
+  def create_photo_upload_intent(conn, params) do
+    profile = conn.assigns.current_profile
+
+    if profile do
+      case Dating.create_photo_upload_intent(profile, params) do
+        {:ok, upload} ->
+          json(conn, serialize_upload_intent(upload))
+
+        {:error, :storage_not_configured} ->
+          conn
+          |> put_status(:service_unavailable)
+          |> json(%{error: "storage_not_configured"})
+
+        {:error, :too_many_photos} ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{error: "too_many_photos"})
+
+        {:error, changeset} ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{errors: format_errors(changeset)})
+      end
+    else
+      conn
+      |> put_status(:not_found)
+      |> json(%{error: "profile_not_found"})
+    end
+  end
+
+  def complete_photo_upload(conn, params) do
+    profile = conn.assigns.current_profile
+
+    if profile do
+      case Dating.complete_photo_upload(profile, params) do
+        {:ok, photo} ->
+          Dating.sync_completed_profile_state(profile)
+          json(conn, %{photo: serialize_photo(photo)})
+
+        {:error, :upload_intent_not_found} ->
+          conn
+          |> put_status(:not_found)
+          |> json(%{error: "upload_intent_not_found"})
+
+        {:error, reason}
+        when reason in [
+               :upload_intent_completed,
+               :upload_intent_expired,
+               :upload_url_mismatch,
+               :upload_content_type_mismatch,
+               :too_many_photos,
+               :photo_position_taken
+             ] ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{error: Atom.to_string(reason)})
 
         {:error, changeset} ->
           conn
@@ -122,7 +225,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
 
       if photo && photo.profile_id == profile.id do
         Dating.delete_photo(photo)
-        Dating.set_profile_complete(profile)
+        Dating.sync_completed_profile_state(profile)
         json(conn, %{ok: true})
       else
         conn
@@ -155,7 +258,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     if profile do
       case Dating.set_profile_tags(profile.id, tag_ids) do
         {:ok, _} ->
-          Dating.set_profile_complete(profile)
+          Dating.sync_completed_profile_state(profile)
           tags = Dating.get_profile_tags(profile.id)
           json(conn, %{tags: Enum.map(tags, &serialize_tag/1)})
 
@@ -226,7 +329,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
 
       case Dating.upsert_location(attrs) do
         {:ok, _} ->
-          Dating.set_profile_complete(profile)
+          Dating.sync_completed_profile_state(profile)
           json(conn, %{ok: true})
 
         {:error, changeset} ->
@@ -281,9 +384,22 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
   defp serialize_photo(%Snack.Dating.ProfilePhoto{} = photo) do
     %{
       id: photo.id,
+      storageKey: photo.storage_key,
       url: photo.url,
       position: photo.position,
       isActive: photo.is_active
+    }
+  end
+
+  defp serialize_upload_intent(upload) do
+    %{
+      storageKey: upload.storage_key,
+      uploadUrl: upload.upload_url,
+      publicUrl: upload.public_url,
+      method: upload.method,
+      headers: upload.headers,
+      expiresAt: upload.expires_at,
+      maxBytes: upload.max_bytes
     }
   end
 

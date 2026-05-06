@@ -7,7 +7,8 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
     profile = conn.assigns.current_profile
 
     if profile do
-      if profile.is_complete && profile.is_discoverable && !profile.is_paused && is_nil(profile.deleted_at) do
+      if profile.is_complete && profile.is_discoverable && !profile.is_paused &&
+           is_nil(profile.deleted_at) do
         limit = String.to_integer(Map.get(params, "limit", "20"))
         cursor = parse_cursor(Map.get(params, "cursor"))
 
@@ -63,6 +64,8 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
   end
 
   defp serialize_card(candidate) do
+    distance_km_approx = approximate_distance_km(candidate.distance_m || 0)
+
     %{
       id: candidate.id,
       displayName: candidate.display_name,
@@ -70,10 +73,42 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
       bio: candidate.bio,
       gender: candidate.gender,
       whatIAmLookingFor: candidate.what_i_am_looking_for,
-      distanceKm: round((candidate.distance_m || 0) / 1000),
+      distanceLabel: distance_label(candidate.distance_m || 0),
+      distanceKmApprox: distance_km_approx,
       score: candidate.score,
       sharedTagsCount: candidate.shared_tags_count
     }
+  end
+
+  defp distance_label(distance_meters) do
+    distance_km = distance_meters / 1000
+
+    cond do
+      distance_km < 2 -> "Cerca de ti"
+      distance_km < 10 -> "A unos #{round(distance_km)} km"
+      distance_km < 50 -> "A unos #{round_to_nearest(distance_km, 5)} km"
+      distance_km < 100 -> "A unos #{round_to_nearest(distance_km, 10)} km"
+      true -> "A mas de #{round_to_nearest(distance_km, 25)} km"
+    end
+  end
+
+  defp approximate_distance_km(distance_meters) do
+    distance_km = distance_meters / 1000
+
+    cond do
+      distance_km < 2 -> max(1, round(distance_km))
+      distance_km < 10 -> round(distance_km)
+      distance_km < 50 -> round_to_nearest(distance_km, 5)
+      distance_km < 100 -> round_to_nearest(distance_km, 10)
+      true -> round_to_nearest(distance_km, 25)
+    end
+  end
+
+  defp round_to_nearest(value, step) do
+    value
+    |> Kernel./(step)
+    |> round()
+    |> Kernel.*(step)
   end
 
   defp serialize_match(match, viewer_profile_id) do
@@ -93,6 +128,7 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
   end
 
   defp parse_cursor(nil), do: nil
+
   defp parse_cursor(str) do
     case DateTime.from_iso8601(str) do
       {:ok, dt, _} -> dt

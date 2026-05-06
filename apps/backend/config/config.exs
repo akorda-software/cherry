@@ -21,6 +21,21 @@ config :snack, Snack.Auth,
     apple: Snack.Identity.Providers.Apple
   }
 
+config :snack, Snack.Storage.R2,
+  account_id: nil,
+  access_key_id: nil,
+  secret_access_key: nil,
+  bucket_name: nil,
+  public_url_base: nil,
+  allowed_content_types: ["image/jpeg", "image/png", "image/webp"],
+  max_upload_bytes: 2_000_000,
+  upload_url_ttl_seconds: 600
+
+config :snack, :expo_push,
+  base_url: "https://exp.host",
+  access_token: nil,
+  receive_timeout_ms: 5_000
+
 # Configure the endpoint
 config :snack, SnackWeb.Endpoint,
   url: [host: "localhost"],

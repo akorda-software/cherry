@@ -11,6 +11,9 @@ defmodule Snack.Dating.Profile do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
+  @genders ["man", "woman", "non_binary"]
+  @relationship_intents ["relationship", "casual", "meet_people", "go_with_the_flow"]
+
   schema "profiles" do
     field(:display_name, :string)
     field(:birth_date, :date)
@@ -46,18 +49,43 @@ defmodule Snack.Dating.Profile do
       :is_discoverable,
       :deleted_at
     ])
-    |> validate_required([:user_id, :display_name, :birth_date, :gender, :what_i_am_looking_for, :bio])
+    |> validate_required([
+      :user_id,
+      :display_name,
+      :birth_date,
+      :gender,
+      :what_i_am_looking_for,
+      :bio
+    ])
+    |> validate_profile_fields()
+    |> foreign_key_constraint(:user_id)
+    |> unique_constraint(:user_id)
+  end
+
+  def draft_changeset(profile, attrs) do
+    profile
+    |> cast(attrs, [:user_id, :display_name, :birth_date, :gender, :what_i_am_looking_for, :bio])
+    |> validate_required([:user_id])
+    |> validate_profile_fields()
+    |> foreign_key_constraint(:user_id)
+    |> unique_constraint(:user_id)
+  end
+
+  def system_changeset(profile, attrs) do
+    cast(profile, attrs, [:is_complete, :is_paused, :is_discoverable, :deleted_at])
+  end
+
+  defp validate_profile_fields(changeset) do
+    changeset
     |> validate_length(:display_name, min: 1, max: 50)
     |> validate_length(:bio, min: 20, max: 240)
-    |> validate_inclusion(:gender, ["man", "woman", "non_binary"])
-    |> validate_inclusion(:what_i_am_looking_for, [
-      "relationship",
-      "casual",
-      "meet_people",
-      "go_with_the_flow"
-    ])
-    |> foreign_key_constraint(:user_id)
+    |> validate_inclusion(:gender, @genders)
+    |> validate_inclusion(:what_i_am_looking_for, @relationship_intents)
   end
+
+  def genders, do: @genders
+
+  def relationship_intents, do: @relationship_intents
 
   def age(%{birth_date: nil}), do: nil
 

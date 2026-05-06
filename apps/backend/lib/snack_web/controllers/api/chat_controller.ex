@@ -8,7 +8,10 @@ defmodule SnackWeb.Controllers.Api.ChatController do
 
     if profile do
       conversations = Dating.list_conversations(profile.id)
-      json(conn, %{conversations: Enum.map(conversations, &serialize_conversation(&1, profile.id))})
+
+      json(conn, %{
+        conversations: Enum.map(conversations, &serialize_conversation(&1, profile.id))
+      })
     else
       conn
       |> put_status(:not_found)
@@ -43,23 +46,28 @@ defmodule SnackWeb.Controllers.Api.ChatController do
     profile = conn.assigns.current_profile
 
     if profile do
-      conversation = Dating.get_conversation(conversation_id) |> Snack.Repo.preload(:match)
+      attrs = %{
+        conversation_id: conversation_id,
+        sender_profile_id: profile.id,
+        body: body
+      }
 
-      if conversation && participant?(conversation, profile.id) && conversation.match.status == "active" do
-        attrs = %{
-          conversation_id: conversation_id,
-          sender_profile_id: profile.id,
-          body: body
-        }
+      case Dating.send_message(attrs) do
+        {:ok, message} ->
+          json(conn, %{message: serialize_message(message)})
 
-        case Dating.send_message(attrs) do
-          {:ok, message} -> json(conn, %{message: serialize_message(message)})
-          {:error, changeset} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
-        end
-      else
-        conn
-        |> put_status(:forbidden)
-        |> json(%{error: "cannot_send_message"})
+        {:error, :not_participant} ->
+          conn
+          |> put_status(:forbidden)
+          |> json(%{error: "not_participant"})
+
+        {:error, :conversation_not_active} ->
+          conn
+          |> put_status(:forbidden)
+          |> json(%{error: "conversation_not_active"})
+
+        {:error, changeset} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
       end
     else
       conn
@@ -93,6 +101,7 @@ defmodule SnackWeb.Controllers.Api.ChatController do
   defp serialize_message(%Snack.Dating.Message{} = msg) do
     %{
       id: msg.id,
+      conversationId: msg.conversation_id,
       senderProfileId: msg.sender_profile_id,
       body: msg.body,
       insertedAt: msg.inserted_at
@@ -100,6 +109,7 @@ defmodule SnackWeb.Controllers.Api.ChatController do
   end
 
   defp parse_cursor(nil), do: nil
+
   defp parse_cursor(str) do
     case DateTime.from_iso8601(str) do
       {:ok, dt, _} -> dt

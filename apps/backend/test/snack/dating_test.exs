@@ -298,7 +298,8 @@ defmodule Snack.DatingTest do
       tags = for _ <- 1..6, do: tag_fixture()
       tag_ids = Enum.map(tags, & &1.id)
 
-      assert {:error, :too_many_blocked_tags} = Dating.set_profile_blocked_tags(profile.id, tag_ids)
+      assert {:error, :too_many_blocked_tags} =
+               Dating.set_profile_blocked_tags(profile.id, tag_ids)
     end
   end
 
@@ -313,7 +314,9 @@ defmodule Snack.DatingTest do
       {:ok, _} = Dating.set_profile_tags(profile.id, [t1.id, t2.id])
       {:ok, _} = Dating.set_profile_blocked_tags(profile.id, [t3.id])
 
-      assert Enum.map(Dating.get_profile_tags(profile.id), & &1.id) |> Enum.sort() == [t1.id, t2.id] |> Enum.sort()
+      assert Enum.map(Dating.get_profile_tags(profile.id), & &1.id) |> Enum.sort() ==
+               [t1.id, t2.id] |> Enum.sort()
+
       assert Enum.map(Dating.get_profile_blocked_tags(profile.id), & &1.id) == [t3.id]
     end
   end
@@ -435,7 +438,13 @@ defmodule Snack.DatingTest do
       b = profile_fixture(user_fixture())
 
       Dating.record_swipe(%{actor_profile_id: a.id, target_profile_id: b.id, action_type: "like"})
-      {:ok, %{match: match}} = Dating.record_swipe(%{actor_profile_id: b.id, target_profile_id: a.id, action_type: "like"})
+
+      {:ok, %{match: match}} =
+        Dating.record_swipe(%{
+          actor_profile_id: b.id,
+          target_profile_id: a.id,
+          action_type: "like"
+        })
 
       assert {:ok, updated} = Dating.unmatch(match.id)
       assert updated.status == "unmatched"
@@ -451,7 +460,13 @@ defmodule Snack.DatingTest do
       b = profile_fixture(user_fixture())
 
       Dating.record_swipe(%{actor_profile_id: a.id, target_profile_id: b.id, action_type: "like"})
-      {:ok, %{match: match}} = Dating.record_swipe(%{actor_profile_id: b.id, target_profile_id: a.id, action_type: "like"})
+
+      {:ok, %{match: match}} =
+        Dating.record_swipe(%{
+          actor_profile_id: b.id,
+          target_profile_id: a.id,
+          action_type: "like"
+        })
 
       conversation = Repo.get_by!(Snack.Dating.Conversation, match_id: match.id)
 
@@ -470,7 +485,13 @@ defmodule Snack.DatingTest do
       b = profile_fixture(user_fixture())
 
       Dating.record_swipe(%{actor_profile_id: a.id, target_profile_id: b.id, action_type: "like"})
-      {:ok, %{match: match}} = Dating.record_swipe(%{actor_profile_id: b.id, target_profile_id: a.id, action_type: "like"})
+
+      {:ok, %{match: match}} =
+        Dating.record_swipe(%{
+          actor_profile_id: b.id,
+          target_profile_id: a.id,
+          action_type: "like"
+        })
 
       assert match.expires_at != nil
       assert match.first_message_at == nil
@@ -496,7 +517,13 @@ defmodule Snack.DatingTest do
       b = profile_fixture(user_fixture())
 
       Dating.record_swipe(%{actor_profile_id: a.id, target_profile_id: b.id, action_type: "like"})
-      {:ok, %{match: match}} = Dating.record_swipe(%{actor_profile_id: b.id, target_profile_id: a.id, action_type: "like"})
+
+      {:ok, %{match: match}} =
+        Dating.record_swipe(%{
+          actor_profile_id: b.id,
+          target_profile_id: a.id,
+          action_type: "like"
+        })
 
       conversation = Repo.get_by!(Snack.Dating.Conversation, match_id: match.id)
 
@@ -650,7 +677,10 @@ defmodule Snack.DatingTest do
   defp user_fixture(attrs \\ %{}) do
     {:ok, user} =
       Snack.Accounts.create_user(
-        Map.merge(%{email: "test#{System.unique_integer()}@example.com", display_name: "Test"}, attrs)
+        Map.merge(
+          %{email: "test#{System.unique_integer()}@example.com", display_name: "Test"},
+          attrs
+        )
       )
 
     user
@@ -659,16 +689,19 @@ defmodule Snack.DatingTest do
   defp profile_fixture(user, attrs \\ %{}) do
     {:ok, profile} =
       Dating.create_profile(
-        Map.merge(%{
-          user_id: user.id,
-          display_name: "Test User",
-          birth_date: ~D[1995-01-15],
-          gender: "man",
-          what_i_am_looking_for: "relationship",
-          bio: "This is a test bio that is long enough to pass validation rules.",
-          is_complete: false,
-          is_discoverable: true
-        }, attrs)
+        Map.merge(
+          %{
+            user_id: user.id,
+            display_name: "Test User",
+            birth_date: ~D[1995-01-15],
+            gender: "man",
+            what_i_am_looking_for: "relationship",
+            bio: "This is a test bio that is long enough to pass validation rules.",
+            is_complete: false,
+            is_discoverable: true
+          },
+          attrs
+        )
       )
 
     profile
@@ -714,7 +747,10 @@ defmodule Snack.DatingTest do
   defp tag_fixture(attrs \\ %{}) do
     {:ok, tag} =
       Dating.create_tag(
-        Map.merge(%{slug: "slug#{System.unique_integer()}", label: "Label", category: "test"}, attrs)
+        Map.merge(
+          %{slug: "slug#{System.unique_integer()}", label: "Label", category: "test"},
+          attrs
+        )
       )
 
     tag

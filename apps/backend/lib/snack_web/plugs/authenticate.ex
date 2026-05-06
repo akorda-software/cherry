@@ -17,12 +17,14 @@ defmodule SnackWeb.Plugs.Authenticate do
     case get_bearer_token(conn) do
       {:ok, token} ->
         case TokenAuth.authenticate(token) do
-          {:ok, %{user: user}} ->
+          {:ok, %{user: user, claims: claims}} ->
             profile = Dating.get_profile_by_user(user.id)
 
             conn
             |> assign(:current_user, user)
             |> assign(:current_profile, profile)
+            |> assign(:current_session_id, claims.session_id)
+            |> assign(:current_auth_claims, claims)
 
           _error ->
             halt_unauthorized(conn)

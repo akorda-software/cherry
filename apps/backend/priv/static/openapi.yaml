@@ -1,0 +1,1489 @@
+openapi: 3.0.3
+info:
+  title: Snack API
+  version: 0.1.0
+  description: |
+    REST API for the Snack dating backend. Authenticated endpoints require a
+    Phoenix-issued bearer access token from the social auth or refresh flow.
+servers:
+  - url: /
+tags:
+  - name: Auth
+  - name: Bootstrap
+  - name: Profile
+  - name: Discovery
+  - name: Matches
+  - name: Chat
+  - name: Safety
+  - name: Settings
+  - name: Push Notifications
+  - name: Billing
+  - name: Webhooks
+paths:
+  /api/auth/{provider}/callback:
+    post:
+      tags: [Auth]
+      summary: Exchange a Google or Apple credential for a Snack session.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, apple]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthCallbackRequest'
+      responses:
+        '201':
+          description: Session issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/session/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate a refresh token and issue a new session pair.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Refreshed session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/session:
+    delete:
+      tags: [Auth]
+      summary: Revoke the refresh-token session family.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '204':
+          description: Session revoked.
+  /api/config:
+    get:
+      tags: [Bootstrap]
+      summary: Read runtime feature flags and mobile service config.
+      responses:
+        '200':
+          description: Public runtime config.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+  /api/bootstrap:
+    get:
+      tags: [Bootstrap]
+      summary: Get authenticated user and onboarding state.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Bootstrap state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BootstrapResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/me/profile:
+    get:
+      tags: [Profile]
+      summary: Get the current user's profile.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile and completeness state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    nullable: true
+                    allOf:
+                      - $ref: '#/components/schemas/Profile'
+                  completeness:
+                    type: boolean
+    put:
+      tags: [Profile]
+      summary: Create or update the current user's draft profile.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Updated profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    $ref: '#/components/schemas/Profile'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/me/profile/complete:
+    post:
+      tags: [Profile]
+      summary: Validate and mark the current profile complete.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile completed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    $ref: '#/components/schemas/Profile'
+                  onboardingRequired:
+                    type: boolean
+        '422':
+          description: Profile still misses required onboarding sections.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileIncompleteResponse'
+  /api/me/discovery-preferences:
+    get:
+      tags: [Profile]
+      summary: Get the current profile discovery preferences.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Discovery preferences.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  discoveryPreferences:
+                    nullable: true
+                    allOf:
+                      - $ref: '#/components/schemas/DiscoveryPreference'
+    put:
+      tags: [Profile]
+      summary: Upsert discovery preferences.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoveryPreferenceRequest'
+      responses:
+        '200':
+          description: Updated discovery preferences.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  discoveryPreferences:
+                    $ref: '#/components/schemas/DiscoveryPreference'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/me/photos:
+    get:
+      tags: [Profile]
+      summary: List active profile photos.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Active photos ordered by position.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  photos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Photo'
+    post:
+      tags: [Profile]
+      summary: Create photo metadata directly.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhotoCreateRequest'
+      responses:
+        '200':
+          description: Created photo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  photo:
+                    $ref: '#/components/schemas/Photo'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/me/photos/upload-intent:
+    post:
+      tags: [Profile]
+      summary: Create a direct-to-R2 profile photo upload intent.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhotoUploadIntentRequest'
+      responses:
+        '200':
+          description: Signed upload details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoUploadIntentResponse'
+        '503':
+          description: R2 storage is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/me/photos/complete:
+    post:
+      tags: [Profile]
+      summary: Complete a direct photo upload and persist metadata.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhotoCompleteRequest'
+      responses:
+        '200':
+          description: Created active photo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  photo:
+                    $ref: '#/components/schemas/Photo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/me/photos/{id}:
+    delete:
+      tags: [Profile]
+      summary: Soft-delete one of the current profile photos.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/me/tags:
+    get:
+      tags: [Profile]
+      summary: List current profile tags.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Positive profile tags.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tags:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+    put:
+      tags: [Profile]
+      summary: Replace current profile tags.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagIdsRequest'
+      responses:
+        '200':
+          description: Updated positive tags.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tags:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/me/blocked-tags:
+    get:
+      tags: [Profile]
+      summary: List tags blocked by the current profile.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Blocked tags.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  blockedTags:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+    put:
+      tags: [Profile]
+      summary: Replace blocked tags.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagIdsRequest'
+      responses:
+        '200':
+          description: Updated blocked tags.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  blockedTags:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/me/location:
+    post:
+      tags: [Profile]
+      summary: Update approximate profile location.
+      description: Coordinates are snapped to an approximate 500m grid before storage.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/me/push-token:
+    post:
+      tags: [Push Notifications]
+      summary: Register or update the Expo push token for the current session.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushTokenRequest'
+      responses:
+        '200':
+          description: Registered push token metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushTokenResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/me/pause:
+    post:
+      tags: [Settings]
+      summary: Pause profile discovery.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+  /api/me/unpause:
+    post:
+      tags: [Settings]
+      summary: Unpause profile discovery if the profile is complete.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+  /api/me/account:
+    delete:
+      tags: [Settings]
+      summary: Soft-delete the current profile/account presence.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+  /api/discovery/feed:
+    get:
+      tags: [Discovery]
+      summary: Get a scored discovery feed.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Discovery cards.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryFeedResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/discovery/actions:
+    post:
+      tags: [Discovery]
+      summary: Record a like/dislike swipe action.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwipeActionRequest'
+      responses:
+        '200':
+          description: Swipe result, including match data when mutual.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwipeActionResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/matches:
+    get:
+      tags: [Matches]
+      summary: List active matches for the current profile.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Active matches.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Match'
+  /api/matches/{id}/unmatch:
+    post:
+      tags: [Matches]
+      summary: Mark a match as unmatched.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/conversations:
+    get:
+      tags: [Chat]
+      summary: List conversations for active matches.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Conversations.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+  /api/conversations/{id}/messages:
+    get:
+      tags: [Chat]
+      summary: List messages in a conversation.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Message history.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Chat]
+      summary: Send a message via REST.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCreateRequest'
+      responses:
+        '200':
+          description: Created message.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    $ref: '#/components/schemas/Message'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/users/{profile_id}/block:
+    post:
+      tags: [Safety]
+      summary: Block another profile.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/users/{profile_id}/report:
+    post:
+      tags: [Safety]
+      summary: Report another profile.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportRequest'
+      responses:
+        '200':
+          description: Created report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/billing/plans:
+    get:
+      tags: [Billing]
+      summary: List billing plans when subscriptions are enabled.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Billing plan catalog.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BillingPlan'
+        '404':
+          description: Subscriptions feature disabled.
+  /api/billing/subscribe:
+    post:
+      tags: [Billing]
+      summary: Start a Stripe Payment Sheet subscription flow.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeRequest'
+      responses:
+        '200':
+          description: Stripe Payment Sheet parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscribeResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Already subscribed.
+  /api/billing/cancel:
+    post:
+      tags: [Billing]
+      summary: Cancel the active subscription at period end.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cancellation state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/billing/abandon-pending:
+    post:
+      tags: [Billing]
+      summary: Abandon a pending Payment Sheet subscription attempt.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pendingSubscriptionId]
+              properties:
+                pendingSubscriptionId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Pending subscription abandoned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: abandoned
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Subscription is not pending.
+  /api/billing/subscription:
+    get:
+      tags: [Billing]
+      summary: Read the current user's subscription state.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Subscription state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+  /api/webhooks/stripe:
+    post:
+      tags: [Webhooks]
+      summary: Stripe webhook endpoint.
+      description: Requires a valid Stripe signature header when subscriptions are enabled.
+      parameters:
+        - name: stripe-signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Event accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+        '500':
+          description: Processing failed so Stripe should retry.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Phoenix.Token
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Ok:
+      description: Operation succeeded.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OkResponse'
+    Unauthorized:
+      description: Missing, expired, revoked, or invalid token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: The current profile cannot perform the action.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Invalid request payload.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - $ref: '#/components/schemas/ValidationErrorResponse'
+  schemas:
+    OkResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          example: true
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: profile_not_found
+        reason:
+          type: string
+    ValidationErrorResponse:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    User:
+      type: object
+      required: [id, email, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+    DeviceRequest:
+      type: object
+      required: [installationId, platform, deviceName]
+      properties:
+        installationId:
+          type: string
+        platform:
+          type: string
+          enum: [ios, android]
+        deviceName:
+          type: string
+    AuthCallbackRequest:
+      type: object
+      required: [device]
+      properties:
+        providerToken:
+          type: string
+          description: Google provider token when provider is google.
+        idToken:
+          type: string
+          description: Apple identity token when provider is apple.
+        authorizationCode:
+          type: string
+        nonce:
+          type: string
+          description: Raw nonce used for Apple sign-in validation.
+        device:
+          $ref: '#/components/schemas/DeviceRequest'
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+    SessionResponse:
+      type: object
+      required: [accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt, user]
+      properties:
+        accessToken:
+          type: string
+        accessTokenExpiresAt:
+          type: string
+          format: date-time
+        refreshToken:
+          type: string
+        refreshTokenExpiresAt:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/User'
+    ConfigResponse:
+      type: object
+      required: [features, services]
+      properties:
+        features:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              enabled:
+                type: boolean
+        services:
+          type: object
+          additionalProperties: true
+    BootstrapResponse:
+      type: object
+      required: [user, profile]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        profile:
+          $ref: '#/components/schemas/ProfileState'
+    ProfileState:
+      type: object
+      required: [exists, isComplete, isDiscoverable, isPaused, onboardingRequired]
+      properties:
+        exists:
+          type: boolean
+        isComplete:
+          type: boolean
+        isDiscoverable:
+          type: boolean
+        isPaused:
+          type: boolean
+        onboardingRequired:
+          type: boolean
+        nextOnboardingStep:
+          type: string
+          nullable: true
+          enum:
+            - name
+            - birth_date
+            - gender
+            - intent
+            - bio
+            - photos
+            - interested_in
+            - discovery_preferences
+            - tags
+            - location
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+        age:
+          type: integer
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+          enum: [man, woman, non_binary]
+        whatIAmLookingFor:
+          type: string
+          nullable: true
+          enum: [relationship, casual, meet_people, go_with_the_flow]
+        bio:
+          type: string
+          nullable: true
+        isComplete:
+          type: boolean
+        isPaused:
+          type: boolean
+        isDiscoverable:
+          type: boolean
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Photo'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+        blockedTags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+        discoveryPreferences:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/DiscoveryPreference'
+        insertedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        birth_date:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [man, woman, non_binary]
+        what_i_am_looking_for:
+          type: string
+          enum: [relationship, casual, meet_people, go_with_the_flow]
+        bio:
+          type: string
+          minLength: 20
+          maxLength: 240
+    ProfileIncompleteResponse:
+      type: object
+      required: [error, missing]
+      properties:
+        error:
+          type: string
+          example: profile_incomplete
+        missing:
+          type: array
+          items:
+            type: string
+        nextOnboardingStep:
+          type: string
+          nullable: true
+    DiscoveryPreference:
+      type: object
+      properties:
+        ageMin:
+          type: integer
+          minimum: 18
+        ageMax:
+          type: integer
+          maximum: 100
+        distanceKm:
+          type: integer
+          enum: [10, 25, 50, 100, 999999]
+        showMen:
+          type: boolean
+        showWomen:
+          type: boolean
+        showNonBinary:
+          type: boolean
+        compatibleOnly:
+          type: boolean
+    DiscoveryPreferenceRequest:
+      type: object
+      required: [age_min, age_max, distance_km]
+      properties:
+        age_min:
+          type: integer
+        age_max:
+          type: integer
+        distance_km:
+          type: integer
+        show_men:
+          type: boolean
+        show_women:
+          type: boolean
+        show_non_binary:
+          type: boolean
+        compatible_only:
+          type: boolean
+    Photo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        storageKey:
+          type: string
+        url:
+          type: string
+          format: uri
+        position:
+          type: integer
+          minimum: 1
+          maximum: 4
+        isActive:
+          type: boolean
+    PhotoCreateRequest:
+      type: object
+      required: [storage_key, url, position]
+      properties:
+        storage_key:
+          type: string
+        url:
+          type: string
+          format: uri
+        position:
+          type: integer
+          minimum: 1
+          maximum: 4
+        is_active:
+          type: boolean
+    PhotoUploadIntentRequest:
+      type: object
+      required: [position, contentType, sizeBytes]
+      properties:
+        position:
+          type: integer
+          minimum: 1
+          maximum: 4
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+        sizeBytes:
+          type: integer
+          maximum: 2000000
+    PhotoUploadIntentResponse:
+      type: object
+      properties:
+        storageKey:
+          type: string
+        uploadUrl:
+          type: string
+          format: uri
+        publicUrl:
+          type: string
+          format: uri
+        method:
+          type: string
+          example: PUT
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        expiresAt:
+          type: string
+          format: date-time
+        maxBytes:
+          type: integer
+    PhotoCompleteRequest:
+      type: object
+      required: [storageKey]
+      properties:
+        storageKey:
+          type: string
+        publicUrl:
+          type: string
+          format: uri
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+    Tag:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        label:
+          type: string
+        category:
+          type: string
+    TagIdsRequest:
+      type: object
+      required: [tag_ids]
+      properties:
+        tag_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+    LocationRequest:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        accuracyMeters:
+          type: number
+        recordedAt:
+          type: string
+          format: date-time
+    PushTokenRequest:
+      type: object
+      required: [expoPushToken, platform, installationId]
+      properties:
+        expoPushToken:
+          type: string
+          pattern: '^(ExponentPushToken|ExpoPushToken)\[[^\]]+\]$'
+        platform:
+          type: string
+          enum: [ios, android]
+        installationId:
+          type: string
+    PushTokenResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        pushToken:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            platform:
+              type: string
+            installationId:
+              type: string
+            status:
+              type: string
+            lastSeenAt:
+              type: string
+              format: date-time
+    DiscoveryFeedResponse:
+      type: object
+      properties:
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveryCard'
+        nextCursor:
+          type: string
+          format: date-time
+          nullable: true
+    DiscoveryCard:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        age:
+          type: integer
+        bio:
+          type: string
+        gender:
+          type: string
+        whatIAmLookingFor:
+          type: string
+        distanceLabel:
+          type: string
+        distanceKmApprox:
+          type: integer
+        score:
+          type: number
+        sharedTagsCount:
+          type: integer
+    SwipeActionRequest:
+      type: object
+      required: [target_profile_id, action_type]
+      properties:
+        target_profile_id:
+          type: string
+          format: uuid
+        action_type:
+          type: string
+          enum: [like, dislike]
+    SwipeActionResponse:
+      type: object
+      required: [matchCreated]
+      properties:
+        matchCreated:
+          type: boolean
+        match:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Match'
+    Match:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        matchedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        firstMessageAt:
+          type: string
+          format: date-time
+          nullable: true
+        otherProfile:
+          $ref: '#/components/schemas/ProfileSummary'
+    ProfileSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+        age:
+          type: integer
+          nullable: true
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        otherProfile:
+          $ref: '#/components/schemas/ProfileSummary'
+        insertedAt:
+          type: string
+          format: date-time
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        senderProfileId:
+          type: string
+          format: uuid
+        body:
+          type: string
+        insertedAt:
+          type: string
+          format: date-time
+    MessageCreateRequest:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    ReportRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+        details:
+          type: string
+          nullable: true
+    ReportResponse:
+      type: object
+      properties:
+        report:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            reason:
+              type: string
+            details:
+              type: string
+              nullable: true
+            status:
+              type: string
+            insertedAt:
+              type: string
+              format: date-time
+    BillingPlan:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        stripePriceId:
+          type: string
+        amountCents:
+          type: integer
+        currency:
+          type: string
+        interval:
+          type: string
+    SubscribeRequest:
+      type: object
+      required: [planId]
+      properties:
+        planId:
+          type: string
+          format: uuid
+    SubscribeResponse:
+      type: object
+      properties:
+        customerId:
+          type: string
+        customerEphemeralKeySecret:
+          type: string
+        pendingSubscriptionId:
+          type: string
+          format: uuid
+        paymentIntentClientSecret:
+          type: string
+    SubscriptionResponse:
+      type: object
+      required: [subscribed]
+      properties:
+        subscribed:
+          type: boolean
+        subscription:
+          nullable: true
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            planId:
+              type: string
+              format: uuid
+            status:
+              type: string
+            cancelAtPeriodEnd:
+              type: boolean
+            currentPeriodEnd:
+              type: string
+              format: date-time
+              nullable: true

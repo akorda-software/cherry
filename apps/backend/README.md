@@ -7,6 +7,15 @@ Phoenix backend for the mobile starter.
 - completes provider auth callbacks for Google and Apple
 - issues, refreshes, and revokes sessions
 - exposes runtime config through `/api/config`
+- exposes the dating REST API for bootstrap, onboarding, discovery, matches, chat, safety, settings, photo uploads, and push-token registration
+- serves the OpenAPI spec at `/openapi.yaml`
+
+## API Documentation
+
+- `priv/static/openapi.yaml` is the machine-readable OpenAPI 3.0 contract for REST clients and Swagger tooling.
+- `/openapi.yaml` serves the same spec when the Phoenix endpoint is running.
+- `../../docs/dating-implementation/mobile-contracts-v1.md` is the human contract for mobile behavior, including the Phoenix WebSocket chat contract.
+- `../../docs/dating-implementation/mobile-implementation-plan.md` defines the recommended Expo implementation order.
 
 ## Optional Billing Add-On
 

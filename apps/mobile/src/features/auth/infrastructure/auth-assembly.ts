@@ -97,6 +97,7 @@ export function assembleAuthServices(deps: AuthDependencies): SessionShellServic
       google: completeAuthGoogle,
       apple: completeAuthApple
     },
-    logoutSession
+    logoutSession,
+    executeAuthenticated: sessionManager.executeWithRefresh
   };
 }

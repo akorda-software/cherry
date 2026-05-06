@@ -15,6 +15,8 @@ It sits below the higher-level documents:
 - `schema.md` — concrete PostgreSQL and PostGIS schema proposal
 - `mobile-contracts-v1.md` — accepted backend/mobile contracts for the first mobile build
 - `mobile-implementation-plan.md` — recommended mobile build order and verification checkpoints
+- `expo-screens-stacks-style-plan.md` — concrete Expo Router stacks, screens, flows, and visual direction
+- `bot-ai-abuse-todo.md` — TODO list for bots, AI-generated abuse, rate limits, and moderation readiness
 - `backend-api.md` — endpoint plan, request/response shape, and domain rules
 - `matching-engine.md` — ranking pipeline, fallback rules, and pseudocode
 - `mobile-flows.md` — screen flow, client behavior, permissions, and upload flow
@@ -26,10 +28,12 @@ It sits below the higher-level documents:
 1. `schema.md`
 2. `mobile-contracts-v1.md`
 3. `mobile-implementation-plan.md`
-4. `backend-api.md`
-5. `matching-engine.md`
-6. `mobile-flows.md`
-7. `jobs-ops.md`
+4. `expo-screens-stacks-style-plan.md`
+5. `backend-api.md`
+6. `matching-engine.md`
+7. `mobile-flows.md`
+8. `bot-ai-abuse-todo.md`
+9. `jobs-ops.md`
 
 ## Goal
 

@@ -6,6 +6,8 @@ This document defines the recommended order for implementing the Expo mobile app
 
 Use it as the execution guide when starting mobile work. It assumes the backend contracts in `mobile-contracts-v1.md` are the source of truth.
 
+For concrete route names, stacks, screen states, and visual direction, use `expo-screens-stacks-style-plan.md` before implementing UI screens.
+
 ## Implementation Principles
 
 - Build vertical slices that can be tested against the backend.
@@ -279,6 +281,8 @@ Start with phases 1 and 2 only:
 4. Minimal placeholder onboarding and main shell screens.
 
 Do not start UI-heavy onboarding until bootstrap routing is real.
+
+Before building the first UI-heavy onboarding slice, establish the style tokens and shared components described in `expo-screens-stacks-style-plan.md` so the dating screens do not inherit the generic starter look.
 
 ## Deferred Until Later
 

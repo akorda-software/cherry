@@ -13,8 +13,11 @@ defmodule SnackWeb.Controllers.Api.SafetyController do
       }
 
       case Dating.block_profile(attrs) do
-        {:ok, _} -> json(conn, %{ok: true})
-        {:error, changeset} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+        {:ok, _} ->
+          json(conn, %{ok: true})
+
+        {:error, changeset} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
       end
     else
       conn
@@ -35,8 +38,11 @@ defmodule SnackWeb.Controllers.Api.SafetyController do
       }
 
       case Dating.report_profile(attrs) do
-        {:ok, report} -> json(conn, %{report: serialize_report(report)})
-        {:error, changeset} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+        {:ok, report} ->
+          json(conn, %{report: serialize_report(report)})
+
+        {:error, changeset} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
       end
     else
       conn

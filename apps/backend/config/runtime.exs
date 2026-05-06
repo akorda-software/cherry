@@ -151,6 +151,21 @@ config :snack, Snack.Identity.Providers.GoogleJwksCache,
 config :snack, Snack.Identity.Providers.AppleJwksCache,
   ttl_ms: String.to_integer(System.get_env("APPLE_JWKS_CACHE_TTL_MS", "600000"))
 
+config :snack, Snack.Storage.R2,
+  account_id: System.get_env("R2_ACCOUNT_ID"),
+  access_key_id: System.get_env("R2_ACCESS_KEY_ID"),
+  secret_access_key: System.get_env("R2_SECRET_ACCESS_KEY"),
+  bucket_name: System.get_env("R2_BUCKET_NAME"),
+  public_url_base: System.get_env("R2_PUBLIC_URL_BASE"),
+  allowed_content_types: ["image/jpeg", "image/png", "image/webp"],
+  max_upload_bytes: String.to_integer(System.get_env("R2_MAX_UPLOAD_BYTES", "2000000")),
+  upload_url_ttl_seconds: String.to_integer(System.get_env("R2_UPLOAD_URL_TTL_SECONDS", "600"))
+
+config :snack, :expo_push,
+  base_url: System.get_env("EXPO_PUSH_BASE_URL", "https://exp.host"),
+  access_token: System.get_env("EXPO_PUSH_ACCESS_TOKEN"),
+  receive_timeout_ms: String.to_integer(System.get_env("EXPO_PUSH_RECEIVE_TIMEOUT_MS", "5000"))
+
 if config_env() == :prod do
   access_token_salt =
     System.get_env("AUTH_ACCESS_TOKEN_SALT") ||

@@ -10,7 +10,12 @@ defmodule Snack.TestSupport.DatingFixtures do
 
   def user_fixture(attrs \\ %{}) do
     {:ok, user} =
-      Accounts.create_user(Map.merge(%{email: "user#{System.unique_integer()}@example.com", display_name: "User"}, attrs))
+      Accounts.create_user(
+        Map.merge(
+          %{email: "user#{System.unique_integer()}@example.com", display_name: "User"},
+          attrs
+        )
+      )
 
     user
   end
@@ -18,16 +23,19 @@ defmodule Snack.TestSupport.DatingFixtures do
   def profile_fixture(user, attrs \\ %{}) do
     {:ok, profile} =
       Dating.create_profile(
-        Map.merge(%{
-          user_id: user.id,
-          display_name: "Test User",
-          birth_date: ~D[1995-01-15],
-          gender: "man",
-          what_i_am_looking_for: "relationship",
-          bio: "This is a test bio that is long enough to pass validation rules.",
-          is_complete: false,
-          is_discoverable: true
-        }, attrs)
+        Map.merge(
+          %{
+            user_id: user.id,
+            display_name: "Test User",
+            birth_date: ~D[1995-01-15],
+            gender: "man",
+            what_i_am_looking_for: "relationship",
+            bio: "This is a test bio that is long enough to pass validation rules.",
+            is_complete: false,
+            is_discoverable: true
+          },
+          attrs
+        )
       )
 
     profile
@@ -65,7 +73,7 @@ defmodule Snack.TestSupport.DatingFixtures do
     end
 
     # Add tags
-    tags = Dating.list_active_tags() |> Enum.take(3)
+    tags = ensure_tags(3)
     Dating.set_profile_tags(profile.id, Enum.map(tags, & &1.id))
 
     # Mark complete
@@ -75,9 +83,18 @@ defmodule Snack.TestSupport.DatingFixtures do
 
   def tag_fixture(attrs \\ %{}) do
     {:ok, tag} =
-      Dating.create_tag(Map.merge(%{slug: "tag#{System.unique_integer()}", label: "Tag", category: "test"}, attrs))
+      Dating.create_tag(
+        Map.merge(%{slug: "tag#{System.unique_integer()}", label: "Tag", category: "test"}, attrs)
+      )
 
     tag
+  end
+
+  defp ensure_tags(count) do
+    case Dating.list_active_tags() |> Enum.take(count) do
+      [] -> for _ <- 1..count, do: tag_fixture()
+      tags -> tags
+    end
   end
 
   def authed_conn_for_user(user) do

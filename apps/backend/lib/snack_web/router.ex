@@ -56,11 +56,14 @@ defmodule SnackWeb.Router do
 
     get("/profile", ProfileController, :show)
     put("/profile", ProfileController, :update)
+    post("/profile/complete", ProfileController, :complete)
 
     get("/discovery-preferences", ProfileController, :show_discovery_preferences)
     put("/discovery-preferences", ProfileController, :update_discovery_preferences)
 
     get("/photos", ProfileController, :list_photos)
+    post("/photos/upload-intent", ProfileController, :create_photo_upload_intent)
+    post("/photos/complete", ProfileController, :complete_photo_upload)
     post("/photos", ProfileController, :create_photo)
     delete("/photos/:id", ProfileController, :delete_photo)
 
@@ -71,6 +74,7 @@ defmodule SnackWeb.Router do
     put("/blocked-tags", ProfileController, :set_blocked_tags)
 
     post("/location", ProfileController, :update_location)
+    post("/push-token", PushTokenController, :create)
 
     post("/pause", SettingsController, :pause)
     post("/unpause", SettingsController, :unpause)

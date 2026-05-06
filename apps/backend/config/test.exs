@@ -44,3 +44,5 @@ config :snack, Snack.Auth,
     google: Snack.Identity.Providers.Google,
     apple: Snack.Identity.Providers.Apple
   }
+
+config :snack, :expo_push_client, Snack.Notifications.MockExpoClient

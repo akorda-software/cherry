@@ -9,15 +9,29 @@ defmodule SnackWeb.ChatChannelTest do
 
   setup do
     # Create two users with complete profiles
-    {:ok, user_a} = Accounts.create_user(%{email: "chatter_a@example.com", display_name: "Chatter A"})
-    {:ok, user_b} = Accounts.create_user(%{email: "chatter_b@example.com", display_name: "Chatter B"})
+    {:ok, user_a} =
+      Accounts.create_user(%{email: "chatter_a@example.com", display_name: "Chatter A"})
+
+    {:ok, user_b} =
+      Accounts.create_user(%{email: "chatter_b@example.com", display_name: "Chatter B"})
 
     profile_a = create_complete_profile(user_a)
     profile_b = create_complete_profile(user_b)
 
     # Create a match and conversation
-    {:ok, _} = Dating.record_swipe(%{actor_profile_id: profile_a.id, target_profile_id: profile_b.id, action_type: "like"})
-    {:ok, result} = Dating.record_swipe(%{actor_profile_id: profile_b.id, target_profile_id: profile_a.id, action_type: "like"})
+    {:ok, _} =
+      Dating.record_swipe(%{
+        actor_profile_id: profile_a.id,
+        target_profile_id: profile_b.id,
+        action_type: "like"
+      })
+
+    {:ok, result} =
+      Dating.record_swipe(%{
+        actor_profile_id: profile_b.id,
+        target_profile_id: profile_a.id,
+        action_type: "like"
+      })
 
     match = result.match |> Repo.preload(:conversation)
     conversation = match.conversation
@@ -53,9 +67,41 @@ defmodule SnackWeb.ChatChannelTest do
       assert socket.assigns.conversation_id == conversation.id
     end
 
+    test "rejects inactive conversations", %{
+      conversation: conversation,
+      match: match,
+      token_a: token
+    } do
+      match
+      |> Ecto.Changeset.change(status: "unmatched", unmatched_at: now())
+      |> Repo.update!()
+
+      {:ok, socket} = connect(UserSocket, %{"token" => "Bearer #{token}"})
+
+      assert {:error, %{reason: "conversation_not_active"}} =
+               join(socket, "chat:#{conversation.id}")
+    end
+
+    test "rejects expired conversations", %{
+      conversation: conversation,
+      match: match,
+      token_a: token
+    } do
+      match
+      |> Ecto.Changeset.change(expires_at: DateTime.add(now(), -1, :day))
+      |> Repo.update!()
+
+      {:ok, socket} = connect(UserSocket, %{"token" => "Bearer #{token}"})
+
+      assert {:error, %{reason: "conversation_not_active"}} =
+               join(socket, "chat:#{conversation.id}")
+    end
+
     test "rejects non-participant", %{conversation: conversation} do
       # Create a third user who is not part of the conversation
-      {:ok, user_c} = Accounts.create_user(%{email: "chatter_c@example.com", display_name: "Chatter C"})
+      {:ok, user_c} =
+        Accounts.create_user(%{email: "chatter_c@example.com", display_name: "Chatter C"})
+
       _profile_c = create_complete_profile(user_c)
 
       {:ok, issued_c} =
@@ -80,9 +126,28 @@ defmodule SnackWeb.ChatChannelTest do
       {:ok, _, _socket_b} = connect_and_join(token_b, conversation.id)
 
       ref = push(socket_a, "send_message", %{"body" => "Hello from A"})
-      assert_reply ref, :ok, %{message: %{body: "Hello from A"}}
 
-      assert_receive %Phoenix.Socket.Message{event: "new_message", payload: %{body: "Hello from A"}}
+      assert_reply ref, :ok, %{
+        message: %{
+          conversationId: conversation_id,
+          senderProfileId: sender_profile_id,
+          body: "Hello from A",
+          insertedAt: %DateTime{}
+        }
+      }
+
+      assert conversation_id == conversation.id
+      assert is_binary(sender_profile_id)
+
+      assert_receive %Phoenix.Socket.Message{
+        event: "new_message",
+        payload: %{
+          conversationId: ^conversation_id,
+          senderProfileId: ^sender_profile_id,
+          body: "Hello from A",
+          insertedAt: %DateTime{}
+        }
+      }
     end
 
     test "persists message in database", %{
@@ -96,8 +161,8 @@ defmodule SnackWeb.ChatChannelTest do
       assert_reply ref, :ok, _
 
       msgs = Dating.list_messages(conversation.id)
-      assert Enum.any?(msgs, & &1.body == "Persisted message")
-      assert Enum.any?(msgs, & &1.sender_profile_id == profile_a.id)
+      assert Enum.any?(msgs, &(&1.body == "Persisted message"))
+      assert Enum.any?(msgs, &(&1.sender_profile_id == profile_a.id))
     end
 
     test "rejects empty message", %{
@@ -108,6 +173,21 @@ defmodule SnackWeb.ChatChannelTest do
 
       ref = push(socket, "send_message", %{"body" => ""})
       assert_reply ref, :error, %{errors: %{body: ["can't be blank"]}}
+    end
+
+    test "rejects sends after conversation becomes inactive", %{
+      conversation: conversation,
+      match: match,
+      token_a: token_a
+    } do
+      {:ok, _, socket} = connect_and_join(token_a, conversation.id)
+
+      match
+      |> Ecto.Changeset.change(status: "unmatched", unmatched_at: now())
+      |> Repo.update!()
+
+      ref = push(socket, "send_message", %{"body" => "Should not send"})
+      assert_reply ref, :error, %{reason: "conversation_not_active"}
     end
   end
 
@@ -121,7 +201,14 @@ defmodule SnackWeb.ChatChannelTest do
       {:ok, _, _socket_b} = connect_and_join(token_b, conversation.id)
 
       push(socket_a, "typing", %{"is_typing" => true})
-      assert_receive %Phoenix.Socket.Message{event: "typing", payload: %{profile_id: _}}
+
+      assert_receive %Phoenix.Socket.Message{
+        event: "typing",
+        payload: %{conversationId: conversation_id, profileId: profile_id}
+      }
+
+      assert conversation_id == conversation.id
+      assert is_binary(profile_id)
     end
   end
 
@@ -129,6 +216,8 @@ defmodule SnackWeb.ChatChannelTest do
     {:ok, socket} = connect(UserSocket, %{"token" => "Bearer #{token}"})
     join(socket, "chat:#{conversation_id}")
   end
+
+  defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
 
   defp create_complete_profile(user) do
     {:ok, profile} =
@@ -167,10 +256,21 @@ defmodule SnackWeb.ChatChannelTest do
       })
     end
 
-    tags = Dating.list_active_tags() |> Enum.take(2)
+    tags = for i <- 1..2, do: tag_fixture("chat-#{profile.id}-#{i}")
     Dating.set_profile_tags(profile.id, Enum.map(tags, & &1.id))
 
     Dating.set_profile_complete(profile)
     Repo.get!(Dating.Profile, profile.id)
+  end
+
+  defp tag_fixture(slug) do
+    {:ok, tag} =
+      Dating.create_tag(%{
+        slug: slug,
+        label: "Chat Tag",
+        category: "test"
+      })
+
+    tag
   end
 end

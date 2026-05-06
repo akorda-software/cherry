@@ -11,13 +11,18 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
     {:ok, viewer_user} =
       Accounts.create_user(%{email: "viewer@example.com", display_name: "Viewer"})
 
-    viewer = create_complete_profile(viewer_user, %{gender: "man", what_i_am_looking_for: "relationship"})
+    viewer =
+      create_complete_profile(viewer_user, %{gender: "man", what_i_am_looking_for: "relationship"})
 
     # Create candidate
     {:ok, candidate_user} =
       Accounts.create_user(%{email: "candidate@example.com", display_name: "Candidate"})
 
-    candidate = create_complete_profile(candidate_user, %{gender: "woman", what_i_am_looking_for: "relationship"})
+    candidate =
+      create_complete_profile(candidate_user, %{
+        gender: "woman",
+        what_i_am_looking_for: "relationship"
+      })
 
     {:ok, issued} =
       Sessions.issue_session(viewer_user, %{
@@ -42,6 +47,11 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
       assert is_list(profiles)
       # Candidate should appear since same intent, close location, compatible preferences
       assert length(profiles) >= 1
+
+      assert %{"distanceLabel" => "Cerca de ti", "distanceKmApprox" => distance_km_approx} =
+               List.first(profiles)
+
+      assert is_integer(distance_km_approx)
     end
 
     test "returns forbidden for incomplete profile" do
@@ -82,7 +92,12 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
       authed_conn: conn,
       candidate: candidate
     } do
-      conn = post(conn, "/api/discovery/actions", %{"target_profile_id" => candidate.id, "action_type" => "like"})
+      conn =
+        post(conn, "/api/discovery/actions", %{
+          "target_profile_id" => candidate.id,
+          "action_type" => "like"
+        })
+
       assert %{"matchCreated" => false} = json_response(conn, 200)
     end
 
@@ -92,10 +107,20 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
       authed_conn: viewer_conn
     } do
       # Candidate likes viewer first
-      {:ok, _} = Dating.record_swipe(%{actor_profile_id: candidate.id, target_profile_id: viewer.id, action_type: "like"})
+      {:ok, _} =
+        Dating.record_swipe(%{
+          actor_profile_id: candidate.id,
+          target_profile_id: viewer.id,
+          action_type: "like"
+        })
 
       # Viewer likes candidate
-      conn = post(viewer_conn, "/api/discovery/actions", %{"target_profile_id" => candidate.id, "action_type" => "like"})
+      conn =
+        post(viewer_conn, "/api/discovery/actions", %{
+          "target_profile_id" => candidate.id,
+          "action_type" => "like"
+        })
+
       assert %{"matchCreated" => true, "match" => match} = json_response(conn, 200)
       assert match["id"] != nil
     end
@@ -104,15 +129,18 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
   defp create_complete_profile(user, attrs) do
     {:ok, profile} =
       Dating.create_profile(
-        Map.merge(%{
-          user_id: user.id,
-          display_name: "Test",
-          birth_date: ~D[1995-01-15],
-          gender: "woman",
-          what_i_am_looking_for: "relationship",
-          bio: "This is a test bio that is long enough to pass validation rules.",
-          is_discoverable: true
-        }, attrs)
+        Map.merge(
+          %{
+            user_id: user.id,
+            display_name: "Test",
+            birth_date: ~D[1995-01-15],
+            gender: "woman",
+            what_i_am_looking_for: "relationship",
+            bio: "This is a test bio that is long enough to pass validation rules.",
+            is_discoverable: true
+          },
+          attrs
+        )
       )
 
     Dating.upsert_discovery_preference(profile.id, %{
@@ -140,7 +168,7 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
       })
     end
 
-    tags = Dating.list_active_tags() |> Enum.take(2)
+    tags = for i <- 1..2, do: tag_fixture("discovery-#{profile.id}-#{i}")
     Dating.set_profile_tags(profile.id, Enum.map(tags, & &1.id))
 
     Dating.set_profile_complete(profile)
@@ -155,5 +183,16 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
     else
       profile
     end
+  end
+
+  defp tag_fixture(slug) do
+    {:ok, tag} =
+      Dating.create_tag(%{
+        slug: slug,
+        label: "Discovery Tag",
+        category: "test"
+      })
+
+    tag
   end
 end

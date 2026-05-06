@@ -8,8 +8,11 @@ defmodule SnackWeb.Controllers.Api.SettingsController do
 
     if profile do
       case Dating.pause_profile(profile) do
-        {:ok, _} -> json(conn, %{ok: true})
-        {:error, changeset} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+        {:ok, _} ->
+          json(conn, %{ok: true})
+
+        {:error, changeset} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
       end
     else
       conn
@@ -42,8 +45,11 @@ defmodule SnackWeb.Controllers.Api.SettingsController do
 
     if profile do
       case Dating.delete_profile(profile) do
-        {:ok, _} -> json(conn, %{ok: true})
-        {:error, changeset} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+        {:ok, _} ->
+          json(conn, %{ok: true})
+
+        {:error, changeset} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
       end
     else
       conn

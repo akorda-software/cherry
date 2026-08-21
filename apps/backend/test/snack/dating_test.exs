@@ -480,6 +480,47 @@ defmodule Snack.DatingTest do
       assert message.body == "Hello!"
     end
 
+    test "stores body encrypted at rest and returns it in clear text on read" do
+      %{conversation: conversation, sender: sender} = conversation_fixture()
+
+      assert {:ok, message} =
+               Dating.send_message(%{
+                 conversation_id: conversation.id,
+                 sender_profile_id: sender.id,
+                 body: "plaintext secret"
+               })
+
+      assert message.body == "plaintext secret"
+
+      stored_body =
+        Ecto.Query.from(m in "messages",
+          where: m.id == type(^message.id, :binary_id),
+          select: m.body
+        )
+        |> Repo.one()
+
+      refute String.contains?(stored_body, "plaintext secret")
+      assert Snack.Crypto.encrypted?(stored_body)
+
+      assert %{body: "plaintext secret"} = Repo.reload!(message)
+    end
+
+    test "reads legacy plaintext rows transparently" do
+      %{conversation: conversation, sender: sender} = conversation_fixture()
+
+      {:ok, message} =
+        Dating.send_message(%{
+          conversation_id: conversation.id,
+          sender_profile_id: sender.id,
+          body: "mensaje nuevo"
+        })
+
+      Ecto.Query.from(m in "messages", where: m.id == type(^message.id, :binary_id))
+      |> Repo.update_all(set: [body: "fila antigua en claro"])
+
+      assert [%{body: "fila antigua en claro"}] = Dating.list_messages(conversation.id)
+    end
+
     test "on first message clears match expires_at and sets first_message_at" do
       a = profile_fixture(user_fixture())
       b = profile_fixture(user_fixture())
@@ -673,6 +714,24 @@ defmodule Snack.DatingTest do
   end
 
   # ── Helpers ───────────────────────────────────────────────────────────
+
+  defp conversation_fixture do
+    a = profile_fixture(user_fixture())
+    b = profile_fixture(user_fixture())
+
+    Dating.record_swipe(%{actor_profile_id: a.id, target_profile_id: b.id, action_type: "like"})
+
+    {:ok, %{match: match}} =
+      Dating.record_swipe(%{
+        actor_profile_id: b.id,
+        target_profile_id: a.id,
+        action_type: "like"
+      })
+
+    conversation = Repo.get_by!(Snack.Dating.Conversation, match_id: match.id)
+
+    %{a: a, b: b, match: match, conversation: conversation, sender: a}
+  end
 
   defp user_fixture(attrs \\ %{}) do
     {:ok, user} =

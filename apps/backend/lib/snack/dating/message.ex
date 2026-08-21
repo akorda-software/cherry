@@ -10,7 +10,9 @@ defmodule Snack.Dating.Message do
   @foreign_key_type :binary_id
 
   schema "messages" do
-    field(:body, :string)
+    # Cifrado en reposo (D-2026-08-21): en memoria es texto claro,
+    # en disco se guarda cifrado vía Snack.Crypto.Encrypted.
+    field(:body, Snack.Crypto.Encrypted)
 
     belongs_to(:conversation, Conversation)
     belongs_to(:sender_profile, Profile, foreign_key: :sender_profile_id)

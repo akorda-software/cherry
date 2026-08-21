@@ -33,7 +33,7 @@ Extensión PostGIS + uuid-ossp. Tablas:
 | `swipe_actions` | actor_profile_id, target_profile_id, action_type (like/dislike) | única acción activa por par actor-target |
 | `matches` | profile_a_id, profile_b_id, status (active/unmatched; "expired" válido pero sin asignación — la expiración se aplica lazy en lectura), matched_at, expires_at, first_message_at, unmatched_at | expires_at = matched_at + 7 días hasta primer mensaje |
 | `conversations` | match_id (FK único) | sin columna status: el gate de mensajería vive en `matches.status`/`expires_at` |
-| `messages` | conversation_id, sender_profile_id, body (1–2000) | paginado por inserted_at |
+| `messages` | conversation_id, sender_profile_id, body (1–2000) | paginado por inserted_at; **body cifrado en reposo** (AES-256-GCM vía `Snack.Crypto`, clave en `MESSAGE_ENCRYPTION_KEY` — ver D-2026-08-21) |
 | `user_blocks` | actor_profile_id, target_profile_id, reason | únicos por par |
 | `reports` | reporter_profile_id, target_profile_id, reason, details, status, reviewed_at/by | revisión admin |
 | `analytics_events` | profile_id/user_id, event_name, payload jsonb | append-only |

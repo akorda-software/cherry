@@ -166,6 +166,31 @@ config :snack, :expo_push,
   access_token: System.get_env("EXPO_PUSH_ACCESS_TOKEN"),
   receive_timeout_ms: String.to_integer(System.get_env("EXPO_PUSH_RECEIVE_TIMEOUT_MS", "5000"))
 
+# Cifrado en reposo de mensajes (D-2026-08-21).
+#
+# La clave se deriva de MESSAGE_ENCRYPTION_KEY (generar con `mix phx.gen.secret`)
+# y nunca vive en la base de datos. En prod es obligatoria; en dev/test se usa
+# un placeholder para que los entornos locales funcionen sin setup extra.
+message_cipher_key = System.get_env("MESSAGE_ENCRYPTION_KEY", "") |> String.trim()
+
+message_cipher_key =
+  cond do
+    message_cipher_key != "" ->
+      message_cipher_key
+
+    config_env() == :prod ->
+      raise """
+      environment variable MESSAGE_ENCRYPTION_KEY is missing.
+      It is required to encrypt message bodies at rest.
+      Generate one with: mix phx.gen.secret
+      """
+
+    true ->
+      "__DEV_MESSAGE_CIPHER_KEY__"
+  end
+
+config :snack, :message_cipher, key: message_cipher_key
+
 if config_env() == :prod do
   access_token_salt =
     System.get_env("AUTH_ACCESS_TOKEN_SALT") ||

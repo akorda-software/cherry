@@ -1,9 +1,38 @@
-# Docs
+# Documentación de Snack
 
-Guides for treating this repository as a reusable mobile starter.
+Documentación de referencia del proyecto. Organizada por temas; cada documento es autocontenido pero remite a los demás cuando conviene.
 
-- `starter-guide.md` — architecture, setup flow, and how to extend the starter for a new app
-- `dating-product-foundation.md` — product decisions and MVP scope for the dating app built on this starter
-- `dating-prd/README.md` — product requirements document for the dating app
-- `dating-technical/README.md` — technical implementation plan for the dating app
-- `dating-implementation/README.md` — detailed implementation specs for building the dating app
+**Regla canónica:** estos documentos describen **lo implementado hoy**. Lo planificado y no construido vive en `10-plan-fases.md` y `11-deuda-tecnica-pendiente.md`; lo histórico y sustituido, en `decisions.md` (y en el historial de git).
+
+## Índice
+
+| # | Documento | Qué cubre |
+|---|-----------|-----------|
+| 00 | [Visión y alcance](./00-vision-y-alcance.md) | Qué es Snack: starter + dating app, principios, qué queda fuera |
+| 01 | [Requisitos de producto](./01-requisitos-producto.md) | Reglas de negocio v1: perfil, tags, matching, chat, safety, anti-abuso |
+| 02 | [Arquitectura](./02-arquitectura.md) | Monorepo, contextos Phoenix, estructura móvil, flujos de datos |
+| 03 | [Modelo de dominio](./03-modelo-dominio.md) | Entidades, ciclos de vida (perfil, match, sesión) e invariantes |
+| 04 | [Modelo de datos](./04-modelo-datos.md) | Esquema PostgreSQL/PostGIS real: tablas, columnas clave, índices |
+| 05 | [API del backend](./05-backend-api.md) | Endpoints REST y WebSocket implementados, con reglas de servidor |
+| 06 | [Contratos mobile-backend](./06-contratos-mobile-backend.md) | Formatos de payload aceptados: bootstrap, draft, ubicación, fotos, chat WS |
+| 07 | [Flujos de usuario](./07-flujos-usuario.md) | Pantallas y recorridos implementados hoy en la app móvil |
+| 08 | [Identidad visual](./08-identidad-visual.md) | Sistema de tokens, tema activo y componentes UI |
+| 09 | [Estrategia de pruebas](./09-estrategia-pruebas.md) | Suites, entorno (PostGIS), mocks y cómo ejecutarlas |
+| 10 | [Plan de fases](./10-plan-fases.md) | Fases de entrega con estado real de cada una |
+| 11 | [Deuda técnica pendiente](./11-deuda-tecnica-pendiente.md) | Gaps conocidos entre contrato, docs y código |
+| — | [Decisiones](./decisions.md) | Registro cronológico de decisiones significativas (contexto, decisión, motivación) |
+| — | [Progress](./progress.md) | Avance por fases y registro de cambios |
+| — | [starter-guide](./starter-guide.md) | Cómo usar el repo como starter para una nueva app |
+
+## Cómo leerlo
+
+- **Nuevo en el proyecto:** `00`, `01` y `02`.
+- **Trabajar en el backend:** `03`, `04`, `05`.
+- **Trabajar en el móvil:** `06`, `07`.
+- **Retomar el desarrollo:** `10` y `11`.
+
+## Convenciones
+
+- Idioma: español en producto y docs; código e identificadores en inglés.
+- Las decisiones significativas se registran en [`decisions.md`](./decisions.md) con fecha y contexto.
+- El avance se anota en [`progress.md`](./progress.md).

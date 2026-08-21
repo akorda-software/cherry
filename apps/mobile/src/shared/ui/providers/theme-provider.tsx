@@ -1,14 +1,19 @@
-import { createContext, type PropsWithChildren, useContext } from "react";
+import { type PropsWithChildren, useEffect } from "react";
 
-import { lightTheme } from "../themes/light-theme";
+import { useThemeStore } from "./theme-store";
 import type { AppTheme } from "../themes/theme-types";
 
-const ThemeContext = createContext<AppTheme>(lightTheme);
+export { useTheme } from "./theme-store";
 
-export function ThemeProvider({ children, theme = lightTheme }: PropsWithChildren<{ theme?: AppTheme }>) {
-  return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
-}
+export function ThemeProvider({
+  children,
+  theme
+}: PropsWithChildren<{ theme?: AppTheme }>) {
+  useEffect(() => {
+    if (theme) {
+      useThemeStore.getState().setTheme(theme);
+    }
+  }, [theme]);
 
-export function useTheme() {
-  return useContext(ThemeContext);
+  return <>{children}</>;
 }

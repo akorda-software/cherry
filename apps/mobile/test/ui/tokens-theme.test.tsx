@@ -41,7 +41,10 @@ function ThemeProbe() {
 describe("token and theme foundation", () => {
   it("exposes primitive catalogs and semantic role keys through the default light theme", () => {
     expect(primitiveColorTokens).toMatchObject({
-      white: "#ffffff",
+      ink: "#1A1A1A",
+      paper: "#FFF8EC",
+      white: "#FFFFFF",
+      blue: expect.any(String),
       slate900: expect.any(String),
       blue600: expect.any(String),
       red600: expect.any(String)
@@ -53,8 +56,11 @@ describe("token and theme foundation", () => {
       body: expect.objectContaining({ fontSize: 16 }),
       title: expect.objectContaining({ fontSize: 28 })
     });
-    expect(primitiveBorderTokens).toMatchObject({ thin: 1, thick: 2 });
-    expect(primitiveElevationTokens).toMatchObject({ raised: 6, overlay: 12 });
+    expect(primitiveBorderTokens).toMatchObject({ thin: 1, thick: 2, bold: 3, heavy: 4 });
+    expect(primitiveElevationTokens).toMatchObject({
+      sm: expect.objectContaining({ shadowRadius: 0, shadowOpacity: 1 }),
+      md: expect.objectContaining({ shadowRadius: 0, shadowOpacity: 1 })
+    });
     expect(primitiveOpacityTokens).toMatchObject({ disabled: 0.5, muted: 0.72 });
     expect(primitiveMotionTokens).toMatchObject({ quick: 120, calm: 220 });
 

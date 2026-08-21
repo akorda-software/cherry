@@ -1,5 +1,5 @@
 import type { AuthCallbackPayload, SessionBundle } from "@snack/contracts";
-import type { AuthProvider } from "@snack/mobile-shared";
+import type { AuthProvider, HttpClient } from "@snack/mobile-shared";
 
 import { createBootstrapSession } from "../application/bootstrap-session";
 import { createCompleteAuthCallback } from "../application/complete-auth-callback";
@@ -8,8 +8,10 @@ import { createSessionManager } from "../application/session-manager";
 import type { SessionShellServices } from "../presentation";
 import { createAppleProvider } from "./apple-provider";
 import { createGoogleProvider } from "./google-provider";
+import { createTestSignInService } from "./test-sign-in-service";
 
 interface AuthDependencies {
+  httpClient: HttpClient;
   storage: {
     read(): Promise<SessionBundle | null>;
     write(session: SessionBundle): Promise<void>;
@@ -46,7 +48,7 @@ interface AuthDependencies {
 }
 
 export function assembleAuthServices(deps: AuthDependencies): SessionShellServices {
-  const { storage, authApi, sessionApi, device, nativeGoogle, nativeApple, navigation } = deps;
+  const { httpClient, storage, authApi, sessionApi, device, nativeGoogle, nativeApple, navigation } = deps;
   const sessionManager = createSessionManager({
     storage,
     sessionApi,
@@ -87,6 +89,8 @@ export function assembleAuthServices(deps: AuthDependencies): SessionShellServic
     sessionApi
   });
 
+  const testSignIn = createTestSignInService({ httpClient, storage });
+
   return {
     bootstrapSession,
     authProviders: {
@@ -98,6 +102,7 @@ export function assembleAuthServices(deps: AuthDependencies): SessionShellServic
       apple: completeAuthApple
     },
     logoutSession,
+    testSignIn,
     executeAuthenticated: sessionManager.executeWithRefresh
   };
 }

@@ -1,6 +1,6 @@
 import type { Subscription } from "@snack/contracts";
 
-import { Button } from "../../../shared/ui";
+import { Button, FormMessage } from "../../../shared/ui";
 import { Card } from "../../../shared/ui";
 import { Screen } from "../../../shared/ui/primitives/screen";
 import { Stack } from "../../../shared/ui/primitives/stack";
@@ -52,7 +52,7 @@ export function BillingScreen({
                 ? `Cancels on ${billingDate}`
                 : `Renews on ${billingDate}`}
           </Text>
-          {error ? <FormMessage tone="critical">{error}</FormMessage> : null}
+          {error ? <FormMessage tone="error">{error}</FormMessage> : null}
           {billingDate !== null &&
           (subscription.status === "canceling" || subscription.cancelAtPeriodEnd) ? (
             <FormMessage tone="info">
@@ -71,5 +71,3 @@ export function BillingScreen({
     </Screen>
   );
 }
-
-import { FormMessage } from "../../../shared/ui";

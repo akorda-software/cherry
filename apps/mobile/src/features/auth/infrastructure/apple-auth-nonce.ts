@@ -1,17 +1,18 @@
 import * as Crypto from "expo-crypto";
 
+type CryptoDigestAlgorithmValue =
+  (typeof Crypto.CryptoDigestAlgorithm)[keyof typeof Crypto.CryptoDigestAlgorithm];
+type CryptoEncodingValue =
+  (typeof Crypto.CryptoEncoding)[keyof typeof Crypto.CryptoEncoding];
+
 interface CryptoModule {
-  CryptoDigestAlgorithm: {
-    SHA256: string;
-  };
-  CryptoEncoding: {
-    HEX: string;
-  };
+  CryptoDigestAlgorithm: { SHA256: CryptoDigestAlgorithmValue };
+  CryptoEncoding: { HEX: CryptoEncodingValue };
   getRandomBytes(length: number): Uint8Array;
   digestStringAsync(
-    algorithm: string,
+    algorithm: CryptoDigestAlgorithmValue,
     data: string,
-    options: { encoding: string }
+    options: { encoding: CryptoEncodingValue }
   ): Promise<string>;
 }
 

@@ -5,6 +5,7 @@ export type AuthProvider = "google" | "apple";
 export interface HttpClient {
   get<TResponse>(path: string): Promise<TResponse>;
   post<TResponse>(path: string, body: unknown): Promise<TResponse>;
+  put<TResponse>(path: string, body: unknown): Promise<TResponse>;
   delete?<TResponse>(path: string, body: unknown): Promise<TResponse>;
 }
 

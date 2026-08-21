@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import * as Crypto from "expo-crypto";
 
 import { createAppleAuthNonce } from "./apple-auth-nonce";
 
@@ -7,8 +8,8 @@ describe("createAppleAuthNonce", () => {
     const digestStringAsync = vi.fn(async () => "hashed-nonce");
 
     const result = await createAppleAuthNonce({
-      CryptoDigestAlgorithm: { SHA256: "sha256" },
-      CryptoEncoding: { HEX: "hex" },
+      CryptoDigestAlgorithm: { SHA256: Crypto.CryptoDigestAlgorithm.SHA256 },
+      CryptoEncoding: { HEX: Crypto.CryptoEncoding.HEX },
       getRandomBytes: vi.fn(() => Uint8Array.from([0x0a, 0x1b, 0x2c])),
       digestStringAsync
     });

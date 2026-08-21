@@ -5,17 +5,20 @@ import Svg, { Path } from "react-native-svg";
 import { Stack, useTheme } from "../../../shared/ui";
 
 interface AuthActionListProps {
-  busyProvider: AuthProvider | null;
+  busyProvider: AuthProvider | "test" | null;
   onSelect(provider: AuthProvider): void;
+  onTest?(): void;
 }
 
-export function AuthActionList({ busyProvider, onSelect }: AuthActionListProps) {
+export function AuthActionList({ busyProvider, onSelect, onTest }: AuthActionListProps) {
   const disabled = busyProvider !== null;
+  const showTestButton = (globalThis as { __DEV__?: boolean }).__DEV__ === true && Boolean(onTest);
 
   return (
     <Stack>
       <GoogleButton disabled={disabled} onPress={() => onSelect("google")} />
       <AppleButton disabled={disabled} onPress={() => onSelect("apple")} />
+      {showTestButton ? <TestButton disabled={disabled} onPress={() => onTest?.()} /> : null}
     </Stack>
   );
 }
@@ -140,5 +143,46 @@ function AppleLogo({ size, color }: { size: number; color: string }) {
         />
       </Svg>
     </View>
+  );
+}
+
+function TestButton({ disabled, onPress }: BrandButtonProps) {
+  const theme = useTheme();
+  const styles = StyleSheet.create({
+    button: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: "transparent",
+      borderColor: theme.primitives.color.mist,
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderRadius: theme.primitives.radius.pill,
+      minHeight: 44,
+      paddingHorizontal: theme.primitives.spacing.md,
+      paddingVertical: theme.primitives.spacing.sm,
+      opacity: disabled ? 0.5 : 1,
+    },
+    label: {
+      color: theme.primitives.color.blue,
+      fontSize: 14,
+      fontWeight: "600",
+      letterSpacing: 0.2,
+    },
+  });
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={() => onPress()}
+      style={({ pressed }) => [
+        styles.button,
+        pressed && !disabled ? { opacity: 0.7 } : null,
+      ]}
+    >
+      <RNText style={styles.label}>Continuar con test</RNText>
+    </Pressable>
   );
 }

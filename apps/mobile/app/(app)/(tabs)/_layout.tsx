@@ -1,28 +1,35 @@
 import { Tabs } from "expo-router";
 import Svg, { Circle, Path } from "react-native-svg";
 
+import { useTheme } from "../../../src/shared/ui";
+
 export default function TabsLayoutRoute() {
+  const theme = useTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#2563eb",
-        tabBarInactiveTintColor: "#64748b",
+        tabBarActiveTintColor: theme.semantic.text.accent,
+        tabBarInactiveTintColor: theme.semantic.text.muted,
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: "600",
+          fontWeight: "700",
         },
         tabBarStyle: {
           height: 62,
           paddingBottom: 8,
           paddingTop: 8,
+          borderTopWidth: theme.primitives.border.heavy,
+          borderColor: theme.primitives.color.ink,
+          backgroundColor: theme.semantic.color.surfaceBackground,
         },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: "Home",
+          title: "Descubrir",
           tabBarIcon: ({ color, focused, size }) => (
             <HomeIcon color={color} filled={focused} size={size} />
           ),

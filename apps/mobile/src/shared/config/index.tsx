@@ -1,21 +1,8 @@
-import { createContext, type PropsWithChildren, useContext, useMemo } from "react";
+import { type PropsWithChildren, useEffect } from "react";
 
-import type { BootstrapConfig } from "@snack/contracts";
-import type { FeatureFlagReader } from "@snack/mobile-shared";
+import { useRuntimeConfigStore } from "./runtime-config-store";
 
-interface RuntimeConfigContextValue {
-  apiBaseUrl: string;
-  bootstrapConfig: BootstrapConfig | null;
-  reader: FeatureFlagReader | null;
-  loading: boolean;
-}
-
-const RuntimeConfigContext = createContext<RuntimeConfigContextValue>({
-  apiBaseUrl: "",
-  bootstrapConfig: null,
-  reader: null,
-  loading: true
-});
+export { useRuntimeConfig, useFeatureFlag } from "./runtime-config-store";
 
 export function RuntimeConfigProvider({
   children,
@@ -25,33 +12,25 @@ export function RuntimeConfigProvider({
   loading
 }: PropsWithChildren<{
   apiBaseUrl: string;
-  bootstrapConfig: BootstrapConfig | null;
-  reader: FeatureFlagReader | null;
+  bootstrapConfig: ReturnType<typeof useRuntimeConfigStore.getState>["bootstrapConfig"];
+  reader: ReturnType<typeof useRuntimeConfigStore.getState>["reader"];
   loading: boolean;
 }>) {
-  const value = useMemo(
-    () => ({
-      apiBaseUrl,
-      bootstrapConfig,
-      reader,
-      loading
-    }),
-    [apiBaseUrl, bootstrapConfig, loading, reader]
-  );
+  useEffect(() => {
+    useRuntimeConfigStore.getState().setRuntimeConfig({ apiBaseUrl });
+  }, [apiBaseUrl]);
 
-  return <RuntimeConfigContext.Provider value={value}>{children}</RuntimeConfigContext.Provider>;
-}
+  useEffect(() => {
+    useRuntimeConfigStore.getState().setRuntimeConfig({ bootstrapConfig });
+  }, [bootstrapConfig]);
 
-export function useRuntimeConfig() {
-  return useContext(RuntimeConfigContext);
-}
+  useEffect(() => {
+    useRuntimeConfigStore.getState().setRuntimeConfig({ reader });
+  }, [reader]);
 
-export function useFeatureFlag(flagKey: string): { enabled: boolean; loading: boolean } {
-  const { reader, loading } = useRuntimeConfig();
+  useEffect(() => {
+    useRuntimeConfigStore.getState().setRuntimeConfig({ loading });
+  }, [loading]);
 
-  if (loading || reader === null) {
-    return { enabled: false, loading: true };
-  }
-
-  return { enabled: reader.isEnabled(flagKey), loading: false };
+  return <>{children}</>;
 }

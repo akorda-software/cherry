@@ -28,7 +28,7 @@ export default (): ExpoConfig => {
     },
     plugins: [
       ...(googleIosUrlScheme
-        ? [["@react-native-google-signin/google-signin", { iosUrlScheme: googleIosUrlScheme }] as const]
+        ? [["@react-native-google-signin/google-signin", { iosUrlScheme: googleIosUrlScheme }] as [string, any]]
         : []),
       ["expo-apple-authentication"],
       "expo-secure-store"

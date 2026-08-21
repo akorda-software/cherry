@@ -109,3 +109,20 @@ export const StyleSheet = {
 };
 
 export const Platform = { OS: "web" as const };
+
+export const Modal = forwardRef<any, any>((props, ref) => {
+  const { visible = true, children, testID, ...rest } = props;
+
+  if (!visible) {
+    return null;
+  }
+
+  const htmlProps = mapRnPropsToProps(rest);
+
+  return h(
+    "div",
+    { ...htmlProps, "data-testid": testID ?? "rn-modal", ref },
+    children
+  );
+});
+Modal.displayName = "Modal";

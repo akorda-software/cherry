@@ -103,6 +103,7 @@ export function createNativeAuthServices({
   });
 
   return assembleAuthServices({
+    httpClient,
     storage,
     authApi,
     sessionApi,

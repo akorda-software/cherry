@@ -1,5 +1,12 @@
 import Config
 
+# Enable dev-only endpoints (test login, etc.)
+config :snack, :enable_dev_test_login, true
+
+# Relax profile completeness rules in dev so onboarding can finish without
+# uploading photos or setting a location (those features are not wired yet).
+config :snack, :strict_profile_completion, false
+
 # Configure your database
 config :snack, Snack.Repo,
   username: "postgres",
@@ -8,18 +15,20 @@ config :snack, Snack.Repo,
   database: "snack_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+  pool_size: 10,
+  types: Snack.PostgresTypes
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #
 # The watchers configuration can be used to run external
-# watchers to your application. For example, we can use it
-# to bundle .js and .css sources.
+# watchers to your application. For example, we can use it to
+# bundle .js and .css sources.
 config :snack, SnackWeb.Endpoint,
-  # Binding to loopback ipv4 address prevents access from other machines.
-  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {127, 0, 0, 1}],
+  # Bind to all interfaces so mobile devices on the same LAN can reach the
+  # dev server (e.g. physical device running the Expo app). Use 127.0.0.1 to
+  # restrict access to the host machine only.
+  http: [ip: {0, 0, 0, 0}, port: 4000],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,

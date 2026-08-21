@@ -6,3 +6,4 @@ export * from "./google-native-adapter";
 export * from "./google-provider";
 export * from "./native-auth-services";
 export * from "./native-device";
+export * from "./test-sign-in-service";

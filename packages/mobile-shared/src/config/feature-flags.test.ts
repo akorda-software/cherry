@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { BootstrapResponse } from "./feature-flags";
+import type { BootstrapConfig } from "@snack/contracts";
 import { createFeatureFlagReader } from "./feature-flags";
 
 describe("createFeatureFlagReader", () => {
   it("reads a subscription flag enabled from the bootstrap response", () => {
-    const bootstrap: BootstrapResponse = {
+    const bootstrap: BootstrapConfig = {
       features: {
         subscriptions: { enabled: true }
       }
@@ -16,7 +16,7 @@ describe("createFeatureFlagReader", () => {
   });
 
   it("returns false when the subscriptions flag is disabled", () => {
-    const bootstrap: BootstrapResponse = {
+    const bootstrap: BootstrapConfig = {
       features: {
         subscriptions: { enabled: false }
       }
@@ -27,7 +27,7 @@ describe("createFeatureFlagReader", () => {
   });
 
   it("returns false for a flag that does not exist in the bootstrap response", () => {
-    const bootstrap: BootstrapResponse = {
+    const bootstrap: BootstrapConfig = {
       features: {}
     };
 
@@ -36,7 +36,7 @@ describe("createFeatureFlagReader", () => {
   });
 
   it("returns false for any unknown flag key", () => {
-    const bootstrap: BootstrapResponse = {
+    const bootstrap: BootstrapConfig = {
       features: {
         subscriptions: { enabled: true }
       }
@@ -47,7 +47,7 @@ describe("createFeatureFlagReader", () => {
   });
 
   it("reads multiple flags independently from the same bootstrap", () => {
-    const bootstrap: BootstrapResponse = {
+    const bootstrap: BootstrapConfig = {
       features: {
         subscriptions: { enabled: true },
         darkMode: { enabled: false }

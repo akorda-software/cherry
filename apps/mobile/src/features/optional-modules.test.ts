@@ -14,7 +14,7 @@ const session = {
     roles: ["member"],
     tier: "free"
   }
-} as const;
+};
 
 describe("optional modules registry", () => {
   it("hides navigation entries when the module feature flag is disabled", () => {

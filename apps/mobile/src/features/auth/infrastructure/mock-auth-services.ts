@@ -52,6 +52,7 @@ export function createMockAuthServices(): SessionShellServices {
       apple: { execute: async () => FAKE_SESSION }
     },
     logoutSession: { execute: async () => undefined },
+    testSignIn: { execute: async () => FAKE_SESSION },
     executeAuthenticated: async (request) => request(FAKE_SESSION.accessToken)
   };
 }

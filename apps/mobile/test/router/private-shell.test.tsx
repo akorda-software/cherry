@@ -1,5 +1,5 @@
 import { fireEvent, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { usePathname } from "expo-router";
 
 import { PrivateLayout } from "../../app/(app)/_layout";
@@ -38,6 +38,8 @@ function AppRouteHost() {
 
 describe("private shell", () => {
   it("renders home content inside the private shell", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+
     renderRoute(
       <AppRouteHost />,
       {
@@ -50,9 +52,11 @@ describe("private shell", () => {
       }
     );
 
-    expect(await screen.findAllByTestId("home-screen")).toHaveLength(1);
-    expect(screen.getByRole("banner")).toHaveTextContent("Home");
-    expect(screen.getByText("Authenticated shell landing content stays feature-owned.")).toBeInTheDocument();
+    expect(await screen.findByTestId("discovery-error")).toBeInTheDocument();
+    expect(screen.getByRole("banner")).toHaveTextContent("Descubrir");
+    expect(screen.getByRole("button", { name: "Reintentar" })).toBeInTheDocument();
+
+    fetchSpy.mockRestore();
   });
 
   it("keeps the private shell boundary reusable around non-tab feature content", async () => {

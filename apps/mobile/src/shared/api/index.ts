@@ -69,6 +69,19 @@ export function createJsonHttpClient({
       return parseResponse<TResponse>(response);
     },
 
+    async put<TResponse>(path: string, body: unknown): Promise<TResponse> {
+      const response = await fetch(buildUrl(path), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...buildHeaders()
+        },
+        body: JSON.stringify(body)
+      });
+
+      return parseResponse<TResponse>(response);
+    },
+
     async delete<TResponse>(path: string, body: unknown): Promise<TResponse> {
       const response = await fetch(buildUrl(path), {
         method: "DELETE",

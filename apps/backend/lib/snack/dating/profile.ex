@@ -29,8 +29,8 @@ defmodule Snack.Dating.Profile do
     has_one(:discovery_preference, DiscoveryPreference)
     has_many(:photos, ProfilePhoto)
     has_one(:location, ProfileLocation)
-    many_to_many(:tags, Snack.Dating.Tag, join_through: "profile_tags")
-    many_to_many(:blocked_tags, Snack.Dating.Tag, join_through: "profile_blocked_tags")
+    many_to_many(:tags, Snack.Dating.Tag, join_through: "profile_tags", on_replace: :delete)
+    many_to_many(:blocked_tags, Snack.Dating.Tag, join_through: "profile_blocked_tags", on_replace: :delete)
 
     timestamps(type: :utc_datetime)
   end

@@ -1,9 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { HttpClient } from "@snack/mobile-shared";
 import type { SessionShellServices } from "../presentation";
 import { assembleAuthServices } from "./auth-assembly";
 
 function createTestDeps() {
+  const httpClient: HttpClient = {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn()
+  };
+
   const storage = {
     read: vi.fn(async () => null),
     write: vi.fn(async () => {}),
@@ -50,6 +57,7 @@ function createTestDeps() {
 
   return {
     deps: {
+      httpClient,
       googleWebClientId: "web-client-id",
       storage,
       authApi,
@@ -59,7 +67,7 @@ function createTestDeps() {
       nativeApple,
       navigation
     },
-    spies: { storage, authApi, sessionApi, device, nativeGoogle, nativeApple, navigation }
+    spies: { httpClient, storage, authApi, sessionApi, device, nativeGoogle, nativeApple, navigation }
   };
 }
 

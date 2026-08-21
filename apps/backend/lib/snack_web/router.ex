@@ -39,6 +39,7 @@ defmodule SnackWeb.Router do
     pipe_through(:api)
 
     post("/auth/:provider/callback", AuthController, :create)
+    post("/auth/dev/test-login", AuthController, :test_login)
     post("/session/refresh", SessionController, :refresh)
     delete("/session", SessionController, :delete)
 
@@ -86,6 +87,12 @@ defmodule SnackWeb.Router do
 
     get("/feed", DiscoveryController, :feed)
     post("/actions", DiscoveryController, :create_action)
+  end
+
+  scope "/api/tags", SnackWeb.Controllers.Api do
+    pipe_through(:authenticated_api)
+
+    get("/", TagController, :index)
   end
 
   scope "/api/matches", SnackWeb.Controllers.Api do

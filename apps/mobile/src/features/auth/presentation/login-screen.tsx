@@ -9,7 +9,7 @@ const homePath = "/(app)/(tabs)/home";
 
 export function LoginScreen() {
   const router = useRouter();
-  const { state, signInWith } = useSessionShell();
+  const { state, signInWith, signInAsTest } = useSessionShell();
 
   useEffect(() => {
     if (state.status === "signed-in") {
@@ -18,6 +18,12 @@ export function LoginScreen() {
   }, [router, state]);
 
   const busyProvider = state.status === "signed-out" ? state.busyProvider : null;
+  const busyLabel =
+    busyProvider === null
+      ? null
+      : busyProvider === "test"
+        ? "Entrando en modo test…"
+        : `Signing in with ${busyProvider === "google" ? "Google" : "Apple"}…`;
 
   return (
     <Screen
@@ -28,8 +34,12 @@ export function LoginScreen() {
         description="Reusable auth access for the current app shell."
         title="Sign in to continue"
       >
-        <AuthActionList busyProvider={busyProvider} onSelect={(provider) => void signInWith(provider)} />
-        {busyProvider ? <FormMessage tone="info">{`Signing in with ${busyProvider === "google" ? "Google" : "Apple"}…`}</FormMessage> : null}
+        <AuthActionList
+          busyProvider={busyProvider}
+          onSelect={(provider) => void signInWith(provider)}
+          onTest={signInAsTest ? () => void signInAsTest() : undefined}
+        />
+        {busyLabel ? <FormMessage tone="info">{busyLabel}</FormMessage> : null}
         {state.status === "signed-out" && state.error ? <FormMessage tone="error">{state.error}</FormMessage> : null}
       </Card>
     </Screen>

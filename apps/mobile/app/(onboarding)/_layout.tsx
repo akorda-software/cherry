@@ -1,10 +1,11 @@
 import type { PropsWithChildren } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
-import { Redirect, Slot } from "expo-router";
+import { Redirect, Slot, usePathname } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAppBootstrap } from "../../src/features/app-bootstrap";
 import { useSessionShell } from "../../src/features/auth/presentation";
+import { OnboardingStepper } from "../../src/features/onboarding";
 import { useTheme } from "../../src/shared/ui/providers/theme-provider";
 
 function OnboardingGuard({ children }: PropsWithChildren) {
@@ -48,11 +49,15 @@ function OnboardingGuard({ children }: PropsWithChildren) {
 
 export default function OnboardingLayoutRoute() {
   const theme = useTheme();
+  const pathname = usePathname();
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.semantic.color.screenBackground }}>
       <OnboardingGuard>
-        <Slot />
+        <View style={{ flex: 1 }}>
+          <OnboardingStepper activePath={pathname} />
+          <Slot />
+        </View>
       </OnboardingGuard>
     </SafeAreaView>
   );

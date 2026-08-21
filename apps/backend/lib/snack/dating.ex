@@ -103,18 +103,27 @@ defmodule Snack.Dating do
   def profile_completion_missing(%Profile{} = profile) do
     profile = Repo.preload(profile, [:photos, :tags, :discovery_preference, :location])
 
-    [
+    strict = Application.get_env(:snack, :strict_profile_completion, true)
+
+    base_checks = [
       {:display_name, present_string?(profile.display_name)},
       {:birth_date, valid_age?(profile)},
       {:gender, profile.gender in Profile.genders()},
       {:what_i_am_looking_for, profile.what_i_am_looking_for in Profile.relationship_intents()},
       {:bio, valid_bio?(profile.bio)},
-      {:photos, valid_photo_count?(profile.photos)},
       {:interested_in, valid_interested_in?(profile.discovery_preference)},
       {:discovery_preferences, valid_discovery_preferences?(profile.discovery_preference)},
-      {:tags, valid_tag_count?(profile.tags)},
-      {:location, profile.location != nil}
+      {:tags, valid_tag_count?(profile.tags)}
     ]
+
+    extra_checks =
+      if strict do
+        [{:photos, valid_photo_count?(profile.photos)}, {:location, profile.location != nil}]
+      else
+        []
+      end
+
+    (base_checks ++ extra_checks)
     |> Enum.reject(fn {_field, valid?} -> valid? end)
     |> Enum.map(fn {field, _valid?} -> field end)
   end
@@ -872,6 +881,16 @@ defmodule Snack.Dating do
                 "ST_Distance(?::geography, ?::geography)",
                 pl.coordinates,
                 ^point
+              ),
+            primary_photo_url:
+              fragment(
+                "(SELECT ph.url FROM profile_photos ph WHERE ph.profile_id = ? AND ph.is_active = true ORDER BY ph.position ASC LIMIT 1)",
+                p.id
+              ),
+            photo_count:
+              fragment(
+                "(SELECT count(*)::int FROM profile_photos ph WHERE ph.profile_id = ? AND ph.is_active = true)",
+                p.id
               )
           }
 

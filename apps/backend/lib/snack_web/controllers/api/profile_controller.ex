@@ -375,7 +375,8 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
       showMen: pref.show_men,
       showWomen: pref.show_women,
       showNonBinary: pref.show_non_binary,
-      compatibleOnly: pref.compatible_only
+      compatibleOnly: pref.compatible_only,
+      discoveryMode: pref.discovery_mode
     }
   end
 

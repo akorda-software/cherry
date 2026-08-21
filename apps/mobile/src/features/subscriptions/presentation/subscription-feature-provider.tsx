@@ -18,12 +18,15 @@ export function SubscriptionFeatureProvider({ children }: PropsWithChildren) {
 
     const httpClient = createJsonHttpClient({
       apiBaseUrl,
-      getHeaders: () =>
-        accessToken === null
-          ? {}
-          : {
-              Authorization: `Bearer ${accessToken}`
-            }
+      getHeaders: () => {
+        const headers: Record<string, string> = {};
+
+        if (accessToken !== null) {
+          headers.Authorization = `Bearer ${accessToken}`;
+        }
+
+        return headers;
+      }
     });
 
     const billingApi = createBillingApi(httpClient);

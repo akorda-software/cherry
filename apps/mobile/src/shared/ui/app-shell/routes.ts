@@ -8,11 +8,15 @@ export const appShellRoutes = {
 } as const;
 
 export const tabItems = [
-  { label: "Home", href: appShellRoutes.home, icon: "⌂" },
+  { label: "Descubrir", href: appShellRoutes.home, icon: "⌂" },
   { label: "Profile", href: appShellRoutes.profile, icon: "👤" }
 ] as const;
 
 export function getShellTitle(pathname: string) {
+  if (pathname === appShellRoutes.home) {
+    return "Descubrir";
+  }
+
   if (pathname === appShellRoutes.profile) {
     return "Profile";
   }

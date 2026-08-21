@@ -76,7 +76,9 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
       distanceLabel: distance_label(candidate.distance_m || 0),
       distanceKmApprox: distance_km_approx,
       score: candidate.score,
-      sharedTagsCount: candidate.shared_tags_count
+      sharedTagsCount: candidate.shared_tags_count,
+      photoUrl: candidate.primary_photo_url,
+      photoCount: candidate.photo_count
     }
   end
 

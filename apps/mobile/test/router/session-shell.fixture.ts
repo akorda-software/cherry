@@ -54,6 +54,7 @@ export function createSessionShellServices(
     logoutSession: {
       execute: async () => undefined
     },
+    testSignIn: { execute: async () => sessionFixture },
     ...overrides
   };
 }

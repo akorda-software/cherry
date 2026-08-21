@@ -16,6 +16,7 @@ defmodule Snack.Dating.DiscoveryPreference do
     field(:show_women, :boolean, default: false)
     field(:show_non_binary, :boolean, default: false)
     field(:compatible_only, :boolean, default: false)
+    field(:discovery_mode, Ecto.Enum, values: [:swipe, :feed], default: :feed)
 
     belongs_to(:profile, Profile)
 
@@ -31,7 +32,8 @@ defmodule Snack.Dating.DiscoveryPreference do
       :show_men,
       :show_women,
       :show_non_binary,
-      :compatible_only
+      :compatible_only,
+      :discovery_mode
     ])
     |> validate_required([:age_min, :age_max, :distance_km])
     |> validate_number(:age_min, greater_than_or_equal_to: 18, less_than_or_equal_to: 100)

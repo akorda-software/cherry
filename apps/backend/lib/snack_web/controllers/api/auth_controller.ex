@@ -1,6 +1,7 @@
 defmodule SnackWeb.Controllers.Api.AuthController do
   use SnackWeb, :controller
 
+  alias Snack.Accounts
   alias Snack.Identity
   alias Snack.Sessions
 
@@ -20,6 +21,30 @@ defmodule SnackWeb.Controllers.Api.AuthController do
     end
   end
 
+  def test_login(conn, params) do
+    if dev_test_login_enabled?() do
+      with {:ok, user} <- Accounts.ensure_test_user(),
+           {:ok, issued} <- Sessions.issue_session(user, normalize_device(params)) do
+        conn
+        |> put_status(:created)
+        |> json(session_payload(issued.session))
+      else
+        {:error, reason} ->
+          conn
+          |> put_status(:internal_server_error)
+          |> json(%{error: Atom.to_string(reason)})
+      end
+    else
+      conn
+      |> put_status(:not_found)
+      |> json(%{error: "dev_test_login_disabled"})
+    end
+  end
+
+  defp dev_test_login_enabled? do
+    Application.get_env(:snack, :enable_dev_test_login, false) in [true, "true"]
+  end
+
   defp normalize_params(params) do
     %{
       provider_token: Map.get(params, "providerToken"),
@@ -34,6 +59,14 @@ defmodule SnackWeb.Controllers.Api.AuthController do
       installation_id: Map.fetch!(device, "installationId"),
       platform: Map.fetch!(device, "platform"),
       device_name: Map.fetch!(device, "deviceName")
+    }
+  end
+
+  defp normalize_device(_params) do
+    %{
+      installation_id: "dev-test-device",
+      platform: "android",
+      device_name: "Dev Test Device"
     }
   end
 

@@ -9,8 +9,13 @@ import { primitiveSpacingTokens } from "../tokens/primitives/spacing";
 import { primitiveTypographyTokens } from "../tokens/primitives/typography";
 import type { AppTheme } from "./theme-types";
 
+/**
+ * Default theme for the app: a neobrutalism palette — warm cream surfaces,
+ * near-black ("ink") thick borders, bright accent fills, and hard offset
+ * shadows (see primitiveElevationTokens).
+ */
 export const lightTheme: AppTheme = {
-  name: "light",
+  name: "neobrutal",
   primitives: {
     color: primitiveColorTokens,
     spacing: primitiveSpacingTokens,
@@ -24,43 +29,43 @@ export const lightTheme: AppTheme = {
   },
   semantic: {
     color: {
-      screenBackground: primitiveColorTokens.slate50,
+      screenBackground: primitiveColorTokens.paper,
       surfaceBackground: primitiveColorTokens.white,
-      surfaceElevatedBackground: primitiveColorTokens.slate100
+      surfaceElevatedBackground: primitiveColorTokens.cloud
     },
     text: {
-      default: primitiveColorTokens.slate900,
-      muted: primitiveColorTokens.slate500,
+      default: primitiveColorTokens.ink,
+      muted: "#5C574A",
       inverse: primitiveColorTokens.white,
-      accent: primitiveColorTokens.blue700
+      accent: primitiveColorTokens.blue
     },
     icon: {
-      default: primitiveColorTokens.slate700,
-      accent: primitiveColorTokens.blue700,
-      muted: primitiveColorTokens.slate500
+      default: primitiveColorTokens.ink,
+      accent: primitiveColorTokens.blue,
+      muted: "#5C574A"
     },
     surface: {
       base: primitiveColorTokens.white,
-      elevated: primitiveColorTokens.slate100,
-      selected: "#dbeafe"
+      elevated: primitiveColorTokens.cloud,
+      selected: primitiveColorTokens.yellow
     },
     border: {
-      subtle: primitiveColorTokens.slate300,
-      strong: primitiveColorTokens.slate700,
-      accent: primitiveColorTokens.blue600
+      subtle: primitiveColorTokens.ink,
+      strong: primitiveColorTokens.ink,
+      accent: primitiveColorTokens.blue
     },
     action: {
-      primaryBackground: primitiveColorTokens.blue600,
+      primaryBackground: primitiveColorTokens.blue,
       primaryForeground: primitiveColorTokens.white,
-      destructiveBackground: primitiveColorTokens.red600,
+      destructiveBackground: primitiveColorTokens.red,
       destructiveForeground: primitiveColorTokens.white,
-      disabledBackground: primitiveColorTokens.slate300,
-      disabledForeground: primitiveColorTokens.slate700
+      disabledBackground: primitiveColorTokens.mist,
+      disabledForeground: primitiveColorTokens.ink
     },
     state: {
-      info: primitiveColorTokens.blue600,
-      success: primitiveColorTokens.emerald600,
-      danger: primitiveColorTokens.red600
+      info: primitiveColorTokens.blue,
+      success: primitiveColorTokens.green,
+      danger: primitiveColorTokens.red
     },
     layout: {
       contentMaxWidth: primitiveSizeTokens.contentMax,

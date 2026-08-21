@@ -26,7 +26,7 @@ Registro de avance del proyecto. Convención: una entrada por unidad de trabajo,
 - [x] Chat WebSocket: canal `chat:{id}` con JWT, reglas de join, `send_message`/`new_message`/`typing`
 - [x] Grid de privacidad 500 m para ubicación; `distanceLabel` generado por backend
 - [x] OpenAPI servido en `/openapi.yaml`
-- [x] Suite backend verde: **215 tests**
+- [x] Suite backend verde: **226 tests**
 
 ## Fase 3 — Contratos mobile-backend v1 ✅
 
@@ -71,3 +71,4 @@ Registro de avance del proyecto. Convención: una entrada por unidad de trabajo,
 - **2026-06-17/18** — Trabajo sin commitear: onboarding móvil (perfil/preferencias/bio/tags), discovery feed con like/dislike, cliente tags, tema neobrutal, campo `discovery_mode` en preferencias, seeds de catálogo de tags (47), endpoint dev test-login.
 - **2026-07-29** — Estandarización de puertos dev (pg=5510) en compose y `.env.example` (commit cdcc62f).
 - **2026-08-21** — Reestructuración de documentación al sistema canónico actual: todo bajo `docs/` (índice numerado 00–11 + `decisions.md` + `progress.md`); material de planificación histórico y metodología openspec retirados (recuperables del historial de git). Auditoría de alineación código↔docs: backend ~95% conforme a contratos v1 (215 tests verdes), móvil ~40% (131 tests + 18 contracts verdes).
+- **2026-08-21** — Cifrado en reposo de mensajes (D-2026-08-21): módulo `Snack.Crypto` (AES-256-GCM, clave en `MESSAGE_ENCRYPTION_KEY`, formato versionado `v1:`), tipo Ecto `Snack.Crypto.Encrypted` aplicado a `messages.body`, migración de backfill para filas legacy (con reversión) y 11 tests nuevos. Suite backend: 226 verdes.

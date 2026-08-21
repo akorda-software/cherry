@@ -6,6 +6,15 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-08-21 — Mensajes persistentes con cifrado en reposo (sin relay puro ni E2EE)
+
+- **Contexto:** La app será open source y sin monetización, así que se evaluó convertir el backend en relay puro de mensajería (sin persistir mensajes; historial solo local en cada dispositivo) como bandera de privacidad. El análisis descartó esa vía: un relay puro pierde mensajes para receptores offline salvo que se implementen colas transitorias con ACKs y purga, además de una store local cifrada en móvil con toda la sincronización asociada; degrada la moderación/safety (reportes sin evidencia del servidor) y rompe el historial al cambiar de dispositivo. E2EE real (protocolo tipo Signal) resuelve lo segundo pero añade gestión de claves multi-dispositivo y backups cifrados: complejidad desproporcionada para v1.
+- **Decisión:** Mantener el modelo actual — Postgres como fuente de historia (REST paginado + canal WS como transporte en vivo), con matches/conversaciones/mensajes persistidos — y añadir **cifrado en reposo** de los cuerpos de mensaje: los `body` se cifran a nivel de aplicación con una clave gestionada fuera de la base de datos (secreto de entorno/KMS); nada de contenido de mensajes en claro en disco ni backups. Las alternativas quedan registradas como rechazadas para v1: relay puro (pérdida de entrega asíncrona y complejidad de colas/ACKs) y E2EE (evolución futura posible, no compromiso). La narrativa de privacidad del proyecto se apoya en política verificable — código auditable, retención declarada, sin venta de datos, sin ads — no en «no guardamos nada».
+- **Motivación:** Mejor producto para el usuario (el historial sobrevive a cambios de dispositivo), safety/moderación intactas y coste mínimo sobre un modelo ya implementado y testeado; el cifrado en reposo neutraliza el escenario de fuga o robo de la base de datos sin tocar contratos ni app.
+- **Referencias:** `docs/04-modelo-datos.md` (tabla `messages`), `docs/05-backend-api.md` (chat REST+WS).
+
+---
+
 ## D-2026-06-18 — Dirección visual «neobrutal» para la app móvil (en curso)
 
 - **Contexto:** El plan visual de dating (plan de pantallas original, recuperable del historial de git) definía una paleta cálida (Cream/Coral/Mint/Lavender) sobre tokens semánticos. El trabajo en curso de onboarding/discovery aplicó en su lugar un tema «neobrutal» con azul `#3A41E0` como primario (`light-theme.ts`, `tokens/primitives/*`, sin commitear).

@@ -1,58 +1,68 @@
-# Snack Starter
+# Snack
 
-Reusable Expo mobile starter for building multiple apps on top of the same foundation.
+App de dating móvil construida sobre un starter reusable (Expo + Phoenix). Monorepo con app móvil Expo, backend Phoenix y paquetes compartidos.
 
-This repository is organized around a stable mobile base:
+> El starter (auth, sesiones, UI, flags, suscripciones) es la base reutilizable; el producto dating se construye encima sin mezclarse en la base.
 
-- Google and Apple native sign-in
-- Session bootstrap and refresh
-- Reusable UI primitives and shell navigation
-- Runtime feature flags
-- Phoenix backend that exposes auth, config, and session APIs for the base starter
-- Optional Stripe subscriptions add-on module
+## Estado del proyecto
 
-## Workspace Layout
+Consultar [`docs/progress.md`](./docs/progress.md) (avance) y [`docs/decisions.md`](./docs/decisions.md) (decisiones relevantes).
 
-- `apps/mobile` — Expo app and reusable mobile feature modules
-- `apps/backend` — Phoenix backend for auth, runtime config, sessions, and optional billing
-- `packages/contracts` — shared request/response contracts between backend and mobile
-- `packages/mobile-shared` — reusable mobile-only API and storage helpers
-- `docs` — starter guides and setup notes
-- `scripts` — test entrypoints and local helper scripts
+Resumen: backend dating completo y conforme a los contratos v1; app móvil con auth, bootstrap routing, onboarding parcial y discovery feed. Pendiente en móvil: location, fotos, matches, chat y safety.
 
-## Core Idea
+## Documentación
 
-Treat this repo as a productized starter, not as a single app.
+Toda la documentación vive en [`docs/`](./docs). Empezar por [`docs/README.md`](./docs/README.md).
 
-- `auth` is part of the base
-- `shared/ui` is part of the base
-- `shared/config` and session management are part of the base
-- `subscriptions` is optional
-- app-specific product logic should be added on top of this base, not mixed into it
+- `docs/00–01` — visión, alcance y requisitos de producto
+- `docs/02–06` — arquitectura, dominio, datos y contratos
+- `docs/07–08` — flujos de usuario e identidad visual
+- `docs/09–11` — pruebas, plan de fases y deuda técnica
+- `docs/decisions.md` — decisiones significativas con fecha y contexto
+- `docs/progress.md` — avance del proyecto
 
-When the `subscriptions` flag is disabled, the shell behaves as if the subscription module does not exist.
+## Estructura del monorepo
 
-## Quick Start
+```
+snack/
+├── apps/
+│   ├── mobile/            # App Expo (Expo Router): starter + features de dating
+│   └── backend/           # Phoenix: auth, sesiones, config, dating, billing opcional
+├── packages/
+│   ├── contracts/         # DTOs compartidos backend ↔ móvil
+│   └── mobile-shared/     # Clientes API, storage seguro y helpers móviles reutilizables
+├── docs/                  # Documentación canónica del proyecto
+├── infra/                 # docker-compose (Postgres+PostGIS dev)
+└── scripts/               # Entradas de test (test-mobile.sh / test-backend.sh)
+```
 
-1. Install dependencies with `pnpm install`
-2. Use `apps/mobile/.env.example` and `apps/backend/.env.example` as templates for local env vars
-3. Start backend setup in `apps/backend` with `mix setup`
-4. Run backend tests with `pnpm test:backend`
-5. Run mobile and contracts tests with `pnpm test:mobile`
-6. Start the Phoenix API from `apps/backend`
-7. Start the Expo app from `apps/mobile`
+## Inicio rápido
 
-## Test Commands
+```bash
+pnpm install
 
-- `pnpm test`
-- `pnpm test:mobile`
-- `pnpm test:backend`
-- `pnpm test:contracts`
+# Backend (requiere Postgres+PostGIS; ver docs/09 para el entorno)
+cd apps/backend && mix setup && mix phx.server
 
-## Documentation
+# Móvil
+cd apps/mobile && pnpm start
+```
 
-- `docs/starter-guide.md` — how to use this repo as a reusable starter
-- `apps/mobile/README.md` — mobile architecture and runtime bootstrap
-- `apps/backend/README.md` — backend responsibilities and runtime config
-- `packages/contracts/README.md` — shared contract boundaries
-- `packages/mobile-shared/README.md` — reusable mobile helpers
+Variables de entorno: usar `apps/*/. env.example` como plantilla.
+
+## Tests
+
+```bash
+pnpm test              # todo (móvil + backend)
+pnpm test:mobile       # typecheck + mobile-shared + mobile + contracts
+pnpm test:backend      # mix test (requiere Postgres+PostGIS en localhost:5432)
+pnpm test:contracts    # solo contracts
+```
+
+## Estado de verificación
+
+Cifras a agosto de 2026; las vivas están en [`docs/progress.md`](./docs/progress.md).
+
+- Backend: **215 tests** verdes (`mix test`, Postgres 17 + PostGIS).
+- Móvil: **131 tests** verdes (vitest) + typecheck limpio.
+- Contracts: **18 tests** verdes.

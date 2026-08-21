@@ -20,3 +20,4 @@ apps/mobile/android/
 apps/mobile/.env
 apps/mobile/.env.local
 apps/mobile/.env.*.local
+.claude/

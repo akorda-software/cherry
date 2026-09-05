@@ -9,6 +9,7 @@ defmodule Snack.Accounts.User do
   schema "users" do
     field(:email, :string)
     field(:display_name, :string)
+    field(:deleted_at, :utc_datetime)
 
     timestamps(type: :utc_datetime)
   end

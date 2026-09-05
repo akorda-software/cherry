@@ -3,6 +3,20 @@ defmodule SnackWeb.ChatChannel do
 
   alias Snack.Dating
 
+  intercept(["new_message", "typing"])
+
+  @impl true
+  def handle_out(event, payload, socket) when event in ["new_message", "typing"] do
+    if Dating.conversation_allows_messaging?(
+         socket.assigns.conversation_id,
+         socket.assigns.profile_id
+       ) do
+      push(socket, event, payload)
+    end
+
+    {:noreply, socket}
+  end
+
   @impl true
   def join("chat:" <> conversation_id, _payload, socket) do
     profile_id = socket.assigns.profile_id

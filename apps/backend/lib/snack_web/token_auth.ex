@@ -22,7 +22,8 @@ defmodule SnackWeb.TokenAuth do
   @spec fetch_user(map()) :: {:ok, struct()} | {:error, atom()}
   def fetch_user(%{sub: user_id}) do
     case Accounts.get_user!(user_id) do
-      user -> {:ok, user}
+      %{deleted_at: nil} = user -> {:ok, user}
+      _user -> {:error, :account_deleted}
     end
   rescue
     Ecto.NoResultsError -> {:error, :user_not_found}

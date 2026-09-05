@@ -26,8 +26,8 @@ defmodule SnackWeb.Controllers.Api.SettingsController do
 
     if profile do
       case Dating.unpause_profile(profile) do
-        {:ok, _} ->
-          Dating.set_profile_complete(profile)
+        {:ok, updated_profile} ->
+          Dating.set_profile_complete(updated_profile)
           json(conn, %{ok: true})
 
         {:error, changeset} ->
@@ -41,20 +41,12 @@ defmodule SnackWeb.Controllers.Api.SettingsController do
   end
 
   def delete_account(conn, _params) do
-    profile = conn.assigns.current_profile
+    case Snack.Accounts.delete_account(conn.assigns.current_user) do
+      {:ok, _} ->
+        json(conn, %{ok: true})
 
-    if profile do
-      case Dating.delete_profile(profile) do
-        {:ok, _} ->
-          json(conn, %{ok: true})
-
-        {:error, changeset} ->
-          conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
-      end
-    else
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "profile_not_found"})
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
     end
   end
 

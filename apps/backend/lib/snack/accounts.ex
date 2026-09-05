@@ -1,6 +1,8 @@
 defmodule Snack.Accounts do
   @moduledoc false
 
+  import Ecto.Query
+
   alias Snack.Accounts.User
   alias Snack.Repo
 
@@ -11,6 +13,29 @@ defmodule Snack.Accounts do
   end
 
   def get_user!(id), do: Repo.get!(User, id)
+
+  @doc "Deactivates an account and all its credentials atomically; retains records for now."
+  def delete_account(%User{id: user_id}) do
+    Repo.transaction(fn ->
+      user = Repo.one!(from u in User, where: u.id == ^user_id, lock: "FOR UPDATE")
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      Repo.update!(Ecto.Changeset.change(user, deleted_at: user.deleted_at || now))
+
+      from(p in Snack.Dating.Profile, where: p.user_id == ^user_id)
+      |> Repo.update_all(set: [deleted_at: now, is_discoverable: false, is_paused: true])
+
+      Snack.Sessions.revoke_user_sessions(user_id)
+      :ok
+    end)
+    |> case do
+      {:ok, :ok} ->
+        SnackWeb.Endpoint.broadcast("user_socket:#{user_id}", "disconnect", %{})
+        {:ok, :deleted}
+
+      error ->
+        error
+    end
+  end
 
   @test_user_email "test@snack.app"
 

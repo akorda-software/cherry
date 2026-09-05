@@ -65,7 +65,12 @@ tags = [
   %{slug: "wants_kids", label: "Quiero tener hijos", category: "relationship", sort_order: 44},
   %{slug: "childfree", label: "No quiero hijos", category: "relationship", sort_order: 45},
   %{slug: "monogamous", label: "Monogamia", category: "relationship", sort_order: 46},
-  %{slug: "open_relationship", label: "Relación abierta", category: "relationship", sort_order: 47}
+  %{
+    slug: "open_relationship",
+    label: "Relación abierta",
+    category: "relationship",
+    sort_order: 47
+  }
 ]
 
 active_slugs = Enum.map(tags, & &1.slug)

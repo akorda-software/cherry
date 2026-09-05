@@ -125,29 +125,6 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     end
   end
 
-  def create_photo(conn, params) do
-    profile = conn.assigns.current_profile
-
-    if profile do
-      attrs = Map.put(params, "profile_id", profile.id)
-
-      case Dating.create_photo(attrs) do
-        {:ok, photo} ->
-          Dating.sync_completed_profile_state(profile)
-          json(conn, %{photo: serialize_photo(photo)})
-
-        {:error, changeset} ->
-          conn
-          |> put_status(:unprocessable_entity)
-          |> json(%{errors: format_errors(changeset)})
-      end
-    else
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "profile_not_found"})
-    end
-  end
-
   def create_photo_upload_intent(conn, params) do
     profile = conn.assigns.current_profile
 
@@ -187,6 +164,9 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
           Dating.sync_completed_profile_state(profile)
           json(conn, %{photo: serialize_photo(photo)})
 
+        {:error, reason} when reason in [:storage_not_configured, :storage_unavailable] ->
+          conn |> put_status(:service_unavailable) |> json(%{error: reason})
+
         {:error, :upload_intent_not_found} ->
           conn
           |> put_status(:not_found)
@@ -198,6 +178,10 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
                :upload_intent_expired,
                :upload_url_mismatch,
                :upload_content_type_mismatch,
+               :upload_object_not_found,
+               :upload_object_changed,
+               :upload_size_mismatch,
+               :upload_invalid_image,
                :too_many_photos,
                :photo_position_taken
              ] ->

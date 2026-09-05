@@ -11,6 +11,32 @@ defmodule SnackWeb.Controllers.Api.ProfileControllerTest do
     original_r2_config = Application.get_env(:snack, Snack.Storage.R2)
     Application.put_env(:snack, Snack.Storage.R2, r2_test_config())
     on_exit(fn -> Application.put_env(:snack, Snack.Storage.R2, original_r2_config) end)
+    config = Application.get_env(:snack, Snack.Storage.R2)
+
+    Application.put_env(
+      :snack,
+      Snack.Storage.R2,
+      Keyword.put(config, :request_options, plug: {Req.Test, Snack.Storage.R2})
+    )
+
+    Req.Test.stub(Snack.Storage.R2, fn conn ->
+      conn =
+        conn
+        |> Plug.Conn.put_resp_header("content-type", "image/jpeg")
+        |> Plug.Conn.put_resp_header("etag", "\"test-object\"")
+
+      case conn.method do
+        "HEAD" ->
+          conn
+          |> Plug.Conn.put_resp_header("content-length", "420000")
+          |> Plug.Conn.send_resp(200, "")
+
+        "GET" ->
+          conn
+          |> Plug.Conn.put_resp_header("content-range", "bytes 0-31/420000")
+          |> Plug.Conn.send_resp(206, <<255, 216, 255, 224, 0::224>>)
+      end
+    end)
 
     {:ok, user} =
       Accounts.create_user(%{email: "profile_ctrl@example.com", display_name: "Profile Ctrl"})
@@ -184,7 +210,7 @@ defmodule SnackWeb.Controllers.Api.ProfileControllerTest do
                "uploadUrl" => upload_url,
                "publicUrl" => public_url,
                "method" => "PUT",
-               "headers" => %{"Content-Type" => "image/jpeg"},
+               "headers" => %{"Content-Type" => "image/jpeg", "If-None-Match" => "*"},
                "maxBytes" => 2_000_000
              } = json_response(conn, 200)
 
@@ -192,6 +218,10 @@ defmodule SnackWeb.Controllers.Api.ProfileControllerTest do
       assert String.ends_with?(storage_key, ".jpg")
       assert String.contains?(upload_url, "test-account.r2.cloudflarestorage.com/test-bucket/")
       assert String.contains?(upload_url, "X-Amz-Signature=")
+
+      assert URI.decode_query(URI.parse(upload_url).query)["X-Amz-SignedHeaders"] ==
+               "content-type;host;if-none-match"
+
       assert public_url == "https://cdn.example.test/#{storage_key}"
 
       intent = Repo.get_by!(ProfilePhotoUploadIntent, storage_key: storage_key)
@@ -214,6 +244,42 @@ defmodule SnackWeb.Controllers.Api.ProfileControllerTest do
   end
 
   describe "POST /api/me/photos/complete" do
+    for {scenario, expected_error} <- [
+          {:missing, "upload_object_not_found"},
+          {:size, "upload_size_mismatch"},
+          {:mime, "upload_content_type_mismatch"},
+          {:content, "upload_invalid_image"},
+          {:unavailable, "storage_unavailable"}
+        ] do
+      @scenario scenario
+      @expected_error expected_error
+      @status if(scenario == :unavailable, do: 503, else: 422)
+      test "rejects an upload with #{@scenario} storage data", %{
+        authed_conn: conn,
+        profile: profile
+      } do
+        scenario = @scenario
+        stub_invalid_upload(scenario)
+
+        {:ok, upload} =
+          Dating.create_photo_upload_intent(profile, %{
+            position: 1,
+            content_type: "image/jpeg",
+            size_bytes: 420_000
+          })
+
+        assert %{"error" => @expected_error} =
+                 conn
+                 |> post("/api/me/photos/complete", %{"storageKey" => upload.storage_key})
+                 |> json_response(@status)
+
+        refute Repo.get_by(Dating.ProfilePhoto, storage_key: upload.storage_key)
+
+        assert Repo.get_by!(ProfilePhotoUploadIntent, storage_key: upload.storage_key).completed_at ==
+                 nil
+      end
+    end
+
     test "completes an upload intent and creates photo metadata", %{
       authed_conn: conn,
       profile: profile
@@ -245,6 +311,12 @@ defmodule SnackWeb.Controllers.Api.ProfileControllerTest do
 
       assert Repo.get_by!(ProfilePhotoUploadIntent, storage_key: upload.storage_key).completed_at !=
                nil
+
+      assert %{"error" => "upload_intent_completed"} =
+               conn
+               |> recycle()
+               |> post("/api/me/photos/complete", %{"storageKey" => upload.storage_key})
+               |> json_response(422)
     end
 
     test "rejects unknown upload intent", %{authed_conn: conn} do
@@ -278,6 +350,36 @@ defmodule SnackWeb.Controllers.Api.ProfileControllerTest do
       updated = Repo.get!(Dating.Profile, profile.id)
       assert updated.deleted_at != nil
     end
+  end
+
+  defp stub_invalid_upload(scenario) do
+    Req.Test.stub(Snack.Storage.R2, fn conn ->
+      cond do
+        scenario == :missing ->
+          Plug.Conn.send_resp(conn, 404, "")
+
+        scenario == :unavailable ->
+          Plug.Conn.send_resp(conn, 503, "")
+
+        conn.method == "HEAD" ->
+          conn
+          |> Plug.Conn.put_resp_header(
+            "content-length",
+            if(scenario == :size, do: "999", else: "420000")
+          )
+          |> Plug.Conn.put_resp_header(
+            "content-type",
+            if(scenario == :mime, do: "text/html", else: "image/jpeg")
+          )
+          |> Plug.Conn.put_resp_header("etag", "\"test-object\"")
+          |> Plug.Conn.send_resp(200, "")
+
+        true ->
+          conn
+          |> Plug.Conn.put_resp_header("content-range", "bytes 0-31/420000")
+          |> Plug.Conn.send_resp(206, "<html>not an image</html>")
+      end
+    end)
   end
 
   defp authed_conn_without_profile do

@@ -35,6 +35,13 @@ defmodule SnackWeb.Router do
     get("/", PageController, :home)
   end
 
+  scope "/", SnackWeb do
+    pipe_through(:api)
+
+    get("/healthz", HealthController, :healthz)
+    get("/readyz", HealthController, :readyz)
+  end
+
   scope "/api", SnackWeb.Controllers.Api do
     pipe_through(:api)
 
@@ -65,7 +72,6 @@ defmodule SnackWeb.Router do
     get("/photos", ProfileController, :list_photos)
     post("/photos/upload-intent", ProfileController, :create_photo_upload_intent)
     post("/photos/complete", ProfileController, :complete_photo_upload)
-    post("/photos", ProfileController, :create_photo)
     delete("/photos/:id", ProfileController, :delete_photo)
 
     get("/tags", ProfileController, :get_tags)

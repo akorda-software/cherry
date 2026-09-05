@@ -46,6 +46,8 @@ if System.get_env("PHX_SERVER") do
   config :snack, SnackWeb.Endpoint, server: true
 end
 
+config :snack, :app_version, System.get_env("APP_VERSION", "dev")
+
 config :snack, SnackWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 subscriptions_enabled? = System.get_env("ENABLE_SUBSCRIPTIONS") == "true"

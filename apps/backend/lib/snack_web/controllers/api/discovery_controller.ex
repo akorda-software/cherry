@@ -9,15 +9,15 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
     if profile do
       if profile.is_complete && profile.is_discoverable && !profile.is_paused &&
            is_nil(profile.deleted_at) do
-        limit = String.to_integer(Map.get(params, "limit", "20"))
-        cursor = parse_cursor(Map.get(params, "cursor"))
-
-        case Dating.discovery_feed(profile.id, limit: limit, cursor: cursor) do
-          {:ok, %{profiles: profiles, next_cursor: next_cursor}} ->
-            json(conn, %{
-              profiles: Enum.map(profiles, &serialize_card/1),
-              nextCursor: format_cursor(next_cursor)
-            })
+        with {:ok, limit} <- SnackWeb.Pagination.limit(params, 20),
+             {:ok, %{profiles: profiles, next_cursor: next_cursor}} <-
+               Dating.discovery_feed(profile.id, limit: limit, cursor: Map.get(params, "cursor")) do
+          json(conn, %{
+            profiles: Enum.map(profiles, &serialize_card/1),
+            nextCursor: next_cursor
+          })
+        else
+          {:error, reason} -> conn |> put_status(:unprocessable_entity) |> json(%{error: reason})
         end
       else
         conn
@@ -128,18 +128,6 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
       }
     }
   end
-
-  defp parse_cursor(nil), do: nil
-
-  defp parse_cursor(str) do
-    case DateTime.from_iso8601(str) do
-      {:ok, dt, _} -> dt
-      _ -> nil
-    end
-  end
-
-  defp format_cursor(nil), do: nil
-  defp format_cursor(dt), do: DateTime.to_iso8601(dt)
 
   defp format_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->

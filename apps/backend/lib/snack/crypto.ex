@@ -47,7 +47,9 @@ defmodule Snack.Crypto do
 
     {:ok,
      @prefix <>
-       Base.encode64(<<nonce::binary-size(@nonce_bytes), ciphertext::binary, tag::binary-size(@tag_bytes)>>)}
+       Base.encode64(
+         <<nonce::binary-size(@nonce_bytes), ciphertext::binary, tag::binary-size(@tag_bytes)>>
+       )}
   end
 
   def encrypt!(plaintext) do

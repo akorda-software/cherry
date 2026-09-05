@@ -1,6 +1,8 @@
 # Infrastructure
 
-Local development services for the monorepo live here.
+Documentación y servicios de infraestructura del monorepo.
+
+- `docker-compose.yml`: servicios de desarrollo local descritos debajo.
 
 ## Services
 
@@ -38,4 +40,4 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 ## Ports
 
-- `5432` — Postgres
+- `5510` en el host → `5432` en el contenedor — Postgres de desarrollo (configuración de `docker-compose.yml`).

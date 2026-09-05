@@ -2,7 +2,14 @@
 
 Registro de decisiones **significativas** de producto y tecnología (no de implementaciones concretas). Cada entrada: fecha, contexto, decisión y motivación. Las decisiones que cambien contratos o rumbo se reflejan también en `docs/`.
 
-Convención: una decisión por entrada, orden cronológico inverso. Solo se anota lo que cambia el rumbo o fija un rumbo importante. Cuando una decisión sustituye a otra, se indica explícitamente; el histórico completo vive aquí, no en `docs/` (que describe solo lo implementado hoy).
+Convención: una decisión por entrada, orden cronológico inverso. Solo se anota lo que cambia el rumbo o fija un rumbo importante. Cuando una decisión sustituye a otra, se indica explícitamente; el histórico completo vive aquí, no en `docs/` (que describe solo lo implementado hoy). Si este archivo crece demasiado, evoluciona a carpeta `docs/decisions/` con un archivo por decisión.
+
+---
+
+## D-2026-09-04 — Despliegue del backend: imagen inmutable, migraciones al arrancar y una réplica
+
+- **Decisión:** el backend se publica como imagen Docker inmutable por commit (`ghcr.io/<repo>-backend:<sha>`, con `APP_VERSION` horneada), construida en CI; el servidor solo la descarga. `/healthz` (liveness, devuelve `version`) y `/readyz` (ping a la BD) permiten comprobar que corre exactamente la versión esperada. Las migraciones corren al arrancar, con el lock siempre activo y expand/contract; nunca `ecto.rollback` en producción (se redespliega N−1). Una réplica sin distribución Erlang hasta que haga falta escalar: sin clustering, el PubSub del chat no cruza nodos.
+- **Motivación:** despliegues reproducibles y verificables, y vuelta atrás cambiando solo la imagen. Las [reglas de migraciones](./04-modelo-datos.md#reglas-de-migraciones) concretan cómo mantener la compatibilidad.
 
 ---
 
@@ -113,3 +120,10 @@ Fijadas en el foundation de producto dating (2026-04-28, recuperable del histori
 - Likes ilimitados (sin caps de monetización) con protección anti-abuso técnica.
 - Compatibilidad pesa más que distancia; la distancia se expande gradualmente si hay poca oferta; jamás se ignoran blocked tags ni compatibilidad de género.
 - Boost temporal controlado para usuarios nuevos.
+
+## D-2026-09-05 — Correcciones de acceso, discovery y fotos
+
+- El borrado de cuenta sigue siendo lógico: `users.deleted_at`, perfil oculto, sesiones/refresh/push revocados y sockets desconectados. Un bloqueo impide mensajear en ambas direcciones, incluidas conexiones abiertas.
+- Discovery puntúa en PostgreSQL y pagina por `(score DESC, id ASC)`. Cursor firmado y ligado al usuario (1 h); exploración determinista por pareja. Se mantiene el DTO `nextCursor: string | null` y los filtros se vuelven a evaluar por petición.
+- Fotos: firma de `Content-Type` e `If-None-Match: *`, verificación autenticada de existencia/tamaño/MIME/cabecera y lectura condicionada por ETag. Se retira la creación directa de metadatos por REST. La migración de fotos caduca intents antiguos pendientes para exigir URLs que no permitan sobrescritura.
+- El despliegue requiere ambas migraciones `20260905170000` y `20260905170100`. La primera desactiva también cuentas cuyos perfiles ya estaban borrados; la segunda obliga a repetir las subidas pendientes antiguas. No se purgan datos ni se reactiva ninguna credencial al revertir las migraciones.

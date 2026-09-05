@@ -26,10 +26,13 @@ defmodule SnackWeb.Controllers.Api.ChatController do
       conversation = Dating.get_conversation(conversation_id)
 
       if conversation && participant?(conversation, profile.id) do
-        limit = String.to_integer(Map.get(params, "limit", "50"))
-        cursor = parse_cursor(Map.get(params, "cursor"))
-        msgs = Dating.list_messages(conversation_id, limit: limit, cursor: cursor)
-        json(conn, %{messages: Enum.map(msgs, &serialize_message/1)})
+        with {:ok, limit} <- SnackWeb.Pagination.limit(params, 50),
+             {:ok, cursor} <- parse_cursor(Map.get(params, "cursor")) do
+          msgs = Dating.list_messages(conversation_id, limit: limit, cursor: cursor)
+          json(conn, %{messages: Enum.map(msgs, &serialize_message/1)})
+        else
+          {:error, reason} -> conn |> put_status(:unprocessable_entity) |> json(%{error: reason})
+        end
       else
         conn
         |> put_status(:forbidden)
@@ -108,14 +111,16 @@ defmodule SnackWeb.Controllers.Api.ChatController do
     }
   end
 
-  defp parse_cursor(nil), do: nil
+  defp parse_cursor(nil), do: {:ok, nil}
 
-  defp parse_cursor(str) do
+  defp parse_cursor(str) when is_binary(str) do
     case DateTime.from_iso8601(str) do
-      {:ok, dt, _} -> dt
-      _ -> nil
+      {:ok, dt, _} -> {:ok, dt}
+      _ -> {:error, :invalid_cursor}
     end
   end
+
+  defp parse_cursor(_), do: {:error, :invalid_cursor}
 
   defp format_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->

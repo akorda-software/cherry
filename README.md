@@ -32,7 +32,7 @@ snack/
 │   ├── contracts/         # DTOs compartidos backend ↔ móvil
 │   └── mobile-shared/     # Clientes API, storage seguro y helpers móviles reutilizables
 ├── docs/                  # Documentación canónica del proyecto
-├── infra/                 # docker-compose (Postgres+PostGIS dev)
+├── infra/                 # arquitectura home server (arquitectura.md), deploy (deploy/) y compose dev
 └── scripts/               # Entradas de test (test-mobile.sh / test-backend.sh)
 ```
 

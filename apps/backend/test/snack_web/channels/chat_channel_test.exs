@@ -117,6 +117,45 @@ defmodule SnackWeb.ChatChannelTest do
   end
 
   describe "send_message event" do
+    test "an existing socket cannot send or type after either participant blocks", ctx do
+      {:ok, _, socket_a} = connect_and_join(ctx.token_a, ctx.conversation.id)
+      {:ok, _, socket_b} = connect_and_join(ctx.token_b, ctx.conversation.id)
+
+      {:ok, _} =
+        Dating.block_profile(%{
+          actor_profile_id: ctx.profile_a.id,
+          target_profile_id: ctx.profile_b.id
+        })
+
+      for socket <- [socket_a, socket_b] do
+        ref = push(socket, "send_message", %{"body" => "Blocked"})
+        assert_reply ref, :error, %{reason: "conversation_not_active"}
+        push(socket, "typing", %{})
+      end
+
+      refute_receive %Phoenix.Socket.Message{event: "typing"}
+      assert Dating.list_messages(ctx.conversation.id) == []
+
+      assert {:error, %{reason: "conversation_not_active"}} =
+               connect_and_join(ctx.token_b, ctx.conversation.id)
+    end
+
+    test "queued broadcasts are not delivered after a block", ctx do
+      {:ok, _, _socket} = connect_and_join(ctx.token_a, ctx.conversation.id)
+
+      {:ok, _} =
+        Dating.block_profile(%{
+          actor_profile_id: ctx.profile_a.id,
+          target_profile_id: ctx.profile_b.id
+        })
+
+      SnackWeb.Endpoint.broadcast("chat:#{ctx.conversation.id}", "new_message", %{
+        body: "In flight"
+      })
+
+      refute_receive %Phoenix.Socket.Message{event: "new_message"}
+    end
+
     test "broadcasts message to other participant", %{
       conversation: conversation,
       token_a: token_a,
@@ -148,6 +187,9 @@ defmodule SnackWeb.ChatChannelTest do
           insertedAt: %DateTime{}
         }
       }
+
+      # Both joined sockets receive the broadcast; drain both before sandbox teardown.
+      assert_receive %Phoenix.Socket.Message{event: "new_message"}
     end
 
     test "persists message in database", %{
@@ -159,6 +201,7 @@ defmodule SnackWeb.ChatChannelTest do
 
       ref = push(socket, "send_message", %{"body" => "Persisted message"})
       assert_reply ref, :ok, _
+      assert_receive %Phoenix.Socket.Message{event: "new_message"}
 
       msgs = Dating.list_messages(conversation.id)
       assert Enum.any?(msgs, &(&1.body == "Persisted message"))

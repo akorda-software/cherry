@@ -1,6 +1,12 @@
 # Infrastructure
 
-Local development services for the monorepo live here.
+Documentación y servicios de infraestructura del monorepo.
+
+- [Arquitectura del servidor propio](arquitectura.md): VMs, red, recursos y acuerdos de disponibilidad/backups.
+- [Runbook de despliegue](deploy/README.md): pasos pendientes para Dokploy, PostgreSQL, CI y primeras pruebas.
+- `docker-compose.yml`: servicios de desarrollo local descritos debajo.
+
+**Estado inicial acordado (2026-09-05):** una réplica y despliegues `stop-first` con interrupciones aceptadas; backups previstos en SATA local de ~1 TB y R2; sin servidor de reserva. Ventilador del PM1735 pedido: instalarlo y comprobar temperatura antes del despliegue y las pruebas sostenidas. R2 y backups se configurarán más adelante.
 
 ## Services
 
@@ -38,4 +44,4 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 ## Ports
 
-- `5432` — Postgres
+- `5510` en el host → `5432` en el contenedor — Postgres de desarrollo (configuración de `docker-compose.yml`).

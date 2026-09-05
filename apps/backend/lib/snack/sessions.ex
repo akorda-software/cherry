@@ -15,6 +15,12 @@ defmodule Snack.Sessions do
     current_time = now()
 
     Multi.new()
+    |> Multi.run(:active_user, fn repo, _changes ->
+      case repo.one(from u in User, where: u.id == ^user.id, lock: "FOR UPDATE") do
+        %User{deleted_at: nil} = active_user -> {:ok, active_user}
+        _ -> {:error, :account_deleted}
+      end
+    end)
     |> Multi.run(:device, fn repo, _changes ->
       upsert_device(repo, user, device_attrs, current_time)
     end)
@@ -46,6 +52,10 @@ defmodule Snack.Sessions do
     cond do
       is_nil(token) ->
         {:error, :invalid_refresh_token}
+
+      token.session_family.user.deleted_at != nil ->
+        revoke_family(token.session_family_id)
+        {:error, :account_deleted}
 
       token.status == "rotated" ->
         revoke_family(token.session_family_id)
@@ -82,6 +92,20 @@ defmodule Snack.Sessions do
   end
 
   def active_session_family?(_session_family_id, _user_id), do: false
+
+  def revoke_user_sessions(user_id) do
+    revoked_at = now()
+    families = from(s in SessionFamily, where: s.user_id == ^user_id)
+    Repo.update_all(families, set: [revoked_at: revoked_at])
+
+    from(r in RefreshToken, where: r.session_family_id in subquery(select(families, [s], s.id)))
+    |> Repo.update_all(set: [status: "revoked", revoked_at: revoked_at])
+
+    from(p in PushToken, where: p.user_id == ^user_id)
+    |> Repo.update_all(set: [status: "inactive", disabled_at: revoked_at])
+
+    :ok
+  end
 
   def register_push_token(%User{} = user, session_family_id, attrs) do
     with {:ok, normalized_attrs} <- normalize_push_token_attrs(attrs),

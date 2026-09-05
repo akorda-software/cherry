@@ -230,29 +230,6 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Photo'
-    post:
-      tags: [Profile]
-      summary: Create photo metadata directly.
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PhotoCreateRequest'
-      responses:
-        '200':
-          description: Created photo.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  photo:
-                    $ref: '#/components/schemas/Photo'
-        '422':
-          $ref: '#/components/responses/ValidationError'
   /api/me/photos/upload-intent:
     post:
       tags: [Profile]
@@ -281,7 +258,7 @@ paths:
   /api/me/photos/complete:
     post:
       tags: [Profile]
-      summary: Complete a direct photo upload and persist metadata.
+      summary: Verify the stored image and complete a direct photo upload.
       security:
         - bearerAuth: []
       requestBody:
@@ -300,6 +277,8 @@ paths:
                 properties:
                   photo:
                     $ref: '#/components/schemas/Photo'
+        '503':
+          description: Storage unavailable; retry completion without creating a new intent.
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
@@ -463,7 +442,8 @@ paths:
   /api/me/account:
     delete:
       tags: [Settings]
-      summary: Soft-delete the current profile/account presence.
+      summary: Deactivate the account, hide the profile and revoke all sessions.
+      description: Works before onboarding too. Records are retained; future logins to this account are denied.
       security:
         - bearerAuth: []
       responses:
@@ -482,12 +462,14 @@ paths:
           schema:
             type: integer
             default: 20
+            minimum: 1
+            maximum: 100
         - name: cursor
           in: query
           required: false
           schema:
             type: string
-            format: date-time
+            description: Opaque signed cursor from nextCursor, scoped to the viewer, valid for one hour.
       responses:
         '200':
           description: Discovery cards.
@@ -495,6 +477,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DiscoveryFeedResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
         '403':
           $ref: '#/components/responses/Forbidden'
   /api/discovery/actions:
@@ -1284,7 +1268,7 @@ components:
             $ref: '#/components/schemas/DiscoveryCard'
         nextCursor:
           type: string
-          format: date-time
+          description: Opaque cursor; send unchanged for the next page.
           nullable: true
     DiscoveryCard:
       type: object

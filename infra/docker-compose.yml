@@ -1,3 +1,7 @@
+# Nombre de proyecto explícito: evita que el nombre derive de la carpeta
+# (norma de ~/dev/projects/PUERTOS.md).
+name: snack
+
 services:
   mobile:
     image: node:24.11-alpine

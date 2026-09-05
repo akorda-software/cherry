@@ -2,7 +2,39 @@
 
 Registro de decisiones **significativas** de producto y tecnología (no de implementaciones concretas). Cada entrada: fecha, contexto, decisión y motivación. Las decisiones que cambien contratos o rumbo se reflejan también en `docs/`.
 
-Convención: una decisión por entrada, orden cronológico inverso. Solo se anota lo que cambia el rumbo o fija un rumbo importante. Cuando una decisión sustituye a otra, se indica explícitamente; el histórico completo vive aquí, no en `docs/` (que describe solo lo implementado hoy).
+Convención: una decisión por entrada, orden cronológico inverso. Solo se anota lo que cambia el rumbo o fija un rumbo importante. Cuando una decisión sustituye a otra, se indica explícitamente; el histórico completo vive aquí, no en `docs/` (que describe solo lo implementado hoy). Si este archivo crece demasiado, evoluciona a carpeta `docs/decisions/` con un archivo por decisión.
+
+---
+
+## D-2026-09-05 — Operación inicial: downtime aceptado, backups local + R2 y sin failover
+
+- **Contexto:** Primera aplicación del equipo con aspiración de escala; se prioriza empezar las pruebas en el MS-A2 propio y mantener un coste y una carga de operación asumibles. Acuerdo explícito con el propietario de la infraestructura.
+- **Decisión:**
+  1. Mantener las tres VMs y el reparto de recursos de `infra/arquitectura.md`. Una réplica de Phoenix sin distribución Erlang.
+  2. Usar `stop-first` en actualizaciones y rollback. Aceptar interrupciones de segundos o incluso minutos; el cliente tendrá que reconectar y recuperar historial. No exigir despliegues sin interrupción.
+  3. Preparar backups consistentes de PostgreSQL en el SATA local de ~1 TB y también en R2. Frecuencia externa orientativa: cada hora o cada varias horas; retención objetivo: unas diez copias/puntos recuperables recientes. Intervalo y esquema exactos se fijarán al implementar. R2 y las tareas de backup siguen pendientes.
+  4. No implantar alta disponibilidad, réplica externa, failover automático ni VPS de reserva en esta fase. Si el MS-A2 falla se acepta la indisponibilidad hasta recuperarlo, sin plazo garantizado. Una alternativa externa solo se estudiará si el uso y el coste lo justifican.
+  5. Ventilador dedicado para el PM1735 ya comprado, con entrega prevista en unos dos días según lo indicado el 2026-09-05. Instalarlo y comprobar temperaturas en reposo/carga gradual antes del despliegue y las pruebas sostenidas. La mejora térmica no se da por verificada.
+- **Consecuencias:** el tiempo de migración entra en el downtime. Con PGDATA en un disco `backup=0`, vzdump no sustituye a un backup de PostgreSQL. La retención debe preservar las dependencias de restauración; diez copias horarias cubren aproximadamente diez horas. Las primeras pruebas serán con datos ficticios regenerables; configurar y probar backups antes de conservar datos reales.
+- **Sustituye:** la propuesta de `start-first` en arquitectura/runbook, el calendario anterior de backups full semanal/diferencial diario como requisito fijo y el simulacro de evacuación a VPS como requisito de esta fase. También retira cualquier promesa de recuperación externa en un día. El resto de la decisión D-2026-09-04 se mantiene.
+- **Estado:** decisiones documentadas; no se ha desplegado, cambiado Swarm remotamente ni configurado R2/backups en esta actualización.
+- **Referencias:** [Arquitectura](../infra/arquitectura.md), [runbook](../infra/deploy/README.md).
+
+---
+
+## D-2026-09-04 — Runtime del backend: Dokploy+Docker (Swarm) en VM dedicada; systemd queda como plan B
+
+- **Contexto:** Despliegue del backend en el home server (MS-A2, Proxmox, exclusivo para Snack), primero para pruebas de rendimiento y luego producción. Cuatro modelos sobre la mesa: release+systemd+scripts, runner local de Actions, Dokploy de NiPoGi, Dokploy dedicado. Equipo de 2 personas sin dedicación DevOps.
+- **Decisión:**
+  1. **VM `snack-backend` (.126)**: Dokploy + Docker/Swarm 1 nodo + Traefik + contenedor Snack (imagen GHCR, tag = sha). Builds siempre fuera (GitHub Actions); Dokploy solo descarga y despliega. Panel y API de Dokploy solo por VPN, nada públicos.
+  2. **VM `snack-db` (.142)**: PostgreSQL 17 + PostGIS nativos sobre PM1735; la DB nunca pasa por Dokploy.
+  3. **Entrada**: Cloudflare → UCG → Caddy → Traefik:80, con cadena de confianza de IP real completa; el 4000 del contenedor nunca se publica.
+  4. **Verificación post-deploy**: `/healthz` expone `version` (sha horneado); CI hace polling hasta `version == sha` (mitiga Dokploy #3987: rollbacks silenciosos de Swarm). `/healthz` = liveness sin DB; `/readyz` = ping a Repo.
+  5. **Migraciones**: al arrancar el contenedor, con lock siempre activo; expand/contract; nunca `ecto.rollback` en producción (redesplegar N−1).
+  6. **1 réplica**, sin distribución Erlang hasta ≥2 (sin libcluster el PubSub del chat no cruza nodos). **Sin runner local**; si algún día: en NiPoGi, nunca en el MS-A2.
+- **Rechazadas:** systemd+scripts como principal (habría que construir rollback/health/historial propios; queda plan B en `infra/deploy/`); Dokploy de NiPoGi (jerarquía de confianza); VM separada para el panel (misma caja física = cero HA); rebuild a Ubuntu 24.04 o PG 18 (churn; Debian 13 + PG 17 ya validados).
+- **Motivación original:** Operabilidad diaria con UI para 2 devs e imágenes inmutables para facilitar una reconstrucción futura. **Actualización D-2026-09-05:** la recuperación en VPS queda fuera de la fase inicial y sin plazo comprometido.
+- **Referencias:** `infra/arquitectura.md` (descripción completa), `infra/deploy/README.md` (runbook), `.github/workflows/ci.yml`.
 
 ---
 
@@ -113,3 +145,11 @@ Fijadas en el foundation de producto dating (2026-04-28, recuperable del histori
 - Likes ilimitados (sin caps de monetización) con protección anti-abuso técnica.
 - Compatibilidad pesa más que distancia; la distancia se expande gradualmente si hay poca oferta; jamás se ignoran blocked tags ni compatibilidad de género.
 - Boost temporal controlado para usuarios nuevos.
+
+
+## D-2026-09-05 — Correcciones de acceso, discovery y fotos
+
+- El borrado de cuenta sigue siendo lógico: `users.deleted_at`, perfil oculto, sesiones/refresh/push revocados y sockets desconectados. Un bloqueo impide mensajear en ambas direcciones, incluidas conexiones abiertas.
+- Discovery puntúa en PostgreSQL y pagina por `(score DESC, id ASC)`. Cursor firmado y ligado al usuario (1 h); exploración determinista por pareja. Se mantiene el DTO `nextCursor: string | null` y los filtros se vuelven a evaluar por petición.
+- Fotos: firma de `Content-Type` e `If-None-Match: *`, verificación autenticada de existencia/tamaño/MIME/cabecera y lectura condicionada por ETag. Se retira la creación directa de metadatos por REST. La migración de fotos caduca intents antiguos pendientes para exigir URLs que no permitan sobrescritura.
+- El despliegue requiere ambas migraciones `20260905170000` y `20260905170100`. La primera desactiva también cuentas cuyos perfiles ya estaban borrados; la segunda obliga a repetir las subidas pendientes antiguas. No se purgan datos ni se reactiva ninguna credencial al revertir las migraciones.

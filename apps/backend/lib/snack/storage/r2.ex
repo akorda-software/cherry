@@ -5,7 +5,7 @@ defmodule Snack.Storage.R2 do
   @algorithm "AWS4-HMAC-SHA256"
   @region "auto"
   @service "s3"
-  @signed_headers "host"
+  @signed_headers "content-type;host;if-none-match"
   @payload_hash "UNSIGNED-PAYLOAD"
 
   def upload_config(now \\ DateTime.utc_now()) do
@@ -46,7 +46,7 @@ defmodule Snack.Storage.R2 do
       ]
 
       canonical_query = canonical_query_string(query)
-      canonical_headers = "host:#{host}\n"
+      canonical_headers = "content-type:#{content_type}\nhost:#{host}\nif-none-match:*\n"
 
       canonical_request =
         ["PUT", canonical_uri, canonical_query, canonical_headers, @signed_headers, @payload_hash]
@@ -71,12 +71,110 @@ defmodule Snack.Storage.R2 do
          upload_url: upload_url,
          public_url: public_url(public_url_base, storage_key),
          method: "PUT",
-         headers: %{"Content-Type" => content_type},
+         headers: %{"Content-Type" => content_type, "If-None-Match" => "*"},
          expires_at: expires_at,
          max_bytes: Keyword.fetch!(config, :max_upload_bytes)
        }}
     end
   end
+
+  @doc "Checks the stored object's size, declared MIME and image signature before publishing it."
+  def verify_upload(intent) do
+    with {:ok, config} <- config(),
+         {:ok, head} <- object_request(config, intent.storage_key, :head),
+         :ok <- validate_metadata(head, intent, config),
+         [etag] <- Req.Response.get_header(head, "etag"),
+         {:ok, sample} <-
+           object_request(config, intent.storage_key, :get,
+             headers: [{"range", "bytes=0-31"}, {"if-match", etag}],
+             into: &collect_sample/2
+           ),
+         true <- sample.status == 206 and image_signature?(sample.body, intent.content_type) do
+      :ok
+    else
+      {:error, reason} -> {:error, reason}
+      false -> {:error, :upload_invalid_image}
+      _ -> {:error, :storage_unavailable}
+    end
+  end
+
+  defp object_request(config, storage_key, method, opts \\ []) do
+    options = [
+      method: method,
+      url:
+        "https://#{config[:account_id]}.r2.cloudflarestorage.com/#{encode_path(config[:bucket_name])}/#{encode_path(storage_key)}",
+      aws_sigv4: [
+        access_key_id: config[:access_key_id],
+        secret_access_key: config[:secret_access_key],
+        region: @region,
+        service: @service
+      ],
+      retry: false,
+      redirect: false,
+      decode_body: false,
+      compressed: false,
+      receive_timeout: 5_000
+    ]
+
+    case Req.request(
+           options
+           |> Keyword.merge(opts)
+           |> Keyword.merge(Keyword.get(config, :request_options, []))
+         ) do
+      {:ok, %{status: status} = response} when status in [200, 206] -> {:ok, response}
+      {:ok, %{status: 404}} -> {:error, :upload_object_not_found}
+      {:ok, %{status: 412}} -> {:error, :upload_object_changed}
+      _ -> {:error, :storage_unavailable}
+    end
+  end
+
+  defp validate_metadata(response, intent, config) do
+    size =
+      case Req.Response.get_header(response, "content-length") do
+        [value] ->
+          case Integer.parse(value) do
+            {size, ""} -> size
+            _ -> nil
+          end
+
+        _ ->
+          nil
+      end
+
+    cond do
+      not is_integer(size) or size <= 0 or size > config[:max_upload_bytes] or
+          size != intent.size_bytes ->
+        {:error, :upload_size_mismatch}
+
+      Req.Response.get_header(response, "content-type") != [intent.content_type] ->
+        {:error, :upload_content_type_mismatch}
+
+      true ->
+        :ok
+    end
+  end
+
+  # Even a server ignoring Range cannot make us buffer an entire object.
+  defp collect_sample({:data, data}, {request, response}) do
+    body = (response.body || "") <> data
+
+    if byte_size(body) <= 32 do
+      {:cont, {request, %{response | body: body}}}
+    else
+      {:halt, {request, %{response | body: nil}}}
+    end
+  end
+
+  defp image_signature?(<<255, 216, 255, _::binary>>, "image/jpeg"), do: true
+  defp image_signature?(<<137, 80, 78, 71, 13, 10, 26, 10, _::binary>>, "image/png"), do: true
+
+  defp image_signature?(
+         <<"RIFF", _::binary-size(4), "WEBP", chunk::binary-size(4), _::binary>>,
+         "image/webp"
+       ),
+       do: chunk in ["VP8 ", "VP8L", "VP8X"]
+
+  defp image_signature?(_, _), do: false
 
   defp config do
     config = Application.get_env(:snack, @config_key, [])

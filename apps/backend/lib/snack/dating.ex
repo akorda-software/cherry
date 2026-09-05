@@ -332,10 +332,25 @@ defmodule Snack.Dating do
     with %ProfilePhotoUploadIntent{} = intent <- get_photo_upload_intent(profile.id, storage_key),
          :ok <- validate_upload_completion(intent, attrs),
          :ok <- validate_active_photo_limit(profile.id),
-         :ok <- validate_photo_position_available(profile.id, intent.position) do
+         :ok <- validate_photo_position_available(profile.id, intent.position),
+         :ok <- R2.verify_upload(intent) do
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
       Ecto.Multi.new()
+      |> Ecto.Multi.run(:lock, fn repo, _ ->
+        repo.one!(from p in Profile, where: p.id == ^profile.id, lock: "FOR UPDATE")
+
+        current_intent =
+          repo.one!(
+            from i in ProfilePhotoUploadIntent, where: i.id == ^intent.id, lock: "FOR UPDATE"
+          )
+
+        with :ok <- validate_upload_completion(current_intent, attrs),
+             :ok <- validate_active_photo_limit(profile.id),
+             :ok <- validate_photo_position_available(profile.id, intent.position) do
+          {:ok, :locked}
+        end
+      end)
       |> Ecto.Multi.insert(
         :photo,
         ProfilePhoto.changeset(%ProfilePhoto{}, %{
@@ -751,223 +766,8 @@ defmodule Snack.Dating do
     |> add_error(field, message)
   end
 
-  # ── Discovery Feed ────────────────────────────────────────────────────
-
-  @doc """
-  Returns a paginated, scored discovery feed for a viewer.
-
-  Hard filters applied in SQL:
-  - discoverable, not deleted, not self
-  - not blocked either way
-  - not already swiped by viewer
-  - within distance radius
-  - age within viewer's preferred range AND viewer's age within candidate's preferred range
-  - candidate's gender in viewer's interested-in AND viewer's gender in candidate's interested-in
-  - intent equality (`what_i_am_looking_for` matches)
-  - candidate does not have tags the viewer has blocked
-
-  Scoring (in Elixir):
-  - shared tags (+10 per tag, cap 50)
-  - reciprocal age preference (+15)
-  - reciprocal gender preference (+20)
-  - profile quality, i.e. `is_complete` (+15)
-  - activity, i.e. updated within last 7 days (+10)
-  - distance bonus, linear scale up to +15
-  - exploration noise (+0–5)
-
-  Returns profiles with safe fields only (no exact coordinates).
-  """
-  def discovery_feed(viewer_profile_id, opts \\ []) do
-    limit = Keyword.get(opts, :limit, 20)
-    cursor = Keyword.get(opts, :cursor)
-
-    viewer =
-      Repo.get!(Profile, viewer_profile_id)
-      |> Repo.preload([:discovery_preference, :location, :tags, :blocked_tags])
-
-    viewer_age = Profile.age(viewer)
-    viewer_prefs = viewer.discovery_preference
-    viewer_location = viewer.location
-    viewer_tag_ids = MapSet.new(viewer.tags, & &1.id)
-    viewer_blocked_tag_ids = MapSet.new(viewer.blocked_tags, & &1.id)
-
-    if viewer_prefs == nil or viewer_location == nil or viewer_age == nil do
-      {:ok, %{profiles: [], next_cursor: nil}}
-    else
-      %Geo.Point{coordinates: {lon, lat}} = viewer_location.coordinates
-      point = %Geo.Point{coordinates: {lon, lat}, srid: 4326}
-      distance_meters = viewer_prefs.distance_km * 1000
-
-      swiped_subquery =
-        from s in SwipeAction,
-          where: s.actor_profile_id == ^viewer_profile_id,
-          select: s.target_profile_id
-
-      blocked_by_viewer_subquery =
-        from b in UserBlock,
-          where: b.actor_profile_id == ^viewer_profile_id,
-          select: b.target_profile_id
-
-      blocked_by_them_subquery =
-        from b in UserBlock,
-          where: b.target_profile_id == ^viewer_profile_id,
-          select: b.actor_profile_id
-
-      candidate_gender_reciprocal =
-        case viewer.gender do
-          "man" -> dynamic([_p, dp], dp.show_men == true)
-          "woman" -> dynamic([_p, dp], dp.show_women == true)
-          "non_binary" -> dynamic([_p, dp], dp.show_non_binary == true)
-          _ -> dynamic([_p, _dp], false)
-        end
-
-      candidates_query =
-        from p in Profile,
-          join: dp in DiscoveryPreference,
-          on: dp.profile_id == p.id,
-          join: pl in ProfileLocation,
-          on: pl.profile_id == p.id,
-          left_join: pt in "profile_tags",
-          on: pt.profile_id == p.id,
-          where: p.id != ^viewer_profile_id,
-          where: p.is_discoverable == true,
-          where: is_nil(p.deleted_at),
-          where: p.is_paused == false,
-          where:
-            fragment(
-              "ST_DWithin(?::geography, ?::geography, ?)",
-              pl.coordinates,
-              ^point,
-              ^distance_meters
-            ),
-          where:
-            fragment(
-              "EXTRACT(YEAR FROM AGE(CURRENT_DATE, ?::date)) BETWEEN ? AND ?",
-              p.birth_date,
-              ^viewer_prefs.age_min,
-              ^viewer_prefs.age_max
-            ),
-          where:
-            fragment(
-              "EXTRACT(YEAR FROM AGE(CURRENT_DATE, ?::date)) BETWEEN ? AND ?",
-              type(^viewer.birth_date, :date),
-              dp.age_min,
-              dp.age_max
-            ),
-          where: p.gender in ^interested_in_genders(viewer_prefs),
-          where: ^candidate_gender_reciprocal,
-          where: p.what_i_am_looking_for == ^viewer.what_i_am_looking_for,
-          where: p.id not in subquery(swiped_subquery),
-          where: p.id not in subquery(blocked_by_viewer_subquery),
-          where: p.id not in subquery(blocked_by_them_subquery),
-          where: is_nil(pt.tag_id) or pt.tag_id not in ^MapSet.to_list(viewer_blocked_tag_ids),
-          distinct: p.id,
-          select: %{
-            id: p.id,
-            display_name: p.display_name,
-            birth_date: p.birth_date,
-            gender: p.gender,
-            what_i_am_looking_for: p.what_i_am_looking_for,
-            bio: p.bio,
-            is_complete: p.is_complete,
-            updated_at: p.updated_at,
-            tag_ids:
-              fragment(
-                "ARRAY(SELECT tag_id FROM profile_tags WHERE profile_id = ?)",
-                p.id
-              ),
-            distance_m:
-              fragment(
-                "ST_Distance(?::geography, ?::geography)",
-                pl.coordinates,
-                ^point
-              ),
-            primary_photo_url:
-              fragment(
-                "(SELECT ph.url FROM profile_photos ph WHERE ph.profile_id = ? AND ph.is_active = true ORDER BY ph.position ASC LIMIT 1)",
-                p.id
-              ),
-            photo_count:
-              fragment(
-                "(SELECT count(*)::int FROM profile_photos ph WHERE ph.profile_id = ? AND ph.is_active = true)",
-                p.id
-              )
-          }
-
-      candidates_query =
-        if cursor do
-          where(candidates_query, [p], p.updated_at < ^cursor)
-        else
-          candidates_query
-        end
-
-      candidates =
-        candidates_query
-        |> Repo.all()
-
-      scored =
-        candidates
-        |> Enum.map(fn c ->
-          c_tag_ids = MapSet.new(c.tag_ids || [])
-          shared = MapSet.intersection(viewer_tag_ids, c_tag_ids) |> MapSet.size()
-
-          shared_score = min(shared * 10, 50)
-          age_score = 15
-          gender_score = 20
-          quality_score = if c.is_complete, do: 15, else: 0
-
-          activity_score =
-            if DateTime.diff(DateTime.utc_now(), c.updated_at, :day) <= 7, do: 10, else: 0
-
-          distance_km = c.distance_m / 1000.0
-
-          distance_score =
-            if viewer_prefs.distance_km > 0 do
-              max(0, 15 * (1 - distance_km / viewer_prefs.distance_km))
-            else
-              0
-            end
-
-          noise = :rand.uniform(6) - 1
-
-          score =
-            shared_score + age_score + gender_score + quality_score + activity_score +
-              distance_score + noise
-
-          Map.merge(c, %{
-            score: Float.round(score, 2),
-            shared_tags_count: shared
-          })
-        end)
-        |> Enum.sort_by(& &1.score, :desc)
-        |> Enum.take(limit + 1)
-
-      {page, next_cursor} =
-        case scored do
-          [] ->
-            {[], nil}
-
-          list when length(list) > limit ->
-            {Enum.take(list, limit), List.last(list).updated_at}
-
-          list ->
-            {list, nil}
-        end
-
-      # Fallback expansion: if fewer than 30 candidates were found overall,
-      # we still return what we have; callers may re-request with relaxed opts.
-      # The scoring above already ran on the full candidate pool.
-      {:ok, %{profiles: page, next_cursor: next_cursor}}
-    end
-  end
-
-  defp interested_in_genders(%DiscoveryPreference{} = prefs) do
-    genders = []
-    genders = if prefs.show_men, do: ["man" | genders], else: genders
-    genders = if prefs.show_women, do: ["woman" | genders], else: genders
-    genders = if prefs.show_non_binary, do: ["non_binary" | genders], else: genders
-    genders
-  end
+  @doc "Returns a SQL-ranked discovery page with an opaque cursor."
+  defdelegate discovery_feed(viewer_profile_id, opts \\ []), to: Snack.Dating.Discovery, as: :feed
 
   # ── Swipes & Matching ─────────────────────────────────────────────────
 
@@ -1106,7 +906,10 @@ defmodule Snack.Dating do
   Gets a single conversation by id.
   """
   def get_conversation(id) do
-    Repo.get(Conversation, id)
+    case Ecto.UUID.cast(id) do
+      {:ok, id} -> Repo.get(Conversation, id) |> Repo.preload(:match)
+      :error -> nil
+    end
   end
 
   @doc """
@@ -1142,45 +945,34 @@ defmodule Snack.Dating do
     conversation_id = attrs["conversation_id"] || attrs[:conversation_id]
     sender_profile_id = attrs["sender_profile_id"] || attrs[:sender_profile_id]
 
-    with {:ok, conversation} <- get_messageable_conversation(conversation_id, sender_profile_id) do
-      is_first_message =
-        Message
-        |> where([m], m.conversation_id == ^conversation_id)
-        |> Repo.aggregate(:count, :id) == 0
+    Repo.transaction(fn ->
+      # Serialize sends with blocking for this pair, then recheck authorization.
+      case get_conversation(conversation_id) do
+        nil ->
+          Repo.rollback(:not_participant)
 
-      Ecto.Multi.new()
-      |> Ecto.Multi.insert(:message, fn _changes ->
-        %Message{}
-        |> Message.changeset(attrs)
-      end)
-      |> Ecto.Multi.run(:maybe_update_match, fn _repo, %{message: _message} ->
-        if is_first_message do
-          Match
-          |> where([m], m.id == ^conversation.match_id)
-          |> Repo.update_all(
-            set: [
-              first_message_at: now(),
-              expires_at: nil
-            ]
-          )
-
-          {:ok, :updated}
-        else
-          {:ok, :no_op}
-        end
-      end)
-      |> Repo.transaction()
-      |> case do
-        {:ok, %{message: message}} ->
-          notify_new_message(message)
-          {:ok, message}
-
-        {:error, :message, changeset, _} ->
-          {:error, changeset}
-
-        {:error, :maybe_update_match, reason, _} ->
-          {:error, reason}
+        conversation ->
+          Repo.one!(from m in Match, where: m.id == ^conversation.match_id, lock: "FOR UPDATE")
       end
+
+      with {:ok, conversation} <-
+             get_messageable_conversation(conversation_id, sender_profile_id),
+           {:ok, message} <- %Message{} |> Message.changeset(attrs) |> Repo.insert() do
+        from(m in Match, where: m.id == ^conversation.match_id and is_nil(m.first_message_at))
+        |> Repo.update_all(set: [first_message_at: now(), expires_at: nil])
+
+        message
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+    |> case do
+      {:ok, message} ->
+        notify_new_message(message)
+        {:ok, message}
+
+      error ->
+        error
     end
   end
 
@@ -1201,6 +993,9 @@ defmodule Snack.Dating do
       !match_allows_messaging?(conversation.match) ->
         {:error, :conversation_not_active}
 
+      !pair_allows_messaging?(conversation.match) ->
+        {:error, :conversation_not_active}
+
       true ->
         {:ok, conversation}
     end
@@ -1208,6 +1003,28 @@ defmodule Snack.Dating do
 
   defp match_participant?(%Match{} = match, profile_id) do
     match.profile_a_id == profile_id or match.profile_b_id == profile_id
+  end
+
+  defp pair_allows_messaging?(%Match{profile_a_id: a, profile_b_id: b}) do
+    active_profiles =
+      Repo.aggregate(
+        from(p in Profile,
+          join: u in Snack.Accounts.User,
+          on: u.id == p.user_id,
+          where: p.id in ^[a, b] and is_nil(p.deleted_at) and is_nil(u.deleted_at)
+        ),
+        :count,
+        :id
+      )
+
+    active_profiles == 2 and
+      not Repo.exists?(
+        from(block in UserBlock,
+          where:
+            (block.actor_profile_id == ^a and block.target_profile_id == ^b) or
+              (block.actor_profile_id == ^b and block.target_profile_id == ^a)
+        )
+      )
   end
 
   defp match_allows_messaging?(%Match{status: "active", expires_at: nil}), do: true
@@ -1257,9 +1074,29 @@ defmodule Snack.Dating do
   Creates a block from one profile to another.
   """
   def block_profile(attrs \\ %{}) do
-    %UserBlock{}
-    |> UserBlock.changeset(attrs)
-    |> Repo.insert()
+    changeset = UserBlock.changeset(%UserBlock{}, attrs)
+
+    if changeset.valid? do
+      a = Ecto.Changeset.get_field(changeset, :actor_profile_id)
+      b = Ecto.Changeset.get_field(changeset, :target_profile_id)
+
+      Repo.transaction(fn ->
+        from(m in Match,
+          where:
+            (m.profile_a_id == ^a and m.profile_b_id == ^b) or
+              (m.profile_a_id == ^b and m.profile_b_id == ^a),
+          lock: "FOR UPDATE"
+        )
+        |> Repo.all()
+
+        case Repo.insert(changeset) do
+          {:ok, block} -> block
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    else
+      {:error, changeset}
+    end
   end
 
   @doc """

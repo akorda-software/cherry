@@ -5,14 +5,25 @@ import Config
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
-config :snack, Snack.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "snack_test#{System.get_env("MIX_TEST_PARTITION")}",
-  pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2,
-  types: Snack.PostgresTypes
+#
+# Si DATABASE_URL está definido (p. ej. cuando localhost:5432 está ocupado por
+# otro proyecto, ver ~/dev/projects/PUERTOS.md), se usa tal cual.
+if System.get_env("DATABASE_URL") do
+  config :snack, Snack.Repo,
+    url: System.get_env("DATABASE_URL"),
+    pool: Ecto.Adapters.SQL.Sandbox,
+    pool_size: System.schedulers_online() * 2,
+    types: Snack.PostgresTypes
+else
+  config :snack, Snack.Repo,
+    username: "postgres",
+    password: "postgres",
+    hostname: "localhost",
+    database: "snack_test#{System.get_env("MIX_TEST_PARTITION")}",
+    pool: Ecto.Adapters.SQL.Sandbox,
+    pool_size: System.schedulers_online() * 2,
+    types: Snack.PostgresTypes
+end
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

@@ -58,3 +58,9 @@ Extensión PostGIS + uuid-ossp. Tablas:
 
 - Solo se persiste la coordenada normalizada a la rejilla de 500 m; ninguna API devuelve coordenadas crudas.
 - No loguear bodies de requests de ubicación en producción.
+
+## Desactivación de cuentas y verificación de fotos (2026-09-05)
+
+`users.deleted_at` impide autenticación y emisión de nuevas sesiones. La migración `20260905170000` propaga los perfiles ya borrados a sus cuentas y revoca credenciales. La eliminación mediante API actualiza cuenta/perfil/sesiones/push en una transacción. Los registros se conservan.
+
+`20260905170100` caduca los intents de fotos antiguos pendientes: las nuevas firmas incluyen `If-None-Match: *` para impedir sustituir una foto validada. No modifica fotos ya registradas.

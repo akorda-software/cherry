@@ -7,7 +7,9 @@ defmodule SnackWeb.Controllers.Api.TagControllerTest do
 
   setup do
     {:ok, user} = Accounts.create_user(%{email: "tags@example.com", display_name: "Tags"})
-    {:ok, issued} = Sessions.issue_session(user, %{installation_id: "i", platform: "ios", device_name: "D"})
+
+    {:ok, issued} =
+      Sessions.issue_session(user, %{installation_id: "i", platform: "ios", device_name: "D"})
 
     authed_conn =
       Phoenix.ConnTest.build_conn()
@@ -17,10 +19,21 @@ defmodule SnackWeb.Controllers.Api.TagControllerTest do
       Dating.create_tag(%{slug: "music", label: "Música", category: "interests", sort_order: 1})
 
     {:ok, _} =
-      Dating.create_tag(%{slug: "smoker", label: "Fumador/a", category: "lifestyle", sort_order: 2})
+      Dating.create_tag(%{
+        slug: "smoker",
+        label: "Fumador/a",
+        category: "lifestyle",
+        sort_order: 2
+      })
 
     {:ok, _} =
-      Dating.create_tag(%{slug: "legacy", label: "Legacy", category: "interests", sort_order: 3, is_active: false})
+      Dating.create_tag(%{
+        slug: "legacy",
+        label: "Legacy",
+        category: "interests",
+        sort_order: 3,
+        is_active: false
+      })
 
     %{authed_conn: authed_conn}
   end

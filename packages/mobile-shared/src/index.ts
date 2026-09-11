@@ -1,7 +1,6 @@
 export const mobileSharedPackageName = "@snack/mobile-shared";
 
 export * from "./api/auth-api";
-export * from "./api/billing-api";
 export * from "./api/config-api";
 export * from "./api/discovery-api";
 export * from "./api/profile-api";

@@ -25,7 +25,6 @@ Phoenix single app (sin umbrella) con contextos por dominio:
 | `Snack.Identity` | Validación de credenciales Google/Apple y linking de providers |
 | `Snack.Sessions` | Emisión, rotación, revocación de sesiones y refresh tokens |
 | `Snack.Dating` | Dominio dating completo: perfiles, discovery, matching, chat, safety |
-| `Snack.Billing` | Add-on opcional Stripe (aislado, flaggeado) |
 | `Snack.Features` | Feature flags leídas de config por entorno |
 | `Snack.Notifications` / `Snack.Storage` | Envío de push vía Expo Push API y cliente R2 con URLs firmadas |
 
@@ -48,10 +47,10 @@ app/                      # Rutas (route groups por estado de producto)
 │   (public)/login        # Auth
 │   (onboarding)/         # index resuelve nextOnboardingStep → pasos
 │   (app)/(tabs)/         # Shell principal: home (discover), profile
-│   (app)/settings | subscriptions
+│   (app)/settings        # Ajustes
 src/
 ├── features/<dominio>/   # presentation / application / domain / infrastructure
-│   auth, app-bootstrap, onboarding, discovery, tags, subscriptions…
+│   auth, app-bootstrap, onboarding, discovery, tags…
 └── shared/
     ├── api/              # Cliente HTTP autenticado (refresh-on-401)
     ├── config/           # Runtime config + flags desde bootstrap
@@ -64,7 +63,7 @@ Flujo de arranque: resolver URL de API → `GET /api/config` (flags) → `GET /a
 
 Reglas estructurales:
 
-- Los módulos opcionales (subscriptions) se registran vía registry (`optional-modules.ts`): con flag off desaparece la entrada de navegación y la pantalla se autogatea (la ruta Stack sigue registrada pero inaccesible en la práctica).
+- Los módulos opcionales se registran vía registry (`optional-modules.ts`): con flag off desaparece la entrada de navegación y la pantalla se autogatea (la ruta Stack sigue registrada pero inaccesible en la práctica).
 - `shared/ui` no contiene lógica de producto; el scaffolding del shell (`shared/ui/app-shell/routes.ts`) define labels de tabs y consume el registry de módulos opcionales.
 - Tokens de sesión solo en secure storage (Keychain/Keystore).
 
@@ -72,8 +71,8 @@ Reglas estructurales:
 
 | Paquete | Contenido |
 |---|---|
-| `packages/contracts` | DTOs compartidos backend ↔ móvil (auth, session, bootstrap, profile, discovery, billing). Cualquier desacuerdo de payload se arregla aquí primero. |
-| `packages/mobile-shared` | Clientes API reutilizables (auth, profile, discovery, billing, runtime-config), readers de flags, secure storage. |
+| `packages/contracts` | DTOs compartidos backend ↔ móvil (auth, session, bootstrap, profile, discovery). Cualquier desacuerdo de payload se arregla aquí primero. |
+| `packages/mobile-shared` | Clientes API reutilizables (auth, profile, discovery, runtime-config), readers de flags, secure storage. |
 
 ## Entorno e infraestructura
 
@@ -83,4 +82,4 @@ Reglas estructurales:
 
 ## Decisiones de arquitectura relevantes
 
-Ver `decisions.md`: monorepo y ownership de sesiones (D-2026-04-12), navegación canónica y token layering (D-2026-04-13), Stripe como add-on flaggeado (D-2026-04-13), PostGIS + WebSocket chat (D-2026-04-28), contratos v1 (D-2026-05-06).
+Ver `decisions.md`: monorepo y ownership de sesiones (D-2026-04-12), navegación canónica y token layering (D-2026-04-13), PostGIS + WebSocket chat (D-2026-04-28), contratos v1 (D-2026-05-06).

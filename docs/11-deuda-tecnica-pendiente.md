@@ -26,7 +26,6 @@ Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21)
 16. Swipe duplicado devuelve 422 genérico por unique constraint, sin error semántico («ya swipé»).
 17. Flag `strict_profile_completion` permite desactivar la exigencia de fotos/ubicación en completitud; el contrato v1 las hace obligatorias — **en dev está a `false`** (`config/dev.exs:8`); asegurar `true` en entornos reales.
 18. Tests de controller ausentes para bootstrap, safety, settings y match.
-19. Webhook Stripe con flag off responde 404 (plug RequireFeature corta antes) donde el spec original decía «200 sin procesar» — desviación aceptada, mantener documentada.
 21. **Expiración de match solo lazy**: no hay job que marque `expired`; matches caducados siguen apareciendo en `GET /api/matches` y sus conversaciones son legibles (solo el envío está bloqueado).
 22. `PUT /api/me/discovery-preferences` acepta cualquier `distance_km > 0` y no valida `age_min <= age_max` fuera de la completitud; un perfil ya completo puede quedar silenciosamente incompleto al guardar preferencias inválidas.
 23. `set_tags`/`set_blocked_tags` descartan silenciosamente IDs desconocidos e ignoran el flag activo del catálogo.

@@ -16,7 +16,6 @@ vi.mock("expo-application", async () => import("./mocks/expo-application"));
 vi.mock("expo-device", async () => import("./mocks/expo-device"));
 vi.mock("expo-constants", async () => import("./mocks/expo-constants"));
 vi.mock("expo-crypto", async () => import("./mocks/expo-crypto"));
-vi.mock("@stripe/stripe-react-native", async () => import("./mocks/stripe-react-native"));
 vi.mock("expo-image", async () => import("./mocks/expo-image"));
 vi.mock("@shopify/flash-list", async () => import("./mocks/flash-list"));
 vi.mock("react-native-safe-area-context", async () =>

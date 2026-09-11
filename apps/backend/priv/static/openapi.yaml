@@ -17,8 +17,6 @@ tags:
   - name: Safety
   - name: Settings
   - name: Push Notifications
-  - name: Billing
-  - name: Webhooks
 paths:
   /api/auth/{provider}/callback:
     post:
@@ -658,142 +656,6 @@ paths:
                 $ref: '#/components/schemas/ReportResponse'
         '422':
           $ref: '#/components/responses/ValidationError'
-  /api/billing/plans:
-    get:
-      tags: [Billing]
-      summary: List billing plans when subscriptions are enabled.
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Billing plan catalog.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  plans:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/BillingPlan'
-        '404':
-          description: Subscriptions feature disabled.
-  /api/billing/subscribe:
-    post:
-      tags: [Billing]
-      summary: Start a Stripe Payment Sheet subscription flow.
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SubscribeRequest'
-      responses:
-        '200':
-          description: Stripe Payment Sheet parameters.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscribeResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: Already subscribed.
-  /api/billing/cancel:
-    post:
-      tags: [Billing]
-      summary: Cancel the active subscription at period end.
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Cancellation state.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /api/billing/abandon-pending:
-    post:
-      tags: [Billing]
-      summary: Abandon a pending Payment Sheet subscription attempt.
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [pendingSubscriptionId]
-              properties:
-                pendingSubscriptionId:
-                  type: string
-                  format: uuid
-      responses:
-        '200':
-          description: Pending subscription abandoned.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: abandoned
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: Subscription is not pending.
-  /api/billing/subscription:
-    get:
-      tags: [Billing]
-      summary: Read the current user's subscription state.
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Subscription state.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionResponse'
-  /api/webhooks/stripe:
-    post:
-      tags: [Webhooks]
-      summary: Stripe webhook endpoint.
-      description: Requires a valid Stripe signature header when subscriptions are enabled.
-      parameters:
-        - name: stripe-signature
-          in: header
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        '200':
-          description: Event accepted.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  received:
-                    type: boolean
-        '500':
-          description: Processing failed so Stripe should retry.
 components:
   securitySchemes:
     bearerAuth:
@@ -932,7 +794,7 @@ components:
           $ref: '#/components/schemas/User'
     ConfigResponse:
       type: object
-      required: [features, services]
+      required: [features]
       properties:
         features:
           type: object
@@ -941,9 +803,6 @@ components:
             properties:
               enabled:
                 type: boolean
-        services:
-          type: object
-          additionalProperties: true
     BootstrapResponse:
       type: object
       required: [user, profile]
@@ -1412,62 +1271,4 @@ components:
             insertedAt:
               type: string
               format: date-time
-    BillingPlan:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        stripePriceId:
-          type: string
-        amountCents:
-          type: integer
-        currency:
-          type: string
-        interval:
-          type: string
-    SubscribeRequest:
-      type: object
-      required: [planId]
-      properties:
-        planId:
-          type: string
-          format: uuid
-    SubscribeResponse:
-      type: object
-      properties:
-        customerId:
-          type: string
-        customerEphemeralKeySecret:
-          type: string
-        pendingSubscriptionId:
-          type: string
-          format: uuid
-        paymentIntentClientSecret:
-          type: string
-    SubscriptionResponse:
-      type: object
-      required: [subscribed]
-      properties:
-        subscribed:
-          type: boolean
-        subscription:
-          nullable: true
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            planId:
-              type: string
-              format: uuid
-            status:
-              type: string
-            cancelAtPeriodEnd:
-              type: boolean
-            currentPeriodEnd:
-              type: string
-              format: date-time
-              nullable: true
+

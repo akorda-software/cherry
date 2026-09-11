@@ -13,10 +13,6 @@ Base modules:
 - Runtime config bootstrap from backend
 - Feature flags consumed inside the mobile tree
 
-Optional modules:
-
-- Subscriptions with Stripe Payment Sheet
-
 The routes under `apps/mobile/app/(app)` — `home`, `user`, `settings` — are intentional placeholders: empty scaffolds that exercise the shell, navigation, and session wiring. Replace them with product-specific screens when building on top of the starter.
 
 ## Production Readiness
@@ -28,7 +24,7 @@ Before shipping a real app on top of it, you still need to decide and wire:
 - CORS policy (no plug wired by default — native-only apps may not need it; web builds do)
 - Rate limiting on `/api/auth/:provider/callback` and `/api/session/refresh`
 - A real TLS termination story (the Endpoint forces SSL in prod; your infra needs to actually terminate it)
-- Real values for every env var flagged in the "Enabling Subscriptions" and "Auth Setup Notes" sections
+- Real values for every env var flagged in the "Auth Setup Notes" section
 
 Runtime config refuses to boot in prod when required env vars are missing, so you'll get a loud failure rather than a silent fall-through to test credentials.
 
@@ -67,67 +63,10 @@ The Phoenix backend currently owns:
 - session refresh and revoke flows
 - runtime config bootstrap
 
-Optional billing add-on responsibilities:
-
-- billing plans and subscription state
-- Stripe Payment Sheet session initialization
-
-The mobile root no longer mounts Stripe. The subscriptions route owns the billing runtime so the SDK is loaded only when that add-on is active.
-
-### Stripe Subscription Flow
-
-The starter wires a real recurring subscription, not a one-off charge:
-
-1. `POST /api/billing/subscribe` creates a Stripe `Subscription` with
-   `payment_behavior=default_incomplete` and `expand[]=latest_invoice.payment_intent`.
-   Stripe returns the subscription id and an embedded `PaymentIntent` client
-   secret.
-2. Backend persists a local row with `status="pending"` and the **real**
-   `stripe_subscription_id`.
-3. Mobile confirms the `PaymentIntent` via Payment Sheet.
-4. Stripe fires `customer.subscription.updated` with `status="active"`. The
-   webhook handler resolves the local row by `stripe_subscription_id` and
-   promotes it from `pending` to `active`.
-5. Subsequent state transitions (`past_due`, `unpaid`, etc.) flow through
-   the same webhook.
-6. `POST /api/billing/cancel` updates the Stripe subscription with
-   `cancel_at_period_end=true`
-   and marks the local row `canceling`. `customer.subscription.deleted`
-   later finalizes it to `canceled`.
-7. `POST /api/billing/abandon-pending` is the path for "user closed Payment
-   Sheet without paying" — it best-effort cancels the Stripe-side
-   incomplete subscription and removes the local pending row.
-
-Cancel only operates on `active` / `canceling` rows. Pending rows must go
-through the abandon path. Plans seeded in `billing_plans` must reference
-real Stripe `Price` IDs (`stripe_price_id`) for the subscription creation
-to succeed in production. `past_due` subscriptions still block new subscribe
-attempts until they are resolved or canceled, so the starter does not create
-duplicate Stripe subscriptions for the same user.
-
-## Enabling Subscriptions
-
-Subscriptions are controlled by the backend runtime flag:
-
-- `ENABLE_SUBSCRIPTIONS=true`
-
-When enabled, the backend should also expose Stripe runtime configuration:
-
-- `STRIPE_SECRET_KEY`
-- `STRIPE_PUBLISHABLE_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_MERCHANT_DISPLAY_NAME`
-- `STRIPE_MERCHANT_IDENTIFIER` for iOS if needed
-- `STRIPE_URL_SCHEME`
-
-In production, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET` are required when `ENABLE_SUBSCRIPTIONS=true` — the backend refuses to boot if any are missing. In dev/test, harmless placeholders are used if they are not set.
-
-Production also requires these auth salts (generate with `mix phx.gen.secret`):
+Production requires these auth salts (generate with `mix phx.gen.secret`):
 
 - `AUTH_ACCESS_TOKEN_SALT`
 - `AUTH_REFRESH_TOKEN_SALT`
-
-If `ENABLE_SUBSCRIPTIONS=false`, the mobile shell hides subscription navigation and the subscription route redirects away.
 
 ## Auth Setup Notes
 
@@ -137,7 +76,7 @@ Current mobile app config lives in `apps/mobile/app.config.ts` and should be dri
 
 Important values:
 
-- `expo.scheme` — used for native redirects and Stripe return URLs
+- `expo.scheme` — used for native redirects
 - `expo.extra.googleWebClientId`
 - `expo.extra.googleIosClientId`
 - iOS bundle identifier and Android package name
@@ -171,9 +110,8 @@ When cloning this starter into a new app idea, update these identifiers before s
 2. Update bundle/package identifiers
 3. Point mobile to the correct backend base URL if needed
 4. Configure auth provider credentials
-5. Decide whether subscriptions are enabled for this app
-6. Add product-specific features under `apps/mobile/src/features/<your-feature>`
-7. Reuse `shared/ui`, `shared/config`, and existing shell boundaries
+5. Add product-specific features under `apps/mobile/src/features/<your-feature>`
+6. Reuse `shared/ui`, `shared/config`, and existing shell boundaries
 
 ## Where To Extend Safely
 

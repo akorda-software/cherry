@@ -6,7 +6,7 @@ Snack es una **app de dating móvil** de alcance reducido y alta exigencia de re
 
 Dos capas conviven en el repositorio:
 
-1. **Starter (base reusable):** auth nativa Google/Apple con sesiones propiedad de Phoenix, bootstrap de sesión y refresh, design system con tokens, feature flags runtime, shell de navegación y un add-on opcional de suscripciones Stripe.
+1. **Starter (base reusable):** auth nativa Google/Apple con sesiones propiedad de Phoenix, bootstrap de sesión y refresh, design system con tokens, feature flags runtime y shell de navegación.
 2. **Producto dating:** onboarding con perfil obligatorio, discovery por ubicación, matching por like mutuo, chat de texto y herramientas de seguridad.
 
 ## Principios de producto

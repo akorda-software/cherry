@@ -6,7 +6,7 @@ defmodule Snack.Features do
   in `config/runtime.exs`.
   """
 
-  @known_flags [:subscriptions]
+  @known_flags []
 
   @spec enabled?(atom()) :: boolean()
   def enabled?(flag_key) when is_atom(flag_key) do

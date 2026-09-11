@@ -7,7 +7,7 @@ defmodule SnackWeb.Plugs.RequireFeature do
 
   ## Usage in a pipeline
 
-      plug RequireFeature, :subscriptions
+      plug RequireFeature, :some_feature
   """
 
   import Plug.Conn

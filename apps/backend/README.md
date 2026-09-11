@@ -17,20 +17,11 @@ Phoenix backend for the mobile starter.
 - `../../docs/06-contratos-mobile-backend.md` is the human contract for mobile behavior, including the Phoenix WebSocket chat contract.
 - `../../docs/10-plan-fases.md` defines the implementation phases and their current status.
 
-## Optional Billing Add-On
-
-- exposes billing plans and subscription state when subscriptions are enabled
-- publishes Stripe mobile runtime settings for the optional subscriptions module
-
 ## Local Setup
 
 1. Run `mix setup`
 2. Start the server with `mix phx.server`
 3. Use `.env.example` as the local runtime template when wiring real env vars
-
-## Runtime Flags
-
-- `ENABLE_SUBSCRIPTIONS=true|false`
 
 ## Core Runtime Variables
 
@@ -46,17 +37,6 @@ Phoenix backend for the mobile starter.
 - `GOOGLE_WEB_CLIENT_ID`
 - `GOOGLE_IOS_CLIENT_ID`
 - `GOOGLE_JWKS_CACHE_TTL_MS`
-
-## Stripe Runtime Variables
-
-- `STRIPE_SECRET_KEY`
-- `STRIPE_BASE_URL`
-- `STRIPE_PUBLISHABLE_KEY`
-- `STRIPE_MERCHANT_DISPLAY_NAME`
-- `STRIPE_MERCHANT_IDENTIFIER`
-- `STRIPE_URL_SCHEME`
-
-The backend publishes Stripe mobile settings through `/api/config` so the optional subscriptions module can mount Stripe only when that add-on is active.
 
 ## Verification
 

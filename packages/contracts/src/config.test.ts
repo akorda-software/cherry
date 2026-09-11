@@ -7,30 +7,14 @@ describe("createBootstrapConfig", () => {
     expect(
       createBootstrapConfig({
         features: {
-          subscriptions: { enabled: true },
-          beta: { enabled: false }
-        },
-        services: {
-          stripe: {
-            publishableKey: "pk_test_123",
-            merchantDisplayName: "Snack",
-            merchantIdentifier: "merchant.snack",
-            urlScheme: "snack"
-          }
+          beta: { enabled: false },
+          darkMode: { enabled: true }
         }
       })
     ).toEqual({
       features: {
-        subscriptions: { enabled: true },
-        beta: { enabled: false }
-      },
-      services: {
-        stripe: {
-          publishableKey: "pk_test_123",
-          merchantDisplayName: "Snack",
-          merchantIdentifier: "merchant.snack",
-          urlScheme: "snack"
-        }
+        beta: { enabled: false },
+        darkMode: { enabled: true }
       }
     });
   });

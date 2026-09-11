@@ -24,7 +24,6 @@
     "@shopify/flash-list": "2.0.2",
     "@snack/contracts": "workspace:*",
     "@snack/mobile-shared": "workspace:*",
-    "@stripe/stripe-react-native": "^0.63.0",
     "expo": "^54.0.13",
     "expo-apple-authentication": "^8.0.8",
     "expo-application": "^7.0.8",

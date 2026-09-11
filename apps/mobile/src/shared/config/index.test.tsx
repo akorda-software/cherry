@@ -15,7 +15,7 @@ function createReader(flags: Record<string, boolean>): FeatureFlagReader {
 
 describe("useFeatureFlag", () => {
   it("returns enabled: true when the reader reports the flag as enabled", () => {
-    const reader = createReader({ subscriptions: true });
+    const reader = createReader({ darkMode: true });
 
     const wrapper = ({ children }: PropsWithChildren) => (
       <RuntimeConfigProvider
@@ -28,13 +28,13 @@ describe("useFeatureFlag", () => {
       </RuntimeConfigProvider>
     );
 
-    const { result } = renderHook(() => useFeatureFlag("subscriptions"), { wrapper });
+    const { result } = renderHook(() => useFeatureFlag("darkMode"), { wrapper });
 
     expect(result.current).toEqual({ enabled: true, loading: false });
   });
 
   it("returns enabled: false when the reader reports the flag as disabled", () => {
-    const reader = createReader({ subscriptions: false });
+    const reader = createReader({ darkMode: false });
 
     const wrapper = ({ children }: PropsWithChildren) => (
       <RuntimeConfigProvider
@@ -47,7 +47,7 @@ describe("useFeatureFlag", () => {
       </RuntimeConfigProvider>
     );
 
-    const { result } = renderHook(() => useFeatureFlag("subscriptions"), { wrapper });
+    const { result } = renderHook(() => useFeatureFlag("darkMode"), { wrapper });
 
     expect(result.current).toEqual({ enabled: false, loading: false });
   });
@@ -64,13 +64,13 @@ describe("useFeatureFlag", () => {
       </RuntimeConfigProvider>
     );
 
-    const { result } = renderHook(() => useFeatureFlag("subscriptions"), { wrapper });
+    const { result } = renderHook(() => useFeatureFlag("darkMode"), { wrapper });
 
     expect(result.current).toEqual({ enabled: false, loading: true });
   });
 
   it("returns enabled: false for unknown flag keys", () => {
-    const reader = createReader({ subscriptions: true });
+    const reader = createReader({ darkMode: true });
 
     const wrapper = ({ children }: PropsWithChildren) => (
       <RuntimeConfigProvider
@@ -107,32 +107,4 @@ describe("useFeatureFlag", () => {
     expect(result.current.apiBaseUrl).toBe("http://10.0.2.2:4000");
   });
 
-  it("exposes stripe runtime config when present", () => {
-    const reader = createReader({});
-
-    const wrapper = ({ children }: PropsWithChildren) => (
-      <RuntimeConfigProvider
-        apiBaseUrl="http://localhost:4000"
-        bootstrapConfig={{
-          features: {},
-          services: {
-            stripe: {
-              publishableKey: "pk_test_123",
-              merchantDisplayName: "Snack",
-              merchantIdentifier: "merchant.snack",
-              urlScheme: "snack"
-            }
-          }
-        }}
-        reader={reader}
-        loading={false}
-      >
-        {children}
-      </RuntimeConfigProvider>
-    );
-
-    const { result } = renderHook(() => useRuntimeConfig(), { wrapper });
-
-    expect(result.current.bootstrapConfig?.services?.stripe?.publishableKey).toBe("pk_test_123");
-  });
 });

@@ -10,13 +10,6 @@ Esquema real de PostgreSQL/PostGIS, según las migraciones de `apps/backend/priv
 - `session_families` — familias de sesión device-scoped.
 - `refresh_tokens` — refresh tokens opacos: `token_hash` (SHA-256 salted), `status`, `parent_token_id` (linaje para rotación y detección de reuso), `expires_at`.
 
-## Billing (20260413…, add-on flaggeado)
-
-- `billing_customers` — FK `user_id`, `stripe_customer_id`.
-- `billing_plans` — espejo local de planes Stripe (sincronizado por webhooks).
-- `billing_subscriptions` — estado local; `stripe_event_id` NOT NULL (placeholder en suscripciones locales pendientes); el unique index original sobre esa columna fue eliminado en 20260416103000, quedando el unique de `stripe_subscription_id`.
-- `billing_processed_events` — idempotencia de webhooks: unique constraint sobre `event_id`.
-
 ## Dating foundation (20260428120000)
 
 Extensión PostGIS + uuid-ossp. Tablas:

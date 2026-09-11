@@ -2,7 +2,7 @@
 
 App de dating móvil construida sobre un starter reusable (Expo + Phoenix). Monorepo con app móvil Expo, backend Phoenix y paquetes compartidos.
 
-> El starter (auth, sesiones, UI, flags, suscripciones) es la base reutilizable; el producto dating se construye encima sin mezclarse en la base.
+> El starter (auth, sesiones, UI, flags) es la base reutilizable; el producto dating se construye encima sin mezclarse en la base.
 
 ## Estado del proyecto
 
@@ -27,7 +27,7 @@ Toda la documentación vive en [`docs/`](./docs). Empezar por [`docs/README.md`]
 snack/
 ├── apps/
 │   ├── mobile/            # App Expo (Expo Router): starter + features de dating
-│   └── backend/           # Phoenix: auth, sesiones, config, dating, billing opcional
+│   └── backend/           # Phoenix: auth, sesiones, config, dating
 ├── packages/
 │   ├── contracts/         # DTOs compartidos backend ↔ móvil
 │   └── mobile-shared/     # Clientes API, storage seguro y helpers móviles reutilizables

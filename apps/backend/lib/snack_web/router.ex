@@ -19,16 +19,6 @@ defmodule SnackWeb.Router do
     plug(SnackWeb.Plugs.Authenticate)
   end
 
-  pipeline :require_subscriptions do
-    plug(SnackWeb.Plugs.RequireFeature, :subscriptions)
-  end
-
-  pipeline :stripe_webhook do
-    plug(:accepts, ["json"])
-    plug(SnackWeb.Plugs.RequireFeature, :subscriptions)
-    plug(SnackWeb.Plugs.VerifyStripeSignature)
-  end
-
   scope "/", SnackWeb do
     pipe_through(:browser)
 
@@ -121,21 +111,5 @@ defmodule SnackWeb.Router do
 
     post("/block", SafetyController, :block)
     post("/report", SafetyController, :report)
-  end
-
-  scope "/api/billing", SnackWeb.Controllers.Api do
-    pipe_through([:authenticated_api, :require_subscriptions])
-
-    get("/plans", BillingController, :plans)
-    post("/subscribe", BillingController, :subscribe)
-    post("/cancel", BillingController, :cancel)
-    post("/abandon-pending", BillingController, :abandon_pending)
-    get("/subscription", BillingController, :subscription)
-  end
-
-  scope "/api/webhooks", SnackWeb.Controllers.Api do
-    pipe_through([:stripe_webhook])
-
-    post("/stripe", WebhookController, :stripe)
   end
 end

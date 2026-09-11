@@ -1,7 +1,6 @@
 import type { SessionBundle } from "@snack/contracts";
 
 import { canAccessDomain, createDomainViewer, type DomainAccessRule } from "../shared/authz/domain-access";
-import { subscriptionsRoute } from "./subscriptions/route-config";
 
 interface OptionalModuleNavigationEntry {
   label: string;
@@ -21,11 +20,11 @@ export interface OptionalModuleVisibilityContext {
   features?: Record<string, boolean>;
 }
 
-export const optionalStackScreens = [subscriptionsRoute] as const satisfies readonly OptionalModuleScreen[];
+export const optionalStackScreens: readonly OptionalModuleScreen[] = [];
 
 export const optionalShellRoutes = Object.fromEntries(
   optionalStackScreens.map((screen) => [screen.name, screen.path])
-) as Record<(typeof optionalStackScreens)[number]["name"], (typeof optionalStackScreens)[number]["path"]>;
+) as Record<string, string>;
 
 export function resolveOptionalShellTitle(pathname: string): string | null {
   const match = optionalStackScreens.find((screen) => screen.path === pathname);

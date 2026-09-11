@@ -10,7 +10,6 @@ Registro de avance del proyecto. Convención: una entrada por unidad de trabajo,
 - [x] Shell Expo Router: público/privado, Stack + Tabs, logout como acción
 - [x] Design system: tokens primitivos/semánticos, temas, primitivas y composites
 - [x] Runtime config + feature flags vía `GET /api/config`
-- [x] Add-on subscriptions Stripe (billing context, PaymentSheet, webhooks idempotentes, paywall)
 - [x] Servicios auth mock para dev + endpoint `POST /api/auth/dev/test-login`
 
 ## Fase 1 — Documentación de producto dating ✅
@@ -64,7 +63,6 @@ Registro de avance del proyecto. Convención: una entrada por unidad de trabajo,
 ## Registro de cambios
 
 - **2026-04-15** — Primer commit: starter base (monorepo, auth Phoenix-owned, shell, design system).
-- **2026-04-16** — Billing: procesamiento de eventos Stripe e idempotencia; configuración de entorno y módulos opcionales.
 - **2026-04-17** — Servicios auth mock para dev workflow; soporte react-native-svg y componentes UI.
 - **2026-04-28** — Dominio dating completo en backend (PostGIS, contextos, API, tests) + WebSocket de chat con JWT + documentación de producto dating.
 - **2026-05-06** — Contratos mobile-ready en backend (draft profiles, bootstrap, upload-intent, distanceLabel), bootstrap routing en móvil, plan de pantallas y anti-abuso documentados.

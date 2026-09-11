@@ -2,7 +2,7 @@
 
 Superficie REST y WebSocket **implementada** en `apps/backend` (fuente: `lib/snack_web/router.ex`). Contratos de payload en detalle: `06-contratos-mobile-backend.md`. OpenAPI machine-readable servida en `/openapi.yaml`.
 
-Pipelines: `:api` (público), `:authenticated_api` (valida JWT + expiración + familia de sesión no revocada), `:require_subscriptions` (flag), `:stripe_webhook` (verifica firma HMAC).
+Pipelines: `:api` (público), `:authenticated_api` (valida JWT + expiración + familia de sesión no revocada).
 
 ## Auth y sesión (público)
 
@@ -75,10 +75,6 @@ Pipelines: `:api` (público), `:authenticated_api` (valida JWT + expiración + f
 - Canal `chat:{conversationId}`; join denegado con `profile_required`, `not_participant` o `conversation_not_active`.
 - Eventos: cliente `send_message {body}` → reply `{message}` + broadcast `new_message`; `typing` transitorio.
 - REST es la fuente de historia; el socket solo entrega en vivo.
-
-## Billing (add-on flaggeado)
-
-Con flag `subscriptions` activo: `GET /api/billing/plans`, `POST /api/billing/subscribe`, `POST /api/billing/cancel`, `POST /api/billing/abandon-pending`, `GET /api/billing/subscription`. Webhook `POST /api/webhooks/stripe` con verificación HMAC e idempotencia. Con flag off todas responden 404.
 
 ## Admin
 

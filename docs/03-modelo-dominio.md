@@ -55,13 +55,6 @@ Invariantes: los drafts jamás aparecen en discovery; la completitud solo la val
 
 - **AnalyticsEvent** — tabla append-only de eventos de producto.
 
-## Billing (add-on opcional)
-
-- **Customer** — FK a usuario dentro del contexto billing (sin columnas Stripe en User).
-- **Plan** — espejo local sincronizado desde Stripe vía webhooks.
-- **Subscription** — estado local (pending/active/canceling/past_due/canceled); `payment_behavior=default_incomplete` + confirmación en PaymentSheet; webhooks promueven a active.
-- **ProcessedEvent** — idempotencia de webhooks por `event_id`.
-
 ## Push
 
 - **PushToken** — token Expo por sesión/dispositivo con estado active/inactive; re-registro desactiva duplicados.

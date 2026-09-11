@@ -10,7 +10,6 @@ Registro de avance del proyecto. Convención: una entrada por unidad de trabajo,
 - [x] Shell Expo Router: público/privado, Stack + Tabs, logout como acción
 - [x] Design system: tokens primitivos/semánticos, temas, primitivas y composites
 - [x] Runtime config + feature flags vía `GET /api/config`
-- [x] Add-on subscriptions Stripe (billing context, PaymentSheet, webhooks idempotentes, paywall)
 - [x] Servicios auth mock para dev + endpoint `POST /api/auth/dev/test-login`
 
 ## Fase 1 — Documentación de producto dating ✅
@@ -79,7 +78,6 @@ Referencia vigente: [arquitectura del servidor propio](../infra/arquitectura.md)
 ## Registro de cambios
 
 - **2026-04-15** — Primer commit: starter base (monorepo, auth Phoenix-owned, shell, design system).
-- **2026-04-16** — Billing: procesamiento de eventos Stripe e idempotencia; configuración de entorno y módulos opcionales.
 - **2026-04-17** — Servicios auth mock para dev workflow; soporte react-native-svg y componentes UI.
 - **2026-04-28** — Dominio dating completo en backend (PostGIS, contextos, API, tests) + WebSocket de chat con JWT + documentación de producto dating.
 - **2026-05-06** — Contratos mobile-ready en backend (draft profiles, bootstrap, upload-intent, distanceLabel), bootstrap routing en móvil, plan de pantallas y anti-abuso documentados.
@@ -93,3 +91,4 @@ Referencia vigente: [arquitectura del servidor propio](../infra/arquitectura.md)
 - **2026-09-05** — Corregidos bloqueo en chat REST/WS (incluidos broadcasts pendientes), historial REST, desactivación de cuenta con revocación de sesiones/push y desconexión de sockets, paginación estable de discovery con scoring/límite SQL, y verificación de fotos en R2 con PUT condicional. Retirado el endpoint legacy de metadatos. Corregidos también reanudación del perfil y filtros/conteo de tags con UUID. Añadidas dos migraciones (desactivación de cuentas y caducidad de intents antiguos). Verificado en PostgreSQL/PostGIS local del proyecto, puerto 5510: **248 tests backend, 0 fallos**, **18 tests de contratos**, formato global y OpenAPI YAML válidos. Las pruebas HTTP de R2 usan respuestas simuladas; no se ha realizado despliegue ni prueba contra un bucket real.
 
 - **2026-09-05 — Infraestructura:** actualizada documentación con los acuerdos de operación inicial: `stop-first`, downtime aceptado, backups local + R2 pendientes (frecuencia de una a varias horas y unas diez copias como objetivo), ausencia de failover externo y espera al ventilador del PM1735 antes del despliegue/pruebas. Diferenciados los componentes existentes y los pasos de CI/Dokploy pendientes. No se han modificado servicios remotos ni configurado backups.
+

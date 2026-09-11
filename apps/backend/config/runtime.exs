@@ -50,8 +50,6 @@ config :snack, :app_version, System.get_env("APP_VERSION", "dev")
 
 config :snack, SnackWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
-subscriptions_enabled? = System.get_env("ENABLE_SUBSCRIPTIONS") == "true"
-
 split_csv_env = fn var, fallback ->
   System.get_env(var, fallback)
   |> case do
@@ -65,52 +63,6 @@ split_csv_env = fn var, fallback ->
       |> Enum.reject(&(&1 == ""))
   end
 end
-
-config :snack,
-  features: [
-    subscriptions: subscriptions_enabled?
-  ]
-
-# Stripe runtime config.
-#
-# In prod with subscriptions enabled we refuse to boot without real keys —
-# a missing env var should be a loud failure, not a silent fall-through to
-# test credentials. In dev/test we keep harmless placeholders so local runs
-# and the test suite work without extra setup.
-stripe_fallbacks =
-  if config_env() == :prod do
-    %{api_key: nil, publishable_key: nil, webhook_secret: nil}
-  else
-    %{api_key: "sk_test_123", publishable_key: "pk_test_123", webhook_secret: "whsec_test_123"}
-  end
-
-fetch_stripe_env = fn var, fallback_key ->
-  case System.get_env(var) do
-    nil ->
-      if config_env() == :prod and subscriptions_enabled? do
-        raise """
-        environment variable #{var} is missing.
-        It is required when ENABLE_SUBSCRIPTIONS=true in production.
-        """
-      else
-        Map.fetch!(stripe_fallbacks, fallback_key)
-      end
-
-    value ->
-      value
-  end
-end
-
-config :snack, :stripe,
-  api_key: fetch_stripe_env.("STRIPE_SECRET_KEY", :api_key),
-  base_url: System.get_env("STRIPE_BASE_URL", "https://api.stripe.com"),
-  webhook_secret: fetch_stripe_env.("STRIPE_WEBHOOK_SECRET", :webhook_secret)
-
-config :snack, :stripe_mobile,
-  publishable_key: fetch_stripe_env.("STRIPE_PUBLISHABLE_KEY", :publishable_key),
-  merchant_display_name: System.get_env("STRIPE_MERCHANT_DISPLAY_NAME", "Snack"),
-  merchant_identifier: System.get_env("STRIPE_MERCHANT_IDENTIFIER"),
-  url_scheme: System.get_env("STRIPE_URL_SCHEME", "snack")
 
 if config_env() != :test do
   google_web_client_id = System.get_env("GOOGLE_WEB_CLIENT_ID")

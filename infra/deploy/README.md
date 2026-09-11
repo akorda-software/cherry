@@ -63,7 +63,7 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 
 - Aplicación tipo Docker, imagen `ghcr.io/<repo>-backend:<sha>` (nunca `latest`).
 - Env del servicio (variables obligatorias en prod; el release no arranca sin ellas):
-  `SECRET_KEY_BASE`, `AUTH_ACCESS_TOKEN_SALT`, `AUTH_REFRESH_TOKEN_SALT`, `MESSAGE_ENCRYPTION_KEY`, `DATABASE_URL` (`ecto://snack:…@192.168.0.142/snack_prod`), `PHX_HOST`, y `DATABASE_SSL=false`, `POOL_SIZE=20`, `ENABLE_SUBSCRIPTIONS=false`. Secretos generados con `openssl rand -base64 48` y guardados en Bitwarden.
+  `SECRET_KEY_BASE`, `AUTH_ACCESS_TOKEN_SALT`, `AUTH_REFRESH_TOKEN_SALT`, `MESSAGE_ENCRYPTION_KEY`, `DATABASE_URL` (`ecto://snack:…@192.168.0.142/snack_prod`), `PHX_HOST`, y `DATABASE_SSL=false`, `POOL_SIZE=20`. Secretos generados con `openssl rand -base64 48` y guardados en Bitwarden.
 - **Swarm (Advanced → Swarm)**: health check `curl -fsS localhost:4000/healthz`; UpdateConfig `order: stop-first`, `Parallelism 1`, `FailureAction rollback`, `Monitor 30s`; RollbackConfig también `order: stop-first` y `Parallelism 1`; `RestartPolicy on-failure`. **1 réplica**, sin distribución Erlang. Se acepta downtime de segundos o minutos y reconexión de los clientes; no se solapan versiones atendiendo chats.
 - Comando/entrypoint objetivo: `sh -c "bin/migrate && exec bin/server"` (migraciones al arrancar, lock activo). Verificar el override en Dokploy: el CMD actual de la imagen solo ejecuta `/app/bin/server`.
 - Dominio en Dokploy con HTTPS **desactivado** (TLS termina en Cloudflare/Caddy; Traefik escucha HTTP).

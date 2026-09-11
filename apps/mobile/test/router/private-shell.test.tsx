@@ -85,22 +85,6 @@ describe("private shell", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders optional module navigation from the registry inside settings", async () => {
-    renderRoute(<AppRouteHost />, {
-      initialPath: "/(app)/settings",
-      featureFlags: { subscriptions: true },
-      services: {
-        bootstrapSession: {
-          execute: async () => sessionFixture
-        }
-      }
-    });
-
-    expect(await screen.findByRole("button", { name: "Manage subscription" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Manage subscription" }));
-    expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/subscriptions");
-  });
-
   it("resolves authenticated deep links to a single canonical screen instance", async () => {
     renderRoute(
       <AppRouteHost />,

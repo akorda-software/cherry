@@ -17,17 +17,7 @@ const session = {
 };
 
 describe("optional modules registry", () => {
-  it("hides navigation entries when the module feature flag is disabled", () => {
-    expect(resolveOptionalNavigationEntries({ session, features: { subscriptions: false } })).toEqual([]);
-  });
-
-  it("exposes navigation entries when the module feature flag is enabled", () => {
-    expect(resolveOptionalNavigationEntries({ session, features: { subscriptions: true } })).toEqual([
-      {
-        href: "/(app)/subscriptions",
-        label: "Manage subscription",
-        title: "Subscription"
-      }
-    ]);
+  it("returns no navigation entries when the registry is empty", () => {
+    expect(resolveOptionalNavigationEntries({ session, features: { anyModule: true } })).toEqual([]);
   });
 });

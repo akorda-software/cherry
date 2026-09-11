@@ -24,19 +24,18 @@ Cobertura: umbral 90% configurado en `mix.exs`.
 - Controllers API: profile, discovery, chat REST, push-token, tags.
 - Canal de chat: join rules, envío, broadcasts.
 - Auth: validación/expiración de tokens REST y WS, rotación y revocación por reuso.
-- Billing: planes, subscribe/cancel, webhooks idempotentes (Stripe mockeado vía behaviour).
 
 ### Móvil
 - Routing: root navigation, private shell, onboarding resolver, runtime config.
-- Features: session manager (refresh/retry), auth providers y callbacks, discovery feed hook (optimismo + rollback), tag selection, subscriptions (paywall/billing/plan picker).
+- Features: session manager (refresh/retry), auth providers y callbacks, discovery feed hook (optimismo + rollback), tag selection.
 - UI: contrato de tokens/tema, componentes.
 
 ### Contracts
-- Serialización/forma de los DTOs compartidos (session, auth, billing, discovery).
+- Serialización/forma de los DTOs compartidos (session, auth, discovery).
 
 ## Mocks nativos
 
-`apps/mobile/test/mocks/` simula los módulos nativos usados (16 mocks) para jsdom: expo-secure-store, google-signin, expo-apple-authentication, datetimepicker, stripe-react-native, expo-image, flash-list, react-native, react-native-svg, expo-router (+drawer), expo-application, expo-device, expo-constants, expo-crypto, react-native-safe-area-context. Setup central en `test/setup.ts`.
+`apps/mobile/test/mocks/` simula los módulos nativos usados (15 mocks) para jsdom: expo-secure-store, google-signin, expo-apple-authentication, datetimepicker, expo-image, flash-list, react-native, react-native-svg, expo-router (+drawer), expo-application, expo-device, expo-constants, expo-crypto, react-native-safe-area-context. Setup central en `test/setup.ts`.
 
 ## Huecos conocidos
 

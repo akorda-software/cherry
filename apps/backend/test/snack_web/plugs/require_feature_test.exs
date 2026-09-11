@@ -19,23 +19,23 @@ defmodule SnackWeb.Plugs.RequireFeatureTest do
     end
 
     test "halts with 404 when flag is disabled" do
-      Application.put_env(:snack, :features, subscriptions: false)
+      Application.put_env(:snack, :features, feature_x: false)
 
       conn =
         Phoenix.ConnTest.build_conn()
         |> Plug.Conn.fetch_query_params()
-        |> RequireFeature.call(:subscriptions)
+        |> RequireFeature.call(:feature_x)
 
       assert conn.halted == true
       assert conn.status == 404
     end
 
     test "passes through when flag is enabled" do
-      Application.put_env(:snack, :features, subscriptions: true)
+      Application.put_env(:snack, :features, feature_x: true)
 
       conn =
         Phoenix.ConnTest.build_conn()
-        |> RequireFeature.call(:subscriptions)
+        |> RequireFeature.call(:feature_x)
 
       assert conn.halted == false
       assert conn.status == nil
@@ -46,7 +46,7 @@ defmodule SnackWeb.Plugs.RequireFeatureTest do
 
       conn =
         Phoenix.ConnTest.build_conn()
-        |> RequireFeature.call(:subscriptions)
+        |> RequireFeature.call(:feature_x)
 
       assert conn.halted == true
       assert conn.status == 404

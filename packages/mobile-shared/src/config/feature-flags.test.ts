@@ -4,26 +4,26 @@ import type { BootstrapConfig } from "@snack/contracts";
 import { createFeatureFlagReader } from "./feature-flags";
 
 describe("createFeatureFlagReader", () => {
-  it("reads a subscription flag enabled from the bootstrap response", () => {
+  it("reads a feature flag enabled from the bootstrap response", () => {
     const bootstrap: BootstrapConfig = {
       features: {
-        subscriptions: { enabled: true }
+        darkMode: { enabled: true }
       }
     };
 
     const reader = createFeatureFlagReader(bootstrap);
-    expect(reader.isEnabled("subscriptions")).toBe(true);
+    expect(reader.isEnabled("darkMode")).toBe(true);
   });
 
-  it("returns false when the subscriptions flag is disabled", () => {
+  it("returns false when the flag is disabled", () => {
     const bootstrap: BootstrapConfig = {
       features: {
-        subscriptions: { enabled: false }
+        darkMode: { enabled: false }
       }
     };
 
     const reader = createFeatureFlagReader(bootstrap);
-    expect(reader.isEnabled("subscriptions")).toBe(false);
+    expect(reader.isEnabled("darkMode")).toBe(false);
   });
 
   it("returns false for a flag that does not exist in the bootstrap response", () => {
@@ -32,13 +32,13 @@ describe("createFeatureFlagReader", () => {
     };
 
     const reader = createFeatureFlagReader(bootstrap);
-    expect(reader.isEnabled("subscriptions")).toBe(false);
+    expect(reader.isEnabled("darkMode")).toBe(false);
   });
 
   it("returns false for any unknown flag key", () => {
     const bootstrap: BootstrapConfig = {
       features: {
-        subscriptions: { enabled: true }
+        darkMode: { enabled: true }
       }
     };
 
@@ -49,13 +49,13 @@ describe("createFeatureFlagReader", () => {
   it("reads multiple flags independently from the same bootstrap", () => {
     const bootstrap: BootstrapConfig = {
       features: {
-        subscriptions: { enabled: true },
-        darkMode: { enabled: false }
+        darkMode: { enabled: true },
+        betaFeature: { enabled: false }
       }
     };
 
     const reader = createFeatureFlagReader(bootstrap);
-    expect(reader.isEnabled("subscriptions")).toBe(true);
-    expect(reader.isEnabled("darkMode")).toBe(false);
+    expect(reader.isEnabled("darkMode")).toBe(true);
+    expect(reader.isEnabled("betaFeature")).toBe(false);
   });
 });

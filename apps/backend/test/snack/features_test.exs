@@ -20,21 +20,21 @@ defmodule Snack.FeaturesTest do
   describe "enabled?/1" do
     test "returns false when flag is not set in app env" do
       Application.delete_env(:snack, :features)
-      assert Features.enabled?(:subscriptions) == false
+      assert Features.enabled?(:feature_x) == false
     end
 
     test "returns false when features list exists but flag is false" do
-      Application.put_env(:snack, :features, subscriptions: false)
-      assert Features.enabled?(:subscriptions) == false
+      Application.put_env(:snack, :features, feature_x: false)
+      assert Features.enabled?(:feature_x) == false
     end
 
     test "returns true when flag is set to true" do
-      Application.put_env(:snack, :features, subscriptions: true)
-      assert Features.enabled?(:subscriptions) == true
+      Application.put_env(:snack, :features, feature_x: true)
+      assert Features.enabled?(:feature_x) == true
     end
 
     test "returns false for unknown flag keys" do
-      Application.put_env(:snack, :features, subscriptions: true)
+      Application.put_env(:snack, :features, feature_x: true)
       assert Features.enabled?(:nonexistent) == false
     end
 

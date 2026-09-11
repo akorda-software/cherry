@@ -3,7 +3,6 @@ defmodule SnackWeb.Controllers.Api.ConfigControllerTest do
 
   setup do
     original_features = Application.get_env(:snack, :features)
-    original_stripe_mobile = Application.get_env(:snack, :stripe_mobile)
 
     on_exit(fn ->
       if original_features do
@@ -11,87 +10,50 @@ defmodule SnackWeb.Controllers.Api.ConfigControllerTest do
       else
         Application.delete_env(:snack, :features)
       end
-
-      if original_stripe_mobile do
-        Application.put_env(:snack, :stripe_mobile, original_stripe_mobile)
-      else
-        Application.delete_env(:snack, :stripe_mobile)
-      end
     end)
 
     :ok
   end
 
   describe "GET /api/config" do
-    test "returns stripe mobile runtime config when configured" do
-      Application.put_env(:snack, :features, subscriptions: true)
-
-      Application.put_env(:snack, :stripe_mobile, %{
-        publishable_key: "pk_test_runtime",
-        merchant_display_name: "Snack Test",
-        merchant_identifier: "merchant.snack.test",
-        url_scheme: "snack"
-      })
-
-      conn = get(build_conn(), "/api/config")
-
-      assert %{
-               "services" => %{
-                 "stripe" => %{
-                   "publishableKey" => "pk_test_runtime",
-                   "merchantDisplayName" => "Snack Test",
-                   "merchantIdentifier" => "merchant.snack.test",
-                   "urlScheme" => "snack"
-                 }
-               }
-             } = json_response(conn, 200)
-    end
-
-    test "returns subscriptions enabled: true when flag is set" do
-      Application.put_env(:snack, :features, subscriptions: true)
+    test "returns feature flags with enabled state" do
+      Application.put_env(:snack, :features, dark_mode: true)
 
       conn = get(build_conn(), "/api/config")
 
       assert %{
                "features" => %{
-                 "subscriptions" => %{"enabled" => true}
+                 "dark_mode" => %{"enabled" => true}
                }
              } = json_response(conn, 200)
     end
 
-    test "returns subscriptions enabled: false when flag is explicitly false" do
-      Application.put_env(:snack, :features, subscriptions: false)
-      Application.put_env(:snack, :stripe_mobile, %{publishable_key: "pk_test_runtime"})
+    test "returns feature flag disabled when explicitly false" do
+      Application.put_env(:snack, :features, dark_mode: false)
 
       conn = get(build_conn(), "/api/config")
 
       assert %{
                "features" => %{
-                 "subscriptions" => %{"enabled" => false}
-               },
-               "services" => %{}
+                 "dark_mode" => %{"enabled" => false}
+               }
              } = json_response(conn, 200)
     end
 
-    test "returns subscriptions enabled: false when flag is absent" do
+    test "returns no feature flags when none are configured" do
       Application.delete_env(:snack, :features)
 
       conn = get(build_conn(), "/api/config")
 
-      assert %{
-               "features" => %{
-                 "subscriptions" => %{"enabled" => false}
-               }
-             } = json_response(conn, 200)
+      assert %{"features" => %{}} = json_response(conn, 200)
     end
 
     test "returns multiple feature flags independently" do
-      Application.put_env(:snack, :features, subscriptions: true, dark_mode: true, beta: false)
+      Application.put_env(:snack, :features, dark_mode: true, beta: false)
 
       conn = get(build_conn(), "/api/config")
       body = json_response(conn, 200)
 
-      assert body["features"]["subscriptions"]["enabled"] == true
       assert body["features"]["dark_mode"]["enabled"] == true
       assert body["features"]["beta"]["enabled"] == false
     end

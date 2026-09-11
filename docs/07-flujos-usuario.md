@@ -17,8 +17,7 @@ app/
 └── (app)/
     ├── (tabs)/home                # discovery feed ("Descubrir")
     ├── (tabs)/profile             # perfil propio
-    ├── settings                   # placeholder + logout + módulos opcionales
-    └── subscriptions              # add-on flaggeado (paywall/billing)
+    └── settings                   # placeholder + logout + módulos opcionales
 ```
 
 ## Autenticación
@@ -55,11 +54,7 @@ Stepper navegable entre pasos; cada paso guarda en el backend antes de avanzar:
 
 ## Perfil y ajustes
 
-- Tab perfil propio; settings con logout y acceso al módulo opcional de suscripciones.
-
-## Suscripciones (add-on opcional)
-
-Visible solo con el flag activo: paywall según estado de suscripción, plan picker, PaymentSheet nativo, cancelación y estado. Fuera del alcance dating v1.
+- Tab perfil propio; settings con logout.
 
 ## Flujos aún no implementados
 

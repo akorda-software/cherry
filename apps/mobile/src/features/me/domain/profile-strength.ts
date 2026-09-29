@@ -170,7 +170,7 @@ export function assessProfileStrength(profile: ProfileSnapshot): ProfileStrength
   if (extras.length === 0) {
     return {
       tone: "shining",
-      title: "Tu perfil brilla ✨",
+      title: "Tu perfil brilla",
       message: "Fotos, etiquetas y bio en su sitio. Ahora a disfrutar.",
       suggestions: []
     };

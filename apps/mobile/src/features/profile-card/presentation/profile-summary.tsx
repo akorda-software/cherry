@@ -13,7 +13,8 @@ export interface ProfileSummaryProps {
   profile: PersonSource;
   /**
    * `feed`: insignias, qué busca y distancia, etiquetas en común destacadas y la bio (recortada).
-   * `full`: todo, con las etiquetas agrupadas («En común» primero y luego por categoría).
+   * `full`: todo, con las etiquetas agrupadas («En común» primero y luego por categoría)
+   *   arriba del todo, antes de qué busca, la distancia y la bio.
    */
   variant?: "feed" | "full";
   /** Pinta la pegatina con el nombre (si el contenedor no la coloca él mismo sobre la foto). */
@@ -36,11 +37,13 @@ export const ProfileSummary = memo(function ProfileSummary({
   return (
     <Stack gap={full ? "lg" : "md"} style={style} testID={testID}>
       {showName ? <NameSticker age={person.age} name={person.displayName} size={full ? "lg" : "md"} /> : null}
+      {/* En el perfil completo las etiquetas (las comunes primero, con destello) van justo
+          bajo el nombre: son lo que más os une y lo primero que se busca. */}
+      {full ? <TagCloud animateShared layout="grouped" tags={person.tags} testID={testID ? `${testID}-tags` : undefined} /> : null}
       <ProfileBadges includeShared={!full} person={person} size={full ? "md" : "sm"} testID={testID ? `${testID}-badges` : undefined} />
       <MetaLine distanceLabel={person.distanceLabel} intent={person.whatIAmLookingFor} sentence={full} />
       {full ? null : <TagStickerRow limit={4} size="sm" tags={person.tags} />}
       <BioNote bio={person.bio} numberOfLines={full ? undefined : 3} tilt={full ? -1 : -1.5} />
-      {full ? <TagCloud animateShared layout="grouped" tags={person.tags} testID={testID ? `${testID}-tags` : undefined} /> : null}
     </Stack>
   );
 });

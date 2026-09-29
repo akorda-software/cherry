@@ -35,8 +35,8 @@ function useKeyboardVisible() {
 }
 
 /**
- * Barra de pestañas flotante: una pastilla blanca sobre el papel. La pestaña
- * activa se convierte en una pegatina pastel con su nombre y hace pop.
+ * Barra de pestañas flotante: una pastilla blanca sobre el papel. Todas llevan
+ * icono y rótulo; la activa se convierte en una pegatina pastel y hace pop.
  * Lee de cada pantalla `title`, `tabBarIcon`, `tabBarBadge`,
  * `tabBarActiveBackgroundColor` (color de la pegatina) y `tabBarButtonTestID`.
  */
@@ -151,12 +151,11 @@ function KawaiiTab({ label, icon, focused, color, badge, index, accessibilityLab
   }));
 
   const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: -9 * on.value }, { scale: 1 - 0.1 * press.value }]
+    transform: [{ translateY: -8 - 1.5 * on.value }, { scale: 1 - 0.1 * press.value }]
   }));
 
   const labelStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, on.value * 1.4 - 0.4),
-    transform: [{ translateY: 6 * (1 - on.value) }]
+    transform: [{ translateY: -1.5 * on.value }, { scale: 1 - 0.04 * press.value }]
   }));
 
   return (
@@ -192,13 +191,19 @@ function KawaiiTab({ label, icon, focused, color, badge, index, accessibilityLab
         {icon}
         {badge > 0 ? <Badge count={badge} size="sm" style={styles.badge} /> : null}
       </Animated.View>
+      {/* Rótulo siempre visible (reconocer > recordar); la activa lo remarca en tinta plena. */}
       <Animated.Text
         adjustsFontSizeToFit
-        maxFontSizeMultiplier={1.15}
+        allowFontScaling
+        maxFontSizeMultiplier={1.1}
+        minimumFontScale={0.85}
         numberOfLines={1}
         style={[
           styles.label,
-          { color: c.ink, fontFamily: theme.primitives.fonts.extraBold },
+          {
+            color: focused ? c.ink : c.inkSoft,
+            fontFamily: focused ? theme.primitives.fonts.extraBold : theme.primitives.fonts.bold
+          },
           labelStyle
         ]}
       >
@@ -221,7 +226,7 @@ const styles = StyleSheet.create({
     marginHorizontal: "auto",
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10
+    paddingHorizontal: 5
   },
   slot: {
     flex: 1,
@@ -231,10 +236,10 @@ const styles = StyleSheet.create({
   },
   sticker: {
     position: "absolute",
-    top: 6,
-    bottom: 6,
-    left: 5,
-    right: 5
+    top: 5,
+    bottom: 5,
+    left: 2,
+    right: 2
   },
   icon: {
     alignItems: "center",
@@ -247,11 +252,11 @@ const styles = StyleSheet.create({
   },
   label: {
     position: "absolute",
-    bottom: 12,
-    left: 6,
-    right: 6,
+    bottom: 10,
+    left: 5,
+    right: 5,
     textAlign: "center",
-    fontSize: 12,
-    lineHeight: 15
+    fontSize: 11,
+    lineHeight: 14
   }
 });

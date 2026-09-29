@@ -50,7 +50,7 @@ describe("private shell", () => {
 
     expect(await screen.findByTestId("likes-screen")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Likes" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Estamos preparando esta página ✨" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Estamos preparando esta pantalla" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Volver" })).not.toBeInTheDocument();
   });
 

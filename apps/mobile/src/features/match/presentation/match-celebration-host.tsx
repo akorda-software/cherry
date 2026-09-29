@@ -157,7 +157,8 @@ function MatchCelebration({ match, onDismiss }: { match: DiscoveryMatch; onDismi
                 <WashiTape color="limonada" height={28} pattern="hearts" rotation={-6} width={Math.round(cardWidth * 0.62)} />
               </Appear>
               <View pointerEvents="none" style={styles.stamp}>
-                <Stamp label="¡Match!" rotation={-10} shape="rounded" size="lg" slam={!reduced} tone="fresa" />
+                {/* Papel macizo: nada de las fotos se transparenta a través del sello. */}
+                <Stamp backdrop="opaque" label="¡Match!" rotation={-10} shape="rounded" size="lg" slam={!reduced} tone="fresa" />
               </View>
             </>
           ) : null}
@@ -232,9 +233,6 @@ function Polaroid({ uri, name, width }: { uri: string | null; name: string; widt
           <Text variant="hero">{name.trim().slice(0, 1).toUpperCase()}</Text>
         )}
       </View>
-      <Text align="center" maxFontSizeMultiplier={1.2} numberOfLines={1} style={styles.caption} variant="hand">
-        {name}
-      </Text>
     </View>
   );
 }
@@ -265,18 +263,15 @@ const styles = StyleSheet.create({
     left: "48%",
     top: 18
   },
+  // Sin pie escrito: el sello «¡MATCH!» cae sobre la franja blanca de abajo y un nombre
+  // a medio tapar solo metería ruido (los nombres ya van en el titular).
   polaroid: {
     padding: 8,
-    paddingBottom: 6,
-    gap: 4
+    paddingBottom: 26
   },
   fill: {
     width: "100%",
     height: "100%"
-  },
-  caption: {
-    fontSize: 18,
-    lineHeight: 24
   },
   tape: {
     position: "absolute",

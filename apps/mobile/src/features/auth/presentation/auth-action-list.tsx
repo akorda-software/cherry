@@ -9,6 +9,9 @@ import type { BusyProvider } from "./session-store";
 /** Persona de demo del seed del backend: perfil completo con likes, matches y chats. */
 export const DEMO_TEST_EMAIL = "demo@snack.dev";
 
+/** Segunda persona de demo (Hugo, sin interacciones): para probar matches en directo entre dos sesiones. */
+export const DEMO2_TEST_EMAIL = "demo2@snack.dev";
+
 /** Email desechable para estrenar un usuario de pruebas (entra al onboarding desde cero). */
 export function createFreshTestEmail(now: number = Date.now(), random: () => number = Math.random): string {
   const suffix = Math.floor(random() * 36 ** 4)
@@ -18,8 +21,9 @@ export function createFreshTestEmail(now: number = Date.now(), random: () => num
 }
 
 /**
- * Colores de marca de terceros, no del tema: Apple solo admite su botón en negro o blanco
- * y Google su «G» de cuatro colores sobre blanco (guías de Sign in with Apple / Google).
+ * Colores de marca de terceros, no del tema: Apple solo admite su botón en negro o blanco,
+ * sin adornos (ni sombras de color ni giros), y Google su «G» de cuatro colores sobre blanco
+ * (guías de Sign in with Apple / Google).
  */
 const providerBrand = {
   appleFill: "#000000",
@@ -28,16 +32,15 @@ const providerBrand = {
 
 const providerNames: Record<AuthProvider, string> = { google: "Google", apple: "Apple" };
 
-function isDevBuild() {
-  return (globalThis as { __DEV__?: boolean }).__DEV__ === true;
-}
-
 interface AuthActionListProps {
   busyProvider: BusyProvider | null;
   onSelect(provider: AuthProvider): void;
   /** Solo en desarrollo: login de pruebas (sin email = usuario de test compartido). */
   onTest?(email?: string): void;
-  /** «Continuar con Apple» (por defecto en todas partes salvo Android, donde no hay Sign in with Apple nativo). */
+  /**
+   * «Continuar con Apple»: por defecto solo en iOS, el único sitio con Sign in with Apple
+   * nativo (en Android y en web no hay flujo soportado).
+   */
   showApple?: boolean;
 }
 
@@ -45,7 +48,7 @@ export function AuthActionList({
   busyProvider,
   onSelect,
   onTest,
-  showApple = Platform.OS !== "android"
+  showApple = Platform.OS === "ios"
 }: AuthActionListProps) {
   const theme = useTheme();
   const c = theme.primitives.color;
@@ -69,7 +72,7 @@ export function AuthActionList({
             fill: providerBrand.appleFill,
             border: providerBrand.appleFill,
             text: providerBrand.appleInk,
-            shadow: theme.primitives.pastel.fresa.fill
+            shadow: null
           }}
           disabled={locked}
           logo={<AppleLogo color={providerBrand.appleInk} size={22} />}
@@ -78,7 +81,8 @@ export function AuthActionList({
           testID="login-apple"
         />
       ) : null}
-      {isDevBuild() && onTest ? (
+      {/* `__DEV__` literal: el empaquetador lo sustituye y elimina este bloque en producción. */}
+      {__DEV__ && onTest ? (
         <DevSignIn busy={busyProvider === "test"} disabled={locked} onTest={onTest} />
       ) : null}
     </View>
@@ -88,7 +92,8 @@ export function AuthActionList({
 interface ProviderButtonProps {
   provider: AuthProvider;
   logo: ReactNode;
-  colors: { fill: string; border: string; text: string; shadow: string };
+  /** `shadow: null` = botón limpio, sin sombra ni hundimiento (Apple). */
+  colors: { fill: string; border: string; text: string; shadow: string | null };
   busy: boolean;
   disabled: boolean;
   onPress(): void;
@@ -107,7 +112,7 @@ function ProviderButton({ provider, logo, colors, busy, disabled, onPress, testI
       accessibilityState={{ disabled: blocked, busy }}
       aria-busy={busy || undefined}
       disabled={blocked}
-      elevation="md"
+      elevation={colors.shadow ? "md" : "none"}
       faceStyle={[
         styles.providerFace,
         {
@@ -119,7 +124,8 @@ function ProviderButton({ provider, logo, colors, busy, disabled, onPress, testI
       ]}
       haptic
       onPress={onPress}
-      shadowColor={colors.shadow}
+      pressedScale={colors.shadow ? 1 : 0.98}
+      shadowColor={colors.shadow ?? undefined}
       style={disabled && !busy ? { opacity: theme.primitives.opacity.disabled } : null}
       testID={testID}
     >
@@ -147,11 +153,11 @@ interface DevSignInProps {
 /** Atajos de desarrollo: nunca salen en una build de producción. */
 function DevSignIn({ busy, disabled, onTest }: DevSignInProps) {
   const theme = useTheme();
-  const [choice, setChoice] = useState<"new" | "demo" | null>(null);
+  const [choice, setChoice] = useState<"new" | "demo" | "demo2" | null>(null);
 
-  function start(next: "new" | "demo") {
+  function start(next: "new" | "demo" | "demo2") {
     setChoice(next);
-    onTest(next === "new" ? createFreshTestEmail() : DEMO_TEST_EMAIL);
+    onTest(next === "new" ? createFreshTestEmail() : next === "demo" ? DEMO_TEST_EMAIL : DEMO2_TEST_EMAIL);
   }
 
   return (
@@ -197,6 +203,19 @@ function DevSignIn({ busy, disabled, onTest }: DevSignInProps) {
         variant="soft"
       >
         Entrar como Lucía (demo)
+      </Button>
+      <Button
+        color="lavanda"
+        disabled={disabled && !(busy && choice === "demo2")}
+        fullWidth
+        icon="user"
+        loading={busy && choice === "demo2"}
+        onPress={() => start("demo2")}
+        size="sm"
+        testID="login-dev-demo2"
+        variant="soft"
+      >
+        Entrar como Hugo (demo 2)
       </Button>
     </View>
   );

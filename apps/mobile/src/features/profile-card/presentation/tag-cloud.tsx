@@ -44,7 +44,7 @@ export interface TagStickerRowProps {
   /** Solo las etiquetas en común (tarjeta de swipe). */
   sharedOnly?: boolean;
   size?: TagStickerSize;
-  /** Borde blanco troquelado (sobre fotos). */
+  /** Material troquelado (def. sí, como todas las pegatinas de etiqueta). */
   diecut?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -62,7 +62,7 @@ export const TagStickerRow = memo(function TagStickerRow({
   limit = 3,
   sharedOnly = false,
   size = "sm",
-  diecut = false,
+  diecut = true,
   style,
   testID
 }: TagStickerRowProps) {
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: ROW_GAP,
     flexWrap: "nowrap",
-    minHeight: 34
+    minHeight: 36
   },
   measureClip: {
     position: "absolute",

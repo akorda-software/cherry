@@ -5,7 +5,7 @@ import type { DiscoveryProfileCard, ProfileTag } from "@snack/contracts";
 
 import { renderWithTheme } from "../../../../test/ui/render-with-theme";
 import { toProfilePerson } from "../domain/person";
-import { BioNote } from "./bio-note";
+import { BioNote, glueEllipses } from "./bio-note";
 import { IntentBadge } from "./intent-badge";
 import { NameSticker } from "./name-sticker";
 import { PhotoCarousel } from "./photo-carousel";
@@ -139,5 +139,19 @@ describe("profile atoms", () => {
     expect(screen.getByText("1 en común contigo")).toBeInTheDocument();
     // In the full variant «en común» heads the tags, so it is not repeated as a badge.
     expect(screen.queryByText("1 en común")).not.toBeInTheDocument();
+  });
+
+  it("glues hand-written ellipses to the next word so a clamped bio never shows «... …»", () => {
+    expect(glueEllipses("me apetece es... cocinar")).toBe("me apetece es...\u00A0cocinar");
+    expect(glueEllipses("pues… ya veremos")).toBe("pues…\u00A0ya veremos");
+    expect(glueEllipses("y ya...")).toBe("y ya...");
+  });
+
+  it("ProfileSummary (full) puts the tags right under the name, before intent and bio", () => {
+    const { container } = renderWithTheme(<ProfileSummary profile={card()} testID="summary" variant="full" />);
+    const text = container.textContent ?? "";
+
+    expect(text.indexOf("1 en común contigo")).toBeLessThan(text.indexOf("Busca una relación"));
+    expect(text.indexOf("1 en común contigo")).toBeLessThan(text.indexOf("Me encanta el café"));
   });
 });

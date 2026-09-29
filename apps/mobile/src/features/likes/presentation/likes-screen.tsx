@@ -33,7 +33,7 @@ const ROW_GAP = GAP + 10;
 const LOAD_MORE_THRESHOLD = 0.8;
 /**
  * Una polaroid anima su entrada solo si se monta en cuanto llega a la lista. La lista es
- * virtualizada: al volver a montarse por scroll aparece tal cual (sin cascada ni sello que cae).
+ * virtualizada: al volver a montarse por scroll aparece tal cual (sin cascada).
  */
 const FRESH_MS = 1500;
 
@@ -41,7 +41,6 @@ interface LikeCard {
   like: ReceivedLike;
   index: number;
   enterDelay: number | null;
-  stampDelay: number;
   addedAt: number;
 }
 
@@ -110,7 +109,6 @@ export function LikesScreen() {
         like,
         index,
         enterDelay: batchIndex !== undefined ? Math.min(batchIndex, 7) * 55 : restored ? null : 0,
-        stampDelay: batchIndex !== undefined ? 260 + Math.min(batchIndex, 7) * 110 : 120,
         addedAt: addedAt.current.get(id) ?? now
       };
     });
@@ -155,14 +153,13 @@ export function LikesScreen() {
             busy={pending[item.like.profile.id] !== undefined}
             enterDelay={item.enterDelay}
             index={item.index}
-            // Montaje propio por persona: el estado de la polaroid (salida, sello) no se recicla.
+            // Montaje propio por persona: el estado de la polaroid (salida) no se recicla.
             key={item.like.profile.id}
             like={item.like}
             onLike={onLike}
             onOpen={openProfile}
             onPass={onPass}
             settled={Date.now() - item.addedAt > FRESH_MS}
-            stampDelay={item.stampDelay}
             width={cardWidth}
           />
         </View>

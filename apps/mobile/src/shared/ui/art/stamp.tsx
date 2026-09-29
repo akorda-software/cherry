@@ -27,8 +27,11 @@ export interface StampProps {
   /** Giro en grados (def. -8). */
   rotation?: number;
   size?: StampSize;
-  /** Papel blanco translúcido detrás para leerse sobre fotos (def. sí). */
-  backdrop?: boolean;
+  /**
+   * Papel detrás para leerse sobre fotos: `true` (def.) blanco translúcido, `"opaque"`
+   * blanco macizo (nada asoma por debajo), `false` solo tinta.
+   */
+  backdrop?: boolean | "opaque";
   /** Cae de golpe al montarse (escala 1.6 → 1). Con «reducir movimiento», fundido. */
   slam?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -98,7 +101,12 @@ export const Stamp = memo(function Stamp({
             borderWidth: metrics.outer,
             borderRadius: outerRadius,
             padding: circle ? metrics.outer + 1 : metrics.outer,
-            backgroundColor: backdrop ? withAlpha(theme.primitives.color.white, 0.9) : "transparent"
+            backgroundColor:
+              backdrop === "opaque"
+                ? theme.primitives.color.white
+                : backdrop
+                  ? withAlpha(theme.primitives.color.white, 0.9)
+                  : "transparent"
           }
         ]}
       >

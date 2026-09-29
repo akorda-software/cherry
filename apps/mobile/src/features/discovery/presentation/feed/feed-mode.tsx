@@ -4,7 +4,7 @@ import { type LayoutChangeEvent, LayoutAnimation, Platform, StyleSheet, View } f
 
 import type { DiscoveryActionType, DiscoveryProfileCard } from "@snack/contracts";
 
-import { ErrorState, haptics, Mascot, Stack, Text } from "../../../../shared/ui";
+import { Deco, ErrorState, haptics, Mascot, Stack, Text } from "../../../../shared/ui";
 import type { DiscoveryQueueRemoval } from "../../application/discovery-queue";
 import { type FeedRow, type LeavingPost, mergeLeavingPosts } from "../../domain/feed-leaving";
 import { prefetchImageUrls } from "../../infrastructure/image-prefetch";
@@ -214,9 +214,12 @@ export function FeedMode({
     return (
       <View style={styles.footer} testID="feed-end">
         <Stack align="center" gap="sm">
-          <Mascot mood="sleepy" size={84} />
+          <View>
+            <Mascot mood="sleepy" size={84} />
+            <Deco color="fresa" kind="flower" rotation={12} size={20} style={styles.endFlower} />
+          </View>
           <Text align="center" variant="title3">
-            Has llegado al final 🌸
+            Has llegado al final
           </Text>
           <Text align="center" color="muted" variant="callout">
             Vuelve en un rato o amplía tus filtros.
@@ -263,6 +266,11 @@ export function FeedMode({
 const styles = StyleSheet.create({
   root: {
     flex: 1
+  },
+  endFlower: {
+    position: "absolute",
+    top: 0,
+    right: -12
   },
   footer: {
     alignItems: "center",

@@ -40,7 +40,6 @@ function renderCard(props: Partial<Parameters<typeof LikePolaroid>[0]> = {}) {
       enterDelay={0}
       index={0}
       like={like()}
-      stampDelay={0}
       width={164}
       {...handlers}
       {...props}
@@ -58,12 +57,13 @@ afterEach(() => {
 });
 
 describe("LikePolaroid", () => {
-  it("shows who liked you, what you share and the stamp", () => {
+  it("shows who liked you and what you share, without a per-card stamp", () => {
     renderCard();
 
     expect(screen.getByText("Sergio, 30")).toBeInTheDocument();
     expect(screen.getByText("2 en común")).toBeInTheDocument();
-    expect(screen.getByText("¡Te ha dado like!")).toBeInTheDocument();
+    // The screen title already says «Les gustas»: no «¡Te ha dado like!» stamp on each photo.
+    expect(screen.queryByText("¡Te ha dado like!")).not.toBeInTheDocument();
     expect(screen.getByTestId("like-open-p1")).toHaveAttribute(
       "aria-label",
       "Sergio, 30. te ha dado like. 2 etiquetas en común"

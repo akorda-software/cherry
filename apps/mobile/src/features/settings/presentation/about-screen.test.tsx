@@ -21,6 +21,7 @@ describe("AboutScreen", () => {
     expect(screen.getByText("No vendemos tus datos ni tu atención.")).toBeInTheDocument();
     expect(screen.getByText("Redondeamos tu ubicación a 500 m. Nunca compartimos la exacta.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Código abierto" })).toBeInTheDocument();
+    expect(screen.getByText(/libre bajo licencia AGPL-3\.0/)).toBeInTheDocument();
     expect(screen.getByText(/SIL Open Font License/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ver el código" })).not.toBeInTheDocument();
   });

@@ -128,9 +128,10 @@ Base neobrutal para tus propios pulsables: `faceStyle` (relleno/contorno/radio/p
 `releaseSpring?` (`snappy` | `pop`…), `haptic?`, `rotate?`, `shadowColor?`, `sinkWhenDisabled?` + props de Pressable.
 
 ### `TagSticker` (el componente estrella)
-`label`, `emoji?`, `state?: "neutral" | "selected" | "blocked" | "shared" | "muted"`, `size?: "sm" (30) | "md" (38) |
-"lg" (46)`, `tint?: PastelName` (tiñe el estado neutral, p. ej. color de categoría `theme.semantic.category`),
-`diecut?` (borde blanco troquelado para pegatinas sobre fotos), `rotate?`, `disabled?`, `onPress?`, `onLongPress?`,
+`label`, `emoji?`, `state?: "neutral" | "selected" | "blocked" | "shared" | "muted"`, `size?: "sm" (32) | "md" (40) |
+"lg" (50)`, `tint?: PastelName` (tiñe el estado neutral, p. ej. color de categoría `theme.semantic.category`),
+`diecut?` (def. **sí**: contorno de tinta + anillo blanco troquelado + impresión pastel + sombra dura, como las
+pegatinas del login; `false` = pastilla plana solo para huecos muy apretados), `rotate?`, `disabled?`, `onPress?`, `onLongPress?`,
 `testID?`. Estados: selected = menta + ♥; blocked = tomate suave con rayas + ✕ + tachado; shared = limonada + destello;
 muted = recortable a trazos, sin sombra. Con `onPress` es un checkbox accesible (y el neutral muestra «+» para que el
 ancho no salte al elegir). Al cambiar de estado hace pop (despegar/pegar) y háptico de selección, él solo.
@@ -141,7 +142,7 @@ ancho no salte al elegir). Al cambiar de estado hace pop (despegar/pegar) y háp
     <TagSticker key={t.slug} emoji={t.emoji} label={t.label} state={stateOf(t)} onPress={() => toggle(t)} testID={`tag-${t.slug}`} />
   ))}
 </Inline>
-<TagSticker diecut size="sm" rotate={-3} state="shared" emoji="🌿" label="Senderismo" />
+<TagSticker size="sm" rotate={-3} state="shared" emoji="🌿" label="Senderismo" />
 ```
 
 ### `SegmentedControl`

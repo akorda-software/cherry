@@ -40,7 +40,7 @@ describe("assessProfileStrength", () => {
     const strength = assessProfileStrength(profile());
 
     expect(strength.tone).toBe("shining");
-    expect(strength.title).toBe("Tu perfil brilla ✨");
+    expect(strength.title).toBe("Tu perfil brilla");
     expect(strength.suggestions).toEqual([]);
   });
 

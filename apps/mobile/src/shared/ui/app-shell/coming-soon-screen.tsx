@@ -1,4 +1,7 @@
 import type { ReactNode } from "react";
+import { StyleSheet, View } from "react-native";
+
+import { Mascot, Sparkle } from "../art";
 
 import { EmptyState } from "../composites/empty-state";
 import { TopBar } from "../composites/top-bar";
@@ -34,9 +37,28 @@ export function ComingSoonScreen({ title, back = true, close = false, tone, righ
     >
       <EmptyState
         description="Mochi está recortando pegatinas y ordenando la libreta. Muy pronto estará lista."
-        mood="thinking"
-        title="Estamos preparando esta página ✨"
+        illustration={
+          <View>
+            <Mascot mood="thinking" size={148} />
+            <Sparkle color="limonada" rotation={10} size={28} style={styles.sparkle} />
+            <Sparkle color="cielo" rotation={-8} size={16} style={styles.sparkleSmall} />
+          </View>
+        }
+        title="Estamos preparando esta pantalla"
       />
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  sparkle: {
+    position: "absolute",
+    top: 6,
+    right: -18
+  },
+  sparkleSmall: {
+    position: "absolute",
+    top: 38,
+    left: -14
+  }
+});

@@ -62,7 +62,7 @@ function EditPhotosBody({ profile, callApi }: { profile: Profile; callApi: CallP
         leave();
       }}
       saveEnabled={!manager.uploading}
-      saveLabel={manager.uploading ? "Subiendo..." : "Listo"}
+      saveLabel={manager.uploading ? "Subiendo…" : "Listo"}
       saving={false}
       testID="edit-photos-screen"
       title="Tus fotos"

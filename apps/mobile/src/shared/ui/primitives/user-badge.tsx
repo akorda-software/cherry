@@ -13,7 +13,7 @@ interface UserBadgeProps {
 
 /** Ficha compacta de persona (avatar + nombre + dato). */
 export function UserBadge({ email, name, selected = false, avatarUrl }: UserBadgeProps) {
-  const accessibilityLabel = selected ? `${name}, selected user badge` : `${name} user badge`;
+  const accessibilityLabel = selected ? `${name}, seleccionado` : name;
 
   return (
     <Surface accessibilityLabel={accessibilityLabel} color={selected ? "limonada" : "white"} elevation="sm" padding={12}>

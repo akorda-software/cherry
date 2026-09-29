@@ -16,7 +16,7 @@ import { useProfileDraft } from "../use-profile-draft";
 type CallProfileApi = <T>(run: (api: ProfileApi) => Promise<T>) => Promise<T>;
 
 function photosHint(count: number, uploading: boolean): string {
-  if (uploading) return "Subiendo tus fotos...";
+  if (uploading) return "Subiendo tus fotos…";
   if (count === 0) return `Añade al menos ${MIN_PROFILE_PHOTOS} fotos`;
   if (count < MIN_PROFILE_PHOTOS) return `Te falta ${MIN_PROFILE_PHOTOS - count} foto`;
   if (count < MAX_PROFILE_PHOTOS) return `${count} de ${MAX_PROFILE_PHOTOS} · puedes añadir más si quieres`;

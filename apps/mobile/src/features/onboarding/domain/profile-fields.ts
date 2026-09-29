@@ -107,10 +107,10 @@ export function validateBio(raw: string | null | undefined): BioValidation {
 
 /** Arranques de bio: rompen el bloqueo de la página en blanco. */
 export const BIO_STARTERS: ReadonlyArray<string> = [
-  "Mi domingo perfecto es...",
-  "Me ganas si...",
+  "Mi domingo perfecto es…",
+  "Me ganas si…",
   "Dos verdades y una mentira:",
-  "Busco a alguien con quien..."
+  "Busco a alguien con quien…"
 ];
 
 /**

@@ -27,9 +27,9 @@ const POLAROID_CAPTION_BOTTOM = 46;
 const TILTS = [-2, 1.6, 1.2, -1.4];
 
 const STAGE_LABEL: Record<PhotoUploadStage, string> = {
-  preparing: "Preparando...",
-  uploading: "Subiendo...",
-  confirming: "Casi está..."
+  preparing: "Preparando…",
+  uploading: "Subiendo…",
+  confirming: "Casi está…"
 };
 
 export interface PhotoGridProps {

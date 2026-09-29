@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { DiscoveryActionResponse, DiscoveryFeedPage } from "@snack/contracts";
+import type {
+  DiscoveryActionResponse,
+  DiscoveryFeedPage,
+  DiscoveryUndoResponse
+} from "@snack/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { createDiscoveryApi } from "./discovery-api";
@@ -72,9 +76,10 @@ describe("createDiscoveryApi", () => {
         matchCreated: true,
         match: {
           id: "match-1",
+          conversationId: "conversation-1",
           matchedAt: "2026-06-17T00:00:00Z",
-          expiresAt: "2026-06-24T00:00:00Z",
-          otherProfile: { id: "profile-1", displayName: "Ada", age: 30 }
+          expiresAt: "2026-07-17T00:00:00Z",
+          otherProfile: { id: "profile-1", displayName: "Ada", age: 30, photoUrl: null }
         }
       });
 
@@ -82,6 +87,41 @@ describe("createDiscoveryApi", () => {
       const result = await api.recordAction({ targetProfileId: "profile-1", actionType: "like" });
 
       expect(result.matchCreated).toBe(true);
+    });
+  });
+
+  describe("undo", () => {
+    it("POSTs to the undo endpoint and returns the restored card", async () => {
+      const http = createMockHttpClient();
+      const response: DiscoveryUndoResponse = {
+        undone: true,
+        profile: {
+          id: "profile-1",
+          displayName: "Ada",
+          age: 30,
+          bio: null,
+          gender: "woman",
+          whatIAmLookingFor: "go_with_the_flow",
+          distanceLabel: "Cerca de ti",
+          distanceKmApprox: 1,
+          score: 0,
+          sharedTagsCount: 0,
+          photoUrl: null,
+          photoCount: 0,
+          photos: [],
+          tags: [],
+          likedYou: false,
+          isNewcomer: false,
+          beyondPreferredDistance: false
+        }
+      };
+      vi.mocked(http.post).mockResolvedValueOnce(response);
+
+      const api = createDiscoveryApi(http);
+      const result = await api.undo();
+
+      expect(http.post).toHaveBeenCalledWith("/api/discovery/undo", {});
+      expect(result.profile.id).toBe("profile-1");
     });
   });
 });

@@ -33,7 +33,7 @@ Snack es una app de citas **open source, 100 % gratuita y self-hosteable**. Exis
 
 ## Capabilities and Constraints
 
-- Backend Phoenix + PostgreSQL/PostGIS; auth solo con Google y Apple (sesiones propias de Phoenix); fotos subidas directamente a almacenamiento S3-compatible (R2) con verificación en servidor.
+- Backend Phoenix + PostgreSQL/PostGIS; auth solo con Google y Apple (sesiones propias de Phoenix); fotos subidas a almacenamiento S3-compatible (R2, MinIO…) o al disco del propio servidor (self-hosting), siempre con verificación en servidor.
 - Perfil: nombre, fecha de nacimiento (18+), género (hombre / mujer / no binario), a quién quiere conocer (multiselección), qué busca (relación / casual / conocer gente / a ver qué pasa), bio de 20–240 caracteres, 2–4 fotos, ubicación aproximada (rejilla de 500 m, nunca coordenadas exactas).
 - Etiquetas: catálogo cerrado de ~50 en categorías (intereses, vida activa, estilo de vida, valores, personalidad, mascotas, relación y familia); máx. 8 positivas y máx. 5 bloqueadas. El bloqueo de etiquetas se aplica en ambas direcciones.
 - Intención: cada intención ve la suya más "a ver qué pasa", que es compatible con todas; la misma intención puntúa más; relación y casual nunca se cruzan. Simétrico.
@@ -49,7 +49,7 @@ Snack es una app de citas **open source, 100 % gratuita y self-hosteable**. Exis
 
 ## Evidence on Hand
 
-- Catálogo real de 47 etiquetas en `apps/backend/priv/repo/seeds.exs`.
+- Catálogo real de 52 etiquetas con emoji en `apps/backend/priv/repo/seeds.exs`.
 - Documentación de producto y contratos en `docs/`.
 - No hay testimonios, usuarios reales, métricas ni prensa: no se deben inventar cifras, reseñas ni número de usuarios.
 

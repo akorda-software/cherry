@@ -16,7 +16,7 @@ Internet → Cloudflare (proxied, Full strict)
         → contenedor snack (:4000, nunca publicado directo)
 
 GitHub Actions → tests → imagen ghcr.io/<repo>-backend:<sha> → API Dokploy (solo VPN)
-snack-backend → PostgreSQL 192.168.0.142:5432 · fotos → R2 (UE)
+snack-backend → PostgreSQL 192.168.0.142:5432 · fotos → volumen local (UPLOADS_DIR) o R2 (UE)
 ```
 
 | VM | IP | Contenido |
@@ -63,10 +63,27 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 
 - Aplicación tipo Docker, imagen `ghcr.io/<repo>-backend:<sha>` (nunca `latest`).
 - Env del servicio (variables obligatorias en prod; el release no arranca sin ellas):
-  `SECRET_KEY_BASE`, `AUTH_ACCESS_TOKEN_SALT`, `AUTH_REFRESH_TOKEN_SALT`, `MESSAGE_ENCRYPTION_KEY`, `DATABASE_URL` (`ecto://snack:…@192.168.0.142/snack_prod`), `PHX_HOST`, y `DATABASE_SSL=false`, `POOL_SIZE=20`. Secretos generados con `openssl rand -base64 48` y guardados en Bitwarden.
+  `SECRET_KEY_BASE`, `AUTH_ACCESS_TOKEN_SALT`, `AUTH_REFRESH_TOKEN_SALT`, `MESSAGE_ENCRYPTION_KEY`, `DATABASE_URL` (`ecto://snack:…@192.168.0.142/snack_prod`), `PHX_HOST`, `STORAGE_ADAPTER` (+ `UPLOADS_DIR` si es `local`), y `DATABASE_SSL=false`, `POOL_SIZE=20`, `PUBLIC_BASE_URL=https://<dominio>`. Secretos generados con `openssl rand -base64 48` y guardados en Bitwarden. Plantilla: [`env.example`](env.example).
 - **Swarm (Advanced → Swarm)**: health check `curl -fsS localhost:4000/healthz`; UpdateConfig `order: stop-first`, `Parallelism 1`, `FailureAction rollback`, `Monitor 30s`; RollbackConfig también `order: stop-first` y `Parallelism 1`; `RestartPolicy on-failure`. **1 réplica**, sin distribución Erlang. Se acepta downtime de segundos o minutos y reconexión de los clientes; no se solapan versiones atendiendo chats.
 - Comando/entrypoint objetivo: `sh -c "bin/migrate && exec bin/server"` (migraciones al arrancar, lock activo). Verificar el override en Dokploy: el CMD actual de la imagen solo ejecuta `/app/bin/server`.
 - Dominio en Dokploy con HTTPS **desactivado** (TLS termina en Cloudflare/Caddy; Traefik escucha HTTP).
+
+### 3.1 Almacenamiento de fotos (D-2026-09-29)
+
+`STORAGE_ADAPTER` es obligatorio en prod (el release no arranca sin él). El contrato del móvil es el mismo con ambos.
+
+**`local` (sin S3, recomendado para las primeras pruebas):**
+
+- Las fotos se escriben en `UPLOADS_DIR/profiles/<perfil>/<uuid>.<ext>` y Phoenix las sirve en `https://<dominio>/uploads/...` con caché inmutable de un año (Cloudflare las cachea por extensión). La subida es un `PUT /api/uploads/<token>` firmado; no hace falta abrir nada más que el propio backend.
+- `UPLOADS_DIR` debe ser un **volumen persistente** (no el sistema de ficheros del contenedor: se perdería en cada despliegue). En Dokploy: *Advanced → Volumes* → bind mount del host `/var/lib/snack/uploads` en el contenedor en la misma ruta. El contenedor corre como `nobody`:
+  ```bash
+  sudo mkdir -p /var/lib/snack/uploads && sudo chown 65534:65534 /var/lib/snack/uploads
+  ```
+- Definir `PUBLIC_BASE_URL=https://<dominio>` para que las URLs absolutas no dependan de las cabeceras `Host` que lleguen tras Caddy/Traefik.
+- Tamaño: máx. 2 MB por foto (`UPLOAD_MAX_BYTES`) × 4 fotos por perfil; vigilar el disco de 40 GB de la VM o montar un disco/volumen dedicado. Ni Caddy ni Traefik limitan el cuerpo por defecto; Cloudflare (plan gratuito) admite hasta 100 MB.
+- Backups: `UPLOADS_DIR` forma parte del estado junto con PostgreSQL (ver §8). Las fotos borradas por los usuarios solo se desactivan; su purga física sigue pendiente.
+
+**`r2` (Cloudflare R2 o S3 compatible):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL_BASE` y `R2_ACCOUNT_ID` (R2) o `S3_ENDPOINT` + `S3_REGION` (MinIO, Garage…, direccionamiento path-style). El CORS del bucket debe permitir `PUT` con `Content-Type` e `If-None-Match`. Sin credenciales, `upload-intent` responde 503 `storage_not_configured`. Cambiar de `local` a `r2` no migra fotos: las antiguas siguen sirviéndose desde `/uploads` mientras exista el directorio.
 
 ## 4. Publicación: cadena de confianza de IP real
 
@@ -113,6 +130,7 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 Las primeras pruebas con datos ficticios regenerables pueden empezar con los backups y R2 todavía pendientes. Antes de conservar datos reales:
 
 - [ ] Configurar backup consistente de PostgreSQL al SATA de ~1 TB. **PGDATA tiene `backup=0` y no entra en vzdump**; copiar solo la VM es insuficiente.
+- [ ] Con `STORAGE_ADAPTER=local`, incluir `UPLOADS_DIR` (`/var/lib/snack/uploads`) en los mismos destinos de backup que PostgreSQL.
 - [ ] Configurar también destino R2 como copia externa. Objetivo: una copia/punto recuperable cada hora o cada varias horas, reteniendo unas diez recientes. Fijar intervalo y política final según volumen/duración; no hay un cron ni una retención implementados todavía.
 - [ ] Definir con pgBackRest la combinación de completas, diferenciales/incrementales y WAL. Mantener todas las dependencias de cada punto recuperable; diez puntos no equivalen a diez objetos S3. Diez copias horarias cubren aproximadamente diez horas.
 - [ ] Guardar claves de backups y `MESSAGE_ENCRYPTION_KEY` fuera del servidor; comprobar una restauración desde la copia local y otra desde R2.

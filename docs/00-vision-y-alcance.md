@@ -45,7 +45,8 @@ Personas que quieren una experiencia de dating simple: completar un perfil rápi
 - Onboarding obligatorio con perfil completo (bio, fotos, intent, tags, distancia, ubicación)
 - Discovery basado en ubicación con fallback gradual por poca oferta
 - Matching por like mutuo + chat solo texto
-- Expiración del match a los 7 días sin mensajes
+- Expiración del match a los 30 días sin mensajes (D-2026-09-29)
+- Likes recibidos visibles y gratis; deshacer el último «no» gratis
 - Likes ilimitados con protección anti-abuso
 - Boost controlado para usuarios nuevos
 - Acciones de seguridad (block/report/pause/delete) y moderación básica
@@ -62,7 +63,7 @@ Personas que quieren una experiencia de dating simple: completar un perfil rápi
 ## Infraestructura asumida
 
 - Móvil Expo; backend Phoenix; PostgreSQL + PostGIS
-- Imágenes subidas directamente a Cloudflare R2 (el backend solo guarda metadatos/URLs)
+- Imágenes subidas a almacenamiento S3 compatible (Cloudflare R2, MinIO…) o al disco del propio servidor en instancias self-hosted; el backend verifica cada subida y guarda metadatos/URLs
 - Infra self-hosted
 
 ## Relación starter ↔ dating

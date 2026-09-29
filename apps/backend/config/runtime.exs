@@ -48,6 +48,15 @@ end
 
 config :snack, :app_version, System.get_env("APP_VERSION", "dev")
 
+# En dev, DATABASE_URL (shell o .env) tiene prioridad sobre config/dev.exs para
+# poder apuntar al PostGIS del compose (localhost:5510) sin tocar código.
+if config_env() == :dev do
+  case System.get_env("DATABASE_URL") do
+    url when is_binary(url) and url != "" -> config :snack, Snack.Repo, url: url
+    _url -> :ok
+  end
+end
+
 config :snack, SnackWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 split_csv_env = fn var, fallback ->
@@ -63,6 +72,17 @@ split_csv_env = fn var, fallback ->
       |> Enum.reject(&(&1 == ""))
   end
 end
+
+# CORS: solo para clientes web (Expo Web en dev, instancias self-hosted con web).
+# En dev se permite cualquier origen; fuera de dev, lista explícita separada por comas.
+cors_allowed_origins =
+  case System.get_env("CORS_ALLOWED_ORIGINS") do
+    nil -> if config_env() == :dev, do: :any, else: []
+    "*" -> :any
+    _value -> split_csv_env.("CORS_ALLOWED_ORIGINS", nil)
+  end
+
+config :snack, :cors_allowed_origins, cors_allowed_origins
 
 if config_env() != :test do
   google_web_client_id = System.get_env("GOOGLE_WEB_CLIENT_ID")
@@ -105,15 +125,78 @@ config :snack, Snack.Identity.Providers.GoogleJwksCache,
 config :snack, Snack.Identity.Providers.AppleJwksCache,
   ttl_ms: String.to_integer(System.get_env("APPLE_JWKS_CACHE_TTL_MS", "600000"))
 
+# ── Almacenamiento de fotos (D-2026-09-29) ─────────────────────────────
+# STORAGE_ADAPTER=local|r2 (`s3` es alias de `r2`). dev: `local` por defecto
+# (config/dev.exs); test: lo fijan config/test.exs y los tests; prod: obligatorio.
+storage_adapter = System.get_env("STORAGE_ADAPTER", "") |> String.trim() |> String.downcase()
+uploads_dir = System.get_env("UPLOADS_DIR", "") |> String.trim()
+public_base_url = System.get_env("PUBLIC_BASE_URL", "") |> String.trim()
+
+if config_env() != :test do
+  case storage_adapter do
+    "" ->
+      if config_env() == :prod do
+        raise """
+        environment variable STORAGE_ADAPTER is missing.
+        Use "local" (photos on disk under UPLOADS_DIR, served at /uploads) or
+        "r2" (Cloudflare R2 or any S3-compatible service via S3_ENDPOINT).
+        """
+      end
+
+    "local" ->
+      config :snack, Snack.Storage, adapter: Snack.Storage.Local
+
+    adapter when adapter in ["r2", "s3"] ->
+      config :snack, Snack.Storage, adapter: Snack.Storage.R2
+
+    other ->
+      raise "invalid STORAGE_ADAPTER #{inspect(other)}: expected local, r2 or s3"
+  end
+
+  cond do
+    uploads_dir != "" ->
+      config :snack, Snack.Storage.Local, uploads_dir: uploads_dir
+
+    config_env() == :prod and storage_adapter == "local" ->
+      raise """
+      environment variable UPLOADS_DIR is required with STORAGE_ADAPTER=local.
+      Point it to a persistent volume (e.g. /var/lib/snack/uploads) and back it up.
+      """
+
+    true ->
+      :ok
+  end
+
+  config :snack, Snack.Storage.Local,
+    max_upload_bytes: String.to_integer(System.get_env("UPLOAD_MAX_BYTES", "2000000")),
+    upload_url_ttl_seconds: String.to_integer(System.get_env("UPLOAD_URL_TTL_SECONDS", "600"))
+
+  # Base absoluta de las URLs de medios relativas (almacenamiento local), p. ej.
+  # https://api.snack.example. Sin definir ⇒ se usa el host de cada petición.
+  if public_base_url != "", do: config(:snack, :public_base_url, public_base_url)
+end
+
+s3_endpoint = System.get_env("S3_ENDPOINT", "") |> String.trim()
+
 config :snack, Snack.Storage.R2,
   account_id: System.get_env("R2_ACCOUNT_ID"),
+  # Endpoint S3 genérico (MinIO, Garage...). Vacío ⇒ R2 (<account_id>.r2.cloudflarestorage.com).
+  endpoint: if(s3_endpoint != "", do: s3_endpoint),
+  region: System.get_env("S3_REGION") || if(s3_endpoint != "", do: "us-east-1"),
   access_key_id: System.get_env("R2_ACCESS_KEY_ID"),
   secret_access_key: System.get_env("R2_SECRET_ACCESS_KEY"),
   bucket_name: System.get_env("R2_BUCKET_NAME"),
   public_url_base: System.get_env("R2_PUBLIC_URL_BASE"),
   allowed_content_types: ["image/jpeg", "image/png", "image/webp"],
-  max_upload_bytes: String.to_integer(System.get_env("R2_MAX_UPLOAD_BYTES", "2000000")),
-  upload_url_ttl_seconds: String.to_integer(System.get_env("R2_UPLOAD_URL_TTL_SECONDS", "600"))
+  max_upload_bytes:
+    String.to_integer(
+      System.get_env("R2_MAX_UPLOAD_BYTES") || System.get_env("UPLOAD_MAX_BYTES", "2000000")
+    ),
+  upload_url_ttl_seconds:
+    String.to_integer(
+      System.get_env("R2_UPLOAD_URL_TTL_SECONDS") ||
+        System.get_env("UPLOAD_URL_TTL_SECONDS", "600")
+    )
 
 config :snack, :expo_push,
   base_url: System.get_env("EXPO_PUSH_BASE_URL", "https://exp.host"),

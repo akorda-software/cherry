@@ -17,7 +17,7 @@ defmodule Snack.Notifications do
     do: Application.get_env(:snack, :expo_push_client, Snack.Notifications.ExpoClient.ReqImpl)
 
   def deliver_new_match(%Match{} = match) do
-    match = Repo.preload(match, [:profile_a, :profile_b])
+    match = Repo.preload(match, [:profile_a, :profile_b, :conversation])
 
     case {match.profile_a, match.profile_b} do
       {%Profile{} = profile_a, %Profile{} = profile_b} ->
@@ -90,17 +90,27 @@ defmodule Snack.Notifications do
 
   defp new_match_message(%Match{} = match, %Profile{} = other_profile) do
     %{
-      "title" => "Nuevo match",
-      "body" => "Has hecho match con #{other_profile.display_name}.",
+      "title" => new_match_title(other_profile.display_name),
+      "body" => "Os habéis gustado. Rompe el hielo cuando te apetezca 👋",
       "sound" => "default",
       "channelId" => "matches",
-      "data" => %{
-        "type" => "new_match",
-        "matchId" => match.id,
-        "profileId" => other_profile.id
-      }
+      "data" =>
+        %{
+          "type" => "new_match",
+          "matchId" => match.id,
+          "profileId" => other_profile.id
+        }
+        |> put_conversation_id(match)
     }
   end
+
+  defp new_match_title(name) when is_binary(name) and name != "", do: "¡Match con #{name}! 💘"
+  defp new_match_title(_name), do: "¡Tienes un match nuevo! 💘"
+
+  defp put_conversation_id(data, %Match{conversation: %Conversation{id: id}}),
+    do: Map.put(data, "conversationId", id)
+
+  defp put_conversation_id(data, _match), do: data
 
   defp new_message_message(
          %Message{} = message,
@@ -108,8 +118,8 @@ defmodule Snack.Notifications do
          %Profile{} = sender
        ) do
     %{
-      "title" => "Nuevo mensaje de #{sender.display_name}",
-      "body" => "Tienes un mensaje nuevo.",
+      "title" => new_message_title(sender.display_name),
+      "body" => "Tienes un mensaje nuevo esperándote 💬",
       "sound" => "default",
       "channelId" => "messages",
       "data" => %{
@@ -120,6 +130,9 @@ defmodule Snack.Notifications do
       }
     }
   end
+
+  defp new_message_title(name) when is_binary(name) and name != "", do: "#{name} te ha escrito"
+  defp new_message_title(_name), do: "Tienes un mensaje nuevo"
 
   defp deactivate_unregistered_tokens(push_tokens, tickets) do
     push_tokens

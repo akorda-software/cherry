@@ -29,8 +29,8 @@ Invariantes:
 Invariantes: los drafts jamás aparecen en discovery; la completitud solo la valida el backend; `nextOnboardingStep` es conveniencia de UI, no frontera de seguridad.
 
 - **DiscoveryPreference** — edad min/max, distancia, interested-in selections (+ campo `discovery_mode` migrado, aún sin uso en el feed — ver deuda técnica).
-- **ProfilePhoto** — metadatos de foto en R2 (storage_key, url, position, is_active). Máx. 4 activas; 2–4 requeridas para completar.
-- **PhotoUploadIntent** — intención firmada de subida directa a R2 con expiración; single-use.
+- **ProfilePhoto** — metadatos de foto (storage_key, url, position, is_active) en R2/S3 o en el almacenamiento local. Máx. 4 activas; 2–4 requeridas para completar.
+- **PhotoUploadIntent** — intención firmada de subida (URL prefirmada R2/S3 o token local) con expiración; single-use.
 - **Tag / ProfileTag / ProfileBlockedTag** — catálogo cerrado + relaciones separadas positivos/bloqueados (máx. 8 / 5).
 - **ProfileLocation** — última ubicación aproximada (rejilla 500 m) como punto PostGIS.
 
@@ -38,13 +38,14 @@ Invariantes: los drafts jamás aparecen en discovery; la completitud solo la val
 
 - **SwipeAction** — like/dislike de actor sobre target. Única acción activa por par actor-target. Dislike = ocultación (no hay estado «hide» separado). Bloquea self-action.
 - **Match** — se crea cuando existe like mutuo. Estados:
-  - *Active*: con `expires_at = matched_at + 7 días` hasta el primer mensaje.
+  - *Active*: con `expires_at = matched_at + 30 días` (`:match_expiry_days`) hasta el primer mensaje.
   - *Chateado* (estado lógico; `status` sigue "active"): primer mensaje fija `first_message_at` y limpia `expires_at`.
   - *Unmatched*: cualquiera de los participantes puede cerrarlo; la conversación deja de permitir mensajear.
 
-  La expiración se aplica lazy (al enviar/listar), no hay job que marque matches como expired.
+  - *Expired*: `expires_at` vencido sin mensajes. Se aplica lazy en todas las lecturas y en la mensajería; `MatchExpirySweeper` pasa el `status` a `expired` cada hora.
 - **Conversation** — 1:1 con el match; se crea junto al match.
 - **Message** — texto 1–2000 chars; solo participantes de match activo.
+- **ConversationRead** — última lectura de una conversación por participante; define `unreadCount` y los badges.
 
 ### Seguridad
 

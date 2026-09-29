@@ -24,6 +24,9 @@ defmodule Snack.Dating.Profile do
     field(:is_paused, :boolean, default: false)
     field(:is_discoverable, :boolean, default: false)
     field(:deleted_at, :utc_datetime)
+    # Discovery ranking v2: newcomer boost and real activity (D-2026-09-29).
+    field(:completed_at, :utc_datetime)
+    field(:last_active_at, :utc_datetime)
 
     belongs_to(:user, User)
     has_one(:discovery_preference, DiscoveryPreference)
@@ -76,7 +79,7 @@ defmodule Snack.Dating.Profile do
   end
 
   def system_changeset(profile, attrs) do
-    cast(profile, attrs, [:is_complete, :is_paused, :is_discoverable, :deleted_at])
+    cast(profile, attrs, [:is_complete, :is_paused, :is_discoverable, :deleted_at, :completed_at])
   end
 
   defp validate_profile_fields(changeset) do

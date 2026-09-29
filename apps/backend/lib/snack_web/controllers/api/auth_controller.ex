@@ -21,23 +21,79 @@ defmodule SnackWeb.Controllers.Api.AuthController do
     end
   end
 
+  @doc """
+  Dev-only login (`:enable_dev_test_login`). Body (all optional):
+  `{"email": "demo@snack.dev", "displayName": "Lucía", "device": {...}}`.
+  Without `email` it logs in as the shared test user; with it, as that persona
+  (created on first use). `device` may be partial or missing.
+  """
   def test_login(conn, params) do
     if dev_test_login_enabled?() do
-      with {:ok, user} <- Accounts.ensure_test_user(),
-           {:ok, issued} <- Sessions.issue_session(user, normalize_device(params)) do
+      with {:ok, attrs} <- test_login_attrs(params),
+           {:ok, user} <- Accounts.ensure_test_user(attrs),
+           {:ok, issued} <- Sessions.issue_session(user, test_login_device(params)) do
         conn
         |> put_status(:created)
         |> json(session_payload(issued.session))
       else
+        {:error, :invalid_email} ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{error: "invalid_email"})
+
+        {:error, :account_deleted} ->
+          conn
+          |> put_status(:forbidden)
+          |> json(%{error: "account_deleted"})
+
         {:error, reason} ->
           conn
           |> put_status(:internal_server_error)
-          |> json(%{error: Atom.to_string(reason)})
+          |> json(%{
+            error: if(is_atom(reason), do: Atom.to_string(reason), else: "test_login_failed")
+          })
       end
     else
       conn
       |> put_status(:not_found)
       |> json(%{error: "dev_test_login_disabled"})
+    end
+  end
+
+  defp test_login_attrs(params) do
+    display_name =
+      case Map.get(params, "displayName", Map.get(params, "display_name")) do
+        name when is_binary(name) -> name
+        _other -> nil
+      end
+
+    case Map.get(params, "email") do
+      nil -> {:ok, %{display_name: display_name}}
+      "" -> {:ok, %{display_name: display_name}}
+      email when is_binary(email) -> {:ok, %{email: email, display_name: display_name}}
+      _other -> {:error, :invalid_email}
+    end
+  end
+
+  # The mobile dev button posts `{}`; any provided device fields win.
+  defp test_login_device(params) do
+    device =
+      case Map.get(params, "device") do
+        %{} = device -> device
+        _missing -> %{}
+      end
+
+    %{
+      installation_id: device_field(device, "installationId", "dev-test-device"),
+      platform: device_field(device, "platform", "android"),
+      device_name: device_field(device, "deviceName", "Dev Test Device")
+    }
+  end
+
+  defp device_field(device, key, default) do
+    case Map.get(device, key) do
+      value when is_binary(value) and value != "" -> value
+      _missing -> default
     end
   end
 

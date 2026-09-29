@@ -29,6 +29,19 @@ defmodule SnackWeb.Endpoint do
     raise_on_missing_only: code_reloading?
   )
 
+  # Profile photos of the local storage adapter (Snack.Storage.Local), stored as
+  # UPLOADS_DIR/<storage_key>. The directory is resolved per request (runtime
+  # config). Only `profiles/` is exposed (never the `.tmp/` staging area), files
+  # are immutable (unique keys, no overwrites) and directories are never listed.
+  plug(Plug.Static,
+    at: "/uploads",
+    from: {Snack.Storage.Local, :uploads_dir, []},
+    only: ~w(profiles),
+    gzip: false,
+    cache_control_for_etags: "public, max-age=31536000, immutable",
+    headers: %{"x-content-type-options" => "nosniff"}
+  )
+
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do
@@ -40,6 +53,7 @@ defmodule SnackWeb.Endpoint do
 
   plug(Plug.RequestId)
   plug(Plug.Telemetry, event_prefix: [:phoenix, :endpoint])
+  plug(SnackWeb.Plugs.Cors)
 
   plug(Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],

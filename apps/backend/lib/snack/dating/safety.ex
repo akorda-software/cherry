@@ -1,0 +1,104 @@
+defmodule Snack.Dating.Safety do
+  @moduledoc """
+  Bloqueos y reportes con validación semántica para la API.
+
+  Un bloqueo es idempotente y, al evaluarse en todas las lecturas sociales
+  (discovery, likes, perfil público, matches, chat), oculta a la pareja en
+  ambas direcciones y cierra la mensajería.
+  """
+
+  import Ecto.Query
+
+  alias Snack.Dating
+  alias Snack.Dating.Profile
+  alias Snack.Dating.UserBlock
+  alias Snack.Repo
+
+  @report_reasons ~w(fake_profile inappropriate_photos harassment spam underage offensive_bio other)
+  @max_details_length 1000
+
+  def report_reasons, do: @report_reasons
+  def max_details_length, do: @max_details_length
+
+  @doc "Bloquea `target_id`. Errores: `:profile_not_found`, `:cannot_block_self`."
+  def block(%Profile{id: actor_id}, target_id) do
+    with {:ok, target_id} <- existing_profile_id(target_id),
+         :ok <- not_self(actor_id, target_id, :cannot_block_self) do
+      if blocked?(actor_id, target_id) do
+        {:ok, :already_blocked}
+      else
+        case Dating.block_profile(%{actor_profile_id: actor_id, target_profile_id: target_id}) do
+          {:ok, block} ->
+            {:ok, block}
+
+          {:error, changeset} ->
+            if unique_violation?(changeset),
+              do: {:ok, :already_blocked},
+              else: {:error, changeset}
+        end
+      end
+    end
+  end
+
+  @doc """
+  Reporta `target_id`. Errores: `:profile_not_found`, `:cannot_report_self`,
+  `:invalid_report_reason`, `:details_too_long`.
+  """
+  def report(%Profile{id: reporter_id}, target_id, reason, details) do
+    with {:ok, target_id} <- existing_profile_id(target_id),
+         :ok <- not_self(reporter_id, target_id, :cannot_report_self),
+         :ok <- validate_reason(reason),
+         {:ok, details} <- normalize_details(details) do
+      Dating.report_profile(%{
+        reporter_profile_id: reporter_id,
+        target_profile_id: target_id,
+        reason: reason,
+        details: details
+      })
+    end
+  end
+
+  defp existing_profile_id(id) when is_binary(id) do
+    with {:ok, id} <- Ecto.UUID.cast(id),
+         true <- Repo.exists?(from(p in Profile, where: p.id == ^id)) do
+      {:ok, id}
+    else
+      _missing -> {:error, :profile_not_found}
+    end
+  end
+
+  defp existing_profile_id(_id), do: {:error, :profile_not_found}
+
+  defp not_self(id, id, error), do: {:error, error}
+  defp not_self(_actor_id, _target_id, _error), do: :ok
+
+  defp validate_reason(reason) when reason in @report_reasons, do: :ok
+  defp validate_reason(_reason), do: {:error, :invalid_report_reason}
+
+  defp normalize_details(nil), do: {:ok, nil}
+
+  defp normalize_details(details) when is_binary(details) do
+    details = String.trim(details)
+
+    cond do
+      details == "" -> {:ok, nil}
+      String.length(details) > @max_details_length -> {:error, :details_too_long}
+      true -> {:ok, details}
+    end
+  end
+
+  defp normalize_details(_details), do: {:error, :details_too_long}
+
+  defp blocked?(actor_id, target_id) do
+    Repo.exists?(
+      from(b in UserBlock,
+        where: b.actor_profile_id == ^actor_id and b.target_profile_id == ^target_id
+      )
+    )
+  end
+
+  defp unique_violation?(%Ecto.Changeset{errors: errors}),
+    do: Enum.any?(errors, fn {_field, {_msg, opts}} -> opts[:constraint] == :unique end)
+
+  defp unique_violation?(_error), do: false
+end

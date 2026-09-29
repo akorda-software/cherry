@@ -6,6 +6,98 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-09-29 — Ranking de discovery v2
+
+- **Contexto:** El ranking v1 tenía estos huecos:
+  - Filtraba la intención por igualdad exacta.
+  - Solo excluía por etiquetas bloqueadas en una dirección e ignoraba `compatible_only`.
+  - Contaba etiquetas compartidas sin distinguir su rareza y usaba `updated_at` como proxy de actividad.
+  - No tenía expansión de distancia, y `PUT /api/me/discovery-preferences` aceptaba cualquier distancia.
+
+  `PRODUCT.md` fija que las etiquetas mandan, que los bloqueos se respetan siempre y que la app es anti-predatoria. Con los likes recibidos visibles y gratis, un perfil que se muestra a alguien que no lo habría visto recibe likes que saltan sus preferencias.
+- **Decisión:**
+  1. **Intención como matriz simétrica** (confirmada por el propietario el 2026-09-29). Cada intención es compatible consigo misma y con `go_with_the_flow`, y `go_with_the_flow` con todas. `relationship` y `casual` nunca se cruzan. Misma intención +10; vía `go_with_the_flow` +4.
+  2. **Visibilidad simétrica.** Las etiquetas bloqueadas cuentan en ambas direcciones, como fija `PRODUCT.md`: no se ve a quien tiene una etiqueta que bloqueo ni a quien bloquea una de las mías. Por el mismo principio (si A no puede ver a B, B no ve a A), `compatible_only` de cualquiera de los dos exige al menos una etiqueta compartida. Aplicar `compatible_only` de forma simétrica es una interpretación de implementación y queda pendiente de validar con el propietario.
+     **Quien ya dio dislike al viewer tampoco aparece en su feed** (decisión del orquestador del 2026-09-29). La pestaña de likes solo lista likes sin responder, así que un like a quien ya te descartó no lo vería nadie. Es simétrico: quien descartó tampoco vuelve a ver a quien descartó. Deshacer el dislike (`POST /api/discovery/undo` borra el swipe) levanta la exclusión. El índice parcial `swipe_actions_dislikes_received_index` (`(target_profile_id, actor_profile_id) WHERE action_type = 'dislike'`, migración `20260929154521`) permite leer los dislikes recibidos con un index-only scan.
+  3. **Puntuación 0–97 en PostgreSQL, en una sola sentencia.** Orden `tier ASC, score DESC, id ASC` con cursor firmado:
+     - Afinidad de etiquetas 0–45: Ochiai/coseno ponderado por IDF, `Σw(compartidas) / √(Σw(mías) · Σw(suyas))`, con `w = ln(1 + N / (1 + n_tag))`.
+     - Intención +10/+4 y reciprocidad +12 (`liked_viewer`).
+     - Recién llegado hasta +8, que decrece en 7 días desde `profiles.completed_at` (la primera vez que se completa).
+     - Actividad real +8/+5/+2 (<24 h/<72 h/<7 d) sobre `profiles.last_active_at`. Lo escribe el plug `TrackActivity` como mucho cada 15 min, con un único UPDATE por PK.
+     - Distancia 0–10 dentro del radio del tramo y exploración determinista 0–4.
+     - Reparto justo de atención: −min(6, likes recibidos en 7 días sin contestar / 5).
+  4. **Expansión de distancia.** `discovery_preferences.expand_distance`, activa por defecto. Con distancia acotada, añade un tramo 2 hasta min(2 × radio, radio + 100 km), siempre detrás de todo el tramo 1; el cursor incluye el tramo. Sin límite (999999) no hay tramos. Nunca se relajan otros filtros.
+  5. **Pesos IDF en caché versionada** (`discovery_tag_weights`). Un GenServer (`Discovery.TagWeights`) escribe una generación nueva cada 15 min y purga las de más de 2 h. El cursor fija la generación y el instante de referencia, así que ni el paso del tiempo ni un recálculo reordenan un feed en curso.
+  6. **Validación de preferencias en cada guardado:** distancia ∈ {10, 25, 50, 100, 999999}, edades 18–100 y `age_min ≤ age_max`. La migración normaliza los valores antiguos.
+- **Rechazadas:**
+  - Calcular el IDF en cada petición: O(perfiles) por feed para un dato global que cambia despacio.
+  - Vista materializada: su refresco bloquea y no deja fijar una versión por cursor.
+  - Rellenar el feed relajando filtros duros.
+  - Distancia recíproca: se mantiene el radio del viewer, como en v1.
+- **Motivación:**
+  - La compatibilidad declarada pesa más que la proximidad (45 frente a 10 puntos).
+  - La reciprocidad y la actividad real llevan a matches que ocurren.
+  - El reparto de atención evita concentrar likes en unos pocos perfiles saturados, sin castigar a nadie más de 6 puntos.
+- **Rendimiento:** medido con `priv/repo/bench/discovery_bench.exs` (BD aparte `snack_bench`, 5.000 perfiles sintéticos con unos 490.000 swipes, página de 20). Resultados p50:
+  - Sentencia en PostgreSQL: 6–22 ms.
+  - `feed/2` de extremo a extremo: 10–23 ms; la página 2 cuesta lo mismo que la 1. El peor caso es distancia sin límite y todos los géneros, con 1.149 candidatos.
+  - El viewer con más swipes recibidos (1.385) se sirve en 10 ms.
+  - Con 3.000 perfiles: 9–16 ms; con 10.000: 17–42 ms.
+  - El coste es lineal en candidatos (unos 20–25 µs cada uno).
+  - Medido ya con la exclusión por dislike, que no empeora el benchmark: el índice parcial evita leer del heap el resto de swipes recibidos.
+- **Consecuencias:**
+  - Con decenas de miles de candidatos dentro de un mismo radio hará falta precalcular (cola de candidatos por usuario o estadísticas de atención por perfil).
+  - Los cursores v1 dejan de valer (422 `invalid_cursor`: el cliente reinicia el feed).
+  - `discovery_mode` queda como preferencia de presentación del cliente; el feed es el mismo en swipe y feed (cierra la deuda #13).
+  - El selector de distancia del móvil debe ser cerrado.
+- **Sustituye:**
+  - El filtro exacto de intención y la fórmula de scoring de D-2026-09-05, del que se mantiene el patrón SQL + cursor opaco.
+  - El «boost reducido con datos de interacción» de las decisiones heredadas, que pasa a ser un decaimiento en 7 días.
+- **Referencias:** `apps/backend/lib/snack/dating/discovery.ex`, `apps/backend/lib/snack/dating/discovery/tag_weights.ex`, `docs/01-requisitos-producto.md` (reglas), `docs/06-contratos-mobile-backend.md` (`expandDistance` y semántica del feed).
+
+---
+
+## D-2026-09-29 — Almacenamiento local de fotos para self-hosting
+
+- **Contexto:** Las fotos solo podían subirse a Cloudflare R2 (host `*.r2.cloudflarestorage.com` fijo). Sin R2 configurado, `upload-intent` respondía 503: no se podía completar el onboarding en desarrollo ni montar una instancia propia sin contratar un bucket, lo que choca con «open source y self-hosteable» (`PRODUCT.md`).
+- **Decisión:**
+  1. Behaviour `Snack.Storage` (`upload_config/1`, `presign_put/3`, `verify_upload/1`, `public_url/1`) con dos adaptadores elegidos por `STORAGE_ADAPTER`: `local` (`Snack.Storage.Local`) y `r2` (`Snack.Storage.R2`, alias `s3`). Por defecto `local` en dev; en prod es obligatorio declararlo.
+  2. **Local:** el contrato del móvil no cambia (intent → `PUT uploadUrl` con los headers → `complete`). `uploadUrl` = `<base>/api/uploads/<token>`, con un `Phoenix.Token` que firma storage key, MIME, tamaño máximo y caducidad (el TTL del intent). La ruta es pública y el token es la autorización, como una URL prefirmada. El backend lee el cuerpo crudo por fragmentos con límite, valida MIME y cabecera JPEG/PNG/WebP y publica de forma atómica en `UPLOADS_DIR/<storage_key>` (temporal + enlace duro): nunca sobrescribe (412), igual que `If-None-Match: *`. Las fotos se sirven con `Plug.Static` en `/uploads` (caché inmutable, sin listados). `verify_upload` mantiene la semántica y los errores de R2.
+  3. En BD, las fotos locales guardan la ruta relativa (`/uploads/...`) y la API siempre devuelve URLs absolutas: base `PUBLIC_BASE_URL` o, si no está definida, el host de la petición (la misma BD sirve a `localhost`, a la IP de la LAN o a un túnel en dev).
+  4. **R2/S3:** el adaptador R2 admite `S3_ENDPOINT` + `S3_REGION` para MinIO, Garage u otro S3 (path-style), sin cambiar el comportamiento con R2.
+- **Consecuencias:** en local las fotos pasan a formar parte del estado del servidor: `UPLOADS_DIR` debe estar en un volumen persistente e incluirse en los backups. Phoenix sirve los binarios (suficiente para el volumen esperado; se puede poner una CDN o proxy con caché delante gracias a las cabeceras inmutables). Cambiar de adaptador no migra fotos: las ya guardadas siguen sirviéndose desde `/uploads` mientras exista el directorio. Sin moderación ni decodificación completa de imagen (igual que con R2). Borrar una foto solo la desactiva; la purga física sigue pendiente.
+- **Rechazadas:** exigir MinIO/Garage para self-hosting (otro servicio que operar para instancias pequeñas); subida multipart a Phoenix (cambiaría el contrato del móvil); URLs absolutas en BD (rompe al cambiar de host o de dominio).
+- **Referencias:** `docs/06-contratos-mobile-backend.md` (Fotos), `docs/05-backend-api.md`, `infra/deploy/README.md`, `lib/snack/storage.ex`.
+
+---
+
+## D-2026-09-29 — Likes recibidos visibles y gratuitos
+
+- **Contexto:** En las apps comerciales ver quién te ha dado like es la función de pago estrella. Snack es 100 % gratuita y anti-predatoria (`PRODUCT.md`).
+- **Decisión:** Pestaña «Likes» gratuita. `GET /api/likes/received` lista (like más reciente primero, cursor opaco firmado) a quienes te han dado like y aún no has respondido, con la misma card que el feed; darles like crea el match al instante (`POST /api/discovery/actions`) y un «no» los retira. Se excluyen bloqueos (ambas direcciones), cuentas o perfiles borrados, perfiles pausados, etiquetas bloqueadas (ambas direcciones) y perfiles fuera del género, edad o intención compatible del receptor. Las cards del feed marcan `likedYou`, y `GET /api/me/summary` da los contadores de las pestañas.
+- **Motivación:** Gratis sin asteriscos. Los filtros garantizan que un like «forzado» por API nunca salte las preferencias ni los bloqueos de quien lo recibe.
+- **Referencias:** `docs/05-backend-api.md`, `docs/06-contratos-mobile-backend.md`, `packages/contracts/CHANGELOG-v2.md`.
+
+---
+
+## D-2026-09-29 — Caducidad de match a 30 días
+
+- **Contexto:** 7 días para escribir generaba una urgencia artificial, contraria al tono de la app («nunca presiona»).
+- **Decisión:** Un match sin mensajes caduca a los **30 días** (`config :snack, :match_expiry_days, 30`); el primer mensaje elimina la caducidad. Se aplica al crear el match, de forma perezosa en todas las lecturas (matches, conversaciones, historial, badges, perfil público) y en la mensajería. `Snack.Dating.MatchExpirySweeper` marca `status = "expired"` cada hora para que el estado persistido sea veraz. La migración `20260929120000` alarga a 30 días los matches pendientes creados con la regla anterior.
+- **Motivación:** Sin escasez ni culpa; 30 días dejan margen real sin acumular matches muertos.
+- **Sustituye:** la caducidad de 7 días de las decisiones heredadas (2026-04-28).
+
+---
+
+## D-2026-09-29 — Deshacer el último «no» gratis
+
+- **Contexto:** En Tinder deshacer es de pago; un swipe accidental a la izquierda frustra.
+- **Decisión:** `POST /api/discovery/undo` deshace el swipe más reciente solo si fue un `dislike` de hace menos de 10 minutos y el perfil sigue visible, y devuelve su card para reinsertarla. Se pueden encadenar mientras cada último swipe cumpla la regla. Los likes no se deshacen (pueden haber creado un match y notificado a la otra persona).
+- **Motivación:** Comodidad del usuario sin coste; la ventana corta evita convertirlo en un historial de rechazos.
+- **Sustituye:** «sin undo» de las decisiones heredadas (2026-04-28).
+
+---
+
 ## D-2026-09-05 — Operación inicial: downtime aceptado, backups local + R2 y sin failover
 
 - **Contexto:** Primera aplicación del equipo con aspiración de escala; se prioriza empezar las pruebas en el MS-A2 propio y mantener un coste y una carga de operación asumibles. Acuerdo explícito con el propietario de la infraestructura.
@@ -126,7 +218,7 @@ Fijadas en el foundation de producto dating (2026-04-28, recuperable del histori
 - Bio obligatoria 20–240 caracteres; 2–4 fotos activas; máx. 8 tags positivos y 5 bloqueados de catálogo cerrado (~47 tags seedeados).
 - `gender` e `interested_in` son conceptos separados; `interested_in` multi-selección.
 - `what_i_am_looking_for` único valor requerido (relationship/casual/meet_people/go_with_the_flow).
-- Match solo por like mutuo; sin undo; match expira a los 7 días sin primer mensaje; chat solo texto.
+- Match solo por like mutuo; sin undo (sustituido: D-2026-09-29, deshacer el último «no»); match expira a los 7 días sin primer mensaje (sustituido: D-2026-09-29, 30 días); chat solo texto.
 - Likes ilimitados (sin caps de monetización) con protección anti-abuso técnica.
 - Compatibilidad pesa más que distancia; la distancia se expande gradualmente si hay poca oferta; jamás se ignoran blocked tags ni compatibilidad de género.
 - Boost temporal controlado para usuarios nuevos.

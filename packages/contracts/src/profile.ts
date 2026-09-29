@@ -1,17 +1,11 @@
-import type { Tag } from "./discovery";
 import type { DiscoveryPreferences } from "./discovery";
+import type { ProfilePhoto } from "./photos";
+import type { Tag } from "./tags";
 
 export type Gender = "man" | "woman" | "non_binary";
 export type RelationshipIntent = "relationship" | "casual" | "meet_people" | "go_with_the_flow";
 
-export interface ProfilePhoto {
-  id: string;
-  storageKey: string;
-  url: string;
-  position: number;
-  isActive: boolean;
-}
-
+/** Perfil propio (`GET /api/me/profile`). */
 export interface Profile {
   id: string;
   displayName: string | null;
@@ -23,6 +17,8 @@ export interface Profile {
   isComplete: boolean;
   isPaused: boolean;
   isDiscoverable: boolean;
+  /** Hay ubicación guardada (nunca se devuelven coordenadas). */
+  hasLocation: boolean;
   photos: ProfilePhoto[];
   tags: Tag[];
   blockedTags: Tag[];
@@ -67,3 +63,12 @@ export type ProfileField =
   | "gender"
   | "whatIAmLookingFor"
   | "bio";
+
+/** Body de `POST /api/me/location`. El backend lo redondea a una rejilla de 500 m. Respuesta: `OkResponse`. */
+export interface LocationUpdateRequest {
+  latitude: number;
+  longitude: number;
+  accuracyMeters?: number;
+  /** ISO 8601; si se omite, el backend usa la hora de recepción. */
+  recordedAt?: string;
+}

@@ -11,7 +11,7 @@ Monorepo pnpm workspaces + Turbo con una app Phoenix y una app Expo. Los contrat
 └──────┬───────┘                └────────┬─────────┘
        │                                 │
        │  PUT binarios (firmado)         ▼
-       └──────────────────────► Cloudflare R2
+       └────────► R2/S3 o /api/uploads (disco local)
                                 PostgreSQL + PostGIS
 ```
 
@@ -26,7 +26,7 @@ Phoenix single app (sin umbrella) con contextos por dominio:
 | `Snack.Sessions` | Emisión, rotación, revocación de sesiones y refresh tokens |
 | `Snack.Dating` | Dominio dating completo: perfiles, discovery, matching, chat, safety |
 | `Snack.Features` | Feature flags leídas de config por entorno |
-| `Snack.Notifications` / `Snack.Storage` | Envío de push vía Expo Push API y cliente R2 con URLs firmadas |
+| `Snack.Notifications` / `Snack.Storage` | Envío de push vía Expo Push API y almacenamiento de fotos (adaptadores local y R2/S3) |
 
 Capa web: `SnackWeb` con controllers API versionados en `/api`, plugs de autenticación (`Authenticate` valida JWT y expiración), plug `RequireFeature` para módulos opcionales y `UserSocket` para WebSocket.
 
@@ -34,7 +34,7 @@ Puntos clave:
 
 - **Sesiones propiedad de Phoenix:** access token JWT corto (`sub` + `session_id`) + refresh token opaco rotatorio; solo hashes salted en DB con linaje familiar; reuso ⇒ revoca la familia.
 - **PostGIS** para ubicaciones (`geography(Point,4326)` con índice GiST) y distancias.
-- **R2 directo:** el backend firma URLs de subida (AWS SigV4 presigned PUT) vía `Snack.Storage.R2`; nunca proxéa binarios.
+- **Fotos (`Snack.Storage`, D-2026-09-29):** con R2/S3 el backend firma URLs de subida (AWS SigV4 presigned PUT) y nunca proxea binarios; con almacenamiento local (`STORAGE_ADAPTER=local`, por defecto en dev y para self-hosting sin S3) recibe el PUT firmado en `/api/uploads/:token` y sirve `/uploads` con `Plug.Static`. El contrato del móvil es el mismo.
 - **OpenAPI** servido en `/openapi.yaml`.
 - **Chat en vivo:** Phoenix Channel `chat:{conversationId}` autenticado con el mismo access token que REST.
 

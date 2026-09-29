@@ -21,8 +21,20 @@ config :snack, Snack.Auth,
     apple: Snack.Identity.Providers.Apple
   }
 
+# Photo storage (D-2026-09-29). The adapter is chosen per environment:
+# dev → local disk, test → R2 (tests stub it), prod → STORAGE_ADAPTER (required).
+config :snack, Snack.Storage, adapter: nil
+
+config :snack, Snack.Storage.Local,
+  uploads_dir: nil,
+  allowed_content_types: ["image/jpeg", "image/png", "image/webp"],
+  max_upload_bytes: 2_000_000,
+  upload_url_ttl_seconds: 600
+
 config :snack, Snack.Storage.R2,
   account_id: nil,
+  endpoint: nil,
+  region: nil,
   access_key_id: nil,
   secret_access_key: nil,
   bucket_name: nil,
@@ -30,6 +42,13 @@ config :snack, Snack.Storage.R2,
   allowed_content_types: ["image/jpeg", "image/png", "image/webp"],
   max_upload_bytes: 2_000_000,
   upload_url_ttl_seconds: 600
+
+# Absolute base for media URLs stored as relative paths (local storage). Unset ⇒
+# the host of each request is used (runtime env PUBLIC_BASE_URL).
+config :snack, :public_base_url, nil
+
+# A match without messages expires after this many days (D-2026-09-29).
+config :snack, :match_expiry_days, 30
 
 config :snack, :expo_push,
   base_url: "https://exp.host",

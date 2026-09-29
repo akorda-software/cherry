@@ -2,61 +2,47 @@ defmodule SnackWeb.Controllers.Api.MatchController do
   use SnackWeb, :controller
 
   alias Snack.Dating
+  alias Snack.Dating.Inbox
+  alias SnackWeb.ChatJSON
 
+  @doc """
+  Matches visibles (activos, sin caducar, sin bloqueos, cuentas vivas) con foto,
+  último mensaje y no leídos, por actividad reciente.
+  """
   def index(conn, _params) do
     profile = conn.assigns.current_profile
 
     if profile do
-      matches = Dating.list_matches(profile.id)
-      json(conn, %{matches: Enum.map(matches, &serialize_match(&1, profile.id))})
+      matches = Inbox.list(profile.id)
+      json(conn, %{matches: Enum.map(matches, &ChatJSON.match_summary(conn, &1))})
     else
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "profile_not_found"})
+      profile_not_found(conn)
     end
   end
 
   def unmatch(conn, %{"id" => match_id}) do
     profile = conn.assigns.current_profile
 
-    if profile do
-      match = Dating.get_match(match_id)
+    with %{} <- profile,
+         {:ok, match_id} <- Ecto.UUID.cast(match_id),
+         %Dating.Match{} = match <- Dating.get_match(match_id),
+         true <- Dating.Match.other_profile(match, profile.id) != nil do
+      case Dating.unmatch(match.id) do
+        {:ok, _match} ->
+          json(conn, %{ok: true})
 
-      if match && Dating.Match.other_profile(match, profile.id) do
-        case Dating.unmatch(match_id) do
-          {:ok, _} ->
-            json(conn, %{ok: true})
-
-          {:error, changeset} ->
-            conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
-        end
-      else
-        conn
-        |> put_status(:forbidden)
-        |> json(%{error: "not_participant"})
+        {:error, changeset} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
       end
     else
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "profile_not_found"})
+      nil when is_nil(profile) -> profile_not_found(conn)
+      false -> conn |> put_status(:forbidden) |> json(%{error: "not_participant"})
+      _not_found -> conn |> put_status(:not_found) |> json(%{error: "match_not_found"})
     end
   end
 
-  defp serialize_match(match, viewer_profile_id) do
-    other_id = Dating.Match.other_profile(match, viewer_profile_id)
-    other = Dating.get_profile(other_id)
-
-    %{
-      id: match.id,
-      matchedAt: match.matched_at,
-      expiresAt: match.expires_at,
-      firstMessageAt: match.first_message_at,
-      otherProfile: %{
-        id: other_id,
-        displayName: other && other.display_name,
-        age: other && Snack.Dating.Profile.age(other)
-      }
-    }
+  defp profile_not_found(conn) do
+    conn |> put_status(:not_found) |> json(%{error: "profile_not_found"})
   end
 
   defp format_errors(changeset) do

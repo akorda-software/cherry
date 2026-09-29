@@ -39,22 +39,58 @@ defmodule Snack.Accounts do
 
   @test_user_email "test@snack.app"
 
-  def ensure_test_user do
-    case Repo.get_by(User, email: @test_user_email) do
+  @doc """
+  Dev-only (`POST /api/auth/dev/test-login`): returns the user to log in as,
+  creating it on first use.
+
+  Without `:email` it is the shared test user (`test@snack.app`). With `:email`
+  (matched case-insensitively) it is that persona, e.g. the demo accounts of
+  `priv/repo/demo_seeds.exs`; `:display_name` is only used when creating it.
+  """
+  def ensure_test_user(attrs \\ %{}) do
+    email =
+      case Map.get(attrs, :email) do
+        email when is_binary(email) and email != "" -> email |> String.trim() |> String.downcase()
+        _default -> @test_user_email
+      end
+
+    display_name =
+      case Map.get(attrs, :display_name) do
+        name when is_binary(name) and name != "" -> String.trim(name)
+        _default when email == @test_user_email -> "Test User"
+        _default -> email |> String.split("@") |> hd() |> String.capitalize()
+      end
+
+    case get_user_by_email_insensitive(email) do
       %User{} = user ->
         {:ok, user}
 
       nil ->
-        case create_user(%{email: @test_user_email, display_name: "Test User"}) do
+        case create_user(%{email: email, display_name: display_name}) do
           {:ok, user} ->
             {:ok, user}
 
-          {:error, _changeset} ->
-            case Repo.get_by(User, email: @test_user_email) do
-              %User{} = user -> {:ok, user}
-              nil -> {:error, :failed_to_ensure_test_user}
+          {:error, changeset} ->
+            # Either another request created it first or the email is invalid.
+            case get_user_by_email_insensitive(email) do
+              %User{} = user ->
+                {:ok, user}
+
+              nil ->
+                if Keyword.has_key?(changeset.errors, :email),
+                  do: {:error, :invalid_email},
+                  else: {:error, :failed_to_ensure_test_user}
             end
         end
     end
+  end
+
+  defp get_user_by_email_insensitive(email) do
+    Repo.one(
+      from u in User,
+        where: fragment("lower(?)", u.email) == ^email,
+        order_by: [asc: u.inserted_at],
+        limit: 1
+    )
   end
 end

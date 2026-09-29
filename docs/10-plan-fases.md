@@ -8,8 +8,8 @@ Reglas: slices verticales completas antes que fundaciones aisladas; no construir
 
 - [x] Auth Apple/Google con sesiones Phoenix
 - [x] Schema de perfil y preferencias (drafts incluidos)
-- [x] Catálogo de tags (47, seedeado)
-- [x] Upload de fotos a R2 (upload-intent + complete)
+- [x] Catálogo de tags (52 con emoji, seedeado)
+- [x] Upload de fotos (upload-intent + complete) con almacenamiento local o R2/S3
 - [x] API y contratos de onboarding
 - [x] Enforcement de completitud server-side
 - [ ] *Móvil:* flujo de onboarding completo (parcial — ver Fase 4)
@@ -27,7 +27,7 @@ Reglas: slices verticales completas antes que fundaciones aisladas; no construir
 ## Fase 3 — Chat y ciclo de match ✅ (backend) / [ ] (móvil)
 
 - [x] Modelo conversación/mensaje; mensajería solo texto
-- [x] Expiración del match a 7 días sin mensajes; primer mensaje la limpia
+- [x] Expiración del match a 30 días sin mensajes (D-2026-09-29; antes 7); primer mensaje la limpia
 - [x] Unmatch; WebSocket en vivo con REST como historia
 - [ ] Móvil: lista de matches, chat REST+WS, feedback de match con CTA a conversación
 
@@ -51,7 +51,7 @@ Reglas: slices verticales completas antes que fundaciones aisladas; no construir
 
 1. Corregir resolver `nextOnboardingStep` y payload de ubicación del cliente.
 2. Paso **location** (expo-location → `POST /api/me/location` + remediación por permiso denegado).
-3. Paso **photos** (picker + compresión + upload-intent/complete R2).
+3. Paso **photos** (picker + compresión + upload-intent → PUT → complete; en dev, almacenamiento local).
 4. Pantalla review + completion → entrada al shell.
 5. Matches list → chat REST+WS.
 6. Safety + settings de cuenta.

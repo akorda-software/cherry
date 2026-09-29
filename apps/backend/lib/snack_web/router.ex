@@ -17,6 +17,7 @@ defmodule SnackWeb.Router do
   pipeline :authenticated_api do
     plug(:accepts, ["json"])
     plug(SnackWeb.Plugs.Authenticate)
+    plug(SnackWeb.Plugs.TrackActivity)
   end
 
   scope "/", SnackWeb do
@@ -43,6 +44,12 @@ defmodule SnackWeb.Router do
     get("/config", ConfigController, :show)
   end
 
+  # Local photo storage upload target: raw body, no Bearer (the signed token
+  # issued by the upload intent authorises the write). See Snack.Storage.Local.
+  scope "/api", SnackWeb.Controllers.Api do
+    put("/uploads/:token", UploadController, :create)
+  end
+
   scope "/api", SnackWeb.Controllers.Api do
     pipe_through(:authenticated_api)
 
@@ -62,6 +69,7 @@ defmodule SnackWeb.Router do
     get("/photos", ProfileController, :list_photos)
     post("/photos/upload-intent", ProfileController, :create_photo_upload_intent)
     post("/photos/complete", ProfileController, :complete_photo_upload)
+    put("/photos/order", ProfileController, :reorder_photos)
     delete("/photos/:id", ProfileController, :delete_photo)
 
     get("/tags", ProfileController, :get_tags)
@@ -76,6 +84,8 @@ defmodule SnackWeb.Router do
     post("/pause", SettingsController, :pause)
     post("/unpause", SettingsController, :unpause)
     delete("/account", SettingsController, :delete_account)
+
+    get("/summary", ActivityController, :summary)
   end
 
   scope "/api/discovery", SnackWeb.Controllers.Api do
@@ -83,6 +93,19 @@ defmodule SnackWeb.Router do
 
     get("/feed", DiscoveryController, :feed)
     post("/actions", DiscoveryController, :create_action)
+    post("/undo", DiscoveryController, :undo)
+  end
+
+  scope "/api/profiles", SnackWeb.Controllers.Api do
+    pipe_through(:authenticated_api)
+
+    get("/:id", PublicProfileController, :show)
+  end
+
+  scope "/api/likes", SnackWeb.Controllers.Api do
+    pipe_through(:authenticated_api)
+
+    get("/received", LikesController, :received)
   end
 
   scope "/api/tags", SnackWeb.Controllers.Api do
@@ -104,6 +127,7 @@ defmodule SnackWeb.Router do
     get("/", ChatController, :index)
     get("/:id/messages", ChatController, :messages)
     post("/:id/messages", ChatController, :create_message)
+    post("/:id/read", ChatController, :read)
   end
 
   scope "/api/users/:profile_id", SnackWeb.Controllers.Api do

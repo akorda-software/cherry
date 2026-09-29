@@ -16,16 +16,18 @@ Extensión PostGIS + uuid-ossp. Tablas:
 
 | Tabla | Columnas clave | Notas |
 |---|---|---|
-| `tags` | slug (único), label, category, sort_order, is_active | catálogo cerrado; 47 tags seedeados |
-| `profiles` | user_id (FK único), display_name, birth_date, gender, bio, what_i_am_looking_for, is_complete, is_discoverable, is_paused, deleted_at | campos core **nullable** desde 20260429100000 (draft profiles) |
-| `discovery_preferences` | profile_id (FK único), age_min/max, distance_km, show_men/show_women/show_non_binary (booleanos, ≥1 true), compatible_only, discovery_mode* | *campo añadido en 20260617100000, aún sin uso en el feed |
-| `profile_photos` | profile_id, storage_key, url, position, is_active | máx. 4 activas |
+| `tags` | slug (único), label, category, sort_order, is_active, emoji | catálogo cerrado; 52 etiquetas seedeadas (`priv/repo/seeds.exs`); `sort_order` global en orden de presentación; `emoji` nullable desde 20260929114512 |
+| `profiles` | user_id (FK único), display_name, birth_date, gender, bio, what_i_am_looking_for, is_complete, is_discoverable, is_paused, deleted_at, completed_at, last_active_at | campos core **nullable** desde 20260429100000 (draft profiles). `completed_at`: primera vez que se completó (boost de recién llegado). `last_active_at`: última petición autenticada, escrita como mucho cada 15 min |
+| `discovery_preferences` | profile_id (FK único), age_min/max (18–100, min ≤ max), distance_km (10/25/50/100/999999), show_men/show_women/show_non_binary (booleanos, ≥1 true), compatible_only, expand_distance (default true), discovery_mode* | *preferencia de presentación del cliente (swipe/feed); no afecta al ranking |
+| `profile_photos` | profile_id, storage_key, url, position, is_active | máx. 4 activas; `url` absoluta (R2/S3) o ruta relativa `/uploads/<storage_key>` (almacenamiento local, D-2026-09-29) que la API devuelve absoluta |
 | `profile_tags` | profile_id, tag_id | únicos por par |
 | `profile_blocked_tags` | profile_id, tag_id | únicos por par |
 | `profile_locations` | profile_id, coordinates **geography(Point,4326)**, accuracy_meters, recorded_at | índice GiST sobre coordinates; solo última ubicación activa |
 | `swipe_actions` | actor_profile_id, target_profile_id, action_type (like/dislike) | única acción activa por par actor-target |
-| `matches` | profile_a_id, profile_b_id, status (active/unmatched; "expired" válido pero sin asignación — la expiración se aplica lazy en lectura), matched_at, expires_at, first_message_at, unmatched_at | expires_at = matched_at + 7 días hasta primer mensaje |
+| `discovery_tag_weights` | generation, tag_id, profile_count, total_profiles, weight, computed_at | caché versionada de pesos IDF `ln(1 + N / (1 + n_tag))`. PK (generation, tag_id); secuencia `discovery_tag_weights_generation_seq`. Se regenera cada 15 min y se purga lo calculado hace más de 2 h, salvo la última generación |
+| `matches` | profile_a_id, profile_b_id, status (active/unmatched/expired), matched_at, expires_at, first_message_at, unmatched_at | un match por pareja (índice único `idx_matches_canonical_pair` sobre `LEAST/GREATEST` de los dos perfiles). expires_at = matched_at + 30 días (`:match_expiry_days`) hasta el primer mensaje, que lo pone a NULL. La caducidad se aplica lazy en todas las lecturas (`expires_at <= now` = caducado) y `MatchExpirySweeper` pasa el status a `expired` cada hora |
 | `conversations` | match_id (FK único) | sin columna status: el gate de mensajería vive en `matches.status`/`expires_at` |
+| `conversation_reads` | conversation_id, profile_id, last_read_at | único por (conversation_id, profile_id); no leídos = mensajes del otro con `inserted_at > last_read_at`. Upsert que nunca retrocede |
 | `messages` | conversation_id, sender_profile_id, body (1–2000) | paginado por inserted_at; **body cifrado en reposo** (AES-256-GCM vía `Snack.Crypto`, clave en `MESSAGE_ENCRYPTION_KEY` — ver D-2026-08-21) |
 | `user_blocks` | actor_profile_id, target_profile_id, reason | únicos por par |
 | `reports` | reporter_profile_id, target_profile_id, reason, details, status, reviewed_at/by | revisión admin |
@@ -36,15 +38,23 @@ Extensión PostGIS + uuid-ossp. Tablas:
 | Migración | Qué añade |
 |---|---|
 | 20260429100000 | Campos core de `profiles` nullable para drafts |
-| 20260429101000 | `profile_photo_upload_intents` — intents firmados R2 con expiración y single-use |
+| 20260429101000 | `profile_photo_upload_intents` — intents de subida firmados (R2/S3 o token local) con expiración y single-use |
 | 20260429102000 | `push_tokens` — token Expo por sesión/plataforma/installation, estado active/inactive |
-| 20260617100000 | `discovery_preferences.discovery_mode` (sin uso aún — ver deuda técnica) |
+| 20260617100000 | `discovery_preferences.discovery_mode`: preferencia de presentación del cliente; no afecta al ranking |
+| 20260929113715 | Ranking de discovery v2 (D-2026-09-29): `profiles.completed_at`/`last_active_at` (backfill: `updated_at` en perfiles completos; actividad = máximo de `updated_at` y último login de dispositivo), `discovery_preferences.expand_distance`. Normaliza preferencias guardadas: distancias fuera de catálogo suben a la siguiente opción; `age_min > age_max` se intercambian. Añade el índice parcial de likes recibidos y la tabla `discovery_tag_weights` |
+| 20260929114512 | `tags.emoji` (nullable) para el catálogo con emoji |
+| 20260929120000 | `conversation_reads` (estado de lectura por participante) y ampliación a 30 días de los matches pendientes creados con la regla de 7 días (D-2026-09-29). El `down` solo elimina la tabla |
+| 20260929154521 | `swipe_actions_dislikes_received_index`: índice parcial para excluir del feed a quien ya dio dislike al viewer (D-2026-09-29) |
 
 ## Índices y consultas prioritarias
 
-- GiST en `profile_locations.coordinates` — candidatos por distancia.
-- Índices de filtro discovery: perfiles activos/completos/no pausados.
-- Único por par en `swipe_actions` — exclusión de ya vistos y creación de match O(1).
+- GiST en `profile_locations.coordinates` — candidatos por distancia (`ST_DWithin` del radio exterior del tramo).
+- Índices de filtro discovery: perfiles activos/completos/no pausados. La edad se filtra como rango de `birth_date` para usar estadísticas.
+- Único por par en `swipe_actions`: exclusión de ya vistos, creación de match O(1) y comprobación de «like contestado» del reparto de atención.
+- `swipe_actions_likes_received_index`: `(target_profile_id, inserted_at) INCLUDE (actor_profile_id) WHERE action_type = 'like'`. Sirve para la reciprocidad, los likes pendientes de 7 días y la pestaña de likes, sin tocar el heap.
+- `swipe_actions_dislikes_received_index`: `(target_profile_id, actor_profile_id) WHERE action_type = 'dislike'`. Sirve para excluir del feed a quien ya dio dislike al viewer, con un index-only scan de solo sus dislikes recibidos.
+- `profile_tags(profile_id, tag_id)` / `profile_tags(tag_id)` y equivalentes en `profile_blocked_tags`: afinidad por candidato y bloqueos de etiquetas en ambas direcciones.
+- `discovery_tag_weights` PK `(generation, tag_id)`: pesos de la generación fijada por el cursor.
 - Lookup de matches por participante; mensajes por conversación + tiempo; reportes por status.
 
 ## Privacidad

@@ -7,6 +7,11 @@ config :snack, :enable_dev_test_login, true
 # uploading photos or setting a location (those features are not wired yet).
 config :snack, :strict_profile_completion, false
 
+# Photos on local disk, served at /uploads (override with STORAGE_ADAPTER /
+# UPLOADS_DIR). The directory is gitignored.
+config :snack, Snack.Storage, adapter: Snack.Storage.Local
+config :snack, Snack.Storage.Local, uploads_dir: Path.expand("../priv/uploads", __DIR__)
+
 # Configure your database
 config :snack, Snack.Repo,
   username: "postgres",

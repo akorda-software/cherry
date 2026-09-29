@@ -1024,7 +1024,7 @@ defmodule Snack.Dating do
         q
       end
     end)
-    |> order_by([m], desc: m.inserted_at)
+    |> order_by([m], desc: m.inserted_at, desc: m.id)
     |> limit(^limit)
     |> Repo.all()
   end

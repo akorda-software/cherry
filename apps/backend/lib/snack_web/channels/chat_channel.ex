@@ -56,6 +56,10 @@ defmodule SnackWeb.ChatChannel do
     end
   end
 
+  def handle_in("send_message", _payload, socket) do
+    {:reply, {:error, %{errors: %{body: ["can't be blank"]}}}, socket}
+  end
+
   @impl true
   def handle_in("typing", _payload, socket) do
     if Dating.conversation_allows_messaging?(

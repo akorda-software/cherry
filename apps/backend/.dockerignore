@@ -47,3 +47,10 @@ erl_crash.dump
 
 # Local photo storage (dev uploads must never end up in an image)
 /priv/uploads/
+
+# Builds paralelos (_build_algo, _build_media, ...): mismo criterio que .gitignore
+/_build_*/
+
+# Env local: nunca en el contexto de build
+.env
+.env.*

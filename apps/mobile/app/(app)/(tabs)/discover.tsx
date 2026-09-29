@@ -1,5 +1,5 @@
-import { DiscoveryFeedScreen } from "../../../src/features/discovery";
+import { DiscoverScreen } from "../../../src/features/discovery";
 
-export default function HomeRoute() {
-  return <DiscoveryFeedScreen />;
+export default function DiscoverRoute() {
+  return <DiscoverScreen />;
 }

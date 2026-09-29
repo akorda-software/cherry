@@ -3,7 +3,7 @@ import { create } from "zustand";
 import type { ActivitySummary } from "@snack/contracts";
 
 import { useTabBadgesStore } from "../../../shared/ui/app-shell/tab-badges-store";
-import { onSignOut } from "./on-sign-out";
+import { onSignOut } from "../../auth/presentation/on-sign-out";
 
 /**
  * Contadores de actividad para los badges de las pestañas (`GET /api/me/summary`).

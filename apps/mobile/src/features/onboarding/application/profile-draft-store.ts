@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type { DiscoveryPreferences, Profile, ProfilePhoto, Tag } from "@snack/contracts";
 import type { ProfileApi } from "@snack/mobile-shared";
+import { onSignOut } from "../../auth/presentation/on-sign-out";
 
 /**
  * Borrador del perfil propio compartido por los pasos del onboarding y las
@@ -152,3 +153,10 @@ export async function loadTagCatalog(callApi: CallProfileApi, { force = false }:
 
   return catalogRequest;
 }
+
+// El borrador contiene el perfil entero: fuera de memoria al cerrar sesión.
+onSignOut(() => {
+  useProfileDraftStore.getState().reset();
+  profileRequest = null;
+  catalogRequest = null;
+});

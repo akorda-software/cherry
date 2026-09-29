@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { DiscoveryMatch } from "@snack/contracts";
+import { onSignOut } from "../auth/presentation/on-sign-out";
 
 interface MatchCelebrationState {
   /** Match que se está celebrando ahora mismo (null = nada en pantalla). */
@@ -34,3 +35,5 @@ export const useMatchCelebrationStore = create<MatchCelebrationState>((set, get)
     set({ match: next, queue: rest });
   }
 }));
+
+onSignOut(() => useMatchCelebrationStore.setState({ match: null, queue: [] }));

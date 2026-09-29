@@ -16,7 +16,6 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
-    "@react-native-community/datetimepicker": "^9.1.0",
     "@react-native-google-signin/google-signin": "^16.1.2",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/drawer": "^7.5.0",

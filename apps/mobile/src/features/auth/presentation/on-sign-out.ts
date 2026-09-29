@@ -1,4 +1,4 @@
-import { useSessionStore } from "../../auth/presentation/session-store";
+import { useSessionStore } from "./session-store";
 
 /**
  * Ejecuta `callback` cuando se cierra la sesión (de «signed-in» a cualquier otro estado),

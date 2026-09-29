@@ -11,7 +11,7 @@ import type {
 } from "@snack/contracts";
 
 import { apiErrorCode, friendlyErrorMessage } from "../../../shared/api";
-import { onSignOut } from "../../activity/application/on-sign-out";
+import { onSignOut } from "../../auth/presentation/on-sign-out";
 
 /**
  * Pestaña Likes: quién te ha dado like (gratis y visible). Paginación por cursor y respuestas

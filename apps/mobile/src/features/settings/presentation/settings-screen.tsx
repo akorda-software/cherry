@@ -19,6 +19,7 @@ import { readAppInfo } from "../infrastructure/app-info";
 import { DeleteAccountSheet } from "./delete-account-sheet";
 import { useDeleteAccountAction } from "./use-delete-account-action";
 import { useProfilePause } from "./use-profile-pause";
+import { useUpdateMyLocation } from "./use-update-location";
 
 /** Ajustes: cuenta, visibilidad, privacidad, acerca de y, al final, la zona de peligro. */
 export function SettingsScreen() {
@@ -27,6 +28,7 @@ export function SettingsScreen() {
   const { state } = useSessionShell();
   const logout = useLogoutAction();
   const pause = useProfilePause();
+  const location = useUpdateMyLocation();
   const deletion = useDeleteAccountAction();
   const optionalEntries = useOptionalModuleEntries();
   const appInfo = useMemo(() => readAppInfo(), []);
@@ -103,6 +105,21 @@ export function SettingsScreen() {
           icon="pin"
           iconColor="menta"
           label="Ubicación aproximada"
+        />
+        <ListRow
+          accessibilityHint={location.blocked ? "Abre los ajustes del sistema" : undefined}
+          description={
+            location.blocked
+              ? "Snack no tiene permiso de ubicación. Actívalo en Ajustes y vuelve: la actualizamos sola."
+              : "¿Te has mudado? Así ves gente de tu nueva zona."
+          }
+          disabled={location.pending}
+          icon={location.blocked ? "gear" : "refresh"}
+          iconColor="menta"
+          label={location.blocked ? "Activar la ubicación en Ajustes" : "Actualizar mi ubicación"}
+          onPress={location.run}
+          testID="settings-update-location"
+          trailing={location.pending ? <LoadingDots color={theme.primitives.color.ink} /> : "none"}
         />
         <ListRow
           description="Dejáis de veros del todo: ni en Descubrir, ni en Likes, ni en el chat. No le avisamos."

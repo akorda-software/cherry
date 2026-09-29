@@ -1,62 +1,82 @@
 import { fireEvent, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import { usePathname } from "expo-router";
+import { describe, expect, it } from "vitest";
+import { usePathname, useRouter } from "expo-router";
 
 import { PrivateLayout } from "../../app/(app)/_layout";
-import SettingsRoute from "../../app/(app)/settings";
-import HomeRoute from "../../app/(app)/(tabs)/home";
-import ProfileRoute from "../../app/(app)/(tabs)/profile";
-import { PlaceholderScreen } from "../../src/shared/ui/app-shell";
+import TabsLayoutRoute from "../../app/(app)/(tabs)/_layout";
+import { appShellRoutes, ComingSoonScreen, PlaceholderScreen } from "../../src/shared/ui";
 import { renderRoute } from "./render-route";
 import { sessionFixture } from "./session-shell.fixture";
 
+const signedIn = {
+  services: {
+    bootstrapSession: {
+      execute: async () => sessionFixture
+    }
+  }
+};
+
+/** Anfitrión mínimo: una pestaña y una pantalla apilada con su propia cabecera. */
 function AppRouteHost() {
   const pathname = usePathname();
+  const router = useRouter();
 
-  if (pathname === "/(app)/(tabs)/profile") {
+  if (pathname === appShellRoutes.about) {
     return (
       <PrivateLayout>
-        <ProfileRoute />
-      </PrivateLayout>
-    );
-  }
-
-  if (pathname === "/(app)/settings") {
-    return (
-      <PrivateLayout>
-        <SettingsRoute />
+        <ComingSoonScreen testID="about-screen" title="Sobre Snack" />
       </PrivateLayout>
     );
   }
 
   return (
     <PrivateLayout>
-      <HomeRoute />
+      <ComingSoonScreen back={false} testID="likes-screen" title="Likes" />
+      <button onClick={() => router.push(appShellRoutes.about)} type="button">
+        Abrir sobre Snack
+      </button>
     </PrivateLayout>
   );
 }
 
 describe("private shell", () => {
-  it("renders home content inside the private shell", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-
+  it("renders tab content inside the private shell with its own large title", async () => {
     renderRoute(
-      <AppRouteHost />,
-      {
-        initialPath: "/(app)/(tabs)/home",
-        services: {
-          bootstrapSession: {
-            execute: async () => sessionFixture
-          }
-        }
-      }
+      <PrivateLayout>
+        <ComingSoonScreen back={false} testID="likes-screen" title="Likes" />
+      </PrivateLayout>,
+      { initialPath: appShellRoutes.likes, ...signedIn }
     );
 
-    expect(await screen.findByTestId("discovery-error")).toBeInTheDocument();
-    expect(screen.getByRole("banner")).toHaveTextContent("Descubrir");
-    expect(screen.getByRole("button", { name: "Reintentar" })).toBeInTheDocument();
+    expect(await screen.findByTestId("likes-screen")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Likes" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Estamos preparando esta página ✨" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Volver" })).not.toBeInTheDocument();
+  });
 
-    fetchSpy.mockRestore();
+  it("pushes a stacked screen and returns with its back button", async () => {
+    renderRoute(<AppRouteHost />, { initialPath: appShellRoutes.likes, ...signedIn });
+
+    expect(await screen.findByTestId("likes-screen")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Abrir sobre Snack" }));
+
+    expect(await screen.findByTestId("about-screen")).toBeInTheDocument();
+    expect(screen.getByTestId("pathname")).toHaveTextContent(appShellRoutes.about);
+
+    fireEvent.click(screen.getByRole("button", { name: "Volver" }));
+    expect(await screen.findByTestId("likes-screen")).toBeInTheDocument();
+  });
+
+  it("falls back to the root when a deep-linked screen has no history", async () => {
+    renderRoute(
+      <PrivateLayout>
+        <ComingSoonScreen close testID="filters-screen" title="Filtros" />
+      </PrivateLayout>,
+      { initialPath: appShellRoutes.filters, ...signedIn }
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cerrar" }));
+    expect(screen.getByTestId("pathname")).toHaveTextContent(/^\/$/);
   });
 
   it("keeps the private shell boundary reusable around non-tab feature content", async () => {
@@ -68,55 +88,24 @@ describe("private shell", () => {
           title="Future feature placeholder"
         />
       </PrivateLayout>,
-      {
-        initialPath: "/(app)/settings",
-        services: {
-          bootstrapSession: {
-            execute: async () => sessionFixture
-          }
-        }
-      }
+      { initialPath: appShellRoutes.settings, ...signedIn }
     );
 
     expect(await screen.findByTestId("future-feature-screen")).toBeInTheDocument();
-    expect(screen.getByRole("banner")).toHaveTextContent("Settings");
+    expect(screen.getByRole("heading", { name: "Future feature placeholder" })).toBeInTheDocument();
     expect(
       screen.getByText("Future feature content can change without rebuilding the private shell.")
     ).toBeInTheDocument();
   });
 
-  it("resolves authenticated deep links to a single canonical screen instance", async () => {
+  it("mounts the tabs navigator", async () => {
     renderRoute(
-      <AppRouteHost />,
-      {
-        initialPath: "/(app)/(tabs)/profile",
-        services: {
-          bootstrapSession: {
-            execute: async () => sessionFixture
-          }
-        }
-      }
+      <PrivateLayout>
+        <TabsLayoutRoute />
+      </PrivateLayout>,
+      { initialPath: appShellRoutes.discover, ...signedIn }
     );
 
-    expect(await screen.findAllByTestId("profile-screen")).toHaveLength(1);
-    expect(screen.getByText("Signed in as User")).toBeInTheDocument();
-  });
-
-  it("renders the profile structure with a logout action", async () => {
-    renderRoute(
-      <AppRouteHost />,
-      {
-        initialPath: "/(app)/(tabs)/profile",
-        services: {
-          bootstrapSession: {
-            execute: async () => sessionFixture
-          }
-        }
-      }
-    );
-
-    expect(await screen.findByRole("banner")).toHaveTextContent("Profile");
-    expect(screen.getByText("Signed in as User")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
+    expect(await screen.findByTestId("tabs-navigation")).toBeInTheDocument();
   });
 });

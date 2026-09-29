@@ -22,9 +22,19 @@ export default (): ExpoConfig => {
     platforms: ["android", "ios", "web"],
     userInterfaceStyle: "light",
     backgroundColor: "#FFF6FB",
+    icon: "./assets/images/icon.png",
     android: {
       package: readOptionalEnv("EXPO_ANDROID_PACKAGE") ?? "app.snack.mobile",
-      softwareKeyboardLayoutMode: "resize"
+      softwareKeyboardLayoutMode: "resize",
+      adaptiveIcon: {
+        foregroundImage: "./assets/images/adaptive-icon.png",
+        backgroundImage: "./assets/images/adaptive-icon-background.png",
+        backgroundColor: "#C3B1FF",
+        monochromeImage: "./assets/images/adaptive-icon-monochrome.png"
+      }
+    },
+    web: {
+      favicon: "./assets/images/favicon.png"
     },
     ios: {
       bundleIdentifier: readOptionalEnv("EXPO_IOS_BUNDLE_IDENTIFIER") ?? "app.snack.mobile"
@@ -53,6 +63,8 @@ export default (): ExpoConfig => {
       [
         "expo-splash-screen",
         {
+          image: "./assets/images/splash-icon.png",
+          imageWidth: 220,
           backgroundColor: "#FFF6FB",
           resizeMode: "contain"
         }

@@ -1,65 +1,85 @@
 import type { PropsWithChildren } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
-import { Redirect, Slot, Stack } from "expo-router";
+import { Redirect, Stack } from "expo-router";
+import { StyleSheet, View } from "react-native";
 
-import { useAppBootstrap } from "../../src/features/app-bootstrap";
+import { refreshBootstrap, useAppBootstrap } from "../../src/features/app-bootstrap";
+import { AppOverlays } from "../../src/features/app-overlays";
 import { useSessionShell } from "../../src/features/auth/presentation";
 import { optionalStackScreens } from "../../src/features/optional-modules";
-import { ShellScaffold } from "../../src/shared/ui/app-shell";
+import { appShellRoutes, ErrorState, LoadingScreen, Screen, useTheme } from "../../src/shared/ui";
 
 function PrivateGuard({ children }: PropsWithChildren) {
   const { state } = useSessionShell();
   const { state: bootstrapState } = useAppBootstrap();
 
   if (state.status === "loading") {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
+    return <LoadingScreen testID="private-loading" />;
   }
 
   if (state.status === "signed-out") {
-    return <Redirect href="/(public)/login" />;
+    return <Redirect href={appShellRoutes.login} />;
   }
 
   if (bootstrapState.status === "loading" || bootstrapState.status === "idle") {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
+    return <LoadingScreen testID="private-loading" />;
   }
 
   if (bootstrapState.status === "error") {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}>
-        <Text>{bootstrapState.error}</Text>
-      </View>
+      <Screen>
+        <ErrorState
+          message="No hemos podido cargar tu cuenta. Revisa tu conexión y vuelve a intentarlo."
+          onRetry={() => void refreshBootstrap()}
+          testID="private-error"
+        />
+      </Screen>
     );
   }
 
   if (bootstrapState.bootstrap.profile.onboardingRequired) {
-    return <Redirect href="/(onboarding)" />;
+    return <Redirect href={appShellRoutes.onboarding} />;
   }
 
   return <>{children}</>;
 }
 
+/**
+ * Zona privada: guard de sesión/onboarding + overlays globales montados una
+ * vez encima de la navegación. Cada pantalla trae su propia cabecera (`TopBar`).
+ */
 export function PrivateLayout({ children }: PropsWithChildren) {
   return (
     <PrivateGuard>
-      <ShellScaffold>{children ?? <Slot />}</ShellScaffold>
+      <View style={styles.root}>
+        {children}
+        <AppOverlays />
+      </View>
     </PrivateGuard>
   );
 }
 
 export default function PrivateLayoutRoute() {
+  const theme = useTheme();
+
   return (
     <PrivateLayout>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ title: "Home" }} />
-        <Stack.Screen name="settings" options={{ title: "Settings" }} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: theme.semantic.color.screenBackground }
+        }}
+      >
+        <Stack.Screen name="(tabs)" />
+        {/* Sube desde abajo: continúa el gesto de deslizar la card hacia arriba (Descubrir). */}
+        <Stack.Screen name="profile/[id]" options={{ animation: "slide_from_bottom" }} />
+        <Stack.Screen name="chat/[id]" />
+        <Stack.Screen name="filters" options={{ presentation: "modal" }} />
+        <Stack.Screen name="edit/photos" />
+        <Stack.Screen name="edit/tags" />
+        <Stack.Screen name="edit/bio" />
+        <Stack.Screen name="edit/basics" />
+        <Stack.Screen name="settings" />
+        <Stack.Screen name="about" />
         {optionalStackScreens.map((screen) => (
           <Stack.Screen key={screen.name} name={screen.name} options={{ title: screen.title }} />
         ))}
@@ -67,3 +87,9 @@ export default function PrivateLayoutRoute() {
     </PrivateLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1
+  }
+});

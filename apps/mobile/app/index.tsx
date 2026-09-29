@@ -1,44 +1,40 @@
-import { ActivityIndicator, Text, View } from "react-native";
 import { Redirect } from "expo-router";
 
-import { useAppBootstrap } from "../src/features/app-bootstrap";
+import { refreshBootstrap, useAppBootstrap } from "../src/features/app-bootstrap";
 import { useSessionShell } from "../src/features/auth/presentation";
+import { appShellRoutes, ErrorState, LoadingScreen, Screen } from "../src/shared/ui";
 
 export default function IndexRoute() {
   const { state } = useSessionShell();
   const { state: bootstrapState } = useAppBootstrap();
 
   if (state.status === "loading" || (state.status === "signed-in" && bootstrapState.status === "loading")) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
+    return <LoadingScreen testID="boot-loading" />;
   }
 
   if (state.status === "signed-in") {
     if (bootstrapState.status === "error") {
       return (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}>
-          <Text>{bootstrapState.error}</Text>
-        </View>
+        <Screen>
+          <ErrorState
+            message="No hemos podido abrir tu libreta. Revisa tu conexión y vuelve a intentarlo."
+            onRetry={() => void refreshBootstrap()}
+            testID="boot-error"
+          />
+        </Screen>
       );
     }
 
     if (bootstrapState.status !== "ready") {
-      return (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator size="large" />
-        </View>
-      );
+      return <LoadingScreen testID="boot-loading" />;
     }
 
     if (bootstrapState.bootstrap.profile.onboardingRequired) {
-      return <Redirect href="/(onboarding)" />;
+      return <Redirect href={appShellRoutes.onboarding} />;
     }
 
-    return <Redirect href="/(app)/(tabs)/home" />;
+    return <Redirect href={appShellRoutes.discover} />;
   }
 
-  return <Redirect href="/(public)/login" />;
+  return <Redirect href={appShellRoutes.login} />;
 }

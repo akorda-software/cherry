@@ -176,7 +176,7 @@ const SlotView = memo(function SlotView({ slot, index, cell, isFirstEmpty, manag
       <View>
         <PolaroidFrame
           accessibilityLabel={isMain ? "Tu foto principal" : `Tu foto ${index + 1}`}
-          caption={isMain ? "¡La principal!" : undefined}
+          caption={isMain ? "¡Portada!" : undefined}
           elevation="md"
           photoAspectRatio={PHOTO_ASPECT_RATIO}
           tapeColors={isMain ? ["fresa", "limonada"] : ["lavanda"]}

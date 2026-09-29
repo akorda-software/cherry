@@ -50,14 +50,19 @@ export default (): ExpoConfig => {
         "expo-image-picker",
         {
           photosPermission: "Snack necesita acceso a tus fotos para que puedas añadirlas a tu perfil.",
-          cameraPermission: "Snack usa la cámara solo si quieres hacerte una foto para tu perfil."
+          cameraPermission: "Snack usa la cámara solo si quieres hacerte una foto para tu perfil.",
+          // Solo imágenes (mediaTypes: ["images"]): sin NSMicrophoneUsageDescription ni RECORD_AUDIO.
+          microphonePermission: false
         }
       ],
       [
         "expo-location",
         {
           locationWhenInUsePermission:
-            "Snack usa tu ubicación aproximada (redondeada a 500 m) para enseñarte gente cerca. Nunca compartimos tu ubicación exacta."
+            "Snack usa tu ubicación aproximada (redondeada a 500 m) para enseñarte gente cerca. Nunca compartimos tu ubicación exacta.",
+          // Solo primer plano (requestForegroundPermissionsAsync): sin claves "Always" con texto en inglés por defecto.
+          locationAlwaysAndWhenInUsePermission: false,
+          locationAlwaysPermission: false
         }
       ],
       [

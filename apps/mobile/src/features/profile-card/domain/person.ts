@@ -29,7 +29,8 @@ export interface ProfilePerson {
 export type PersonSource = DiscoveryProfileCard | PublicProfile | ProfilePerson;
 
 function isPerson(source: PersonSource): source is ProfilePerson {
-  return "sharedTagsCount" in source && !("score" in source) && Array.isArray(source.tags);
+  // `photoCount` solo existe en las cards (`score` ya no lo envía el backend).
+  return "sharedTagsCount" in source && !("photoCount" in source) && Array.isArray(source.tags);
 }
 
 /** Normaliza una card o un perfil público al modelo que pintan los átomos de `profile-card`. */

@@ -46,6 +46,7 @@ export function DiscoverScreen() {
   const loadMoreFailed = useDiscoveryQueue((state) => state.loadMoreFailed);
   const error = useDiscoveryQueue((state) => state.error);
   const undoing = useDiscoveryQueue((state) => state.undoing);
+  const canUndo = useDiscoveryQueue((state) => state.canUndo);
   const notice = useDiscoveryQueue((state) => state.notice);
   const lastReturn = useDiscoveryQueue((state) => state.lastReturn);
   const lastRemoval = useDiscoveryQueue((state) => state.lastRemoval);
@@ -80,10 +81,11 @@ export function DiscoverScreen() {
       return;
     }
 
+    const gentle = notice.kind === "nothing_to_undo" || notice.kind === "undo_unavailable";
     toast.show({
       message: notice.message,
-      tone: notice.kind === "nothing_to_undo" ? "info" : "error",
-      icon: notice.kind === "nothing_to_undo" ? "undo" : undefined
+      tone: gentle ? "info" : "error",
+      icon: gentle ? "undo" : undefined
     });
     discoveryQueueStore.getState().dismissNotice(notice.id);
   }, [notice]);
@@ -198,6 +200,7 @@ export function DiscoverScreen() {
     content = (
       <SwipeMode
         bottomSpace={bottomSpace}
+        canUndo={canUndo}
         exhausted={status === "ready" && !hasMore && !loadingMore}
         focused={focused}
         lastRemoval={lastRemoval}

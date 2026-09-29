@@ -22,6 +22,8 @@ interface SwipeModeProps {
   exhausted: boolean;
   loadMoreFailed: boolean;
   undoing: boolean;
+  /** Falso tras recargar por filtros: el último «no» ya no se puede recuperar. */
+  canUndo: boolean;
   focused: boolean;
   reducedMotion: boolean;
   lastReturn: DiscoveryQueueReturn | null;
@@ -40,6 +42,7 @@ export function SwipeMode({
   exhausted,
   loadMoreFailed,
   undoing,
+  canUndo,
   focused,
   reducedMotion,
   lastReturn,
@@ -134,7 +137,7 @@ export function SwipeMode({
           accessibilityHint="Recupera a la última persona a la que dijiste que no"
           accessibilityLabel="Deshacer el último no"
           color="limonada"
-          disabled={undoing}
+          disabled={undoing || !canUndo}
           icon="undo"
           onPress={onUndo}
           size="md"

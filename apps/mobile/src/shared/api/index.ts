@@ -3,6 +3,48 @@ import type { HttpClient } from "@snack/mobile-shared";
 interface JsonHttpClientOptions {
   apiBaseUrl: string;
   getHeaders?: () => Record<string, string>;
+  /** Tiempo máximo por petición (cabeceras + cuerpo). Por defecto `DEFAULT_REQUEST_TIMEOUT_MS`. */
+  timeoutMs?: number;
+}
+
+/**
+ * Ninguna petición JSON puede quedarse colgada para siempre: varias piezas deduplican por
+ * promesa en vuelo (refresco de sesión, badges, recargas) y una promesa eterna las congelaría.
+ */
+export const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
+
+/** Error de tiempo agotado: es un `TypeError`, como un fallo de red de `fetch`, y se trata igual (transitorio). */
+export function createRequestTimeoutError(): TypeError {
+  const error = new TypeError("Network request timed out");
+  (error as TypeError & { timedOut: true }).timedOut = true;
+  return error;
+}
+
+/**
+ * Ejecuta `run` con una señal que se aborta a los `timeoutMs`. Si se agota el tiempo, rechaza con
+ * `createRequestTimeoutError()` aunque `run` no respete la señal.
+ */
+export function withRequestTimeout<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS
+): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(createRequestTimeoutError());
+    }, timeoutMs);
+  });
+
+  const work = run(controller.signal).catch((error: unknown) => {
+    throw controller.signal.aborted && !isApiError(error) ? createRequestTimeoutError() : error;
+  });
+
+  return Promise.race([work, timeout]).finally(() => {
+    clearTimeout(timer);
+  });
 }
 
 /** Error de la API: `code` es el campo `error` del cuerpo JSON; `body`, el cuerpo entero. */
@@ -43,7 +85,8 @@ export function friendlyErrorMessage(error: unknown, fallback = "Algo se ha torc
 
 export function createJsonHttpClient({
   apiBaseUrl,
-  getHeaders = () => ({})
+  getHeaders = () => ({}),
+  timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
 }: JsonHttpClientOptions): HttpClient {
   const buildUrl = (path: string) => `${apiBaseUrl}${path}`;
 
@@ -84,18 +127,23 @@ export function createJsonHttpClient({
     };
   }
 
+  function request<TResponse>(path: string, init: RequestInit): Promise<TResponse> {
+    return withRequestTimeout(async (signal) => {
+      const response = await fetch(buildUrl(path), { ...init, signal });
+      return parseResponse<TResponse>(response);
+    }, timeoutMs);
+  }
+
   return {
     async get<TResponse>(path: string): Promise<TResponse> {
-      const response = await fetch(buildUrl(path), {
+      return request<TResponse>(path, {
         method: "GET",
         headers: buildHeaders()
       });
-
-      return parseResponse<TResponse>(response);
     },
 
     async post<TResponse>(path: string, body: unknown): Promise<TResponse> {
-      const response = await fetch(buildUrl(path), {
+      return request<TResponse>(path, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -103,12 +151,10 @@ export function createJsonHttpClient({
         },
         body: JSON.stringify(body)
       });
-
-      return parseResponse<TResponse>(response);
     },
 
     async put<TResponse>(path: string, body: unknown): Promise<TResponse> {
-      const response = await fetch(buildUrl(path), {
+      return request<TResponse>(path, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -116,12 +162,10 @@ export function createJsonHttpClient({
         },
         body: JSON.stringify(body)
       });
-
-      return parseResponse<TResponse>(response);
     },
 
     async delete<TResponse>(path: string, body: unknown): Promise<TResponse> {
-      const response = await fetch(buildUrl(path), {
+      return request<TResponse>(path, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -129,8 +173,6 @@ export function createJsonHttpClient({
         },
         body: JSON.stringify(body)
       });
-
-      return parseResponse<TResponse>(response);
     }
   };
 }

@@ -12,6 +12,7 @@ import { createAppleNativeAdapter } from "../infrastructure/apple-native-adapter
 import { assembleAuthServices } from "../infrastructure/auth-assembly";
 import { createNativeDevice } from "../infrastructure/native-device";
 import type { SessionShellServices } from "../presentation";
+import { useSessionStore } from "../presentation/session-store";
 import type { DevicePlatform } from "@snack/contracts";
 
 interface CreateNativeAuthServicesOptions {
@@ -112,7 +113,12 @@ export function createNativeAuthServices({
     nativeApple,
     navigation: {
       goToSignedOut() {
-        // Navigation is handled by expo-router guards in the layout
+        // La sesión guardada ya no vale: cerramos sesión de verdad (dispara `onSignOut` y los
+        // guardas de expo-router llevan al login). Sin esto quedaría una sesión zombi.
+        const session = useSessionStore.getState();
+        if (session.status === "signed-in") {
+          void session.signOut();
+        }
       }
     }
   });

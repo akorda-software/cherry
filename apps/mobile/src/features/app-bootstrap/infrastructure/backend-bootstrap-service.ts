@@ -1,3 +1,4 @@
+import { withRequestTimeout } from "../../../shared/api";
 import type { AppBootstrap } from "../domain/bootstrap";
 
 interface HttpError extends Error {
@@ -10,21 +11,24 @@ export interface AppBootstrapService {
 
 export function createBackendAppBootstrapService(apiBaseUrl: string): AppBootstrapService {
   return {
-    async fetchBootstrap(accessToken) {
-      const response = await fetch(`${apiBaseUrl}/api/bootstrap`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`
+    fetchBootstrap(accessToken) {
+      return withRequestTimeout(async (signal) => {
+        const response = await fetch(`${apiBaseUrl}/api/bootstrap`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          },
+          signal
+        });
+
+        if (!response.ok) {
+          const error = new Error(`Bootstrap failed with status ${response.status}`) as HttpError;
+          error.status = response.status;
+          throw error;
         }
+
+        return (await response.json()) as AppBootstrap;
       });
-
-      if (!response.ok) {
-        const error = new Error(`Bootstrap failed with status ${response.status}`) as HttpError;
-        error.status = response.status;
-        throw error;
-      }
-
-      return (await response.json()) as AppBootstrap;
     }
   };
 }

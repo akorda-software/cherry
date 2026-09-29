@@ -2,10 +2,6 @@
 
 Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21). Ordenados por impacto.
 
-## Bloqueantes de flujo (móvil)
-
-1. **Onboarding incompletable para usuarios nuevos.** El backend exige fotos y ubicación para `complete`; el móvil no tiene esos pasos y el resolver mapea `photos`→bio y `location`→preferences (`app/(onboarding)/index.tsx:6-25`). Un usuario nuevo queda atrapado en «Todavía faltan campos».
-
 ## Móvil
 
 3. Sin cliente para: chat WS (sin dependencia de socket) y push-token. *(Los clientes REST de fotos, likes, perfil público, matches, chat, safety, settings y resumen existen desde 2026-09-29 en `@snack/mobile-shared`; falta usarlos en la app.)*
@@ -13,7 +9,7 @@ Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21)
 5. Estados de feed diferenciados ausentes (poca oferta, perfil incompleto, pausado, offline); solo existe un empty-state genérico con reintento.
 6. `home.tsx` sin renombrar a `discover.tsx`; falta tab Matches.
 7. Modal de match sin CTA a conversación.
-9. Sin tests de las pantallas de onboarding ni del resolver `stepToRoute` (justo donde está el bug de mapeo).
+9. Sin tests de las pantallas de onboarding. *(El resolver ya tiene tests: `src/features/onboarding/domain/resume.test.ts`.)*
 10. Dirección visual sin decidir: tema neobrutal activo vs paleta dating planificada (ver `08-identidad-visual.md`).
 
 ## Backend
@@ -23,6 +19,12 @@ Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21)
 ## Proceso
 
 24. Trabajo extenso sin commitear (~58 modificados + ~42 sin trackear tras la reestructuración de docs): consolidar en commits antes de seguir creciendo sobre él.
+
+## Resuelto el 2026-09-29 (revisión Fable del overhaul «Libreta kawaii»)
+
+- #1 (bloqueante) Onboarding completable: el móvil tiene pasos de fotos y ubicación, y el resolver (`resolveResumeStep` en `apps/mobile/src/features/onboarding/domain/resume.ts`, usado por `app/(onboarding)/index.tsx`) mapea cada `nextOnboardingStep` y cada campo de `missing[]` a su paso (`photos`→fotos, `location`→ubicación, `discovery_preferences`→«a quién quieres conocer»). Con tests.
+- Distancia con selector cerrado: Filtros solo ofrece 10, 25, 50, 100 km y «Sin límite» (`DISTANCE_OPTIONS` en `apps/mobile/src/features/discovery/domain/filters.ts`) y el onboarding usa 50 km por defecto. Si el backend rechaza con 422 la edad o distancia guardadas en «a quién quieres conocer», el paso reintenta una vez con los valores por defecto.
+- Reanudar el onboarding da por respondido el paso de etiquetas con 1 positiva (lo que exige el backend); dentro del paso la UI sigue pidiendo 3 para continuar.
 
 ## Resuelto el 2026-09-29 (bienvenida, Yo y Ajustes)
 
@@ -36,14 +38,13 @@ Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21)
 - #13 `discovery_mode` se conserva como preferencia de presentación del cliente (swipe o feed): el feed y su orden son los mismos en ambos modos (D-2026-09-29).
 - #22 `PUT /api/me/discovery-preferences` valida en cada guardado, también parcial: `distance_km` ∈ {10, 25, 50, 100, 999999}, edades 18–100 y `age_min ≤ age_max`. Si falla, 422 por campo sin guardar nada. La migración `20260929113715` normaliza los valores antiguos (distancia a la siguiente opción; edades invertidas se intercambian).
 - Pendientes relacionados:
-  - El paso de preferencias del móvil usa texto libre para la distancia y debe pasar a un selector cerrado; cualquier otro valor recibe 422.
   - El coste del feed es lineal en candidatos (unos 20–25 µs cada uno). Con decenas de miles de candidatos en un radio habrá que precalcular.
   - Aplicar `compatible_only` de forma simétrica está pendiente de validar con el propietario.
 
 ## Resuelto el 2026-09-29 (almacenamiento, etiquetas y datos de demo)
 
 - #23 `PUT /api/me/tags` y `/api/me/blocked-tags` rechazan con 422 `invalid_tags` los IDs desconocidos, mal formados o inactivos y con 422 `tag_conflict` una etiqueta que quedaría a la vez positiva y bloqueada (con bloqueo de fila del perfil para evitar carreras).
-- Fotos sin R2: almacenamiento local (`STORAGE_ADAPTER=local`, por defecto en dev) con el mismo contrato de subida; el paso de fotos del onboarding ya se puede completar en dev e instancias propias (el móvil sigue pendiente, #1).
+- Fotos sin R2: almacenamiento local (`STORAGE_ADAPTER=local`, por defecto en dev) con el mismo contrato de subida; el paso de fotos del onboarding ya se puede completar en dev e instancias propias (el móvil ya tiene el paso, ver #1 más abajo).
 - `PUT /api/me/photos/order` expuesto; la reordenación exige la lista completa de fotos activas y ya no deja fotos con posiciones temporales cuando alguna conserva su sitio.
 - Login de desarrollo por persona (`{email}`) y `priv/repo/demo_seeds.exs` con datos de demo realistas.
 - Pendiente relacionado: borrar una foto no elimina el binario (ni en disco ni en R2) ni compacta posiciones.

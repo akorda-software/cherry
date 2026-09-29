@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -76,11 +76,24 @@ export function Sheet({
   const y = useSharedValue(offscreen);
   const veil = useSharedValue(0);
 
+  // Espejo de `visible` para la animación de cierre: si la hoja se reabre, no se desmonta.
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  /** Cerrándose: el arrastre ya no puede tocar `y` (cancelaría la animación de salida). */
+  const closing = useSharedValue(!visible);
+
+  const finishClose = useCallback(() => {
+    if (!visibleRef.current) {
+      setMounted(false);
+    }
+  }, []);
+
   useEffect(() => {
+    closing.value = !visible;
     if (visible) {
       setMounted(true);
     }
-  }, [visible]);
+  }, [closing, visible]);
 
   useEffect(() => {
     if (!mounted) {
@@ -95,28 +108,40 @@ export function Sheet({
         y.value = offscreen;
         y.value = withTiming(0, { duration: 380, easing: DRAWER });
       }
-    } else {
-      const done = (finished?: boolean) => {
-        "worklet";
-        if (finished) {
-          runOnJS(setMounted)(false);
-        }
-      };
-      veil.value = withTiming(0, { duration: 200 });
-      y.value = reduced ? offscreen : withTiming(offscreen, { duration: 240, easing: DRAWER }, done);
-      if (reduced) {
-        setMounted(false);
-      }
+      return;
     }
-  }, [mounted, offscreen, reduced, theme.primitives.motion.calm, veil, visible, y]);
+
+    veil.value = withTiming(0, { duration: 200 });
+    if (reduced) {
+      y.value = offscreen;
+      setMounted(false);
+      return;
+    }
+
+    // Se desmonta al acabar la salida aunque la animación se interrumpa (`finished === false`):
+    // un Modal transparente montado bloquearía toda la app.
+    y.value = withTiming(offscreen, { duration: 240, easing: DRAWER }, () => {
+      "worklet";
+      runOnJS(finishClose)();
+    });
+    // Respaldo por si el callback de la animación no llega nunca.
+    const fallback = setTimeout(finishClose, 600);
+    return () => clearTimeout(fallback);
+  }, [finishClose, mounted, offscreen, reduced, theme.primitives.motion.calm, veil, visible, y]);
 
   const drag = Gesture.Pan()
-    .enabled(dismissible)
+    .enabled(dismissible && visible)
     .activeOffsetY([-8, 8])
     .onUpdate((event) => {
+      if (closing.value) {
+        return;
+      }
       y.value = event.translationY > 0 ? event.translationY : event.translationY * 0.15;
     })
     .onEnd((event) => {
+      if (closing.value) {
+        return;
+      }
       if (event.translationY > CLOSE_DISTANCE || event.velocityY > CLOSE_VELOCITY) {
         runOnJS(onClose)();
       } else {

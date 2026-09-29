@@ -29,7 +29,12 @@ let refCount = 0;
 let fetcher: (() => Promise<ActivitySummary>) | null = null;
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
 let appStateSubscription: { remove(): void } | undefined;
-let inFlight: Promise<void> | null = null;
+let inFlight: { generation: number; promise: Promise<void> } | null = null;
+/**
+ * Sube en cada arranque y parada del poller (cambio de sesión): una petición de una generación
+ * anterior nunca se reutiliza ni escribe sus datos (los badges de A no pueden acabar en B).
+ */
+let generation = 0;
 let lastRequestAt = -Infinity;
 let appStateRef: AppStateLike | null = null;
 
@@ -44,8 +49,8 @@ export function refreshActivitySummary({ force = false }: { force?: boolean } = 
     return Promise.resolve();
   }
 
-  if (inFlight) {
-    return inFlight;
+  if (inFlight && inFlight.generation === generation) {
+    return inFlight.promise;
   }
 
   if (!force && Date.now() - lastRequestAt < ACTIVITY_MIN_GAP_MS) {
@@ -54,12 +59,13 @@ export function refreshActivitySummary({ force = false }: { force?: boolean } = 
 
   lastRequestAt = Date.now();
   const run = fetcher;
+  const requestGeneration = generation;
 
-  inFlight = run()
+  const promise: Promise<void> = run()
     .then(
       (summary) => {
-        // Si nadie escucha ya (cierre de sesión), no resucitamos datos.
-        if (refCount > 0) {
+        // Si nadie escucha ya o la sesión cambió mientras tanto, no resucitamos datos.
+        if (refCount > 0 && requestGeneration === generation) {
           useActivityStore.getState().setSummary(summary);
         }
       },
@@ -68,10 +74,13 @@ export function refreshActivitySummary({ force = false }: { force?: boolean } = 
       }
     )
     .finally(() => {
-      inFlight = null;
+      if (inFlight?.promise === promise) {
+        inFlight = null;
+      }
     });
 
-  return inFlight;
+  inFlight = { generation: requestGeneration, promise };
+  return promise;
 }
 
 /** Empieza (o se suma a) la consulta periódica. Devuelve la función para soltarla. */
@@ -84,6 +93,7 @@ export function acquireActivityPolling({
   fetcher = fetchSummary;
 
   if (refCount === 1) {
+    generation += 1;
     appStateRef = appState;
     intervalHandle = setInterval(() => {
       if (isForeground()) {
@@ -117,6 +127,7 @@ export function acquireActivityPolling({
 }
 
 function stopPolling() {
+  generation += 1;
   if (intervalHandle !== null) {
     clearInterval(intervalHandle);
     intervalHandle = null;

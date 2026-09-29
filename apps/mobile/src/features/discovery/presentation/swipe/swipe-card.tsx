@@ -203,6 +203,12 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(function Sw
     ]
   );
 
+  /**
+   * «Ya saliendo» en el hilo JS: `isTop` no cambia hasta el siguiente render, así que dos
+   * pulsaciones rápidas en ✕/♥ lanzarían la misma card dos veces sin esta marca.
+   */
+  const leaving = useRef(false);
+
   // Salidas que no nacen de esta card (acción desde el perfil completo, bloqueo…).
   const wasFlying = useRef(flight !== null);
   useEffect(() => {
@@ -210,6 +216,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(function Sw
       if (wasFlying.current) {
         // Volvió a la cola mientras volaba (fallo de red): regresa a su sitio.
         wasFlying.current = false;
+        leaving.current = false;
         runOnUI(() => {
           "worklet";
           committed.value = 0;
@@ -233,6 +240,12 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(function Sw
 
   const commitFromGesture = useCallback(
     (action: DiscoveryActionType) => {
+      if (leaving.current) {
+        return;
+      }
+
+      leaving.current = true;
+
       if (action === "like") {
         haptics.medium();
       } else {
@@ -399,9 +412,11 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(function Sw
     ref,
     () => ({
       fling(action) {
-        if (!isTop) {
+        if (!isTop || leaving.current) {
           return false;
         }
+
+        leaving.current = true;
 
         if (action === "like") {
           haptics.medium();

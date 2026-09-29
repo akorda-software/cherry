@@ -53,6 +53,14 @@ export function defaultAgeRange(age: number | null | undefined): { ageMin: numbe
   return { ageMin, ageMax };
 }
 
+function interestedFlags(interested: ReadonlyArray<InterestedIn>) {
+  return {
+    showMen: interested.includes("men"),
+    showWomen: interested.includes("women"),
+    showNonBinary: interested.includes("non_binary")
+  };
+}
+
 export type PreferencesUpdate = Pick<
   DiscoveryPreferences,
   "ageMin" | "ageMax" | "distanceKm" | "showMen" | "showWomen" | "showNonBinary"
@@ -70,11 +78,7 @@ export function buildInterestedPreferences(
   interested: ReadonlyArray<InterestedIn>,
   age: number | null | undefined
 ): PreferencesUpdate {
-  const flags = {
-    showMen: interested.includes("men"),
-    showWomen: interested.includes("women"),
-    showNonBinary: interested.includes("non_binary")
-  };
+  const flags = interestedFlags(interested);
 
   if (existing) {
     return {
@@ -91,5 +95,22 @@ export function buildInterestedPreferences(
     expandDistance: true,
     discoveryMode: "swipe",
     ...flags
+  };
+}
+
+/**
+ * Plan B si el backend rechaza (422) la edad/distancia guardadas que reenvía
+ * `buildInterestedPreferences`: este paso no tiene controles para corregirlas,
+ * así que se vuelve a los valores por defecto (edad derivada, 50 km) y se
+ * respetan el resto de ajustes (modo, ampliar distancia).
+ */
+export function buildFallbackInterestedPreferences(
+  interested: ReadonlyArray<InterestedIn>,
+  age: number | null | undefined
+): PreferencesUpdate {
+  return {
+    ...defaultAgeRange(age),
+    distanceKm: DEFAULT_DISTANCE_KM,
+    ...interestedFlags(interested)
   };
 }

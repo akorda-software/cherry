@@ -176,6 +176,11 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
 
   const listeners = new Set<() => void>();
   let cursor: string | null = null;
+  /**
+   * Época de paginación: cambia cuando la lista se sustituye (backfill con hueco, cursor reiniciado).
+   * Una página antigua pedida en otra época ya no encaja y se descarta.
+   */
+  let pageEpoch = 0;
   let disposed = false;
   let started = false;
   let paused = false;
@@ -412,6 +417,7 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
 
         if (hadMessages && page.nextCursor !== null && !pagesOverlap(state.messages, incoming)) {
           // Hueco entre lo que teníamos y lo nuevo: nos quedamos con lo nuevo y se pagina desde ahí.
+          pageEpoch += 1;
           cursor = page.nextCursor;
           absorb(incoming, {
             tie: "newer",
@@ -451,11 +457,18 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
     }
 
     setState({ loadingOlder: true, olderError: false });
+    const epoch = pageEpoch;
 
     try {
       const page = await api.listMessages({ cursor, limit: pageSize });
 
       if (disposed) {
+        return;
+      }
+
+      if (epoch !== pageEpoch) {
+        // La lista se sustituyó mientras tanto: esta página (y su cursor) ya no valen.
+        setState({ loadingOlder: false });
         return;
       }
 
@@ -477,13 +490,20 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
         return;
       }
 
+      if (epoch !== pageEpoch) {
+        setState({ loadingOlder: false });
+        return;
+      }
+
       if (errorCodeOf(error) === "invalid_cursor") {
         // Cursor que el backend ya no acepta: volvemos a paginar desde la página más reciente.
+        pageEpoch += 1;
+        const resetEpoch = pageEpoch;
         cursor = null;
         setState({ loadingOlder: false });
         try {
           const page = await api.listMessages({ limit: pageSize });
-          if (disposed) {
+          if (disposed || resetEpoch !== pageEpoch) {
             return;
           }
           cursor = page.nextCursor;

@@ -62,6 +62,49 @@ describe("step savers", () => {
     });
   });
 
+  it("retries once with default age and distance when the saved ones are rejected (422)", async () => {
+    const updateDiscoveryPreferences = vi
+      .fn<StepApi["updateDiscoveryPreferences"]>()
+      .mockRejectedValueOnce(apiError(422, { errors: { distance_km: ["is invalid"] } }))
+      .mockImplementationOnce(async (fields) => ({ discoveryPreferences: makePreferences(fields) }));
+    const api = fakeApi({ updateDiscoveryPreferences });
+    const existing = makePreferences({ ageMin: 18, ageMax: 99, distanceKm: 37 });
+
+    await saveInterested(api, { existing, interested: ["men"], age: 30 });
+
+    expect(updateDiscoveryPreferences).toHaveBeenCalledTimes(2);
+    expect(updateDiscoveryPreferences).toHaveBeenLastCalledWith({
+      ageMin: 24,
+      ageMax: 38,
+      distanceKm: 50,
+      showMen: true,
+      showWomen: false,
+      showNonBinary: false
+    });
+  });
+
+  it("does not retry other errors, nor a second 422", async () => {
+    const network = vi.fn<StepApi["updateDiscoveryPreferences"]>().mockRejectedValue(new TypeError("offline"));
+    await expect(
+      saveInterested(fakeApi({ updateDiscoveryPreferences: network }), {
+        existing: makePreferences(),
+        interested: ["men"],
+        age: 30
+      })
+    ).rejects.toBeInstanceOf(TypeError);
+    expect(network).toHaveBeenCalledTimes(1);
+
+    const invalid = vi.fn<StepApi["updateDiscoveryPreferences"]>().mockRejectedValue(apiError(422, { errors: {} }));
+    await expect(
+      saveInterested(fakeApi({ updateDiscoveryPreferences: invalid }), {
+        existing: makePreferences(),
+        interested: ["men"],
+        age: 30
+      })
+    ).rejects.toMatchObject({ status: 422 });
+    expect(invalid).toHaveBeenCalledTimes(2);
+  });
+
   it("requires at least one interested option", async () => {
     await expect(saveInterested(fakeApi(), { existing: null, interested: [], age: 30 })).rejects.toBeInstanceOf(
       StepValidationError

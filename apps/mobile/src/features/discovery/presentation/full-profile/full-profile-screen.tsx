@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useReducedMotion } from "react-native-reanimated";
@@ -79,13 +79,18 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
   const [stamp, setStamp] = useState<DiscoveryActionType | null>(null);
   const leaving = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(
-    () => () => {
-      if (leaving.current) {
-        clearTimeout(leaving.current);
-      }
-    },
-    []
+  // Al perder el foco (p. ej. «Escribir» desde la celebración de match abre el chat) o al
+  // desmontar, se cancela la vuelta automática: si no, cerraría la pantalla recién abierta.
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        if (leaving.current) {
+          clearTimeout(leaving.current);
+          leaving.current = null;
+        }
+      },
+      []
+    )
   );
 
   const goBack = useCallback(() => {

@@ -1,6 +1,6 @@
 import { MAX_PROFILE_PHOTOS, MIN_PROFILE_PHOTOS, type OnboardingStep, type Profile } from "@snack/contracts";
 
-import { MIN_POSITIVE_TAGS } from "../../tags/domain/tag-selection";
+import { BACKEND_MIN_POSITIVE_TAGS } from "../../tags/domain/tag-selection";
 import { isAdultBirthDate } from "./birthday";
 import { interestedFromPreferences } from "./preferences";
 import { isGender, isRelationshipIntent, validateBio, validateDisplayName } from "./profile-fields";
@@ -44,7 +44,8 @@ export function profileStepCompletion(profile: Profile | null | undefined, now: 
     interested: interestedFromPreferences(profile.discoveryPreferences).length > 0,
     intent: isRelationshipIntent(profile.whatIAmLookingFor),
     photos: photos >= MIN_PROFILE_PHOTOS && photos <= MAX_PROFILE_PHOTOS,
-    tags: (profile.tags ?? []).length >= MIN_POSITIVE_TAGS,
+    // Mismo criterio que el backend (≥1): no se rebota a nadie al paso de etiquetas.
+    tags: (profile.tags ?? []).length >= BACKEND_MIN_POSITIVE_TAGS,
     bio: validateBio(profile.bio).ok,
     location: profile.hasLocation === true
   };

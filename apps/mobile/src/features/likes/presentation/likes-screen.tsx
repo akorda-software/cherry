@@ -1,14 +1,9 @@
+import { FlashList, type ListRenderItem } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
-import {
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View
-} from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+
+import type { ReceivedLike } from "@snack/contracts";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import {
@@ -33,7 +28,22 @@ import { UndoNote } from "./undo-note";
 const GAP = 14;
 const MIN_CARD = 150;
 const MAX_CARD = 220;
-const LOAD_MORE_THRESHOLD = 600;
+const ROW_GAP = GAP + 10;
+/** Pide la siguiente página cuando falta menos de esta fracción de pantalla para el final. */
+const LOAD_MORE_THRESHOLD = 0.8;
+/**
+ * Una polaroid anima su entrada solo si se monta en cuanto llega a la lista. La lista es
+ * virtualizada: al volver a montarse por scroll aparece tal cual (sin cascada ni sello que cae).
+ */
+const FRESH_MS = 1500;
+
+interface LikeCard {
+  like: ReceivedLike;
+  index: number;
+  enterDelay: number | null;
+  stampDelay: number;
+  addedAt: number;
+}
 
 export const LIKES_INTRO =
   "Aquí no escondemos nada: estas personas ya te han dado like. Si te gusta alguien, es match al instante.";
@@ -84,21 +94,34 @@ export function LikesScreen() {
     firstBatch.current = new Map(likes.likes.map((like, index) => [like.profile.id, index]));
   }
 
-  const cards = useMemo(
-    () =>
-      likes.likes.map((like, index) => {
-        const id = like.profile.id;
-        const batchIndex = firstBatch.current?.get(id);
-        const restored = seen.current.has(id) && batchIndex === undefined;
-        return {
-          like,
-          index,
-          enterDelay: batchIndex !== undefined ? Math.min(batchIndex, 7) * 55 : restored ? null : 0,
-          stampDelay: batchIndex !== undefined ? 260 + Math.min(batchIndex, 7) * 110 : 120
-        };
-      }),
-    [likes.likes]
-  );
+  const addedAt = useRef(new Map<string, number>());
+  const cards = useMemo<LikeCard[]>(() => {
+    const now = Date.now();
+    const present = new Set<string>();
+    const out = likes.likes.map((like, index) => {
+      const id = like.profile.id;
+      present.add(id);
+      if (!addedAt.current.has(id)) {
+        addedAt.current.set(id, now);
+      }
+      const batchIndex = firstBatch.current?.get(id);
+      const restored = seen.current.has(id) && batchIndex === undefined;
+      return {
+        like,
+        index,
+        enterDelay: batchIndex !== undefined ? Math.min(batchIndex, 7) * 55 : restored ? null : 0,
+        stampDelay: batchIndex !== undefined ? 260 + Math.min(batchIndex, 7) * 110 : 120,
+        addedAt: addedAt.current.get(id) ?? now
+      };
+    });
+    // Quien sale de la lista (respuesta, deshacer) vuelve a animar si reaparece.
+    for (const id of [...addedAt.current.keys()]) {
+      if (!present.has(id)) {
+        addedAt.current.delete(id);
+      }
+    }
+    return out;
+  }, [likes.likes]);
 
   useEffect(() => {
     likes.likes.forEach((like) => seen.current.add(like.profile.id));
@@ -115,12 +138,38 @@ export function LikesScreen() {
   const onLike = useCallback((profileId: string) => void likeBack(profileId), [likeBack]);
   const onPass = useCallback((profileId: string) => void pass(profileId), [pass]);
 
-  function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    if (contentOffset.y + layoutMeasurement.height >= contentSize.height - LOAD_MORE_THRESHOLD) {
-      void loadMore();
-    }
-  }
+  const pending = likes.pending;
+  const renderItem: ListRenderItem<LikeCard> = useCallback(
+    ({ item }) => {
+      // Reparto del hueco entre columnas: cada celda mide lo mismo y la tarjeta queda con `cardWidth`.
+      const column = item.index % columns;
+      return (
+        <View
+          style={{
+            paddingLeft: (column * GAP) / columns,
+            paddingRight: GAP - ((column + 1) * GAP) / columns,
+            paddingBottom: ROW_GAP
+          }}
+        >
+          <LikePolaroid
+            busy={pending[item.like.profile.id] !== undefined}
+            enterDelay={item.enterDelay}
+            index={item.index}
+            // Montaje propio por persona: el estado de la polaroid (salida, sello) no se recicla.
+            key={item.like.profile.id}
+            like={item.like}
+            onLike={onLike}
+            onOpen={openProfile}
+            onPass={onPass}
+            settled={Date.now() - item.addedAt > FRESH_MS}
+            stampDelay={item.stampDelay}
+            width={cardWidth}
+          />
+        </View>
+      );
+    },
+    [cardWidth, columns, onLike, onPass, openProfile, pending]
+  );
 
   const refreshControl = (
     <RefreshControl
@@ -170,36 +219,27 @@ export function LikesScreen() {
     );
   } else {
     body = (
-      <ScrollView
-        contentContainerStyle={[styles.content, contentPadding]}
-        onScroll={handleScroll}
+      <FlashList
+        contentContainerStyle={{ ...contentPadding, paddingTop: 22 }}
+        data={cards}
+        extraData={renderItem}
+        keyExtractor={(item) => item.like.profile.id}
+        key={columns}
+        ListFooterComponent={
+          likes.loadingMore ? (
+            <View style={styles.more}>
+              <LoadingDots accessibilityLabel="Cargando más likes" />
+            </View>
+          ) : null
+        }
+        numColumns={columns}
+        onEndReached={() => void loadMore()}
+        onEndReachedThreshold={LOAD_MORE_THRESHOLD}
         refreshControl={refreshControl}
-        scrollEventThrottle={64}
+        renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         testID="likes-list"
-      >
-        <View style={[styles.grid, { columnGap: GAP, rowGap: GAP + 10 }]}>
-          {cards.map(({ like, index, enterDelay, stampDelay }) => (
-            <LikePolaroid
-              busy={likes.pending[like.profile.id] !== undefined}
-              enterDelay={enterDelay}
-              index={index}
-              key={like.profile.id}
-              like={like}
-              onLike={onLike}
-              onOpen={openProfile}
-              onPass={onPass}
-              stampDelay={stampDelay}
-              width={cardWidth}
-            />
-          ))}
-        </View>
-        {likes.loadingMore ? (
-          <View style={styles.more}>
-            <LoadingDots accessibilityLabel="Cargando más likes" />
-          </View>
-        ) : null}
-      </ScrollView>
+      />
     );
   }
 
@@ -236,12 +276,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center"
   },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap"
-  },
   more: {
     alignItems: "center",
-    paddingTop: 20
+    paddingTop: 4
   }
 });

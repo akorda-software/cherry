@@ -421,3 +421,109 @@ describe("discovery queue: session binding", () => {
     expect(store.getState().ownerId).toBe("user-2");
   });
 });
+
+describe("discovery queue: review fixes", () => {
+  it("rolls back when recording the action throws synchronously", async () => {
+    const { store, ids } = setup({
+      recordAction: vi.fn(() => {
+        throw new Error("boom");
+      })
+    });
+    await store.getState().load();
+
+    await expect(store.getState().act(card("b"), "dislike")).resolves.toMatchObject({ status: "rolled_back" });
+
+    expect(ids()).toEqual(["a", "b", "c"]);
+    expect(store.getState().pending).toEqual({});
+    expect(store.getState().lastPass).toBeNull();
+  });
+
+  it("undoes kindly when the backend says that person is no longer visible", async () => {
+    const { store, ids } = setup({
+      undo: vi.fn(async () => ({ undone: true, profile: null }) as unknown as DiscoveryUndoResponse)
+    });
+    await store.getState().load();
+    await store.getState().act(card("a"), "dislike");
+
+    await expect(store.getState().undo()).resolves.toEqual({ status: "unavailable" });
+
+    expect(ids()).toEqual(["b", "c"]);
+    expect(store.getState().notice).toMatchObject({
+      kind: "undo_unavailable",
+      message: "Deshecho, pero esa persona ya no está disponible."
+    });
+    expect(store.getState().lastPass).toBeNull();
+    expect(store.getState().undoing).toBe(false);
+  });
+
+  it("forgets the last pass and disables undo when filters change", async () => {
+    const { store, deps } = setup();
+    await store.getState().load();
+    await store.getState().act(card("a"), "dislike");
+
+    await store.getState().load({ filtersChanged: true });
+
+    expect(store.getState().lastPass).toBeNull();
+    expect(store.getState().canUndo).toBe(false);
+    await expect(store.getState().undo()).resolves.toEqual({ status: "nothing_to_undo" });
+    expect(deps.undo).not.toHaveBeenCalled();
+
+    await store.getState().act(card("b"), "dislike");
+    expect(store.getState().canUndo).toBe(true);
+  });
+
+  it("keeps the last pass on a plain reload", async () => {
+    const { store } = setup();
+    await store.getState().load();
+    await store.getState().act(card("a"), "dislike");
+
+    await store.getState().load();
+
+    expect(store.getState().lastPass?.id).toBe("a");
+    expect(store.getState().canUndo).toBe(true);
+  });
+
+  it("drops a match that lands after the session changed", async () => {
+    const request = deferred<DiscoveryActionResponse>();
+    const { store, deps } = setup({ recordAction: vi.fn(() => request.promise) });
+    await store.getState().load();
+
+    const acting = store.getState().act(card("a"), "like");
+    store.getState().reset();
+    request.resolve({
+      matchCreated: true,
+      match: {
+        id: "m",
+        conversationId: "c",
+        matchedAt: "2026-09-29T10:00:00Z",
+        expiresAt: "2026-10-29T10:00:00Z",
+        otherProfile: { id: "a", displayName: "Persona a", age: 30, photoUrl: null }
+      }
+    });
+    await acting;
+
+    expect(deps.onMatch).not.toHaveBeenCalled();
+  });
+
+  it("still celebrates a match that lands after a filters reload", async () => {
+    const request = deferred<DiscoveryActionResponse>();
+    const { store, deps } = setup({ recordAction: vi.fn(() => request.promise) });
+    await store.getState().load();
+
+    const acting = store.getState().act(card("a"), "like");
+    await store.getState().load({ filtersChanged: true });
+    request.resolve({
+      matchCreated: true,
+      match: {
+        id: "m",
+        conversationId: "c",
+        matchedAt: "2026-09-29T10:00:00Z",
+        expiresAt: "2026-10-29T10:00:00Z",
+        otherProfile: { id: "a", displayName: "Persona a", age: 30, photoUrl: null }
+      }
+    });
+    await acting;
+
+    expect(deps.onMatch).toHaveBeenCalledTimes(1);
+  });
+});

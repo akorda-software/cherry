@@ -2,7 +2,11 @@ import type { DiscoveryPreferences, Gender, Profile, RelationshipIntent } from "
 import type { ProfileApi } from "@snack/mobile-shared";
 
 import { friendlyErrorMessage } from "../../../shared/api";
-import { buildInterestedPreferences, type InterestedIn } from "../domain/preferences";
+import {
+  buildFallbackInterestedPreferences,
+  buildInterestedPreferences,
+  type InterestedIn
+} from "../domain/preferences";
 import { validateBio, validateDisplayName } from "../domain/profile-fields";
 import { firstIncompleteStep, stepForBackendStep, stepForMissingFields } from "../domain/resume";
 import type { OnboardingStepKey } from "../domain/steps";
@@ -108,10 +112,23 @@ export async function saveInterested(
     throw new StepValidationError("Elige al menos una opción.");
   }
 
-  const { discoveryPreferences } = await api.updateDiscoveryPreferences(
-    buildInterestedPreferences(input.existing, input.interested, input.age)
-  );
-  return discoveryPreferences;
+  try {
+    const { discoveryPreferences } = await api.updateDiscoveryPreferences(
+      buildInterestedPreferences(input.existing, input.interested, input.age)
+    );
+    return discoveryPreferences;
+  } catch (error) {
+    // Edad o distancia guardadas que el backend ya no acepta: este paso no deja corregirlas,
+    // así que se reintenta UNA vez con los valores por defecto.
+    if (!input.existing || (error as { status?: number } | null)?.status !== 422) {
+      throw error;
+    }
+
+    const { discoveryPreferences } = await api.updateDiscoveryPreferences(
+      buildFallbackInterestedPreferences(input.interested, input.age)
+    );
+    return discoveryPreferences;
+  }
 }
 
 export type CompleteOnboardingResult =

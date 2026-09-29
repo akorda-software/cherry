@@ -24,3 +24,4 @@ apps/mobile/.env.*.local
 
 # Capturas de revisión visual (efímeras)
 .impeccable/review/
+.impeccable/questions/

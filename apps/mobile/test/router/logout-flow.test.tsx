@@ -6,7 +6,7 @@ import LoginRoute from "../../app/(public)/login";
 import { PublicLayout } from "../../app/(public)/_layout";
 import { PrivateLayout } from "../../app/(app)/_layout";
 import SettingsRoute from "../../app/(app)/settings";
-import HomeRoute from "../../app/(app)/(tabs)/home";
+import { ComingSoonScreen } from "../../src/shared/ui";
 import { renderRoute } from "./render-route";
 import { sessionFixture } from "./session-shell.fixture";
 
@@ -30,7 +30,7 @@ function AppRouteHost() {
         </PrivateLayout>
       ) : (
         <PrivateLayout>
-          <HomeRoute />
+          <ComingSoonScreen back={false} testID="likes-screen" title="Likes" />
         </PrivateLayout>
       )}
     </>
@@ -53,21 +53,21 @@ describe("logout flow", () => {
       }
     });
 
-    fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
 
     await waitFor(() => {
       expect(revoke).toHaveBeenCalledWith(sessionFixture);
       expect(screen.getByTestId("pathname")).toHaveTextContent("/(public)/login");
     });
 
-    expect(screen.getByRole("heading", { name: "Welcome to Snack" })).toBeInTheDocument();
+    expect(screen.getByTestId("login-screen")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Go back" }));
 
     await waitFor(() => {
       expect(screen.queryByTestId("settings-screen")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("home-screen")).not.toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Welcome to Snack" })).toBeInTheDocument();
+      expect(screen.queryByTestId("likes-screen")).not.toBeInTheDocument();
+      expect(screen.getByTestId("login-screen")).toBeInTheDocument();
     });
   });
 });

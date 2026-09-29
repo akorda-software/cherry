@@ -2,7 +2,11 @@ import { usePathname } from "expo-router";
 import type { PropsWithChildren, ReactElement } from "react";
 import { render } from "@testing-library/react";
 
-import { AppBootstrapProvider, createMockAppBootstrapService } from "../../src/features/app-bootstrap";
+import {
+  AppBootstrapProvider,
+  type AppBootstrapService,
+  createMockAppBootstrapService
+} from "../../src/features/app-bootstrap";
 import {
   SessionShellProvider,
   type SessionShellServices
@@ -17,6 +21,8 @@ interface RenderRouteOptions {
   services?: Partial<SessionShellServices>;
   featureFlags?: Record<string, boolean>;
   onboardingRequired?: boolean;
+  /** Bootstrap propio (p. ej. para reflejar una pausa); por defecto, el mock según `onboardingRequired`. */
+  appBootstrapService?: AppBootstrapService;
 }
 
 function PathProbe() {
@@ -28,7 +34,8 @@ function TestProviders({
   initialPath,
   services,
   featureFlags = {},
-  onboardingRequired = false
+  onboardingRequired = false,
+  appBootstrapService
 }: PropsWithChildren<RenderRouteOptions>) {
   const reader = {
     isEnabled(flagKey: string) {
@@ -47,12 +54,15 @@ function TestProviders({
         >
           <SessionShellProvider services={createSessionShellServices(services)}>
             <AppBootstrapProvider
-              service={createMockAppBootstrapService({
-                onboardingRequired,
-                isComplete: !onboardingRequired,
-                isDiscoverable: !onboardingRequired,
-                nextOnboardingStep: onboardingRequired ? "name" : null
-              })}
+              service={
+                appBootstrapService ??
+                createMockAppBootstrapService({
+                  onboardingRequired,
+                  isComplete: !onboardingRequired,
+                  isDiscoverable: !onboardingRequired,
+                  nextOnboardingStep: onboardingRequired ? "name" : null
+                })
+              }
             >
               {children}
               <PathProbe />
@@ -71,6 +81,7 @@ export function renderRoute(route: ReactElement, options: RenderRouteOptions = {
       services={options.services}
       featureFlags={options.featureFlags}
       onboardingRequired={options.onboardingRequired}
+      appBootstrapService={options.appBootstrapService}
     >
       {route}
     </TestProviders>

@@ -19,6 +19,15 @@ const Defs = createSvgComponent("defs", "Defs");
 const ClipPath = createSvgComponent("clipPath", "ClipPath");
 const LinearGradient = createSvgComponent("linearGradient", "LinearGradient");
 const Stop = createSvgComponent("stop", "Stop");
+const Pattern = createSvgComponent("pattern", "Pattern");
+const Ellipse = createSvgComponent("ellipse", "Ellipse");
+const Line = createSvgComponent("line", "Line");
+const Polygon = createSvgComponent("polygon", "Polygon");
+const RadialGradient = createSvgComponent("radialGradient", "RadialGradient");
+const Mask = createSvgComponent("mask", "Mask");
+const SvgText = createSvgComponent("text", "Text");
+const TSpan = createSvgComponent("tspan", "TSpan");
 
 export default Svg;
 export { Svg, Path, G, Circle, Rect, Defs, ClipPath, LinearGradient, Stop };
+export { Pattern, Ellipse, Line, Polygon, RadialGradient, Mask, SvgText as Text, TSpan };

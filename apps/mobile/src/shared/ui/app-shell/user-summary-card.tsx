@@ -1,22 +1,39 @@
 import type { SessionUser } from "@snack/contracts";
-import { StyleSheet, Text as RNText } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import { useTheme } from "../providers/theme-provider";
 import { Card } from "../composites/card";
+import { Avatar } from "../primitives/avatar";
+import { Text } from "../primitives/text";
 
+/** Tarjeta de la cuenta con sesión iniciada (avatar + nombre + email). */
 export function UserSummaryCard({ user }: { user: SessionUser }) {
-  const theme = useTheme();
-
-  const styles = StyleSheet.create({
-    email: {
-      color: theme.semantic.text.default,
-      fontSize: theme.primitives.typography.body.fontSize,
-    },
-  });
+  const name = user.displayName ?? user.email;
 
   return (
-    <Card title={`Signed in as ${user.displayName ?? user.email}`}>
-      <RNText style={styles.email}>{user.email}</RNText>
+    <Card>
+      <View style={styles.row}>
+        <Avatar name={name} size="md" />
+        <View style={styles.texts}>
+          <Text numberOfLines={1} variant="title3">
+            {name}
+          </Text>
+          <Text color="muted" numberOfLines={1} variant="caption">
+            {user.email}
+          </Text>
+        </View>
+      </View>
     </Card>
   );
 }
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14
+  },
+  texts: {
+    flex: 1,
+    gap: 2
+  }
+});

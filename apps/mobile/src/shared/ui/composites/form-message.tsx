@@ -1,30 +1,43 @@
 import type { PropsWithChildren } from "react";
-import { StyleSheet, Text as RNText } from "react-native";
+import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 
+import { IconSlot } from "../primitives/icon-slot";
+import { Text } from "../primitives/text";
 import { useTheme } from "../providers/theme-provider";
 
 interface FormMessageProps extends PropsWithChildren {
   tone: "info" | "success" | "error";
+  style?: StyleProp<ViewStyle>;
 }
 
-export function FormMessage({ children, tone }: FormMessageProps) {
+/** Aviso corto de formulario (icono + texto). Los errores se anuncian. */
+export function FormMessage({ children, tone, style }: FormMessageProps) {
   const theme = useTheme();
-  const color = tone === "error" ? theme.semantic.state.danger : tone === "success" ? theme.semantic.state.success : theme.semantic.state.info;
-
-  const styles = StyleSheet.create({
-    message: {
-      color,
-      fontSize: theme.primitives.typography.body.fontSize,
-      fontWeight: theme.primitives.typography.body.fontWeight as any,
-    },
-  });
+  const color =
+    tone === "error" ? theme.semantic.state.danger : tone === "success" ? theme.semantic.state.success : theme.semantic.state.info;
+  const icon = tone === "error" ? "alert" : tone === "success" ? "check-circle" : "info";
 
   return (
-    <RNText
+    <View
+      accessibilityLiveRegion={tone === "error" ? "assertive" : "polite"}
       role={tone === "error" ? "alert" : "status"}
-      style={styles.message}
+      style={[styles.row, style]}
     >
-      {children}
-    </RNText>
+      <IconSlot color={color} icon={icon} size={18} />
+      <Text color={color} style={styles.text} variant="callout">
+        {children}
+      </Text>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8
+  },
+  text: {
+    flex: 1
+  }
+});

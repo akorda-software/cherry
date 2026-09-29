@@ -18,9 +18,18 @@ vi.mock("expo-constants", async () => import("./mocks/expo-constants"));
 vi.mock("expo-crypto", async () => import("./mocks/expo-crypto"));
 vi.mock("expo-image", async () => import("./mocks/expo-image"));
 vi.mock("@shopify/flash-list", async () => import("./mocks/flash-list"));
+vi.mock("react-native-reanimated", async () => import("./mocks/react-native-reanimated"));
 vi.mock("react-native-safe-area-context", async () =>
   import("./mocks/react-native-safe-area-context")
 );
+
+vi.mock("react-native-gesture-handler", async () => import("./mocks/react-native-gesture-handler"));
+vi.mock("expo-haptics", async () => import("./mocks/expo-haptics"));
+vi.mock("expo-linear-gradient", async () => import("./mocks/expo-linear-gradient"));
+vi.mock("expo-font", async () => import("./mocks/expo-font"));
+vi.mock("expo-splash-screen", async () => import("./mocks/expo-splash-screen"));
+vi.mock("expo-status-bar", async () => import("./mocks/expo-status-bar"));
+vi.mock("expo-system-ui", async () => import("./mocks/expo-system-ui"));
 
 afterEach(() => {
   cleanup();

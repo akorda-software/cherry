@@ -41,7 +41,7 @@ Reglas concretas:
 ## Ubicación
 
 - Obligatoria para discovery en v1; sin fallback manual (código postal/ciudad).
-- Se usa la ubicación actual del dispositivo (permiso de primer plano). Hoy solo se envía en el paso de ubicación del onboarding: ni se refresca al abrir la app ni se puede cambiar después (ver `11-deuda-tecnica-pendiente.md`).
+- Se usa la ubicación actual del dispositivo (permiso de primer plano). Se envía en el paso de ubicación del onboarding, se refresca en silencio al abrir la app o volver a primer plano si el permiso ya está concedido (como mucho cada 30 min) y se puede actualizar a mano desde Ajustes.
 - El backend ignora las actualizaciones a menos de 60 s de la anterior.
 - Solo se almacena ubicación aproximada (rejilla de 500 m); nunca se exponen coordenadas exactas.
 - Si el permiso se deniega, el onboarding no puede completarse y discovery queda bloqueado.

@@ -29,6 +29,7 @@ vi.mock("expo-font", async () => import("./mocks/expo-font"));
 vi.mock("expo-splash-screen", async () => import("./mocks/expo-splash-screen"));
 vi.mock("expo-status-bar", async () => import("./mocks/expo-status-bar"));
 vi.mock("expo-system-ui", async () => import("./mocks/expo-system-ui"));
+vi.mock("expo-location", async () => import("./mocks/expo-location"));
 
 afterEach(() => {
   cleanup();

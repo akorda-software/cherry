@@ -14,6 +14,7 @@ export type PhotoErrorCode =
   | "upload_mismatch"
   | "too_large"
   | "processing_failed"
+  | "rate_limited"
   | "network"
   | "unknown";
 
@@ -47,7 +48,9 @@ const BACKEND_CODE_TO_PHOTO_CODE: Record<string, PhotoErrorCode> = {
   upload_object_changed: "upload_mismatch",
   upload_size_mismatch: "upload_mismatch",
   upload_already_exists: "upload_mismatch",
-  upload_token_invalid: "upload_mismatch"
+  upload_token_invalid: "upload_mismatch",
+  too_many_upload_intents: "rate_limited",
+  upload_rate_limited: "rate_limited"
 };
 
 export function photoErrorCodeFromBackend(code: string | null | undefined): PhotoErrorCode | null {
@@ -108,6 +111,8 @@ export function photoErrorMessage(error: unknown): string {
       return "Esta foto pesa demasiado incluso comprimida. Prueba con otra.";
     case "processing_failed":
       return "No hemos podido preparar esta foto. Prueba con otra.";
+    case "rate_limited":
+      return "Has intentado subir muchas fotos seguidas. Espera un poquito y vuelve a probar.";
     case "network":
       return friendlyErrorMessage(Object.assign(new Error("network"), { status: 0 }));
     case "unknown":

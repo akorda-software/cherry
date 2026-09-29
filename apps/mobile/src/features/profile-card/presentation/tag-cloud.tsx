@@ -13,7 +13,8 @@ import {
   TagSticker,
   type TagStickerSize,
   Text,
-  useTheme
+  useTheme,
+  WashiTape
 } from "../../../shared/ui";
 import { groupOtherTagsByCategory, sharedTags, sortTagsForDisplay } from "../domain/person";
 
@@ -251,9 +252,12 @@ export const TagCloud = memo(function TagCloud({
       ) : null}
       {groups.map((group) => (
         <Stack key={group.category} gap="sm">
-          <Text accessibilityRole="header" color="muted" variant="micro">
-            {group.label}
-          </Text>
+          <View style={styles.heading}>
+            <WashiTape color={tintFor(group.category) ?? "lavanda"} height={16} pattern="stripes" rotation={-4} width={30} />
+            <Text accessibilityRole="header" variant="title3">
+              {group.label}
+            </Text>
+          </View>
           <Inline gap="sm">{group.tags.map((tag, index) => sticker(tag, index))}</Inline>
         </Stack>
       ))}

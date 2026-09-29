@@ -29,6 +29,8 @@ export interface TextFieldProps extends Omit<TextInputProps, "style"> {
   size?: "md" | "xl";
   /** Muestra «n/max» (por defecto sí cuando hay `maxLength`). */
   counter?: boolean;
+  /** Menos relleno lateral, para campos estrechos (DD / MM / AAAA). */
+  dense?: boolean;
   icon?: IconName;
   /** Nodo a la derecha dentro del campo (p. ej. botón de limpiar). */
   right?: ReactNode;
@@ -49,6 +51,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
     error,
     size = "md",
     counter,
+    dense = false,
     icon,
     right,
     color = "limonada",
@@ -135,7 +138,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
               borderRadius: radius,
               borderWidth: border,
               borderColor: hasError ? theme.semantic.state.danger : c.ink,
-              paddingHorizontal: xl ? 20 : 16,
+              paddingHorizontal: dense ? 6 : xl ? 20 : 16,
               alignItems: multiline ? "flex-start" : "center"
             },
             faceStyle

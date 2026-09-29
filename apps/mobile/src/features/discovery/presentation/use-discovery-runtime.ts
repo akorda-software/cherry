@@ -3,7 +3,7 @@ import { useEffect, useMemo } from "react";
 import { createDiscoveryApi, createProfileApi } from "@snack/mobile-shared";
 
 import { useAuthedApi, useSessionShell } from "../../auth/presentation";
-import { useMatchCelebrationStore } from "../../match/match-celebration-store";
+import { celebrateMatch } from "../../likes/application/use-received-likes";
 import { DISCOVERY_PAGE_SIZE } from "../application/discovery-queue";
 import {
   configureDiscoveryPreferences,
@@ -33,7 +33,8 @@ export function useDiscoveryRuntime() {
       recordAction: (request) => callDiscovery((api) => api.recordAction(request)),
       undo: () => callDiscovery((api) => api.undo()),
       prefetchImages: prefetchImageUrls,
-      onMatch: (match) => useMatchCelebrationStore.getState().show(match)
+      // Celebración + lista de chats + badge al instante (mismo camino que Likes).
+      onMatch: celebrateMatch
     });
     configureDiscoveryPreferences({
       get: async () => (await callProfile((api) => api.getDiscoveryPreferences())).discoveryPreferences,

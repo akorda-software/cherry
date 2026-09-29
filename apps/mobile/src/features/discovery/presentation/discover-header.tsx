@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 
 import type { DiscoveryMode } from "@snack/contracts";
 
@@ -16,15 +16,23 @@ const MODE_OPTIONS = [
   { value: "feed" as const, label: "Feed", icon: "feed" as const, testID: "mode-feed", accessibilityLabel: "Modo feed: desliza hacia abajo" }
 ];
 
+/** Por debajo de este ancho (Android compacto, iPhone mini/SE) todo se encoge un poco. */
+const COMPACT_WIDTH = 380;
+
+const MODE_OPTIONS_COMPACT = MODE_OPTIONS.map(({ icon: _icon, ...option }) => option);
+
 /** Logo pegatina «snack» + conmutador Swipe | Feed + filtros. */
 export const DiscoverHeader = memo(function DiscoverHeader({ mode, onModeChange, onOpenFilters }: DiscoverHeaderProps) {
+  const { width } = useWindowDimensions();
+  const compact = width < COMPACT_WIDTH;
+
   return (
-    <View style={styles.row}>
-      <Logo height={40} testID="discover-logo" />
+    <View style={[styles.row, compact ? styles.rowCompact : null]}>
+      <Logo height={compact ? 32 : 40} testID="discover-logo" />
       <SegmentedControl
         accessibilityLabel="Cómo quieres descubrir"
         onChange={onModeChange}
-        options={MODE_OPTIONS}
+        options={compact ? MODE_OPTIONS_COMPACT : MODE_OPTIONS}
         size="sm"
         testID="discover-mode"
         value={mode}
@@ -34,7 +42,7 @@ export const DiscoverHeader = memo(function DiscoverHeader({ mode, onModeChange,
         accessibilityLabel="Filtros"
         icon="sliders"
         onPress={onOpenFilters}
-        size="md"
+        size={compact ? "sm" : "md"}
         testID="discover-filters"
       />
     </View>
@@ -50,5 +58,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 6,
     paddingBottom: 10
+  },
+  rowCompact: {
+    gap: 6,
+    paddingHorizontal: 12
   }
 });

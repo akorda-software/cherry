@@ -103,7 +103,7 @@ describe("profile atoms", () => {
     renderWithTheme(<ProfileBadges person={toProfilePerson(card())} testID="badges" />);
 
     expect(screen.getByText("Nuevo")).toBeInTheDocument();
-    expect(screen.getByText("Te dio like")).toBeInTheDocument();
+    expect(screen.getByText("Te ha dado like")).toBeInTheDocument();
     expect(screen.getByText("1 en común")).toBeInTheDocument();
     expect(screen.getByLabelText("Lucía ya te ha dado like: si le das like, es match")).toBeInTheDocument();
   });

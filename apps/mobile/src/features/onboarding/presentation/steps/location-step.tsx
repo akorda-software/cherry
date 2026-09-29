@@ -43,6 +43,7 @@ export function LocationStep() {
   );
   const location = useShareLocation({ service: expoLocationService, send, subscribeToForeground });
   const advanced = useRef(false);
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLocation = profile?.hasLocation === true;
 
   useEffect(() => {
@@ -54,28 +55,30 @@ export function LocationStep() {
     useProfileDraftStore.getState().patchProfile({ hasLocation: true });
     // Un instante para ver a Mochi contento antes de pasar página.
     const timer = setTimeout(() => navigation.goNext("location"), 650);
+    advanceTimer.current = timer;
     return () => clearTimeout(timer);
   }, [location.status, navigation]);
 
   const status = location.status;
   const blocked = status === "blocked";
   const failedOnce = status === "denied" || status === "unavailable" || status === "error";
+  // Con la zona ya guardada (también al volver atrás desde «done» con el botón
+  // físico de Android) el botón sigue dejando continuar: nunca un callejón sin salida.
+  const canContinue = status === "saved" || (hasLocation && status === "idle");
 
   useStepCta("location", {
-    enabled: ready && status !== "saved",
+    enabled: ready && status !== "working",
     busy: status === "working",
-    label: blocked
-      ? "Abrir Ajustes"
-      : failedOnce
-        ? "Intentarlo otra vez"
-        : hasLocation && status === "idle"
-          ? "Continuar"
-          : "Compartir mi ubicación",
+    label: blocked ? "Abrir Ajustes" : failedOnce ? "Intentarlo otra vez" : canContinue ? "Continuar" : "Compartir mi ubicación",
     secondary: blocked ? { label: "Ya está", onPress: () => void location.share(), testID: "onboarding-location-retry" } : null,
     onPress: () => {
       if (blocked) {
         void location.openSettings();
-      } else if (hasLocation && status === "idle") {
+      } else if (canContinue) {
+        if (advanceTimer.current) {
+          clearTimeout(advanceTimer.current);
+          advanceTimer.current = null;
+        }
         navigation.goNext("location");
       } else {
         void location.share();

@@ -157,7 +157,7 @@ ancho no salte al elegir). Al cambiar de estado hace pop (despegar/pegar) y háp
 
 ### `TextField`
 Props de `TextInput` + `label?`, `hint?`, `error?` (tiñe, sacude y se anuncia), `size?: "md" | "xl"` (xl = pregunta
-única gigante del onboarding, en Mochiy), `counter?` (def. sí con `maxLength`), `icon?`, `right?`, `color?`
+única gigante del onboarding, en Mochiy), `dense?` (menos relleno lateral para campos estrechos), `counter?` (def. sí con `maxLength`), `icon?`, `right?`, `color?`
 (resaltador al enfocar, def. limonada), `containerStyle?`, `inputStyle?`. `ref` apunta al `TextInput`.
 
 ```tsx

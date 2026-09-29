@@ -33,7 +33,7 @@ export interface LikePolaroidProps {
   busy: boolean;
   /** Retardo de la entrada (solo el primer lote hace cascada). */
   enterDelay: number | null;
-  /** Retardo del sello «¡Te dio like!» (cae de golpe al aparecer). */
+  /** Retardo del sello «¡Te ha dado like!» (cae de golpe al aparecer). */
   stampDelay: number;
   onOpen(profileId: string): void;
   onLike(profileId: string): void;
@@ -45,8 +45,8 @@ const BUTTON_OVERLAP = 24;
 const STAMP_SCALE = 0.62;
 
 /**
- * Polaroid pequeña de alguien que te dio like: foto, nombre y edad, etiquetas en común y un
- * sello «¡Te dio like!». Los botones ✕ / ♥ se pegan al borde inferior como pegatinas.
+ * Polaroid pequeña de alguien que te ha dado like: foto, nombre y edad, etiquetas en común y un
+ * sello «¡Te ha dado like!». Los botones ✕ / ♥ se pegan al borde inferior como pegatinas.
  */
 export const LikePolaroid = memo(function LikePolaroid({
   like,
@@ -106,7 +106,7 @@ export const LikePolaroid = memo(function LikePolaroid({
 
   const summary = [
     title,
-    "te dio like",
+    "te ha dado like",
     shared > 0 ? `${shared} ${shared === 1 ? "etiqueta" : "etiquetas"} en común` : null
   ]
     .filter(Boolean)
@@ -191,7 +191,7 @@ export const LikePolaroid = memo(function LikePolaroid({
 
         {stampOn ? (
           <View style={styles.stampAnchor}>
-            <Stamp label="¡Te dio like!" rotation={-9} size="sm" slam tone="fresa" />
+            <Stamp label="¡Te ha dado like!" rotation={-9} size="sm" slam tone="fresa" />
           </View>
         ) : null}
       </PressableScale>

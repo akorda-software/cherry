@@ -63,10 +63,10 @@ describe("LikePolaroid", () => {
 
     expect(screen.getByText("Sergio, 30")).toBeInTheDocument();
     expect(screen.getByText("2 en común")).toBeInTheDocument();
-    expect(screen.getByText("¡Te dio like!")).toBeInTheDocument();
+    expect(screen.getByText("¡Te ha dado like!")).toBeInTheDocument();
     expect(screen.getByTestId("like-open-p1")).toHaveAttribute(
       "aria-label",
-      "Sergio, 30. te dio like. 2 etiquetas en común"
+      "Sergio, 30. te ha dado like. 2 etiquetas en común"
     );
   });
 

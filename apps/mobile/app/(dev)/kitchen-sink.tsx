@@ -273,7 +273,7 @@ function KitchenSink() {
       <Section title="Insignias, contadores y avatares">
         <Inline gap="sm">
           <Pill color="limonada" icon="sparkle" label="Nuevo" />
-          <Pill color="fresa" icon="heart" label="Te dio like" />
+          <Pill color="fresa" icon="heart" label="Te ha dado like" />
           <Pill color="menta" icon="tag" label="3 en común" />
           <Pill color="cielo" icon="pin" label="Un poco más lejos" />
           <Pill icon="clock" label="Caduca en 30 días" size="sm" />
@@ -448,7 +448,7 @@ function KitchenSink() {
           <EmptyState
             actionLabel="Ampliar radio"
             compact
-            description="Te has visto a todo el mundo por aquí 🌸 Vuelve en un rato o amplía tu radio."
+            description="Ya has visto a todo el mundo por aquí 🌸 Vuelve en un rato o amplía tu radio."
             mood="sleepy"
             onAction={() => undefined}
             title="No hay nadie más cerca"

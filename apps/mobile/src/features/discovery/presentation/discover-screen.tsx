@@ -97,6 +97,9 @@ export function DiscoverScreen() {
   // 403 profile_incomplete: falta algo del perfil → al onboarding.
   useEffect(() => {
     if (status === "incomplete") {
+      // Volvemos la cola a «idle» para que, al terminar el onboarding y regresar,
+      // el efecto de carga vuelva a pedir el feed en vez de redirigir en bucle.
+      discoveryQueueStore.getState().reset();
       void refreshBootstrap();
       router.replace(appShellRoutes.onboarding);
     }

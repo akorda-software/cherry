@@ -82,3 +82,68 @@ describe("createSessionManager", () => {
     expect(clear).not.toHaveBeenCalled();
   });
 });
+
+describe("createSessionManager · refrescos concurrentes", () => {
+  function setupConcurrent() {
+    let stored: SessionBundle = expiredSession;
+    const refresh = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return refreshedSession;
+    });
+    const manager = createSessionManager({
+      storage: {
+        read: async () => stored,
+        write: async (session) => {
+          stored = session;
+        },
+        clear: async () => undefined
+      },
+      sessionApi: { refresh, revoke: vi.fn(async () => undefined) },
+      navigation: { goToSignedOut: vi.fn() },
+      now: () => new Date("2026-04-12T21:00:00Z")
+    });
+    const request = vi.fn(async (token: string) => {
+      if (token === "expired-access") {
+        throw { status: 401 };
+      }
+      return token;
+    });
+    return { manager, refresh, request };
+  }
+
+  it("shares a single refresh between simultaneous 401s (reusing a refresh token revokes the session)", async () => {
+    const { manager, refresh, request } = setupConcurrent();
+
+    const results = await Promise.all([
+      manager.executeWithRefresh(request),
+      manager.executeWithRefresh(request),
+      manager.executeWithRefresh(request)
+    ]);
+
+    expect(results).toEqual(["fresh-access", "fresh-access", "fresh-access"]);
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries with the already-rotated session instead of refreshing again", async () => {
+    const { manager, refresh, request } = setupConcurrent();
+    let releaseSlow!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseSlow = resolve;
+    });
+    // Sale con el token viejo y su 401 llega cuando otra petición ya ha refrescado.
+    const slow = vi.fn(async (token: string) => {
+      if (token === "expired-access") {
+        await gate;
+        throw { status: 401 };
+      }
+      return token;
+    });
+
+    const pendingSlow = manager.executeWithRefresh(slow);
+    await expect(manager.executeWithRefresh(request)).resolves.toBe("fresh-access");
+    releaseSlow();
+
+    await expect(pendingSlow).resolves.toBe("fresh-access");
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+});

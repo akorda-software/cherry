@@ -16,7 +16,13 @@ defmodule SnackWeb.Controllers.Api.TagControllerTest do
       |> Plug.Conn.put_req_header("authorization", "Bearer #{issued.session.access_token}")
 
     {:ok, _} =
-      Dating.create_tag(%{slug: "music", label: "Música", category: "interests", sort_order: 1})
+      Dating.create_tag(%{
+        slug: "music",
+        label: "Música",
+        category: "interests",
+        sort_order: 1,
+        emoji: "🎵"
+      })
 
     {:ok, _} =
       Dating.create_tag(%{
@@ -50,6 +56,17 @@ defmodule SnackWeb.Controllers.Api.TagControllerTest do
       assert first["label"] == "Música"
       assert first["category"] == "interests"
       assert first["sortOrder"] == 1
+      assert first["emoji"] == "🎵"
+
+      assert Enum.find(tags, &(&1["slug"] == "smoker"))["emoji"] == nil
+    end
+
+    test "returns the catalog in sort order", %{authed_conn: conn} do
+      {:ok, _} =
+        Dating.create_tag(%{slug: "anime", label: "Anime", category: "interests", sort_order: 0})
+
+      assert %{"tags" => tags} = conn |> get("/api/tags") |> json_response(200)
+      assert Enum.map(tags, & &1["slug"]) == ["anime", "music", "smoker"]
     end
   end
 end

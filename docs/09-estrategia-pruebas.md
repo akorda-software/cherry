@@ -37,6 +37,17 @@ Cobertura: umbral 90% configurado en `mix.exs`.
 
 `apps/mobile/test/mocks/` simula los módulos nativos usados (15 mocks) para jsdom: expo-secure-store, google-signin, expo-apple-authentication, datetimepicker, expo-image, flash-list, react-native, react-native-svg, expo-router (+drawer), expo-application, expo-device, expo-constants, expo-crypto, react-native-safe-area-context. Setup central en `test/setup.ts`.
 
+## Datos de demo (solo dev)
+
+`mix run priv/repo/demo_seeds.exs` (con el PostGIS del compose: `DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_dev`) crea un escenario realista para probar y capturar todas las pantallas: 53 perfiles sintéticos completos alrededor de Madrid (1–40 km, 20–45 años, hombres, mujeres y personas no binarias, intenciones y etiquetas variadas, 2–4 fotos) más dos cuentas principales:
+
+| Cuenta | Para qué |
+|---|---|
+| `demo@snack.dev` (Lucía, 29, relación) | Feed con candidatos, 8 likes recibidos sin responder, 5 matches (2 sin mensajes, 3 conversaciones; dos con mensajes sin leer) y swipes hechos |
+| `demo2@snack.dev` (Hugo, 33, «a ver qué pasa») | Perfil limpio sin interacciones: probar un match en directo entre dos sesiones (Lucía y Hugo se ven en el feed) |
+
+Se entra con `POST /api/auth/dev/test-login` y `{"email": "demo@snack.dev"}`; cualquier persona sintética también (`<nombre>@demo.snack.dev`). El script se niega a ejecutarse fuera de `MIX_ENV=dev`, es idempotente (re-ejecutarlo restaura el escenario: fotos, etiquetas e interacciones de las cuentas demo) y crea los mensajes con `Snack.Dating.send_message/1`, así que quedan cifrados en reposo. Las fotos son URLs externas (retratos de i.pravatar.cc elegidos por género aparente y fotos de ambiente de picsum.photos); hace falta conexión para verlas.
+
 ## Huecos conocidos
 
 Sin tests de controller dedicados para bootstrap/safety/settings/match; sin tests de las pantallas de onboarding ni del resolver `stepToRoute`. Detalle en `11-deuda-tecnica-pendiente.md`.

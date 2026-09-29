@@ -2,6 +2,8 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
   use SnackWeb, :controller
 
   alias Snack.Dating
+  alias SnackWeb.DatingJSON
+  alias SnackWeb.MediaUrl
 
   def show(conn, _params) do
     profile = conn.assigns.current_profile
@@ -12,7 +14,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
         |> Snack.Repo.preload([:photos, :tags, :blocked_tags, :discovery_preference, :location])
 
       json(conn, %{
-        profile: serialize_profile(profile),
+        profile: serialize_profile(conn, profile),
         completeness: Dating.profile_complete?(profile)
       })
     else
@@ -36,7 +38,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
             :location
           ])
 
-        json(conn, %{profile: serialize_profile(updated)})
+        json(conn, %{profile: serialize_profile(conn, updated)})
 
       {:error, changeset} ->
         conn
@@ -60,7 +62,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
               :location
             ])
 
-          json(conn, %{profile: serialize_profile(completed), onboardingRequired: false})
+          json(conn, %{profile: serialize_profile(conn, completed), onboardingRequired: false})
 
         {:error, %{error: :profile_incomplete} = reason} ->
           conn
@@ -117,7 +119,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
 
     if profile do
       photos = Dating.list_photos(profile.id)
-      json(conn, %{photos: Enum.map(photos, &serialize_photo/1)})
+      json(conn, %{photos: Enum.map(photos, &serialize_photo(conn, &1))})
     else
       conn
       |> put_status(:not_found)
@@ -131,7 +133,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     if profile do
       case Dating.create_photo_upload_intent(profile, params) do
         {:ok, upload} ->
-          json(conn, serialize_upload_intent(upload))
+          json(conn, serialize_upload_intent(conn, upload))
 
         {:error, :storage_not_configured} ->
           conn
@@ -162,7 +164,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
       case Dating.complete_photo_upload(profile, params) do
         {:ok, photo} ->
           Dating.sync_completed_profile_state(profile)
-          json(conn, %{photo: serialize_photo(photo)})
+          json(conn, %{photo: serialize_photo(conn, photo)})
 
         {:error, reason} when reason in [:storage_not_configured, :storage_unavailable] ->
           conn |> put_status(:service_unavailable) |> json(%{error: reason})
@@ -205,7 +207,11 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     profile = conn.assigns.current_profile
 
     if profile do
-      photo = Snack.Repo.get(Snack.Dating.ProfilePhoto, photo_id)
+      photo =
+        case Ecto.UUID.cast(photo_id) do
+          {:ok, id} -> Snack.Repo.get(Snack.Dating.ProfilePhoto, id)
+          :error -> nil
+        end
 
       if photo && photo.profile_id == profile.id do
         Dating.delete_photo(photo)
@@ -223,12 +229,19 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     end
   end
 
-  def get_tags(conn, _params) do
+  def reorder_photos(conn, params) do
     profile = conn.assigns.current_profile
 
     if profile do
-      tags = Dating.get_profile_tags(profile.id)
-      json(conn, %{tags: Enum.map(tags, &serialize_tag/1)})
+      case Dating.reorder_photos(profile.id, Map.get(params, "photoIds")) do
+        {:ok, photos} ->
+          json(conn, %{photos: Enum.map(photos, &serialize_photo(conn, &1))})
+
+        {:error, :invalid_photo_ids} ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{error: "invalid_photo_ids"})
+      end
     else
       conn
       |> put_status(:not_found)
@@ -236,25 +249,36 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     end
   end
 
-  def set_tags(conn, %{"tag_ids" => tag_ids}) do
+  def get_tags(conn, _params) do
     profile = conn.assigns.current_profile
 
     if profile do
-      case Dating.set_profile_tags(profile.id, tag_ids) do
+      tags = Dating.get_profile_tags(profile.id)
+      json(conn, %{tags: Enum.map(tags, &DatingJSON.tag/1)})
+    else
+      conn
+      |> put_status(:not_found)
+      |> json(%{error: "profile_not_found"})
+    end
+  end
+
+  def set_tags(conn, params) do
+    profile = conn.assigns.current_profile
+
+    if profile do
+      case Dating.set_profile_tags(profile.id, tag_ids_param(params)) do
         {:ok, _} ->
           Dating.sync_completed_profile_state(profile)
           tags = Dating.get_profile_tags(profile.id)
-          json(conn, %{tags: Enum.map(tags, &serialize_tag/1)})
+          json(conn, %{tags: Enum.map(tags, &DatingJSON.tag/1)})
 
         {:error, :too_many_tags} ->
           conn
           |> put_status(:unprocessable_entity)
           |> json(%{error: "too_many_tags"})
 
-        {:error, changeset} ->
-          conn
-          |> put_status(:unprocessable_entity)
-          |> json(%{errors: format_errors(changeset)})
+        {:error, reason} ->
+          tag_update_error(conn, reason)
       end
     else
       conn
@@ -268,7 +292,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
 
     if profile do
       tags = Dating.get_profile_blocked_tags(profile.id)
-      json(conn, %{blockedTags: Enum.map(tags, &serialize_tag/1)})
+      json(conn, %{blockedTags: Enum.map(tags, &DatingJSON.tag/1)})
     else
       conn
       |> put_status(:not_found)
@@ -276,24 +300,22 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     end
   end
 
-  def set_blocked_tags(conn, %{"tag_ids" => tag_ids}) do
+  def set_blocked_tags(conn, params) do
     profile = conn.assigns.current_profile
 
     if profile do
-      case Dating.set_profile_blocked_tags(profile.id, tag_ids) do
+      case Dating.set_profile_blocked_tags(profile.id, tag_ids_param(params)) do
         {:ok, _} ->
           tags = Dating.get_profile_blocked_tags(profile.id)
-          json(conn, %{blockedTags: Enum.map(tags, &serialize_tag/1)})
+          json(conn, %{blockedTags: Enum.map(tags, &DatingJSON.tag/1)})
 
         {:error, :too_many_blocked_tags} ->
           conn
           |> put_status(:unprocessable_entity)
           |> json(%{error: "too_many_blocked_tags"})
 
-        {:error, changeset} ->
-          conn
-          |> put_status(:unprocessable_entity)
-          |> json(%{errors: format_errors(changeset)})
+        {:error, reason} ->
+          tag_update_error(conn, reason)
       end
     else
       conn
@@ -328,7 +350,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     end
   end
 
-  defp serialize_profile(%Snack.Dating.Profile{} = profile) do
+  defp serialize_profile(conn, %Snack.Dating.Profile{} = profile) do
     %{
       id: profile.id,
       displayName: profile.display_name,
@@ -340,7 +362,17 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
       isComplete: profile.is_complete,
       isPaused: profile.is_paused,
       isDiscoverable: profile.is_discoverable,
-      photos: Enum.map(profile.photos || [], &serialize_photo/1),
+      hasLocation:
+        case profile.location do
+          %Snack.Dating.ProfileLocation{} -> true
+          %Ecto.Association.NotLoaded{} -> Dating.get_location(profile.id) != nil
+          _none -> false
+        end,
+      photos:
+        (profile.photos || [])
+        |> Enum.filter(& &1.is_active)
+        |> Enum.sort_by(& &1.position)
+        |> Enum.map(&serialize_photo(conn, &1)),
       tags: Enum.map(profile.tags || [], &serialize_tag/1),
       blockedTags: Enum.map(profile.blocked_tags || [], &serialize_tag/1),
       discoveryPreferences: serialize_discovery_preference(profile.discovery_preference),
@@ -349,7 +381,7 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     }
   end
 
-  defp serialize_profile(nil), do: nil
+  defp serialize_profile(_conn, nil), do: nil
 
   defp serialize_discovery_preference(%Snack.Dating.DiscoveryPreference{} = pref) do
     %{
@@ -360,27 +392,23 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
       showWomen: pref.show_women,
       showNonBinary: pref.show_non_binary,
       compatibleOnly: pref.compatible_only,
+      expandDistance: pref.expand_distance,
       discoveryMode: pref.discovery_mode
     }
   end
 
   defp serialize_discovery_preference(nil), do: nil
 
-  defp serialize_photo(%Snack.Dating.ProfilePhoto{} = photo) do
-    %{
-      id: photo.id,
-      storageKey: photo.storage_key,
-      url: photo.url,
-      position: photo.position,
-      isActive: photo.is_active
-    }
-  end
+  defp serialize_photo(conn, %Snack.Dating.ProfilePhoto{} = photo),
+    do: DatingJSON.own_photo(conn, photo)
 
-  defp serialize_upload_intent(upload) do
+  # Local storage returns relative upload/public paths; the API always answers
+  # with absolute URLs for the host the client used (or PUBLIC_BASE_URL).
+  defp serialize_upload_intent(conn, upload) do
     %{
       storageKey: upload.storage_key,
-      uploadUrl: upload.upload_url,
-      publicUrl: upload.public_url,
+      uploadUrl: MediaUrl.absolute(conn, upload.upload_url),
+      publicUrl: MediaUrl.absolute(conn, upload.public_url),
       method: upload.method,
       headers: upload.headers,
       expiresAt: upload.expires_at,
@@ -388,13 +416,20 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     }
   end
 
-  defp serialize_tag(%Snack.Dating.Tag{} = tag) do
-    %{
-      id: tag.id,
-      slug: tag.slug,
-      label: tag.label,
-      category: tag.category
-    }
+  defp serialize_tag(%Snack.Dating.Tag{} = tag), do: DatingJSON.tag(tag)
+
+  defp tag_ids_param(params), do: Map.get(params, "tag_ids", Map.get(params, "tagIds"))
+
+  defp tag_update_error(conn, {code, tag_ids}) when code in [:invalid_tags, :tag_conflict] do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{error: Atom.to_string(code), tagIds: tag_ids})
+  end
+
+  defp tag_update_error(conn, %Ecto.Changeset{} = changeset) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{errors: format_errors(changeset)})
   end
 
   defp format_errors(changeset) do

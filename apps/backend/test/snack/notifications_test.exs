@@ -72,6 +72,17 @@ defmodule Snack.NotificationsTest do
 
       assert Enum.all?(messages, &(get_in(&1, ["data", "type"]) == "new_match"))
       assert Enum.all?(messages, &(get_in(&1, ["data", "matchId"]) == match.id))
+
+      conversation = Repo.get_by!(Conversation, match_id: match.id)
+      assert Enum.all?(messages, &(get_in(&1, ["data", "conversationId"]) == conversation.id))
+
+      assert messages |> Enum.map(& &1["title"]) |> Enum.sort() ==
+               ["¡Match con Ana! 💘", "¡Match con Ben! 💘"]
+
+      assert Enum.all?(
+               messages,
+               &(&1["body"] == "Os habéis gustado. Rompe el hielo cuando te apetezca 👋")
+             )
     end
 
     test "send_message/1 sends a new_message notification only to the recipient" do
@@ -108,8 +119,8 @@ defmodule Snack.NotificationsTest do
 
       assert_receive {:expo_push_messages, [push]}
       assert push["to"] == "ExponentPushToken[token-recipient]"
-      assert push["title"] == "Nuevo mensaje de Ana"
-      assert push["body"] == "Tienes un mensaje nuevo."
+      assert push["title"] == "Ana te ha escrito"
+      assert push["body"] == "Tienes un mensaje nuevo esperándote 💬"
 
       assert push["data"] == %{
                "type" => "new_message",

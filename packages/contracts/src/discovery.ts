@@ -1,26 +1,11 @@
+import type { MatchProfileSummary } from "./matches";
+import type { PhotoSummary } from "./photos";
+import type { OnboardingStep } from "./profile";
+import type { ProfileTag } from "./tags";
+
 export type DiscoveryMode = "swipe" | "feed";
 
 export type DiscoveryActionType = "like" | "dislike";
-
-export interface Tag {
-  id: string;
-  slug: string;
-  label: string;
-  category: string;
-  sortOrder?: number;
-}
-
-export interface TagCatalogResponse {
-  tags: Tag[];
-}
-
-export interface ProfileTagsResponse {
-  tags: Tag[];
-}
-
-export interface BlockedTagsResponse {
-  blockedTags: Tag[];
-}
 
 export interface DiscoveryPreferences {
   ageMin: number;
@@ -30,9 +15,15 @@ export interface DiscoveryPreferences {
   showWomen: boolean;
   showNonBinary: boolean;
   compatibleOnly: boolean;
+  /** Si el radio preferido se queda corto, añade un segundo tramo (hasta min(2×radio, radio+100 km)) siempre detrás. */
+  expandDistance: boolean;
   discoveryMode: DiscoveryMode;
 }
 
+/**
+ * Card de perfil. La emiten el feed (`GET /api/discovery/feed`), los likes recibidos
+ * (`GET /api/likes/received`) y el deshacer (`POST /api/discovery/undo`).
+ */
 export interface DiscoveryProfileCard {
   id: string;
   displayName: string;
@@ -40,12 +31,25 @@ export interface DiscoveryProfileCard {
   bio: string | null;
   gender: string;
   whatIAmLookingFor: string;
-  distanceLabel: string;
-  distanceKmApprox: number;
+  /** Etiqueta aproximada generada por backend ("Cerca de ti", "A unos 15 km", "A más de 100 km"). `null` si falta alguna ubicación (solo fuera del feed). */
+  distanceLabel: string | null;
+  distanceKmApprox: number | null;
+  /** Puntuación de ranking del feed; `0` en cards que no vienen del feed (likes, deshacer). */
   score: number;
   sharedTagsCount: number;
+  /** Foto principal (absoluta). Equivale a `photos[0]?.url`. */
   photoUrl: string | null;
   photoCount: number;
+  /** Fotos activas ordenadas por posición (URLs absolutas). */
+  photos: PhotoSummary[];
+  /** Etiquetas positivas: compartidas primero, luego categoría/sortOrder. */
+  tags: ProfileTag[];
+  /** Esta persona ya te ha dado like: si le das like, es match al instante. */
+  likedYou: boolean;
+  /** Perfil recién llegado (boost de novedad). */
+  isNewcomer: boolean;
+  /** Fuera de tu distancia preferida (el feed amplió el radio por poca oferta). */
+  beyondPreferredDistance: boolean;
 }
 
 export interface DiscoveryFeedPage {
@@ -58,16 +62,16 @@ export interface DiscoveryFeedQuery {
   cursor?: string | null;
 }
 
-export interface DiscoveryMatchProfile {
-  id: string;
-  displayName: string | null;
-  age: number | null;
-}
+/** Resumen del otro perfil en la respuesta de match (id, nombre, edad y foto principal). */
+export type DiscoveryMatchProfile = MatchProfileSummary;
 
 export interface DiscoveryMatch {
   id: string;
+  /** Conversación ya creada: el móvil puede abrir el chat directamente. */
+  conversationId: string;
   matchedAt: string;
-  expiresAt: string;
+  /** Caducidad a 30 días si nadie escribe; `null` si ya no caduca. */
+  expiresAt: string | null;
   otherProfile: DiscoveryMatchProfile;
 }
 
@@ -80,8 +84,61 @@ export interface DiscoveryActionRequest {
   actionType: DiscoveryActionType;
 }
 
+/** `POST /api/discovery/undo`: deshace el último "no" (< 10 min) y devuelve su card. */
+export interface DiscoveryUndoResponse {
+  undone: true;
+  profile: DiscoveryProfileCard;
+}
+
+/**
+ * 403 del feed. `profile_incomplete` → llevar a onboarding (`nextOnboardingStep` puede ser
+ * `null` si solo falta confirmar con `POST /api/me/profile/complete`); `profile_paused` → mostrar
+ * el estado de perfil en pausa (no es onboarding).
+ */
+export type DiscoveryFeedForbiddenResponse =
+  | {
+      error: "profile_incomplete";
+      reason: string;
+      onboardingRequired: true;
+      nextOnboardingStep: OnboardingStep | null;
+    }
+  | {
+      error: "profile_paused";
+      reason: string;
+      onboardingRequired: false;
+      nextOnboardingStep: null;
+    };
+
+/**
+ * Errores de discovery:
+ * - 403 `profile_incomplete` | `profile_paused` (feed; ver `DiscoveryFeedForbiddenResponse`)
+ * - 404 `profile_not_found` (sin perfil propio, o destino inexistente/no visible)
+ * - 409 `already_swiped`
+ * - 422 `cannot_swipe_self` | `invalid_action_type` | `invalid_params` | `nothing_to_undo` |
+ *   `invalid_cursor` | `invalid_limit`
+ */
+export type DiscoveryErrorCode =
+  | "profile_incomplete"
+  | "profile_paused"
+  | "profile_not_found"
+  | "already_swiped"
+  | "cannot_swipe_self"
+  | "invalid_action_type"
+  | "invalid_params"
+  | "nothing_to_undo"
+  | "invalid_cursor"
+  | "invalid_limit";
+
+/** Ventana en la que se puede deshacer el último "no". */
+export const DISCOVERY_UNDO_WINDOW_MINUTES = 10;
+
 export function createDiscoveryProfileCard(card: DiscoveryProfileCard): DiscoveryProfileCard {
-  return { ...card };
+  // `?? []` tolerates payloads from backends older than contracts v2.
+  return {
+    ...card,
+    photos: (card.photos ?? []).map((photo) => ({ ...photo })),
+    tags: (card.tags ?? []).map((tag) => ({ ...tag }))
+  };
 }
 
 export function createDiscoveryFeedPage(page: DiscoveryFeedPage): DiscoveryFeedPage {

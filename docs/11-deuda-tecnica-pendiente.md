@@ -5,11 +5,10 @@ Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21)
 ## Bloqueantes de flujo (móvil)
 
 1. **Onboarding incompletable para usuarios nuevos.** El backend exige fotos y ubicación para `complete`; el móvil no tiene esos pasos y el resolver mapea `photos`→bio y `location`→preferences (`app/(onboarding)/index.tsx:6-25`). Un usuario nuevo queda atrapado en «Todavía faltan campos».
-2. **Payload de ubicación divergente.** El cliente (`packages/mobile-shared/src/api/profile-api.ts:126-134`) envía `{lat, lng, city, region, country}`; el contrato vigente es `latitude/longitude/accuracyMeters/recordedAt`. De usarse hoy, fallaría con 422.
 
 ## Móvil
 
-3. Sin cliente para: upload-intent/complete de fotos, matches/unmatch, chat REST+WS (sin dependencia de socket), block/report, pause/unpause/delete account, push-token.
+3. Sin cliente para: chat WS (sin dependencia de socket) y push-token. *(Los clientes REST de fotos, likes, perfil público, matches, chat, safety, settings y resumen existen desde 2026-09-29 en `@snack/mobile-shared`; falta usarlos en la app.)*
 4. `isPaused` ignorado en el shell y el feed (el dominio lo modela y el backend lo expone).
 5. Estados de feed diferenciados ausentes (poca oferta, perfil incompleto, pausado, offline); solo existe un empty-state genérico con reintento.
 6. `home.tsx` sin renombrar a `discover.tsx`; falta tab Matches.
@@ -20,19 +19,38 @@ Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21)
 
 ## Backend
 
-11. `GET /api/matches` sin preview del último mensaje (lo pedía el spec original).
-12. Feed con perfil incompleto responde 403 `profile_incomplete` sin `onboardingRequired`/`nextOnboardingStep`, a diferencia del resto de la API.
-13. Campo `discovery_mode` huérfano: migrado y serializado pero sin uso en filtros/scoring del feed — decidir si se implementa o se elimina.
-16. Swipe duplicado devuelve 422 genérico por unique constraint, sin error semántico («ya swipé»).
 17. Flag `strict_profile_completion` permite desactivar la exigencia de fotos/ubicación en completitud; el contrato v1 las hace obligatorias — **en dev está a `false`** (`config/dev.exs:8`); asegurar `true` en entornos reales.
-18. Tests de controller ausentes para bootstrap, safety, settings y match.
-21. **Expiración de match solo lazy**: no hay job que marque `expired`; matches caducados siguen apareciendo en `GET /api/matches` y sus conversaciones son legibles (solo el envío está bloqueado).
-22. `PUT /api/me/discovery-preferences` acepta cualquier `distance_km > 0` y no valida `age_min <= age_max` fuera de la completitud; un perfil ya completo puede quedar silenciosamente incompleto al guardar preferencias inválidas.
-23. `set_tags`/`set_blocked_tags` descartan silenciosamente IDs desconocidos e ignoran el flag activo del catálogo.
 
 ## Proceso
 
 24. Trabajo extenso sin commitear (~58 modificados + ~42 sin trackear tras la reestructuración de docs): consolidar en commits antes de seguir creciendo sobre él.
+
+## Resuelto el 2026-09-29 (ranking de discovery v2)
+
+- #13 `discovery_mode` se conserva como preferencia de presentación del cliente (swipe o feed): el feed y su orden son los mismos en ambos modos (D-2026-09-29).
+- #22 `PUT /api/me/discovery-preferences` valida en cada guardado, también parcial: `distance_km` ∈ {10, 25, 50, 100, 999999}, edades 18–100 y `age_min ≤ age_max`. Si falla, 422 por campo sin guardar nada. La migración `20260929113715` normaliza los valores antiguos (distancia a la siguiente opción; edades invertidas se intercambian).
+- Pendientes relacionados:
+  - El paso de preferencias del móvil usa texto libre para la distancia y debe pasar a un selector cerrado; cualquier otro valor recibe 422.
+  - El coste del feed es lineal en candidatos (unos 20–25 µs cada uno). Con decenas de miles de candidatos en un radio habrá que precalcular.
+  - Aplicar `compatible_only` de forma simétrica está pendiente de validar con el propietario.
+
+## Resuelto el 2026-09-29 (almacenamiento, etiquetas y datos de demo)
+
+- #23 `PUT /api/me/tags` y `/api/me/blocked-tags` rechazan con 422 `invalid_tags` los IDs desconocidos, mal formados o inactivos y con 422 `tag_conflict` una etiqueta que quedaría a la vez positiva y bloqueada (con bloqueo de fila del perfil para evitar carreras).
+- Fotos sin R2: almacenamiento local (`STORAGE_ADAPTER=local`, por defecto en dev) con el mismo contrato de subida; el paso de fotos del onboarding ya se puede completar en dev e instancias propias (el móvil sigue pendiente, #1).
+- `PUT /api/me/photos/order` expuesto; la reordenación exige la lista completa de fotos activas y ya no deja fotos con posiciones temporales cuando alguna conserva su sitio.
+- Login de desarrollo por persona (`{email}`) y `priv/repo/demo_seeds.exs` con datos de demo realistas.
+- Pendiente relacionado: borrar una foto no elimina el binario (ni en disco ni en R2) ni compacta posiciones.
+
+## Resuelto el 2026-09-29 (API social)
+
+- #2 Cliente de ubicación con el contrato `latitude/longitude/accuracyMeters/recordedAt`.
+- #11 `GET /api/matches` (y `GET /api/conversations`) con foto, último mensaje descifrado y `unreadCount` (tabla `conversation_reads`), en una consulta.
+- #12 403 del feed con `onboardingRequired`/`nextOnboardingStep`; los perfiles en pausa reciben 403 `profile_paused`.
+- #16 Swipes con errores semánticos: 409 `already_swiped`, 422 `cannot_swipe_self`/`invalid_action_type`, 404 `profile_not_found` si el destino no existe o no es visible.
+- #18 Tests de controller para bootstrap, safety, settings, matches y chat.
+- #21 Matches caducados (30 días) fuera de listas, badges y perfil público; historial REST cerrado para conversaciones no activas; barrido periódico que marca `expired`.
+- Carrera de likes simultáneos: `record_swipe` serializa cada pareja con un advisory lock de transacción, así que el segundo like siempre ve el primero y se crea exactamente un match (garantía en BD: índice único `idx_matches_canonical_pair`). Test con conexiones reales concurrentes en `test/snack/swipe_concurrency_test.exs`.
 
 ## Resuelto el 2026-09-05
 

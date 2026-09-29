@@ -2,76 +2,111 @@
 #
 #     mix run priv/repo/seeds.exs
 #
+# Idempotente: se puede re-ejecutar en cualquier entorno (también en prod) para
+# sincronizar el catálogo cerrado de etiquetas. Los datos de demo viven aparte en
+# `priv/repo/demo_seeds.exs` (solo dev).
 
 import Ecto.Query
 
 alias Snack.Repo
 alias Snack.Dating.Tag
 
-# The canonical dating tag catalog. Slugs are stable identifiers (English),
-# labels are Spanish for display. Re-running this seed reactivates every tag
-# listed here and deactivates any tag no longer in the set.
-tags = [
+# The canonical dating tag catalog (52 tags). Slugs are stable identifiers
+# (English), labels are Spanish for display. `sort_order` follows the list order.
+# Re-running this seed reactivates every tag listed here and deactivates any tag
+# no longer in the set.
+catalog = [
   # ── Intereses y hobbies ──────────────────────────────────────────────
-  %{slug: "music", label: "Música", category: "interests", sort_order: 1},
-  %{slug: "cinema", label: "Cine y series", category: "interests", sort_order: 2},
-  %{slug: "reading", label: "Lectura", category: "interests", sort_order: 3},
-  %{slug: "gaming", label: "Videojuegos", category: "interests", sort_order: 4},
-  %{slug: "travel", label: "Viajar", category: "interests", sort_order: 5},
-  %{slug: "cooking", label: "Cocinar", category: "interests", sort_order: 6},
-  %{slug: "art", label: "Arte y diseño", category: "interests", sort_order: 7},
-  %{slug: "photography", label: "Fotografía", category: "interests", sort_order: 8},
-  %{slug: "dancing", label: "Bailar", category: "interests", sort_order: 9},
-  %{slug: "languages", label: "Idiomas", category: "interests", sort_order: 10},
+  {"interests",
+   [
+     {"music", "🎵", "Música"},
+     {"cinema", "🎬", "Cine y series"},
+     {"reading", "📚", "Lectura"},
+     {"gaming", "🎮", "Videojuegos"},
+     {"travel", "✈️", "Viajar"},
+     {"cooking", "🍳", "Cocinar"},
+     {"art", "🎨", "Arte y diseño"},
+     {"photography", "📷", "Fotografía"},
+     {"dancing", "💃", "Bailar"},
+     {"languages", "🗣️", "Idiomas"},
+     {"anime", "🍙", "Anime y manga"},
+     {"board_games", "🎲", "Juegos de mesa"},
+     {"concerts", "🎤", "Conciertos y festivales"}
+   ]},
   # ── Vida activa y naturaleza ─────────────────────────────────────────
-  %{slug: "fitness", label: "Fitness y gimnasio", category: "active", sort_order: 11},
-  %{slug: "running", label: "Running", category: "active", sort_order: 12},
-  %{slug: "yoga", label: "Yoga", category: "active", sort_order: 13},
-  %{slug: "cycling", label: "Ciclismo", category: "active", sort_order: 14},
-  %{slug: "hiking", label: "Senderismo y montaña", category: "active", sort_order: 15},
-  %{slug: "team_sports", label: "Deporte de equipo", category: "active", sort_order: 16},
-  %{slug: "nature", label: "Naturaleza", category: "active", sort_order: 17},
-  %{slug: "adventure", label: "Deportes de aventura", category: "active", sort_order: 18},
+  {"active",
+   [
+     {"fitness", "💪", "Fitness y gimnasio"},
+     {"running", "🏃", "Running"},
+     {"yoga", "🧘", "Yoga"},
+     {"cycling", "🚴", "Ciclismo"},
+     {"hiking", "🥾", "Senderismo y montaña"},
+     {"team_sports", "⚽", "Deporte de equipo"},
+     {"nature", "🌿", "Naturaleza"},
+     {"adventure", "🧗", "Deportes de aventura"}
+   ]},
   # ── Estilo de vida y hábitos ─────────────────────────────────────────
-  %{slug: "party", label: "Salir de fiesta", category: "lifestyle", sort_order: 19},
-  %{slug: "chill", label: "Plan tranquilo", category: "lifestyle", sort_order: 20},
-  %{slug: "night_owl", label: "Trasnochar", category: "lifestyle", sort_order: 21},
-  %{slug: "foodie", label: "Foodie", category: "lifestyle", sort_order: 22},
-  %{slug: "coffee", label: "Amante del café", category: "lifestyle", sort_order: 23},
-  %{slug: "vegan", label: "Vegano/a", category: "lifestyle", sort_order: 24},
-  %{slug: "vegetarian", label: "Vegetariano/a", category: "lifestyle", sort_order: 25},
-  %{slug: "smoker", label: "Fumador/a", category: "lifestyle", sort_order: 26},
-  %{slug: "cannabis", label: "Cannabis", category: "lifestyle", sort_order: 27},
-  %{slug: "sober", label: "Sin alcohol", category: "lifestyle", sort_order: 28},
+  {"lifestyle",
+   [
+     {"party", "🎉", "Salir de fiesta"},
+     {"chill", "🛋️", "Plan tranquilo"},
+     {"night_owl", "🦉", "Trasnochar"},
+     {"foodie", "😋", "Foodie"},
+     {"coffee", "☕", "Amante del café"},
+     {"vegan", "🌱", "Vegano/a"},
+     {"vegetarian", "🥕", "Vegetariano/a"},
+     {"smoker", "🚬", "Fumador/a"},
+     {"cannabis", "🍃", "Cannabis"},
+     {"sober", "🧃", "Sin alcohol"},
+     {"tattoos", "🖋️", "Tatuajes"}
+   ]},
   # ── Valores y creencias ──────────────────────────────────────────────
-  %{slug: "meditation", label: "Meditación", category: "values", sort_order: 29},
-  %{slug: "spirituality", label: "Espiritualidad", category: "values", sort_order: 30},
-  %{slug: "environmentalist", label: "Ecologista", category: "values", sort_order: 31},
-  %{slug: "feminist", label: "Feminista", category: "values", sort_order: 32},
-  %{slug: "family_oriented", label: "Familiar", category: "values", sort_order: 33},
-  %{slug: "volunteer", label: "Voluntariado y activismo", category: "values", sort_order: 34},
+  {"values",
+   [
+     {"meditation", "🕯️", "Meditación"},
+     {"spirituality", "✨", "Espiritualidad"},
+     {"astrology", "🔮", "Astrología"},
+     {"environmentalist", "🌍", "Ecologista"},
+     {"feminist", "💜", "Feminista"},
+     {"family_oriented", "🏡", "Familiar"},
+     {"volunteer", "🤝", "Voluntariado y activismo"}
+   ]},
   # ── Personalidad ─────────────────────────────────────────────────────
-  %{slug: "introvert", label: "Introvertido/a", category: "personality", sort_order: 35},
-  %{slug: "extrovert", label: "Extrovertido/a", category: "personality", sort_order: 36},
-  %{slug: "ambitious", label: "Ambicioso/a", category: "personality", sort_order: 37},
-  %{slug: "creative", label: "Creativo/a", category: "personality", sort_order: 38},
-  %{slug: "curious", label: "Curioso/a", category: "personality", sort_order: 39},
+  {"personality",
+   [
+     {"introvert", "🐢", "Introvertido/a"},
+     {"extrovert", "🦜", "Extrovertido/a"},
+     {"ambitious", "🚀", "Ambicioso/a"},
+     {"creative", "💡", "Creativo/a"},
+     {"curious", "🔍", "Curioso/a"}
+   ]},
   # ── Mascotas ─────────────────────────────────────────────────────────
-  %{slug: "dogs", label: "Amante de perros", category: "pets", sort_order: 40},
-  %{slug: "cats", label: "Amante de gatos", category: "pets", sort_order: 41},
-  %{slug: "no_pets", label: "Sin mascotas", category: "pets", sort_order: 42},
+  {"pets",
+   [
+     {"dogs", "🐶", "Amante de perros"},
+     {"cats", "🐱", "Amante de gatos"},
+     {"no_pets", "🙅", "Sin mascotas"}
+   ]},
   # ── Relación y familia ───────────────────────────────────────────────
-  %{slug: "has_kids", label: "Tengo hijos", category: "relationship", sort_order: 43},
-  %{slug: "wants_kids", label: "Quiero tener hijos", category: "relationship", sort_order: 44},
-  %{slug: "childfree", label: "No quiero hijos", category: "relationship", sort_order: 45},
-  %{slug: "monogamous", label: "Monogamia", category: "relationship", sort_order: 46},
-  %{
-    slug: "open_relationship",
-    label: "Relación abierta",
-    category: "relationship",
-    sort_order: 47
-  }
+  {"relationship",
+   [
+     {"has_kids", "👶", "Tengo hijos"},
+     {"wants_kids", "🍼", "Quiero tener hijos"},
+     {"childfree", "🎈", "No quiero hijos"},
+     {"monogamous", "💑", "Monogamia"},
+     {"open_relationship", "🔓", "Relación abierta"}
+   ]}
 ]
+
+tags =
+  catalog
+  |> Enum.flat_map(fn {category, entries} ->
+    Enum.map(entries, fn {slug, emoji, label} ->
+      %{slug: slug, emoji: emoji, label: label, category: category}
+    end)
+  end)
+  |> Enum.with_index(1)
+  |> Enum.map(fn {attrs, sort_order} -> Map.put(attrs, :sort_order, sort_order) end)
 
 active_slugs = Enum.map(tags, & &1.slug)
 

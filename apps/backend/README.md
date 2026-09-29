@@ -23,6 +23,35 @@ Phoenix backend for the mobile starter.
 2. Start the server with `mix phx.server`
 3. Use `.env.example` as the local runtime template when wiring real env vars
 
+## Photo storage
+
+Photos go through `Snack.Storage` (`STORAGE_ADAPTER`):
+
+- `local` (dev default): files under `UPLOADS_DIR` (`priv/uploads` in dev, gitignored), uploaded with a signed `PUT /api/uploads/:token` and served at `/uploads`. Nothing to configure in dev; URLs follow the host you call the API with (`localhost`, LAN IP, tunnel) unless `PUBLIC_BASE_URL` is set.
+- `r2`: Cloudflare R2, or any S3-compatible service with `S3_ENDPOINT` + `S3_REGION` (MinIO, Garage...).
+
+Prod requires `STORAGE_ADAPTER` (and `UPLOADS_DIR` on a persistent volume plus `PUBLIC_BASE_URL` for `local`). See `../../docs/12-self-hosting.md` §5 and `docs/decisions.md` D-2026-09-29.
+
+## Demo data (dev only)
+
+```bash
+mix run priv/repo/seeds.exs        # 52-tag catalog (any environment, idempotent)
+mix run priv/repo/demo_seeds.exs   # dev only: ~55 realistic profiles around Madrid
+```
+
+`demo_seeds.exs` refuses to run outside `MIX_ENV=dev`, re-seeds the tag catalog and is idempotent (re-running resets the demo scenario without duplicating anything). Log in with the dev endpoint:
+
+```bash
+curl -X POST localhost:4000/api/auth/dev/test-login -H 'content-type: application/json' \
+  -d '{"email": "demo@snack.dev"}'
+```
+
+- `demo@snack.dev` — Lucía (29): 8 unanswered likes, 5 matches (2 without messages, 3 conversations, two of them with unread messages) and some swipes.
+- `demo2@snack.dev` — Hugo (33, "a ver qué pasa"): clean profile to test live matches between two sessions.
+- Every synthetic persona can log in too: `<name>@demo.snack.dev` (e.g. `pablo@demo.snack.dev`).
+
+With the compose PostGIS on port 5510: `DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_dev mix run priv/repo/demo_seeds.exs`.
+
 ## Core Runtime Variables
 
 - `PORT`
@@ -37,6 +66,8 @@ Phoenix backend for the mobile starter.
 - `GOOGLE_WEB_CLIENT_ID`
 - `GOOGLE_IOS_CLIENT_ID`
 - `GOOGLE_JWKS_CACHE_TTL_MS`
+- `STORAGE_ADAPTER` (`local` | `r2`), `UPLOADS_DIR`, `PUBLIC_BASE_URL`, `UPLOAD_MAX_BYTES`, `UPLOAD_URL_TTL_SECONDS`
+- `R2_*`, `S3_ENDPOINT`, `S3_REGION` (R2/S3 adapter)
 
 ## Verification
 

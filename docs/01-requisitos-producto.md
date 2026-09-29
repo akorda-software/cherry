@@ -22,7 +22,7 @@ Reglas concretas:
 | Fotos activas | 2–4 |
 | Tags positivos | máx. 8 (catálogo cerrado) |
 | Tags bloqueados | máx. 5 (catálogo cerrado) |
-| Catálogo de tags | cerrado, sin texto libre (~47 tags seedeados en categorías: interests, active, lifestyle, values, personality, pets, relationship) |
+| Catálogo de tags | cerrado, sin texto libre (52 etiquetas con emoji seedeadas en categorías: interests, active, lifestyle, values, personality, pets, relationship) |
 
 - `gender` y `interested_in` son conceptos separados; `interested_in` admite múltiples selecciones.
 - Géneros: man / woman / non_binary.
@@ -31,9 +31,12 @@ Reglas concretas:
 
 ## Preferencias de discovery
 
-- Rango de edad (min/max) sano.
-- Distance: 10 / 25 / 50 / 100 km o sin límite.
+- Rango de edad entre 18 y 100 con mínimo ≤ máximo.
+- Distancia: 10 / 25 / 50 / 100 km o sin límite (`999999`). Cualquier otro valor se rechaza.
 - Al menos una selección en interested-in.
+- «Ampliar distancia si hay poca oferta» (`expand_distance`), activada por defecto.
+- «Solo compatibles» (`compatible_only`): exige al menos una etiqueta positiva compartida.
+- Las reglas se validan en cada guardado, no solo al completar el perfil (D-2026-09-29).
 
 ## Ubicación
 
@@ -45,17 +48,39 @@ Reglas concretas:
 ## Discovery feed
 
 - Sin caps diarios artificiales; likes ilimitados.
-- Los perfiles del feed respetan filtros duros: compatibilidad mutua de género/edad/intent y tags bloqueados.
-- La distancia se respeta primero; si hay poca oferta, se expande gradualmente (sin saltos bruscos) antes que relajar reglas críticas.
-- Nunca se ignoran tags bloqueados ni compatibilidad de género.
-- Ranking por capas: elegibilidad → score de compatibilidad (overlap de tags, reciprocidad, completitud, actividad, bonus de distancia, factor exploratorio) → ajustes de calidad (reply/ghost/report rate, con peso ligero).
-- Compatibilidad pesa más que distancia pura.
+- Filtros duros, reevaluados en cada página:
+  - Perfil completo, descubrible y no pausado. Ni el perfil ni la cuenta pueden estar borrados.
+  - Nunca aparece uno mismo ni alguien a quien ya se ha hecho swipe.
+  - Tampoco aparece quien ya te ha dicho que no (dislike). Tu like nunca le llegaría, porque la pestaña de Likes solo muestra likes sin responder. Es simétrico: esa persona tampoco vuelve a verte. Si deshace su «no», vuelves a verla.
+  - Bloqueos de usuario en ambas direcciones.
+  - Compatibilidad recíproca de género y edad.
+  - Intención compatible (ver abajo).
+  - **Etiquetas bloqueadas en ambas direcciones.** Se excluye al candidato que tiene una etiqueta que yo bloqueo y al que bloquea una de mis etiquetas positivas: si A no puede ver a B, B tampoco ve a A.
+  - «Solo compatibles» de cualquiera de los dos exige al menos una etiqueta compartida (simétrico por la misma razón).
+- Intención, matriz simétrica: cada intención ve la suya y «a ver qué pasa»; «a ver qué pasa» ve todas; relación y casual nunca se cruzan. Si A ve a B, B ve a A (con preferencias recíprocas).
+- Distancia: primero siempre todo el radio preferido. Con «ampliar distancia» y un radio acotado, se añade un segundo tramo hasta min(2 × radio, radio + 100 km), que va siempre después de todo el primero. Nunca se relajan otras reglas para rellenar el feed.
+- Ranking de 0 a 97 puntos. La compatibilidad por etiquetas pesa más que la proximidad pura:
+
+  | Componente | Puntos |
+  |---|---|
+  | Afinidad de etiquetas: coseno ponderado por rareza (IDF), compartir una etiqueta rara vale más que una común | 0–45 |
+  | Intención: misma intención / compatible vía «a ver qué pasa» | +10 / +4 |
+  | Reciprocidad: el candidato ya te ha dado like | +12 |
+  | Recién llegado: decrece linealmente en los 7 días posteriores a completar el perfil | hasta +8 |
+  | Actividad real: última actividad hace menos de 24 h / 72 h / 7 días | +8 / +5 / +2 |
+  | Distancia, dentro del radio del tramo | 0–10 |
+  | Exploración determinista por pareja | 0–4 |
+  | Reparto justo de atención: likes recibidos en 7 días sin contestar | −min(6, pendientes / 5) |
+
+- El feed indica en cada card si el candidato ya te dio like, si es nuevo y si está fuera de tu radio preferido.
+- Fuera de v2: ajustes de calidad por tasa de respuesta, ghosting o reportes.
 - Las cards muestran solo campos seguros: nombre, edad, bio, fotos, intent, distancia aproximada (`distanceLabel`). Sin coordenadas ni datos de moderación.
 
 ## Matching
 
-- Match solo por like mutuo; dislike oculta el perfil; sin undo en v1.
-- El match expira a los 7 días si nadie envía mensaje; el primer mensaje lo limpia.
+- Match solo por like mutuo; dislike oculta el perfil. Se puede deshacer gratis el último «no» durante 10 minutos (D-2026-09-29).
+- Likes recibidos visibles y gratis: la pestaña «Likes» muestra quién te ha dado like; si le das like, es match al instante (D-2026-09-29).
+- El match expira a los 30 días si nadie envía mensaje; el primer mensaje lo limpia (D-2026-09-29; antes 7 días).
 - Unmatch permitido para ambos participantes.
 
 ## Chat
@@ -66,7 +91,8 @@ Reglas concretas:
 
 ## Boost de usuarios nuevos
 
-- Boost temporal controlado de visibilidad para nuevos usuarios, reducido cuando hay datos de interacción suficientes.
+- Hasta +8 puntos de ranking al completar el perfil. Decrece linealmente hasta 0 en 7 días.
+- Solo cuenta la primera vez que se completa: volver a completarlo no lo renueva.
 
 ## Anti-abuso
 

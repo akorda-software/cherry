@@ -24,7 +24,7 @@ defmodule Snack.Dating do
   alias Snack.Dating.UserBlock
   alias Snack.Dating.Report
   alias Snack.Dating.AnalyticsEvent
-  alias Snack.Storage.R2
+  alias Snack.Storage
 
   # ── Profiles ──────────────────────────────────────────────────────────
 
@@ -163,7 +163,9 @@ defmodule Snack.Dating do
       profile
       |> Profile.system_changeset(%{
         is_complete: true,
-        is_discoverable: !profile.is_paused and is_nil(profile.deleted_at)
+        is_discoverable: !profile.is_paused and is_nil(profile.deleted_at),
+        # First completion only: drives the discovery newcomer boost.
+        completed_at: profile.completed_at || now()
       })
       |> Repo.update()
     else
@@ -315,11 +317,11 @@ defmodule Snack.Dating do
   end
 
   def create_photo_upload_intent(%Profile{} = profile, attrs) do
-    with {:ok, upload_config} <- R2.upload_config(),
+    with {:ok, upload_config} <- Storage.upload_config(),
          {:ok, upload_attrs} <- normalize_photo_upload_attrs(attrs),
          :ok <- validate_active_photo_limit(profile.id),
          storage_key = photo_storage_key(profile.id, upload_attrs.content_type),
-         {:ok, signed_upload} <- R2.presign_put(storage_key, upload_attrs.content_type),
+         {:ok, signed_upload} <- Storage.presign_put(storage_key, upload_attrs.content_type),
          {:ok, intent} <-
            insert_photo_upload_intent(profile.id, upload_attrs, signed_upload, upload_config) do
       {:ok, Map.put(signed_upload, :intent, intent)}
@@ -333,7 +335,7 @@ defmodule Snack.Dating do
          :ok <- validate_upload_completion(intent, attrs),
          :ok <- validate_active_photo_limit(profile.id),
          :ok <- validate_photo_position_available(profile.id, intent.position),
-         :ok <- R2.verify_upload(intent) do
+         :ok <- Storage.verify_upload(intent) do
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
       Ecto.Multi.new()
@@ -411,15 +413,7 @@ defmodule Snack.Dating do
   defp parse_integer(_value), do: :error
 
   defp photo_storage_key(profile_id, content_type) do
-    extension =
-      case content_type do
-        "image/jpeg" -> "jpg"
-        "image/png" -> "png"
-        "image/webp" -> "webp"
-        _content_type -> "bin"
-      end
-
-    "profiles/#{profile_id}/#{Ecto.UUID.generate()}.#{extension}"
+    "profiles/#{profile_id}/#{Ecto.UUID.generate()}.#{Storage.extension_for(content_type)}"
   end
 
   defp insert_photo_upload_intent(profile_id, upload_attrs, signed_upload, upload_config) do
@@ -454,7 +448,10 @@ defmodule Snack.Dating do
       DateTime.compare(intent.expires_at, DateTime.utc_now()) == :lt ->
         {:error, :upload_intent_expired}
 
-      !upload_attr_matches?(attrs, :public_url, "public_url", "publicUrl", intent.public_url) ->
+      !public_url_matches?(
+        upload_attr(attrs, :public_url, "public_url", "publicUrl"),
+        intent.public_url
+      ) ->
         {:error, :upload_url_mismatch}
 
       !upload_attr_matches?(
@@ -477,6 +474,21 @@ defmodule Snack.Dating do
       value -> value == expected
     end
   end
+
+  # Local storage keeps a relative URL (`/uploads/...`) that the API returns as
+  # absolute for whichever host the client used, so the absolute form echoed back
+  # by the client is accepted when its path is the stored one.
+  defp public_url_matches?(nil, _expected), do: true
+  defp public_url_matches?(value, value), do: true
+
+  defp public_url_matches?(value, "/" <> _ = expected) when is_binary(value) do
+    case URI.parse(value) do
+      %URI{scheme: scheme, path: ^expected, query: nil} when scheme in ["http", "https"] -> true
+      _other -> false
+    end
+  end
+
+  defp public_url_matches?(_value, _expected), do: false
 
   defp validate_active_photo_limit(profile_id) do
     if active_photo_count(profile_id) < 4 do
@@ -520,62 +532,59 @@ defmodule Snack.Dating do
   end
 
   @doc """
-  Reorders photos for a profile by a list of photo IDs.
+  Reorders the active photos of a profile. `ordered_photo_ids` must list every
+  active photo exactly once; positions become 1..n in that order.
   """
   def reorder_photos(profile_id, ordered_photo_ids) when is_list(ordered_photo_ids) do
-    photos =
-      ProfilePhoto
-      |> where([p], p.profile_id == ^profile_id and p.is_active == true)
-      |> Repo.all()
+    Repo.transaction(fn ->
+      # Serialises with uploads/deletes of the same profile.
+      Repo.one!(from p in Profile, where: p.id == ^profile_id, lock: "FOR UPDATE")
 
-    photo_map = Map.new(photos, &{&1.id, &1})
+      active_query =
+        from(p in ProfilePhoto, where: p.profile_id == ^profile_id and p.is_active == true)
 
-    unless Enum.all?(ordered_photo_ids, &Map.has_key?(photo_map, &1)) do
-      {:error, :invalid_photo_ids}
-    else
-      # Phase 1: move all photos to temporary positions to avoid unique
-      # constraint conflicts during the reorder.
-      multi =
-        photos
-        |> Enum.with_index(1)
-        |> Enum.reduce(Ecto.Multi.new(), fn {photo, i}, multi ->
-          Ecto.Multi.update(
-            multi,
-            {:temp, photo.id},
-            Ecto.Changeset.change(photo, position: i + 100)
-          )
-        end)
+      active_ids = Repo.all(from p in active_query, select: p.id)
 
-      # Phase 2: assign final positions.
-      multi =
+      if permutation?(ordered_photo_ids, active_ids) do
+        now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+        # Phase 1: park every active photo outside 1..4 so the partial unique
+        # index on (profile_id, position) never sees a transient duplicate.
+        Repo.update_all(active_query, inc: [position: 100])
+
+        # Phase 2: final positions.
         ordered_photo_ids
         |> Enum.with_index(1)
-        |> Enum.reduce(multi, fn {photo_id, position}, multi ->
-          photo = Map.fetch!(photo_map, photo_id)
-
-          Ecto.Multi.update(
-            multi,
-            {:photo, photo_id},
-            ProfilePhoto.changeset(photo, %{position: position})
+        |> Enum.each(fn {photo_id, position} ->
+          Repo.update_all(from(p in ProfilePhoto, where: p.id == ^photo_id),
+            set: [position: position, updated_at: now]
           )
         end)
 
-      case Repo.transaction(multi) do
-        {:ok, _} -> {:ok, list_photos(profile_id)}
-        {:error, _, changeset, _} -> {:error, changeset}
+        list_photos(profile_id)
+      else
+        Repo.rollback(:invalid_photo_ids)
       end
-    end
+    end)
+  end
+
+  def reorder_photos(_profile_id, _ordered_photo_ids), do: {:error, :invalid_photo_ids}
+
+  defp permutation?(candidate_ids, expected_ids) do
+    Enum.all?(candidate_ids, &is_binary/1) and length(candidate_ids) == length(expected_ids) and
+      MapSet.new(candidate_ids) == MapSet.new(expected_ids)
   end
 
   # ── Tags ──────────────────────────────────────────────────────────────
 
   @doc """
-  Lists all active tags ordered by category and sort_order.
+  Lists all active tags in catalog order (`sort_order` is global and already
+  groups categories in their display order).
   """
   def list_active_tags do
     Tag
     |> where([t], t.is_active == true)
-    |> order_by([t], [t.category, t.sort_order, t.label])
+    |> order_by([t], [t.sort_order, t.category, t.label])
     |> Repo.all()
   end
 
@@ -596,40 +605,84 @@ defmodule Snack.Dating do
   end
 
   @doc """
-  Replaces the positive tags on a profile (max 8).
+  Replaces the positive tags on a profile (max 8, duplicates ignored).
+
+  Errors: `:too_many_tags`; `{:invalid_tags, ids}` for unknown, malformed or
+  inactive catalog IDs; `{:tag_conflict, ids}` for IDs the profile blocks.
   """
-  def set_profile_tags(profile_id, tag_ids) when length(tag_ids) <= 8 do
-    profile = Repo.get!(Profile, profile_id)
-    tags = Repo.all(from t in Tag, where: t.id in ^tag_ids)
-
-    profile
-    |> Repo.preload(:tags)
-    |> Ecto.Changeset.change()
-    |> Ecto.Changeset.put_assoc(:tags, tags)
-    |> Repo.update()
-  end
-
-  def set_profile_tags(_profile_id, _tag_ids) do
-    {:error, :too_many_tags}
-  end
+  def set_profile_tags(profile_id, tag_ids),
+    do: replace_profile_tags(profile_id, tag_ids, :tags)
 
   @doc """
-  Replaces the blocked tags on a profile (max 5).
+  Replaces the blocked tags on a profile (max 5, duplicates ignored).
+
+  Errors: `:too_many_blocked_tags`; `{:invalid_tags, ids}`; `{:tag_conflict, ids}`
+  for IDs that are among the profile's positive tags.
   """
-  def set_profile_blocked_tags(profile_id, tag_ids) when length(tag_ids) <= 5 do
-    profile = Repo.get!(Profile, profile_id)
-    tags = Repo.all(from t in Tag, where: t.id in ^tag_ids)
+  def set_profile_blocked_tags(profile_id, tag_ids),
+    do: replace_profile_tags(profile_id, tag_ids, :blocked_tags)
 
-    profile
-    |> Repo.preload(:blocked_tags)
-    |> Ecto.Changeset.change()
-    |> Ecto.Changeset.put_assoc(:blocked_tags, tags)
-    |> Repo.update()
+  defp replace_profile_tags(profile_id, tag_ids, assoc) do
+    {max_tags, too_many, opposite_assoc} =
+      case assoc do
+        :tags -> {8, :too_many_tags, :blocked_tags}
+        :blocked_tags -> {5, :too_many_blocked_tags, :tags}
+      end
+
+    with {:ok, ids} <- normalize_tag_ids(tag_ids),
+         :ok <- if(length(ids) <= max_tags, do: :ok, else: {:error, too_many}) do
+      Repo.transaction(fn ->
+        # Serialises positive/blocked updates so a conflict can never slip in.
+        profile =
+          from(p in Profile, where: p.id == ^profile_id, lock: "FOR UPDATE")
+          |> Repo.one!()
+          |> Repo.preload([assoc, opposite_assoc])
+
+        tags = Repo.all(from t in Tag, where: t.id in ^ids and t.is_active == true)
+        found_ids = MapSet.new(tags, & &1.id)
+        opposite_ids = MapSet.new(Map.fetch!(profile, opposite_assoc), & &1.id)
+        invalid = Enum.reject(ids, &MapSet.member?(found_ids, &1))
+        conflicting = Enum.filter(ids, &MapSet.member?(opposite_ids, &1))
+
+        cond do
+          invalid != [] ->
+            Repo.rollback({:invalid_tags, invalid})
+
+          conflicting != [] ->
+            Repo.rollback({:tag_conflict, conflicting})
+
+          true ->
+            profile
+            |> Ecto.Changeset.change()
+            |> Ecto.Changeset.put_assoc(assoc, tags)
+            |> Repo.update()
+            |> case do
+              {:ok, updated} -> updated
+              {:error, changeset} -> Repo.rollback(changeset)
+            end
+        end
+      end)
+    end
   end
 
-  def set_profile_blocked_tags(_profile_id, _tag_ids) do
-    {:error, :too_many_blocked_tags}
+  defp normalize_tag_ids(tag_ids) when is_list(tag_ids) do
+    {valid, invalid} =
+      tag_ids
+      |> Enum.map(fn id ->
+        case is_binary(id) && Ecto.UUID.cast(id) do
+          {:ok, uuid} -> {:ok, uuid}
+          _invalid -> {:invalid, id}
+        end
+      end)
+      |> Enum.split_with(&match?({:ok, _uuid}, &1))
+
+    case invalid do
+      [] -> {:ok, valid |> Enum.map(&elem(&1, 1)) |> Enum.uniq()}
+      _invalid -> {:error, {:invalid_tags, Enum.map(invalid, &elem(&1, 1))}}
+    end
   end
+
+  defp normalize_tag_ids(_tag_ids), do: {:error, {:invalid_tags, []}}
 
   @doc """
   Returns the positive tags for a profile.
@@ -775,7 +828,9 @@ defmodule Snack.Dating do
   Records a swipe action.
 
   On a "like", if the target already liked the actor, creates a `Match`
-  and a `Conversation`. Sets `expires_at` to matched_at + 7 days.
+  and a `Conversation`. Sets `expires_at` to matched_at + `Snack.Dating.MatchExpiry.days/0`
+  (30 by default, D-2026-09-29). Swipes of the same pair are serialised (advisory
+  lock), so two simultaneous likes always produce exactly one match.
 
   Returns `{:ok, %{swipe: SwipeAction.t(), match: Match.t() | nil}}`.
   """
@@ -785,6 +840,9 @@ defmodule Snack.Dating do
     action_type = attrs["action_type"] || attrs[:action_type]
 
     Ecto.Multi.new()
+    |> Ecto.Multi.run(:pair_lock, fn repo, _changes ->
+      lock_swipe_pair(repo, actor_id, target_id)
+    end)
     |> Ecto.Multi.insert(:swipe, fn _changes ->
       %SwipeAction{}
       |> SwipeAction.changeset(attrs)
@@ -818,16 +876,45 @@ defmodule Snack.Dating do
       {:error, :swipe, changeset, _changes} ->
         {:error, changeset}
 
-      {:error, :match, reason, _changes} ->
+      {:error, step, reason, _changes} when step in [:pair_lock, :match] ->
         {:error, reason}
+    end
+  end
+
+  # Serialises swipes between the same two profiles (either direction) until the
+  # transaction ends: of two simultaneous likes, the second waits here and — as
+  # READ COMMITTED takes a fresh snapshot per statement — its reverse-like check
+  # sees the first one committed, so exactly one of them creates the match.
+  # Transaction-scoped advisory lock keyed by the ordered pair; a hash collision
+  # between two pairs only costs an unnecessary wait.
+  defp lock_swipe_pair(repo, actor_id, target_id)
+       when is_binary(actor_id) and is_binary(target_id) do
+    [first, second] = Enum.sort([canonical_uuid(actor_id), canonical_uuid(target_id)])
+
+    <<key::signed-integer-size(64), _rest::binary>> =
+      :crypto.hash(:sha256, "snack.swipe_pair:" <> first <> ":" <> second)
+
+    case repo.query("SELECT pg_advisory_xact_lock($1)", [key]) do
+      {:ok, _result} -> {:ok, key}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # Invalid ids fail later in the swipe changeset; nothing to serialise.
+  defp lock_swipe_pair(_repo, _actor_id, _target_id), do: {:ok, nil}
+
+  defp canonical_uuid(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> uuid
+      :error -> id
     end
   end
 
   defp create_match_and_conversation(actor_id, target_id) do
     {a_id, b_id} = if actor_id < target_id, do: {actor_id, target_id}, else: {target_id, actor_id}
 
-    now = DateTime.utc_now()
-    expires_at = DateTime.add(now, 7, :day)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    expires_at = Snack.Dating.MatchExpiry.expires_at(now)
 
     Ecto.Multi.new()
     |> Ecto.Multi.insert(:match, fn _changes ->
@@ -853,14 +940,17 @@ defmodule Snack.Dating do
   end
 
   @doc """
-  Lists active matches for a profile.
+  Lists active, non-expired matches for a profile. For the enriched API listing
+  (blocks, deleted accounts, last message, unread) see `Snack.Dating.Inbox`.
   """
   def list_matches(profile_id) do
+    now = now()
+
     Match
     |> where(
       [m],
       (m.profile_a_id == ^profile_id or m.profile_b_id == ^profile_id) and
-        m.status == "active"
+        m.status == "active" and (is_nil(m.expires_at) or m.expires_at > ^now)
     )
     |> order_by([m], desc: m.matched_at)
     |> Repo.all()
@@ -887,15 +977,18 @@ defmodule Snack.Dating do
   # ── Chat ──────────────────────────────────────────────────────────────
 
   @doc """
-  Lists conversations for a profile via active matches.
+  Lists conversations for a profile via active, non-expired matches. For the
+  enriched API listing see `Snack.Dating.Inbox`.
   """
   def list_conversations(profile_id) do
+    now = now()
+
     Conversation
     |> join(:inner, [c], m in Match, on: c.match_id == m.id)
     |> where(
       [c, m],
       (m.profile_a_id == ^profile_id or m.profile_b_id == ^profile_id) and
-        m.status == "active"
+        m.status == "active" and (is_nil(m.expires_at) or m.expires_at > ^now)
     )
     |> order_by([c], desc: c.inserted_at)
     |> Repo.all()

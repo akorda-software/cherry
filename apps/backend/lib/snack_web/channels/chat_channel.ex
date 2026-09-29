@@ -42,8 +42,11 @@ defmodule SnackWeb.ChatChannel do
              body: body
            }) do
         {:ok, message} ->
-          broadcast!(socket, "new_message", serialize_message(message))
-          {:reply, {:ok, %{message: serialize_message(message)}}, socket}
+          # Replying implies having read everything before.
+          Dating.Inbox.mark_read(conversation_id, profile_id)
+          payload = SnackWeb.ChatJSON.message(message)
+          broadcast!(socket, "new_message", payload)
+          {:reply, {:ok, %{message: payload}}, socket}
 
         {:error, changeset} ->
           {:reply, {:error, format_send_error(changeset)}, socket}
@@ -72,16 +75,6 @@ defmodule SnackWeb.ChatChannel do
 
   defp join_status(conversation_id, profile_id),
     do: Dating.conversation_messaging_status(conversation_id, profile_id)
-
-  defp serialize_message(%Dating.Message{} = msg) do
-    %{
-      id: msg.id,
-      conversationId: msg.conversation_id,
-      senderProfileId: msg.sender_profile_id,
-      body: msg.body,
-      insertedAt: msg.inserted_at
-    }
-  end
 
   defp format_send_error(reason) when is_atom(reason), do: %{reason: Atom.to_string(reason)}
   defp format_send_error(changeset), do: %{errors: format_errors(changeset)}

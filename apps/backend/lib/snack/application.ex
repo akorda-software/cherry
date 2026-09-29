@@ -12,6 +12,10 @@ defmodule Snack.Application do
       Snack.Repo,
       {DNSCluster, query: Application.get_env(:snack, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Snack.PubSub},
+      # Periodic IDF tag-weight refresh for discovery (no-op under the test sandbox).
+      Snack.Dating.Discovery.TagWeights,
+      # Marks expired matches (30 days without messages); reads already apply it lazily.
+      Snack.Dating.MatchExpirySweeper,
       # Start a worker by calling: Snack.Worker.start_link(arg)
       # {Snack.Worker, arg},
       # Start to serve requests, typically the last entry

@@ -1,132 +1,227 @@
+import { type ReactNode, useState } from "react";
 import type { AuthProvider } from "@snack/mobile-shared";
-import { Pressable, StyleSheet, Text as RNText, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import { Stack, useTheme } from "../../../shared/ui";
+import { Button, Icon, LoadingDots, PressableScale, Text, useTheme } from "../../../shared/ui";
+import type { BusyProvider } from "./session-store";
+
+/** Persona de demo del seed del backend: perfil completo con likes, matches y chats. */
+export const DEMO_TEST_EMAIL = "demo@snack.dev";
+
+/** Email desechable para estrenar un usuario de pruebas (entra al onboarding desde cero). */
+export function createFreshTestEmail(now: number = Date.now(), random: () => number = Math.random): string {
+  const suffix = Math.floor(random() * 36 ** 4)
+    .toString(36)
+    .padStart(4, "0");
+  return `nuevo-${now.toString(36)}-${suffix}@snack.dev`;
+}
+
+/**
+ * Colores de marca de terceros, no del tema: Apple solo admite su botón en negro o blanco
+ * y Google su «G» de cuatro colores sobre blanco (guías de Sign in with Apple / Google).
+ */
+const providerBrand = {
+  appleFill: "#000000",
+  appleInk: "#FFFFFF"
+} as const;
+
+const providerNames: Record<AuthProvider, string> = { google: "Google", apple: "Apple" };
+
+function isDevBuild() {
+  return (globalThis as { __DEV__?: boolean }).__DEV__ === true;
+}
 
 interface AuthActionListProps {
-  busyProvider: AuthProvider | "test" | null;
+  busyProvider: BusyProvider | null;
   onSelect(provider: AuthProvider): void;
-  onTest?(): void;
+  /** Solo en desarrollo: login de pruebas (sin email = usuario de test compartido). */
+  onTest?(email?: string): void;
+  /** «Continuar con Apple» (por defecto en todas partes salvo Android, donde no hay Sign in with Apple nativo). */
+  showApple?: boolean;
 }
 
-export function AuthActionList({ busyProvider, onSelect, onTest }: AuthActionListProps) {
-  const disabled = busyProvider !== null;
-  const showTestButton = (globalThis as { __DEV__?: boolean }).__DEV__ === true && Boolean(onTest);
+export function AuthActionList({
+  busyProvider,
+  onSelect,
+  onTest,
+  showApple = Platform.OS !== "android"
+}: AuthActionListProps) {
+  const theme = useTheme();
+  const c = theme.primitives.color;
+  const locked = busyProvider !== null;
 
   return (
-    <Stack>
-      <GoogleButton disabled={disabled} onPress={() => onSelect("google")} />
-      <AppleButton disabled={disabled} onPress={() => onSelect("apple")} />
-      {showTestButton ? <TestButton disabled={disabled} onPress={() => onTest?.()} /> : null}
-    </Stack>
+    <View style={styles.list}>
+      <ProviderButton
+        busy={busyProvider === "google"}
+        colors={{ fill: c.white, border: c.ink, text: c.ink, shadow: c.ink }}
+        disabled={locked}
+        logo={<GoogleLogo size={22} />}
+        onPress={() => onSelect("google")}
+        provider="google"
+        testID="login-google"
+      />
+      {showApple ? (
+        <ProviderButton
+          busy={busyProvider === "apple"}
+          colors={{
+            fill: providerBrand.appleFill,
+            border: providerBrand.appleFill,
+            text: providerBrand.appleInk,
+            shadow: theme.primitives.pastel.fresa.fill
+          }}
+          disabled={locked}
+          logo={<AppleLogo color={providerBrand.appleInk} size={22} />}
+          onPress={() => onSelect("apple")}
+          provider="apple"
+          testID="login-apple"
+        />
+      ) : null}
+      {isDevBuild() && onTest ? (
+        <DevSignIn busy={busyProvider === "test"} disabled={locked} onTest={onTest} />
+      ) : null}
+    </View>
   );
 }
 
-interface BrandButtonProps {
+interface ProviderButtonProps {
+  provider: AuthProvider;
+  logo: ReactNode;
+  colors: { fill: string; border: string; text: string; shadow: string };
+  busy: boolean;
   disabled: boolean;
   onPress(): void;
+  testID: string;
 }
 
-function GoogleButton({ disabled, onPress }: BrandButtonProps) {
+/** Botón de proveedor como pegatina: contorno, sombra dura y se hunde al pulsar. */
+function ProviderButton({ provider, logo, colors, busy, disabled, onPress, testID }: ProviderButtonProps) {
   const theme = useTheme();
-  const styles = StyleSheet.create({
-    button: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 12,
-      backgroundColor: "#FFFFFF",
-      borderColor: "#DADCE0",
-      borderWidth: 1,
-      borderRadius: theme.primitives.radius.pill,
-      minHeight: 52,
-      paddingHorizontal: theme.primitives.spacing.md,
-      paddingVertical: theme.primitives.spacing.sm,
-      opacity: disabled ? 0.5 : 1,
-    },
-    label: {
-      color: "#1F1F1F",
-      fontSize: 16,
-      fontWeight: "600",
-      letterSpacing: 0.2,
-    },
-  });
+  const label = `Continuar con ${providerNames[provider]}`;
+  const blocked = busy || disabled;
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={() => onPress()}
-      style={({ pressed }) => [
-        styles.button,
-        pressed && !disabled ? { opacity: 0.85 } : null,
+    <PressableScale
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: blocked, busy }}
+      aria-busy={busy || undefined}
+      disabled={blocked}
+      elevation="md"
+      faceStyle={[
+        styles.providerFace,
+        {
+          backgroundColor: colors.fill,
+          borderColor: colors.border,
+          borderWidth: theme.primitives.border.bold,
+          borderRadius: theme.primitives.radius.pill
+        }
       ]}
+      haptic
+      onPress={onPress}
+      shadowColor={colors.shadow}
+      style={disabled && !busy ? { opacity: theme.primitives.opacity.disabled } : null}
+      testID={testID}
     >
-      <GoogleLogo size={22} />
-      <RNText style={styles.label}>Continue with Google</RNText>
-    </Pressable>
+      <View style={[styles.providerRow, { opacity: busy ? 0 : 1 }]}>
+        {logo}
+        <Text adjustsFontSizeToFit color={colors.text} minimumFontScale={0.85} numberOfLines={1} variant="button">
+          {label}
+        </Text>
+      </View>
+      {busy ? (
+        <View style={styles.providerLoading}>
+          <LoadingDots accessibilityLabel={`Entrando con ${providerNames[provider]}…`} color={colors.text} size={8} />
+        </View>
+      ) : null}
+    </PressableScale>
   );
 }
 
-function AppleButton({ disabled, onPress }: BrandButtonProps) {
+interface DevSignInProps {
+  busy: boolean;
+  disabled: boolean;
+  onTest(email?: string): void;
+}
+
+/** Atajos de desarrollo: nunca salen en una build de producción. */
+function DevSignIn({ busy, disabled, onTest }: DevSignInProps) {
   const theme = useTheme();
-  const styles = StyleSheet.create({
-    button: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 12,
-      backgroundColor: "#000000",
-      borderRadius: theme.primitives.radius.pill,
-      minHeight: 52,
-      paddingHorizontal: theme.primitives.spacing.md,
-      paddingVertical: theme.primitives.spacing.sm,
-      opacity: disabled ? 0.5 : 1,
-    },
-    label: {
-      color: "#FFFFFF",
-      fontSize: 16,
-      fontWeight: "600",
-      letterSpacing: 0.2,
-    },
-  });
+  const [choice, setChoice] = useState<"new" | "demo" | null>(null);
+
+  function start(next: "new" | "demo") {
+    setChoice(next);
+    onTest(next === "new" ? createFreshTestEmail() : DEMO_TEST_EMAIL);
+  }
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={() => onPress()}
-      style={({ pressed }) => [
-        styles.button,
-        pressed && !disabled ? { opacity: 0.8 } : null,
+    <View
+      style={[
+        styles.devBox,
+        {
+          borderColor: theme.primitives.color.inkFaint,
+          borderWidth: theme.primitives.border.thin,
+          borderRadius: theme.primitives.radius.md
+        }
       ]}
+      testID="login-dev-tools"
     >
-      <AppleLogo size={20} color="#FFFFFF" />
-      <RNText style={styles.label}>Continue with Apple</RNText>
-    </Pressable>
+      <View style={styles.devTitle}>
+        <Icon color={theme.semantic.text.muted} name="code" size={16} />
+        <Text color="muted" variant="caption">
+          Solo en desarrollo
+        </Text>
+      </View>
+      <Button
+        color="menta"
+        disabled={disabled && !(busy && choice === "new")}
+        fullWidth
+        icon="sparkle"
+        loading={busy && choice === "new"}
+        onPress={() => start("new")}
+        size="sm"
+        testID="login-dev-new"
+        variant="soft"
+      >
+        Entrar como usuario nuevo
+      </Button>
+      <Button
+        color="cielo"
+        disabled={disabled && !(busy && choice === "demo")}
+        fullWidth
+        icon="user"
+        loading={busy && choice === "demo"}
+        onPress={() => start("demo")}
+        size="sm"
+        testID="login-dev-demo"
+        variant="soft"
+      >
+        Entrar como Lucía (demo)
+      </Button>
+    </View>
   );
 }
 
+/** «G» oficial de Google a cuatro colores (no se recolorea nunca). */
 function GoogleLogo({ size }: { size: number }) {
   return (
-    <View aria-hidden>
-      <Svg width={size} height={size} viewBox="0 0 48 48">
+    <View aria-hidden importantForAccessibility="no-hide-descendants">
+      <Svg height={size} viewBox="0 0 48 48" width={size}>
         <Path
-          fill="#4285F4"
           d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"
+          fill="#4285F4"
         />
         <Path
-          fill="#34A853"
           d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"
+          fill="#34A853"
         />
         <Path
-          fill="#FBBC04"
           d="M11.69 28.18c-.44-1.32-.69-2.73-.69-4.18s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z"
+          fill="#FBBC04"
         />
         <Path
-          fill="#EA4335"
           d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7C13.42 14.62 18.27 10.75 24 10.75z"
+          fill="#EA4335"
         />
       </Svg>
     </View>
@@ -135,54 +230,47 @@ function GoogleLogo({ size }: { size: number }) {
 
 function AppleLogo({ size, color }: { size: number; color: string }) {
   return (
-    <View aria-hidden>
-      <Svg width={size} height={size} viewBox="0 0 24 24">
+    <View aria-hidden importantForAccessibility="no-hide-descendants">
+      <Svg height={size} viewBox="0 0 24 24" width={size}>
         <Path
-          fill={color}
           d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
+          fill={color}
         />
       </Svg>
     </View>
   );
 }
 
-function TestButton({ disabled, onPress }: BrandButtonProps) {
-  const theme = useTheme();
-  const styles = StyleSheet.create({
-    button: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      backgroundColor: "transparent",
-      borderColor: theme.primitives.color.mist,
-      borderWidth: 1,
-      borderStyle: "dashed",
-      borderRadius: theme.primitives.radius.pill,
-      minHeight: 44,
-      paddingHorizontal: theme.primitives.spacing.md,
-      paddingVertical: theme.primitives.spacing.sm,
-      opacity: disabled ? 0.5 : 1,
-    },
-    label: {
-      color: theme.primitives.color.blue,
-      fontSize: 14,
-      fontWeight: "600",
-      letterSpacing: 0.2,
-    },
-  });
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={() => onPress()}
-      style={({ pressed }) => [
-        styles.button,
-        pressed && !disabled ? { opacity: 0.7 } : null,
-      ]}
-    >
-      <RNText style={styles.label}>Continuar con test</RNText>
-    </Pressable>
-  );
-}
+const styles = StyleSheet.create({
+  list: {
+    gap: 14
+  },
+  providerFace: {
+    minHeight: 58,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  providerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12
+  },
+  providerLoading: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  devBox: {
+    borderStyle: "dashed",
+    padding: 12,
+    gap: 10,
+    marginTop: 4
+  },
+  devTitle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  }
+});

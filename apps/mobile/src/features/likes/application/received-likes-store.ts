@@ -303,7 +303,9 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
           likes: insertAt(get().likes, entry, index),
           notice: notice(
             "error",
-            friendlyErrorMessage(error, "No hemos podido guardar tu respuesta. Inténtalo otra vez.")
+            apiErrorCode(error) === "profile_paused"
+              ? "Tu perfil está en pausa. Reanúdalo en Yo para responder a los likes."
+              : friendlyErrorMessage(error, "No hemos podido guardar tu respuesta. Inténtalo otra vez.")
           )
         });
         deps.onCountDelta?.(1);

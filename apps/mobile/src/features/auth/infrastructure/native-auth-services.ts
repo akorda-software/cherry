@@ -1,12 +1,12 @@
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Application from "expo-application";
-import * as SecureStore from "expo-secure-store";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import * as AppleAuthentication from "expo-apple-authentication";
 
 import { createAuthApi, createSessionApi, type HttpClient } from "@snack/mobile-shared";
 import { createSecureSessionStorage } from "@snack/mobile-shared";
+import { resolveSecureStore } from "../../../shared/storage";
 import { createGoogleNativeAdapter } from "../infrastructure/google-native-adapter";
 import { createAppleNativeAdapter } from "../infrastructure/apple-native-adapter";
 import { assembleAuthServices } from "../infrastructure/auth-assembly";
@@ -77,7 +77,7 @@ export function createNativeAuthServices({
   const resolvedGoogleIosClientId = googleIosClientId ?? extra.googleIosClientId;
 
   const storage = createSecureSessionStorage({
-    secureStore: SecureStore,
+    secureStore: resolveSecureStore(),
     config: apiBaseUrl ? { apiBaseUrl } : undefined
   });
 

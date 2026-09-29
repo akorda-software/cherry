@@ -14,6 +14,7 @@ import {
   primitiveSizeTokens,
   primitiveSpacingTokens,
   primitiveTypographyTokens,
+  textVariantTokens,
   useTheme
 } from "../../src/shared/ui";
 
@@ -41,28 +42,32 @@ function ThemeProbe() {
 describe("token and theme foundation", () => {
   it("exposes primitive catalogs and semantic role keys through the default light theme", () => {
     expect(primitiveColorTokens).toMatchObject({
-      ink: "#1A1A1A",
-      paper: "#FFF8EC",
+      ink: "#2B1938",
+      paper: "#FFF6FB",
       white: "#FFFFFF",
-      blue: expect.any(String),
-      slate900: expect.any(String),
-      blue600: expect.any(String),
-      red600: expect.any(String)
+      fresa: expect.any(String),
+      menta: expect.any(String),
+      lavanda: expect.any(String),
+      limonada: expect.any(String),
+      cielo: expect.any(String)
     });
     expect(primitiveSpacingTokens).toMatchObject({ xs: 4, md: 16, xl: 32 });
-    expect(primitiveRadiusTokens).toMatchObject({ sm: 8, lg: 20, pill: 999 });
-    expect(primitiveSizeTokens).toMatchObject({ iconMd: 20, buttonHeight: 44, contentMax: 720 });
+    expect(primitiveRadiusTokens).toMatchObject({ sm: 10, md: 16, lg: 22, pill: 999 });
+    expect(primitiveSizeTokens).toMatchObject({ iconMd: 20, buttonHeight: 52, touchTarget: 48, contentMax: 720 });
     expect(primitiveTypographyTokens).toMatchObject({
       body: expect.objectContaining({ fontSize: 16 }),
       title: expect.objectContaining({ fontSize: 28 })
     });
-    expect(primitiveBorderTokens).toMatchObject({ thin: 1, thick: 2, bold: 3, heavy: 4 });
+    expect(textVariantTokens.hero.fontFamily).toBe("MochiyPopOne");
+    expect(textVariantTokens.body.fontFamily).toBe("MPLUSRounded1c-Medium");
+    expect(primitiveBorderTokens).toMatchObject({ hairline: 1.5, regular: 2.5, bold: 3, heavy: 4 });
     expect(primitiveElevationTokens).toMatchObject({
-      sm: expect.objectContaining({ shadowRadius: 0, shadowOpacity: 1 }),
-      md: expect.objectContaining({ shadowRadius: 0, shadowOpacity: 1 })
+      sm: { boxShadow: "2px 2px 0px #2B1938" },
+      md: { boxShadow: "4px 4px 0px #2B1938" }
     });
     expect(primitiveOpacityTokens).toMatchObject({ disabled: 0.5, muted: 0.72 });
     expect(primitiveMotionTokens).toMatchObject({ quick: 120, calm: 220 });
+    expect(primitiveMotionTokens.spring.pop).toEqual(expect.objectContaining({ damping: expect.any(Number) }));
 
     expect(lightTheme.semantic.color).toMatchObject({
       screenBackground: expect.any(String),
@@ -84,7 +89,7 @@ describe("token and theme foundation", () => {
       disabledBackground: expect.any(String)
     });
     expect(lightTheme.semantic.state).toMatchObject({ info: expect.any(String), danger: expect.any(String) });
-    expect(lightTheme.semantic.layout).toMatchObject({ contentMaxWidth: 720, touchTargetMinHeight: 44 });
+    expect(lightTheme.semantic.layout).toMatchObject({ contentMaxWidth: 720, touchTargetMinHeight: 48 });
   });
 
   it("creates swappable themes with the same semantic contract", () => {

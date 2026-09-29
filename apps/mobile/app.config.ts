@@ -20,8 +20,11 @@ export default (): ExpoConfig => {
     scheme: readOptionalEnv("EXPO_APP_SCHEME") ?? "snack",
     version: "0.0.0",
     platforms: ["android", "ios", "web"],
+    userInterfaceStyle: "light",
+    backgroundColor: "#FFF6FB",
     android: {
-      package: readOptionalEnv("EXPO_ANDROID_PACKAGE") ?? "app.snack.mobile"
+      package: readOptionalEnv("EXPO_ANDROID_PACKAGE") ?? "app.snack.mobile",
+      softwareKeyboardLayoutMode: "resize"
     },
     ios: {
       bundleIdentifier: readOptionalEnv("EXPO_IOS_BUNDLE_IDENTIFIER") ?? "app.snack.mobile"
@@ -31,7 +34,29 @@ export default (): ExpoConfig => {
         ? [["@react-native-google-signin/google-signin", { iosUrlScheme: googleIosUrlScheme }] as [string, any]]
         : []),
       ["expo-apple-authentication"],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "Snack necesita acceso a tus fotos para que puedas añadirlas a tu perfil.",
+          cameraPermission: "Snack usa la cámara solo si quieres hacerte una foto para tu perfil."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          locationWhenInUsePermission:
+            "Snack usa tu ubicación aproximada (redondeada a 500 m) para enseñarte gente cerca. Nunca compartimos tu ubicación exacta."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          backgroundColor: "#FFF6FB",
+          resizeMode: "contain"
+        }
+      ]
     ],
     extra: {
       apiBaseUrlAndroid: readOptionalEnv("EXPO_PUBLIC_API_BASE_URL_ANDROID"),

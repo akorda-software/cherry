@@ -1,9 +1,10 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { Platform } from "react-native";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderRoute } from "../../../../test/router/render-route";
 import { sessionFixture } from "../../../../test/router/session-shell.fixture";
-import { createFreshTestEmail, DEMO_TEST_EMAIL } from "./auth-action-list";
+import { createFreshTestEmail, DEMO2_TEST_EMAIL, DEMO_TEST_EMAIL } from "./auth-action-list";
 import { LoginScreen } from "./login-screen";
 
 function deferred<T>() {
@@ -17,7 +18,19 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
+const platform = Platform as { OS: string };
+const originalOS = platform.OS;
+
 describe("LoginScreen", () => {
+  // Sign in with Apple only exists natively on iOS: the provider tests run as iOS.
+  beforeEach(() => {
+    platform.OS = "ios";
+  });
+
+  afterEach(() => {
+    platform.OS = originalOS;
+  });
+
   it("welcomes with the headline, the promises and both providers", async () => {
     renderRoute(<LoginScreen />);
 
@@ -121,6 +134,26 @@ describe("LoginScreen", () => {
     await waitFor(() => {
       expect(screen.getByTestId("pathname")).toHaveTextContent(/^\/$/);
     });
+  });
+
+  it("hides «Continuar con Apple» where there is no supported flow (Android, web)", async () => {
+    for (const os of ["android", "web"]) {
+      platform.OS = os;
+      const view = renderRoute(<LoginScreen />);
+
+      expect(await screen.findByRole("button", { name: "Continuar con Google" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Continuar con Apple" })).not.toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
+  it("offers a second demo persona to try live matches between two sessions", async () => {
+    const execute = vi.fn(async (_email?: string) => sessionFixture);
+
+    renderRoute(<LoginScreen />, { services: { testSignIn: { execute } } });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Entrar como Hugo (demo 2)" }));
+    await waitFor(() => expect(execute).toHaveBeenCalledWith(DEMO2_TEST_EMAIL));
   });
 
   it("offers the development shortcuts: a brand-new user and the demo persona", async () => {

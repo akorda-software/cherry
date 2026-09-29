@@ -14,6 +14,15 @@ export interface BioNoteProps {
   testID?: string;
 }
 
+/**
+ * Pega los puntos suspensivos escritos a mano a la palabra siguiente (espacio duro): así el
+ * recorte por líneas nunca cae justo detrás de ellos y no salen dos elipsis seguidas
+ * («es... …»).
+ */
+export function glueEllipses(text: string): string {
+  return text.replace(/(\.{3}|…)[ \t]+(?=\S)/g, "$1\u00A0");
+}
+
 /** La bio escrita a mano en una nota adhesiva con su tira de washi. */
 export const BioNote = memo(function BioNote({ bio, color = "limonada", tilt = -1.5, numberOfLines, style, testID }: BioNoteProps) {
   const text = bio?.trim();
@@ -25,7 +34,7 @@ export const BioNote = memo(function BioNote({ bio, color = "limonada", tilt = -
   return (
     <StickyNote color={color} padding={14} style={style} testID={testID} tilt={tilt}>
       <Text accessibilityLabel={`Bio: ${text}`} maxFontSizeMultiplier={1.4} numberOfLines={numberOfLines} variant="hand">
-        {text}
+        {numberOfLines ? glueEllipses(text) : text}
       </Text>
     </StickyNote>
   );

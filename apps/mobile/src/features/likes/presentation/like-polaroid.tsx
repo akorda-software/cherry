@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { memo, useEffect, useState } from "react";
+import { memo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   FadeInDown,
@@ -17,7 +17,6 @@ import {
   IconButton,
   Pill,
   PressableScale,
-  Stamp,
   Text,
   WashiTape,
   easings,
@@ -33,11 +32,9 @@ export interface LikePolaroidProps {
   busy: boolean;
   /** Retardo de la entrada (solo el primer lote hace cascada). */
   enterDelay: number | null;
-  /** Retardo del sello «¡Te ha dado like!» (cae de golpe al aparecer). */
-  stampDelay: number;
   /**
    * Ya estaba en la página (la lista virtualizada la vuelve a montar al hacer scroll):
-   * sin entrada ni sello que cae; aparece tal cual.
+   * sin entrada; aparece tal cual.
    */
   settled?: boolean;
   onOpen(profileId: string): void;
@@ -47,11 +44,11 @@ export interface LikePolaroidProps {
 
 const TAPES: readonly PastelName[] = ["lavanda", "menta", "limonada", "cielo", "melocoton"];
 const BUTTON_OVERLAP = 24;
-const STAMP_SCALE = 0.62;
 
 /**
- * Polaroid pequeña de alguien que te ha dado like: foto, nombre y edad, etiquetas en común y un
- * sello «¡Te ha dado like!». Los botones ✕ / ♥ se pegan al borde inferior como pegatinas.
+ * Polaroid pequeña de alguien que te ha dado like: foto, nombre y edad y etiquetas en común.
+ * Sin sello por tarjeta: la pantalla ya se llama «Les gustas» y repetirlo en cada foto solo
+ * tapaba caras. Los botones ✕ / ♥ se pegan al borde inferior como pegatinas.
  */
 export const LikePolaroid = memo(function LikePolaroid({
   like,
@@ -59,7 +56,6 @@ export const LikePolaroid = memo(function LikePolaroid({
   width,
   busy,
   enterDelay,
-  stampDelay,
   settled = false,
   onOpen,
   onLike,
@@ -70,15 +66,6 @@ export const LikePolaroid = memo(function LikePolaroid({
   const c = theme.primitives.color;
   const profile = like.profile;
   const [leaving, setLeaving] = useState<"like" | "pass" | null>(null);
-  const [stampOn, setStampOn] = useState(settled || stampDelay <= 0);
-
-  useEffect(() => {
-    if (stampOn) {
-      return undefined;
-    }
-    const timer = setTimeout(() => setStampOn(true), stampDelay);
-    return () => clearTimeout(timer);
-  }, [stampDelay, stampOn]);
 
   const name = profile.displayName;
   const title = profile.age ? `${name}, ${profile.age}` : name;
@@ -196,11 +183,6 @@ export const LikePolaroid = memo(function LikePolaroid({
           />
         </View>
 
-        {stampOn ? (
-          <View style={styles.stampAnchor}>
-            <Stamp label="¡Te ha dado like!" rotation={-9} size="sm" slam={!settled} tone="fresa" />
-          </View>
-        ) : null}
       </PressableScale>
 
       <View style={styles.actions}>
@@ -259,14 +241,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 4,
     right: -16,
-    pointerEvents: "none"
-  },
-  stampAnchor: {
-    position: "absolute",
-    top: 2,
-    left: -6,
-    transform: [{ scale: STAMP_SCALE }],
-    transformOrigin: "left top",
     pointerEvents: "none"
   },
   actions: {

@@ -107,8 +107,8 @@ export function AboutScreen() {
             </Text>
           </View>
           <Text>
-            El código de Snack es abierto: cualquiera puede leerlo, auditarlo o montar su propia instancia en su
-            servidor.
+            El código de Snack es libre bajo licencia AGPL-3.0: cualquiera puede leerlo, auditarlo o montar su propia
+            instancia en su servidor.
           </Text>
           {sourceUrl ? (
             <Button

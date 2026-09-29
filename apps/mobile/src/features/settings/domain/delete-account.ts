@@ -9,4 +9,4 @@ export const deleteAccountConsequences = [
   "Tu cuenta queda desactivada y no se podrá volver a usar para entrar."
 ] as const;
 
-export const FAREWELL_MESSAGE = "Nos da pena verte ir, pero lo entendemos 💜";
+export const FAREWELL_MESSAGE = "Nos da pena verte ir, pero lo entendemos.";

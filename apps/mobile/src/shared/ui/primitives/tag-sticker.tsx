@@ -4,6 +4,7 @@ import Animated from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
 import type { IconName } from "../art";
+import { mixHex } from "../art/color-utils";
 import { haptics } from "../motion/haptics";
 import { useOnChange, usePop } from "../motion/pop";
 import { useTheme } from "../providers/theme-provider";
@@ -27,9 +28,13 @@ export interface TagStickerProps {
    */
   state?: TagStickerState;
   size?: TagStickerSize;
-  /** Tinte pastel suave para el estado neutral (p. ej. color de su categoría). */
+  /** Tinte pastel para el estado neutral (p. ej. color de su categoría). */
   tint?: PastelName;
-  /** Borde blanco troquelado (pegatinas sobre fotos). */
+  /**
+   * Material de pegatina troquelada (por defecto): contorno de tinta + anillo blanco
+   * + impresión pastel + sombra dura. `false` = pastilla plana de una sola capa
+   * (solo para huecos muy apretados). `muted` nunca lleva troquel: es un recortable.
+   */
   diecut?: boolean;
   /** Giro en grados. */
   rotate?: number;
@@ -42,8 +47,13 @@ export interface TagStickerProps {
 }
 
 interface Spec {
+  /** Alto exterior total (contorno incluido). */
   height: number;
   paddingX: number;
+  /** Padding horizontal de la impresión cuando va troquelada. */
+  printPaddingX: number;
+  /** Grosor del anillo blanco troquelado. */
+  ring: number;
   fontFamily: string;
   fontSize: number;
   lineHeight: number;
@@ -59,11 +69,11 @@ function sizeSpec(theme: AppTheme, size: TagStickerSize): Spec {
 
   switch (size) {
     case "sm":
-      return { height: 30, paddingX: 10, fontFamily: fonts.extraBold, fontSize: 13, lineHeight: 17, emoji: 13, icon: 14, gap: 5, border: border.thin, elevation: "sm" };
+      return { height: 32, paddingX: 10, printPaddingX: 7, ring: 3, fontFamily: fonts.extraBold, fontSize: 13, lineHeight: 17, emoji: 13, icon: 14, gap: 5, border: border.thin, elevation: "sm" };
     case "lg":
-      return { height: 46, paddingX: 16, fontFamily: fonts.extraBold, fontSize: 17, lineHeight: 22, emoji: 19, icon: 18, gap: 7, border: border.regular, elevation: "md" };
+      return { height: 50, paddingX: 16, printPaddingX: 11, ring: 4, fontFamily: fonts.extraBold, fontSize: 17, lineHeight: 22, emoji: 19, icon: 18, gap: 7, border: border.regular, elevation: "md" };
     default:
-      return { height: 38, paddingX: 13, fontFamily: fonts.extraBold, fontSize: 15, lineHeight: 20, emoji: 16, icon: 16, gap: 6, border: border.regular, elevation: "sm" };
+      return { height: 40, paddingX: 13, printPaddingX: 8, ring: 4, fontFamily: fonts.extraBold, fontSize: 15, lineHeight: 20, emoji: 16, icon: 16, gap: 6, border: border.regular, elevation: "sm" };
   }
 }
 
@@ -86,7 +96,7 @@ export const TagSticker = memo(function TagSticker({
   state = "neutral",
   size = "md",
   tint,
-  diecut = false,
+  diecut = true,
   rotate = 0,
   disabled = false,
   onPress,
@@ -122,7 +132,15 @@ export const TagSticker = memo(function TagSticker({
         return { fill: c.paperDeep, text: c.inkSoft, border: c.inkFaint, icon: undefined, iconFill: undefined, iconColor: c.inkSoft };
       default:
         return {
-          fill: tint ? theme.primitives.pastel[tint].soft : theme.semantic.tag.neutralBackground,
+          // Troquelada, la impresión necesita color propio para separarse del anillo blanco:
+          // un pastel a medio camino (por debajo de los rellenos plenos de elegida/en común).
+          fill: tint
+            ? diecut
+              ? mixHex(theme.primitives.pastel[tint].soft, theme.primitives.pastel[tint].fill, 0.45)
+              : theme.primitives.pastel[tint].soft
+            : diecut
+              ? c.paperDeep
+              : theme.semantic.tag.neutralBackground,
           text: c.ink,
           border: c.ink,
           icon: interactive ? ("plus" as IconName) : undefined,
@@ -130,25 +148,39 @@ export const TagSticker = memo(function TagSticker({
           iconColor: c.inkSoft
         };
     }
-  }, [c, interactive, state, theme, tint]);
+  }, [c, diecut, interactive, state, theme, tint]);
 
   const flat = state === "muted" || disabled;
+  const cut = diecut && state !== "muted";
   const radius = spec.height / 2;
   const accessibilityLabel = [emoji, label].filter(Boolean).join(" ") + (stateSpeech[state] ? `, ${stateSpeech[state]}` : "");
 
-  const face: ViewStyle = {
-    minHeight: spec.height,
-    paddingHorizontal: spec.paddingX,
-    borderRadius: radius,
-    borderWidth: spec.border,
-    borderColor: look.border,
-    borderStyle: state === "muted" ? "dashed" : "solid",
-    backgroundColor: look.fill,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spec.gap,
-    overflow: "hidden"
-  };
+  // Plana: una sola capa con contorno. Troquelada: contorno de tinta + anillo blanco
+  // (el «ring») + impresión pastel sin contorno, como las pegatinas de papelería.
+  const face: ViewStyle = cut
+    ? {
+        minHeight: spec.height - 2 * (spec.border + spec.ring),
+        paddingHorizontal: spec.printPaddingX,
+        borderRadius: radius - spec.border - spec.ring,
+        backgroundColor: look.fill,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spec.gap,
+        overflow: "hidden"
+      }
+    : {
+        minHeight: spec.height,
+        paddingHorizontal: spec.paddingX,
+        borderRadius: radius,
+        borderWidth: spec.border,
+        borderColor: look.border,
+        borderStyle: state === "muted" ? "dashed" : "solid",
+        backgroundColor: look.fill,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spec.gap,
+        overflow: "hidden"
+      };
 
   const body = (
     <>
@@ -174,8 +206,14 @@ export const TagSticker = memo(function TagSticker({
   );
 
   const hitSlop = Math.max(0, Math.ceil((48 - spec.height) / 2));
-  const outerRadius = diecut ? radius + DIECUT : radius;
-  const ring: ViewStyle = { padding: DIECUT, borderRadius: outerRadius, backgroundColor: c.white };
+  const outerRadius = radius;
+  const ring: ViewStyle = {
+    padding: spec.ring,
+    borderRadius: outerRadius,
+    borderWidth: spec.border,
+    borderColor: look.border,
+    backgroundColor: c.white
+  };
   const shadowOffset = flat ? 0 : elevationOffsets[spec.elevation];
 
   const sticker = interactive ? (
@@ -186,7 +224,7 @@ export const TagSticker = memo(function TagSticker({
       aria-checked={state === "selected" || state === "blocked"}
       disabled={disabled}
       elevation={flat ? "none" : spec.elevation}
-      faceStyle={diecut ? ring : face}
+      faceStyle={cut ? ring : face}
       hitSlop={{ top: hitSlop, bottom: hitSlop, left: 2, right: 2 }}
       onLongPress={onLongPress}
       onPress={onPress}
@@ -195,7 +233,7 @@ export const TagSticker = memo(function TagSticker({
       releaseSpring="pop"
       testID={testID}
     >
-      {diecut ? <View style={face}>{body}</View> : body}
+      {cut ? <View style={face}>{body}</View> : body}
     </PressableScale>
   ) : (
     <View accessibilityLabel={accessibilityLabel} accessibilityRole="text" accessible testID={testID}>
@@ -211,7 +249,7 @@ export const TagSticker = memo(function TagSticker({
           ]}
         />
       ) : null}
-      {diecut ? (
+      {cut ? (
         <View style={ring}>
           <View style={face}>{body}</View>
         </View>
@@ -227,9 +265,6 @@ export const TagSticker = memo(function TagSticker({
     </Animated.View>
   );
 });
-
-/** Margen blanco del troquel. */
-const DIECUT = 4;
 
 /** Rayas diagonales de «bloqueada» (recortadas por la pastilla). */
 function Stripes({ color }: { color: string }) {

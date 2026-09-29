@@ -7,3 +7,4 @@ export * from "./presentation/about-screen";
 export * from "./presentation/settings-screen";
 export * from "./presentation/use-delete-account-action";
 export * from "./presentation/use-profile-pause";
+export * from "./presentation/use-update-location";

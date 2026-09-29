@@ -109,7 +109,7 @@ describe("MeScreen", () => {
 
     expect(await screen.findByRole("heading", { name: "Así te ven" })).toBeInTheDocument();
     expect(screen.getByLabelText("Lucía, 29 años")).toBeInTheDocument();
-    expect(screen.getByText("Tu perfil brilla ✨")).toBeInTheDocument();
+    expect(screen.getByText("Tu perfil brilla")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Fotos, 4 de 4" })).toBeInTheDocument();
     expect(screen.getByText("29 años · Mujer · Una relación")).toBeInTheDocument();
     expect(screen.getByText("26–38 años · 50 km")).toBeInTheDocument();

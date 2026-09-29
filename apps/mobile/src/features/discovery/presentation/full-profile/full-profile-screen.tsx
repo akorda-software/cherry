@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { type LayoutChangeEvent, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -134,7 +134,13 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
   const person = profile.person;
   const name = person?.displayName ?? "esta persona";
   const { conversationId, youLiked, likedYou } = profile.relationship;
-  const actionBarHeight = 112;
+  // Alto real de la barra flotante (botones + aviso + fundido): el final del contenido
+  // queda por encima de ella y la bio nunca se queda tapada. 172 ≈ ✕/♥ + aviso de like.
+  const [actionBarHeight, setActionBarHeight] = useState(172);
+  const onActionsLayout = useCallback((event: LayoutChangeEvent) => {
+    const next = Math.ceil(event.nativeEvent.layout.height);
+    setActionBarHeight((current) => (Math.abs(current - next) < 1 ? current : next));
+  }, []);
 
   const header = (
     <TopBar
@@ -163,6 +169,7 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
     />
   );
 
+  const showActions = person !== null && profile.status === "ready";
   let body: React.ReactNode;
 
   if (profile.status === "not_found") {
@@ -190,7 +197,7 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
   } else {
     body = (
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: actionBarHeight + insets.bottom + 24 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: (showActions ? actionBarHeight : insets.bottom) + 16 }]}
         showsVerticalScrollIndicator={false}
         testID="profile-scroll"
       >
@@ -245,8 +252,6 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
     );
   }
 
-  const showActions = person !== null && profile.status === "ready";
-
   return (
     <View style={[styles.root, { paddingTop: insets.top }]} testID="profile-screen">
       <PaperBackground />
@@ -255,8 +260,10 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
 
       {showActions ? (
         <View
+          onLayout={onActionsLayout}
           pointerEvents="box-none"
           style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}
+          testID="profile-actions"
         >
           {/* El papel se funde bajo los botones: nunca tapan el texto a medias. */}
           <LinearGradient

@@ -10,8 +10,8 @@ export default function NotFoundRoute() {
     <Screen tone="lavanda" testID="not-found-screen">
       <EmptyState
         mood="thinking"
-        title="Esta página se ha perdido"
-        description="Puede que el enlace sea antiguo o que la página ya no exista. Te llevamos de vuelta a casa."
+        title="Esta pantalla se ha perdido"
+        description="Puede que ya no exista o que hayas llegado por un camino antiguo. Te llevamos de vuelta al inicio."
         actionLabel="Volver al inicio"
         actionIcon="home"
         onAction={() => router.replace("/")}

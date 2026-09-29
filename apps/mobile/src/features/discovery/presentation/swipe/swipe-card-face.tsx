@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import type { DiscoveryProfileCard } from "@snack/contracts";
 
-import { Icon, PopIn, useTheme, WashiTape } from "../../../../shared/ui";
+import { Appear, Icon, PopIn, useTheme, WashiTape } from "../../../../shared/ui";
 import {
   MetaLine,
   NameSticker,
@@ -75,34 +75,38 @@ export const SwipeCardFace = memo(function SwipeCardFace({ card, width, height, 
         <NameSticker age={person.age} name={person.displayName} size="md" />
       </View>
 
-      <View style={styles.info}>
-        <ProfileBadges includeShared={!hasShared} limit={3} person={person} singleLine size="sm" />
-        {hasShared ? (
-          <TagStickerRow limit={3} sharedOnly size="sm" tags={person.tags} testID={isTop ? "swipe-shared-tags" : undefined} />
-        ) : null}
-        <View style={styles.bottomRow}>
-          <View style={styles.meta}>
-            <MetaLine distanceLabel={person.distanceLabel} intent={person.whatIAmLookingFor} />
+      {/* Las de detrás son solo carcasa + foto: su franja de datos (y el botón ↑) asomaría
+          por debajo de la de arriba. Al llegar arriba, los datos aparecen con un fundido. */}
+      {isTop || flying ? (
+        <Appear from="none" style={styles.info}>
+          <ProfileBadges includeShared={!hasShared} limit={3} person={person} singleLine size="sm" />
+          {hasShared ? (
+            <TagStickerRow limit={3} sharedOnly size="sm" tags={person.tags} testID={isTop ? "swipe-shared-tags" : undefined} />
+          ) : null}
+          <View style={styles.bottomRow}>
+            <View style={styles.meta}>
+              <MetaLine distanceLabel={person.distanceLabel} intent={person.whatIAmLookingFor} />
+            </View>
+            {/* Solo aspecto de botón: el toque en la franja lo gestiona el gesto de la card
+                (así nunca se abre dos veces) y los lectores usan la acción «Ver perfil completo». */}
+            <View
+              pointerEvents="none"
+              style={[
+                styles.openButton,
+                {
+                  backgroundColor: c.white,
+                  borderColor: c.ink,
+                  borderWidth: theme.primitives.border.regular
+                },
+                theme.primitives.elevation.sm
+              ]}
+              testID={isTop ? "swipe-open-profile" : undefined}
+            >
+              <Icon name="arrow-up" size={20} />
+            </View>
           </View>
-          {/* Solo aspecto de botón: el toque en la franja lo gestiona el gesto de la card
-              (así nunca se abre dos veces) y los lectores usan la acción «Ver perfil completo». */}
-          <View
-            pointerEvents="none"
-            style={[
-              styles.openButton,
-              {
-                backgroundColor: c.white,
-                borderColor: c.ink,
-                borderWidth: theme.primitives.border.regular
-              },
-              theme.primitives.elevation.sm
-            ]}
-            testID={isTop ? "swipe-open-profile" : undefined}
-          >
-            <Icon name="arrow-up" size={20} />
-          </View>
-        </View>
-      </View>
+        </Appear>
+      ) : null}
 
       {isTop || flying ? (
         // La cinta se «pega» cuando la foto llega arriba de la pila (las de detrás no la enseñan).

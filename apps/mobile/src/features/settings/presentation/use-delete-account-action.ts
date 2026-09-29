@@ -19,7 +19,7 @@ export function useDeleteAccountAction(): DeleteAccountAction {
 
   const deleteAccount = useCallback(() => callApi((api) => api.deleteAccount()), [callApi]);
   const onDeleted = useCallback(() => {
-    toast.show({ message: FAREWELL_MESSAGE, tone: "love" });
+    toast.show({ message: FAREWELL_MESSAGE, tone: "love", icon: "heart" });
     router.replace(appShellRoutes.login);
   }, [router]);
 

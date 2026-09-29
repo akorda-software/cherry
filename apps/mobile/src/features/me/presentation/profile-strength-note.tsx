@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native";
 
-import { Button, Mascot, type PastelName, StickyNote, Text } from "../../../shared/ui";
+import { Button, Mascot, type PastelName, Sparkle, StickyNote, Text } from "../../../shared/ui";
 import type { MeRoute } from "../domain/me-routes";
 import type { ProfileStrength, ProfileStrengthTone } from "../domain/profile-strength";
 
@@ -29,9 +29,13 @@ export function ProfileStrengthNote({ strength, onNavigate }: ProfileStrengthNot
       <View style={styles.body}>
         <View style={styles.header}>
           <View style={styles.texts}>
-            <Text role="heading" variant="title3">
-              {strength.title}
-            </Text>
+            <View style={styles.titleRow}>
+              <Text role="heading" style={styles.title} variant="title3">
+                {strength.title}
+              </Text>
+              {/* Destello del sistema (nunca emoji como decoración de interfaz). */}
+              {shining ? <Sparkle color="limonada" rotation={8} size={22} /> : null}
+            </View>
             <Text variant="callout">{strength.message}</Text>
           </View>
           {shining ? <Mascot mood="love" size={64} /> : null}
@@ -67,6 +71,14 @@ const styles = StyleSheet.create({
   texts: {
     flex: 1,
     gap: 4
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  },
+  title: {
+    flexShrink: 1
   },
   suggestion: {
     gap: 8

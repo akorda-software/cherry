@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 import {
   Button,
   EmptyState,
+  Deco,
   ErrorState,
   Mascot,
   Skeleton,
@@ -103,12 +104,17 @@ export function DiscoverEmpty({
       actionLabel="Ampliar filtros"
       compact={compact}
       description="Vuelve en un rato o amplía tus filtros."
-      mood="sleepy"
+      illustration={
+        <View>
+          <Mascot mood="sleepy" size={compact ? 96 : 148} />
+          <Deco color="fresa" kind="flower" rotation={12} size={compact ? 22 : 28} style={styles.flower} />
+        </View>
+      }
       onAction={onWidenFilters}
       onSecondary={retrying ? undefined : onRetry}
       secondaryLabel={retrying ? "Buscando…" : "Volver a intentarlo"}
       testID="discover-empty"
-      title="Ya has visto a todo el mundo por aquí 🌸"
+      title="Ya has visto a todo el mundo por aquí"
     />
   );
 }
@@ -152,6 +158,11 @@ export function DiscoverPaused({ onResume, resuming, error }: { onResume(): void
 }
 
 const styles = StyleSheet.create({
+  flower: {
+    position: "absolute",
+    top: 2,
+    right: -14
+  },
   skeletonCard: {
     padding: 10,
     overflow: "hidden"

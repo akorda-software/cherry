@@ -2,6 +2,7 @@ import { useStore } from "zustand";
 
 import { createDiscoveryPreferencesStore, type DiscoveryPreferencesDeps, type DiscoveryPreferencesStore } from "./discovery-preferences";
 import { createDiscoveryQueue, type DiscoveryQueueDeps, type DiscoveryQueueStore } from "./discovery-queue";
+import { onSignOut } from "../../auth/presentation/on-sign-out";
 
 /*
  * Instancias únicas de la cola y de las preferencias de Descubrir: las comparten el
@@ -31,3 +32,9 @@ export function useDiscoveryQueue<T>(selector: (state: DiscoveryQueueStore) => T
 export function useDiscoveryPreferences<T>(selector: (state: DiscoveryPreferencesStore) => T): T {
   return useStore(discoveryPreferencesStore, selector);
 }
+
+// Otra cuenta en el mismo dispositivo nunca hereda la cola ni las preferencias.
+onSignOut(() => {
+  discoveryQueueStore.getState().reset();
+  discoveryPreferencesStore.getState().reset();
+});

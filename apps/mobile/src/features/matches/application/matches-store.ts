@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 import type { ChatMessage, DiscoveryMatch, MatchSummary } from "@snack/contracts";
 
-import { onSignOut } from "../../activity/application/on-sign-out";
+import { onSignOut } from "../../auth/presentation/on-sign-out";
 import { applyMessageToMatch, lastActivityAt, matchSummaryFromDiscoveryMatch } from "../domain/match-list";
 
 /**

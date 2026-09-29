@@ -9,6 +9,10 @@ Subconjuntos (latín + Latin-1 + algunos símbolos: ★ ♥ ♪ ✕ … € ¡ �
 | `MPLUSRounded1c-{Regular,Medium,Bold,ExtraBold,Black}.ttf` | M PLUS Rounded 1c | Interfaz y texto | SIL OFL 1.1 |
 | `Yomogi-Regular.ttf` | Yomogi | Anotaciones manuscritas puntuales (≥ 18 pt) | SIL OFL 1.1 |
 
+Se regeneran con `python3 build_fonts.py <dir-con-los-ttf-originales>` (requiere fonttools),
+que además sustituye la elipsis «…» (centrada y a ancho completo en estas fuentes japonesas,
+estilo «⋯») por tres puntos sobre la línea base: es el glifo que usan iOS/Android al truncar.
+
 Rango usado:
 
 ```

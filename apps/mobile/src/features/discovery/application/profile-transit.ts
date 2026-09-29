@@ -6,6 +6,7 @@ import type {
   DiscoveryProfileCard,
   PublicProfile
 } from "@snack/contracts";
+import { onSignOut } from "../../auth/presentation/on-sign-out";
 
 /** Desde dónde se abrió el perfil completo (decide cómo se registra la acción). */
 export type ProfileOrigin = "discover" | "likes" | "matches" | "chat" | "other";
@@ -94,3 +95,5 @@ export function stageProfile(profile: DiscoveryProfileCard | PublicProfile, opti
 export function getStagedProfile(profileId: string): StagedProfile | undefined {
   return useProfileTransitStore.getState().entries[profileId];
 }
+
+onSignOut(() => useProfileTransitStore.setState({ entries: {} }));

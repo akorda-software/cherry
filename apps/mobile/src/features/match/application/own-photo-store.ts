@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { Profile } from "@snack/contracts";
+import { onSignOut } from "../../auth/presentation/on-sign-out";
 
 interface OwnPhotoState {
   ownerId: string | null;
@@ -55,3 +56,5 @@ export const useOwnPhotoStore = create<OwnPhotoState>((set, get) => ({
     }
   }
 }));
+
+onSignOut(() => useOwnPhotoStore.setState({ ownerId: null, url: null, displayName: null, status: "idle" }));

@@ -11,7 +11,6 @@ vi.mock("expo-router/drawer", async () => import("./mocks/expo-router-drawer"));
 vi.mock("@react-native-google-signin/google-signin", async () => import("./mocks/google-signin"));
 vi.mock("expo-apple-authentication", async () => import("./mocks/expo-apple-authentication"));
 vi.mock("expo-secure-store", async () => import("./mocks/expo-secure-store"));
-vi.mock("@react-native-community/datetimepicker", async () => import("./mocks/datetimepicker"));
 vi.mock("expo-application", async () => import("./mocks/expo-application"));
 vi.mock("expo-device", async () => import("./mocks/expo-device"));
 vi.mock("expo-constants", async () => import("./mocks/expo-constants"));

@@ -120,6 +120,8 @@ export const FeedPost = memo(function FeedPost({
           name={person.displayName}
           onPress={() => onOpen(card)}
           photos={person.photos}
+          // Ya se pintan todas las fotos (y el feed precarga las siguientes): sin prefetch extra por post.
+          preload={false}
           radius={theme.primitives.radius.sm}
           tape
           width={photoWidth}

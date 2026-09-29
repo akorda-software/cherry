@@ -61,11 +61,17 @@ export function describeBio(bio: string | null, maxLength = 48): string {
   return clean.length <= maxLength ? clean : `${clean.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
-/** «18–35 años · 25 km». */
+/** Valor de `distanceKm` que el backend usa como «sin límite» (`DiscoveryPreference.unlimited_distance_km`). */
+const UNLIMITED_DISTANCE_KM = 999_999;
+
+/** «18–35 años · 25 km» (o «· Sin límite» si el radio es ilimitado). */
 export function describeFilters(preferences: DiscoveryPreferences | null): string | null {
   if (preferences === null) {
     return null;
   }
 
-  return `${preferences.ageMin}–${preferences.ageMax} años · ${preferences.distanceKm} km`;
+  const distance =
+    preferences.distanceKm >= UNLIMITED_DISTANCE_KM ? "Sin límite" : `${preferences.distanceKm} km`;
+
+  return `${preferences.ageMin}–${preferences.ageMax} años · ${distance}`;
 }

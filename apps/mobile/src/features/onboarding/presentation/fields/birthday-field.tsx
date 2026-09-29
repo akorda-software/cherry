@@ -64,6 +64,7 @@ export function BirthdayField({ value, onChange, error, autoFocus = false, onCom
                 autoFocus={autoFocus && index === 0}
                 color="limonada"
                 counter={false}
+                dense
                 inputStyle={styles.input}
                 keyboardType="number-pad"
                 maxLength={maxLength}
@@ -105,7 +106,6 @@ const styles = StyleSheet.create({
     marginBottom: 6
   },
   input: {
-    textAlign: "center",
-    letterSpacing: 1
+    textAlign: "center"
   }
 });

@@ -4,7 +4,9 @@
  * que se ven igual de duras en las tres plataformas. Al pulsar, el elemento se
  * desplaza hacia su sombra y esta se reduce (ver `pressedElevation`).
  */
-const INK = "#2B1938";
+import { primitiveColorTokens } from "./color";
+
+const INK = primitiveColorTokens.ink;
 
 export const primitiveElevationTokens = {
   none: { boxShadow: "0px 0px 0px rgba(0, 0, 0, 0)" },

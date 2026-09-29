@@ -16,6 +16,7 @@ import {
   ErrorState,
   FormMessage,
   haptics,
+  Icon,
   IconButton,
   PaperBackground,
   Skeleton,
@@ -291,9 +292,23 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
               {profile.actionError ? (
                 <FormMessage tone="error">{profile.actionError}</FormMessage>
               ) : likedYou ? (
-                <Text color="accent" variant="caption">
-                  {`A ${name} le gustas: si le das like, es match`}
-                </Text>
+                // Pegatina con fondo propio: se lee aunque debajo pase la bio.
+                <View
+                  style={[
+                    styles.hint,
+                    {
+                      backgroundColor: theme.primitives.pastel.fresa.soft,
+                      borderColor: theme.primitives.color.ink,
+                      borderWidth: theme.primitives.border.thin,
+                      borderRadius: theme.primitives.radius.pill
+                    },
+                    theme.primitives.elevation.xs
+                  ]}
+                  testID="profile-liked-you-hint"
+                >
+                  <Icon color={theme.primitives.color.fresaDeep} name="heart-filled" size={14} />
+                  <Text variant="caption">{`A ${name} le gustas: si le das like, es match`}</Text>
+                </View>
               ) : null}
               <View style={styles.buttons}>
                 <IconButton
@@ -436,5 +451,12 @@ const styles = StyleSheet.create({
   sent: {
     paddingHorizontal: 18,
     paddingVertical: 12
+  },
+  hint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6
   }
 });

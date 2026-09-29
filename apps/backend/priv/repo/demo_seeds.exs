@@ -77,7 +77,7 @@ defmodule Snack.DemoSeeds do
         show: [:men, :nb],
         ages: {26, 38},
         distance: 50,
-        mode: :feed,
+        mode: :swipe,
         coords: {40.4089, -3.7005},
         tags: ~w(cooking hiking dogs coffee board_games concerts travel curious),
         blocked: ~w(smoker open_relationship),

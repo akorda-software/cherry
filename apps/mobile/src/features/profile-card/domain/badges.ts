@@ -3,7 +3,7 @@ import type { ProfilePerson } from "./person";
 
 /**
  * Sistema de insignias pequeño y consistente (contrato de dirección, RAISES):
- * Nuevo · Te dio like · En común · Un poco más lejos. Siempre forma + icono + texto,
+ * Nuevo · Te ha dado like · En común · Un poco más lejos. Siempre forma + icono + texto,
  * nunca solo color.
  */
 export type ProfileBadgeKind = "newcomer" | "likedYou" | "shared" | "farther";
@@ -47,7 +47,7 @@ export function profileBadges(
   if (person.likedYou) {
     badges.push({
       kind: "likedYou",
-      label: "Te dio like",
+      label: "Te ha dado like",
       accessibilityLabel: `${person.displayName} ya te ha dado like: si le das like, es match`,
       tone: "fresa",
       icon: "heart-filled"

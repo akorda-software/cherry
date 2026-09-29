@@ -108,7 +108,7 @@ export function DiscoverEmpty({
       onSecondary={retrying ? undefined : onRetry}
       secondaryLabel={retrying ? "Buscando…" : "Volver a intentarlo"}
       testID="discover-empty"
-      title="Te has visto a todo el mundo por aquí 🌸"
+      title="Ya has visto a todo el mundo por aquí 🌸"
     />
   );
 }

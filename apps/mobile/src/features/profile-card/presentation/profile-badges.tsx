@@ -16,7 +16,7 @@ export interface ProfileBadgesProps extends ProfileBadgeOptions {
   testID?: string;
 }
 
-/** Insignias del sistema (Nuevo · Te dio like · N en común · Un poco más lejos): forma + icono + texto. */
+/** Insignias del sistema (Nuevo · Te ha dado like · N en común · Un poco más lejos): forma + icono + texto. */
 export const ProfileBadges = memo(function ProfileBadges({
   person,
   size = "sm",

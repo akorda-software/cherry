@@ -138,7 +138,7 @@ describe("profileBadges", () => {
     );
 
     expect(badges.map((b) => b.kind)).toEqual(["newcomer", "likedYou", "shared", "farther"]);
-    expect(badges.map((b) => b.label)).toEqual(["Nuevo", "Te dio like", "3 en común", "Un poco más lejos"]);
+    expect(badges.map((b) => b.label)).toEqual(["Nuevo", "Te ha dado like", "3 en común", "Un poco más lejos"]);
     expect(badges.every((b) => b.icon !== undefined && b.accessibilityLabel !== "")).toBe(true);
   });
 

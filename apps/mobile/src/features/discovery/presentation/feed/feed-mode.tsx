@@ -12,6 +12,8 @@ import { DiscoverEmpty, FeedPostSkeleton } from "../discover-states";
 import { FeedPost } from "./feed-post";
 
 const MAX_POST_WIDTH = 520;
+/** Estable: las listas no admiten cambiar `viewabilityConfig` tras montar. */
+const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 40 };
 
 interface FeedModeProps {
   profiles: DiscoveryProfileCard[];
@@ -251,7 +253,7 @@ export function FeedMode({
           onViewableItemsChanged={onViewableItemsChanged}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          viewabilityConfig={{ itemVisiblePercentThreshold: 40 }}
+          viewabilityConfig={VIEWABILITY_CONFIG}
         />
       ) : null}
     </View>

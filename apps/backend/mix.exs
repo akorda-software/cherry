@@ -12,7 +12,9 @@ defmodule Snack.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      # `:tar` → _build/prod/cherry-<version>.tar.gz.
+      releases: [snack: [steps: [:assemble, :tar]]]
     ]
   end
 

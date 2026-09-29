@@ -316,11 +316,21 @@ defmodule Snack.Dating do
     |> Repo.insert()
   end
 
+  @max_live_upload_intents 4
+  @max_upload_intents_per_hour 20
+
+  @doc """
+  Creates a signed photo upload intent. Besides the photo limit, a profile may
+  hold at most #{@max_live_upload_intents} live (unexpired, uncompleted) intents
+  (`:too_many_upload_intents`) and create at most #{@max_upload_intents_per_hour}
+  per hour (`:upload_rate_limited`). Keys are random (`photos/<random>.<ext>`).
+  """
   def create_photo_upload_intent(%Profile{} = profile, attrs) do
     with {:ok, upload_config} <- Storage.upload_config(),
          {:ok, upload_attrs} <- normalize_photo_upload_attrs(attrs),
          :ok <- validate_active_photo_limit(profile.id),
-         storage_key = photo_storage_key(profile.id, upload_attrs.content_type),
+         :ok <- validate_upload_intent_quota(profile.id),
+         storage_key = Storage.new_photo_key(upload_attrs.content_type),
          {:ok, signed_upload} <- Storage.presign_put(storage_key, upload_attrs.content_type),
          {:ok, intent} <-
            insert_photo_upload_intent(profile.id, upload_attrs, signed_upload, upload_config) do
@@ -335,7 +345,11 @@ defmodule Snack.Dating do
          :ok <- validate_upload_completion(intent, attrs),
          :ok <- validate_active_photo_limit(profile.id),
          :ok <- validate_photo_position_available(profile.id, intent.position),
-         :ok <- Storage.verify_upload(intent) do
+         :ok <- Storage.verify_upload(intent),
+         # Out of the non-public pending area. If the transaction below fails,
+         # the published object is removed by the sweeper when the intent
+         # expires uncompleted (`Snack.Dating.PhotoStorage`).
+         :ok <- Storage.publish_upload(intent) do
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
       Ecto.Multi.new()
@@ -412,8 +426,26 @@ defmodule Snack.Dating do
 
   defp parse_integer(_value), do: :error
 
-  defp photo_storage_key(profile_id, content_type) do
-    "profiles/#{profile_id}/#{Ecto.UUID.generate()}.#{Storage.extension_for(content_type)}"
+  defp validate_upload_intent_quota(profile_id) do
+    now = DateTime.utc_now()
+    hour_ago = DateTime.add(now, -3600, :second)
+
+    %{live: live, recent: recent} =
+      Repo.one(
+        from(i in ProfilePhotoUploadIntent,
+          where: i.profile_id == ^profile_id,
+          select: %{
+            live: filter(count(i.id), is_nil(i.completed_at) and i.expires_at > ^now),
+            recent: filter(count(i.id), i.inserted_at > ^hour_ago)
+          }
+        )
+      )
+
+    cond do
+      live >= @max_live_upload_intents -> {:error, :too_many_upload_intents}
+      recent >= @max_upload_intents_per_hour -> {:error, :upload_rate_limited}
+      true -> :ok
+    end
   end
 
   defp insert_photo_upload_intent(profile_id, upload_attrs, signed_upload, upload_config) do
@@ -523,12 +555,18 @@ defmodule Snack.Dating do
   end
 
   @doc """
-  Soft-deletes a photo by setting `is_active` false.
+  Deletes a photo: the row is kept inactive (`is_active` false) and the stored
+  object is deleted physically right away (retried by the sweeper if storage
+  fails, see `Snack.Dating.PhotoStorage`).
   """
   def delete_photo(%ProfilePhoto{} = photo) do
     photo
     |> ProfilePhoto.changeset(%{is_active: false})
     |> Repo.update()
+    |> case do
+      {:ok, photo} -> {:ok, Snack.Dating.PhotoStorage.purge_photo(photo)}
+      error -> error
+    end
   end
 
   @doc """
@@ -702,8 +740,59 @@ defmodule Snack.Dating do
 
   # ── Location ──────────────────────────────────────────────────────────
 
+  @location_min_interval_seconds 60
+
   @doc """
-  Inserts or updates a profile's location.
+  Location sent by the mobile client (`POST /api/me/location`). Only
+  `latitude`/`longitude` are accepted (always snapped to the 500 m privacy
+  grid) plus optional `accuracy_meters`/`recorded_at`; any other key (such as a
+  GeoJSON `coordinates`) is ignored.
+
+  Updates less than #{@location_min_interval_seconds} s after the previous one
+  are ignored and return the stored location unchanged: repeated fast moves
+  would help triangulate someone through the distance labels.
+  """
+  def update_client_location(profile_id, params) when is_map(params) do
+    attrs =
+      %{
+        "profile_id" => profile_id,
+        "latitude" => location_value(params, :latitude, "latitude"),
+        "longitude" => location_value(params, :longitude, "longitude"),
+        "accuracy_meters" =>
+          location_value(params, :accuracy_meters, "accuracy_meters", "accuracyMeters"),
+        "recorded_at" => location_value(params, :recorded_at, "recorded_at", "recordedAt")
+      }
+      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+      |> Map.new()
+
+    cond do
+      not (Map.has_key?(attrs, "latitude") and Map.has_key?(attrs, "longitude")) ->
+        {:error, invalid_location_changeset(:coordinates, "latitude and longitude are required")}
+
+      (location = recent_location(profile_id)) != nil ->
+        {:ok, location}
+
+      true ->
+        upsert_location(attrs)
+    end
+  end
+
+  defp recent_location(profile_id) do
+    case get_location(profile_id) do
+      %ProfileLocation{updated_at: %DateTime{} = updated_at} = location ->
+        if DateTime.diff(DateTime.utc_now(), updated_at) < @location_min_interval_seconds,
+          do: location
+
+      _none ->
+        nil
+    end
+  end
+
+  @doc """
+  Inserts or updates a profile's location (internal use: seeds, tests,
+  `update_client_location/2`). Accepts `latitude`/`longitude` (snapped to the
+  500 m grid) or `coordinates` as a `%Geo.Point{srid: 4326}`; any other
+  geometry is rejected.
   """
   def upsert_location(attrs) do
     with {:ok, attrs} <- normalize_location_attrs(attrs) do
@@ -746,7 +835,17 @@ defmodule Snack.Dating do
 
     cond do
       Map.has_key?(attrs, "coordinates") ->
-        {:ok, attrs}
+        case attrs["coordinates"] do
+          %Geo.Point{coordinates: {longitude, latitude}, srid: 4326}
+          when is_number(longitude) and is_number(latitude) ->
+            case validate_coordinate_bounds(latitude, longitude) do
+              :ok -> {:ok, attrs}
+              _error -> {:error, invalid_location_changeset(:coordinates, "out of bounds")}
+            end
+
+          _other ->
+            {:error, invalid_location_changeset(:coordinates, "must be a WGS 84 point")}
+        end
 
       Map.has_key?(attrs, "latitude") and Map.has_key?(attrs, "longitude") ->
         with {:ok, latitude} <- parse_coordinate(attrs["latitude"]),
@@ -843,6 +942,13 @@ defmodule Snack.Dating do
     |> Ecto.Multi.run(:pair_lock, fn repo, _changes ->
       lock_swipe_pair(repo, actor_id, target_id)
     end)
+    # Revalidated under the pair lock, which `block_profile/1` also takes: a
+    # block committed while this swipe waited always wins.
+    |> Ecto.Multi.run(:not_blocked, fn repo, _changes ->
+      if pair_blocked?(repo, actor_id, target_id),
+        do: {:error, :blocked},
+        else: {:ok, nil}
+    end)
     |> Ecto.Multi.insert(:swipe, fn _changes ->
       %SwipeAction{}
       |> SwipeAction.changeset(attrs)
@@ -876,8 +982,24 @@ defmodule Snack.Dating do
       {:error, :swipe, changeset, _changes} ->
         {:error, changeset}
 
-      {:error, step, reason, _changes} when step in [:pair_lock, :match] ->
+      {:error, step, reason, _changes} when step in [:pair_lock, :not_blocked, :match] ->
         {:error, reason}
+    end
+  end
+
+  defp pair_blocked?(repo, a, b) do
+    with {:ok, a} <- Ecto.UUID.cast(a),
+         {:ok, b} <- Ecto.UUID.cast(b) do
+      repo.exists?(
+        from(block in UserBlock,
+          where:
+            (block.actor_profile_id == ^a and block.target_profile_id == ^b) or
+              (block.actor_profile_id == ^b and block.target_profile_id == ^a)
+        )
+      )
+    else
+      # Invalid ids fail later in the swipe changeset.
+      :error -> false
     end
   end
 
@@ -1034,6 +1156,10 @@ defmodule Snack.Dating do
 
   On the first message in the conversation, updates the associated match:
   sets `first_message_at` and clears `expires_at`.
+
+  Common send path for REST and WebSocket: after the commit it broadcasts
+  `new_message` on `chat:<conversation_id>` (the channel's `handle_out` drops
+  it for blocked pairs) and sends the push notification.
   """
   def send_message(attrs) do
     conversation_id = attrs["conversation_id"] || attrs[:conversation_id]
@@ -1062,6 +1188,7 @@ defmodule Snack.Dating do
     end)
     |> case do
       {:ok, message} ->
+        broadcast_new_message(message)
         notify_new_message(message)
         {:ok, message}
 
@@ -1151,6 +1278,14 @@ defmodule Snack.Dating do
     notify(:new_match, Snack.Notifications.deliver_new_match(match))
   end
 
+  defp broadcast_new_message(%Message{} = message) do
+    SnackWeb.Endpoint.broadcast(
+      "chat:" <> message.conversation_id,
+      "new_message",
+      SnackWeb.ChatJSON.message(message)
+    )
+  end
+
   defp notify_new_message(%Message{} = message) do
     notify(:new_message, Snack.Notifications.deliver_new_message(message))
   end
@@ -1165,7 +1300,9 @@ defmodule Snack.Dating do
   # ── Safety ────────────────────────────────────────────────────────────
 
   @doc """
-  Creates a block from one profile to another.
+  Creates a block from one profile to another. Takes the same pair lock as
+  `record_swipe/1`, so a like racing with the block either commits first (and
+  the block then hides any match) or sees the block and fails.
   """
   def block_profile(attrs \\ %{}) do
     changeset = UserBlock.changeset(%UserBlock{}, attrs)
@@ -1175,6 +1312,8 @@ defmodule Snack.Dating do
       b = Ecto.Changeset.get_field(changeset, :target_profile_id)
 
       Repo.transaction(fn ->
+        with {:error, reason} <- lock_swipe_pair(Repo, a, b), do: Repo.rollback(reason)
+
         from(m in Match,
           where:
             (m.profile_a_id == ^a and m.profile_b_id == ^b) or

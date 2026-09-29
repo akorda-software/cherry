@@ -33,6 +33,8 @@ defmodule SnackWeb.ChatChannelReadTest do
     ref = push(socket, "send_message", %{"body" => "¡Hola! 👋"})
     assert_reply ref, :ok, %{message: %{body: "¡Hola! 👋"}}
     assert_receive %Phoenix.Socket.Message{event: "new_message"}
+    # Broadcast once, from the common send path (not again by the channel).
+    refute_receive %Phoenix.Socket.Message{event: "new_message"}
 
     assert Repo.get_by(ConversationRead,
              conversation_id: conversation.id,

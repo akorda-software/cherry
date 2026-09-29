@@ -33,6 +33,16 @@ unless Mix.env() == :dev do
   Mix.raise("demo_seeds.exs solo puede ejecutarse en dev (MIX_ENV=#{Mix.env()}).")
 end
 
+# Segunda barrera: aunque MIX_ENV=dev, nunca contra una BD que no sea de dev
+# (un DATABASE_URL de prod exportado por error en la shell).
+demo_database = Snack.Repo.config()[:database] || ""
+
+unless String.ends_with?(demo_database, "_dev") do
+  Mix.raise(
+    "demo_seeds.exs solo puede ejecutarse contra una base de datos *_dev (actual: #{inspect(demo_database)})."
+  )
+end
+
 # Sin el volcado SQL de dev: solo avisos y el resumen final.
 Logger.configure(level: :warning)
 

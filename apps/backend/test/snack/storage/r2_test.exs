@@ -184,4 +184,37 @@ defmodule Snack.Storage.R2Test do
                size_bytes: 100
              })
   end
+
+  test "promote/2 copies server-side and deletes the source; delete_object/1 tolerates 404" do
+    test_pid = self()
+
+    Req.Test.stub(R2, fn conn ->
+      send(
+        test_pid,
+        {conn.method, conn.request_path, Plug.Conn.get_req_header(conn, "x-amz-copy-source")}
+      )
+
+      assert [authorization] = Plug.Conn.get_req_header(conn, "authorization")
+      # x-amz-copy-source must be signed.
+      if conn.method == "PUT", do: assert(authorization =~ "x-amz-copy-source")
+
+      case {conn.method, conn.request_path} do
+        {"PUT", _path} -> Plug.Conn.send_resp(conn, 200, "<CopyObjectResult/>")
+        {"DELETE", "/bucket/photos/gone.jpg"} -> Plug.Conn.send_resp(conn, 404, "")
+        {"DELETE", _path} -> Plug.Conn.send_resp(conn, 204, "")
+      end
+    end)
+
+    assert :ok = R2.promote("pending/photos/a.jpg", "photos/a.jpg")
+    assert_received {"PUT", "/bucket/photos/a.jpg", ["/bucket/pending/photos/a.jpg"]}
+    assert_received {"DELETE", "/bucket/pending/photos/a.jpg", []}
+
+    assert :ok = R2.delete_object("photos/gone.jpg")
+    assert :ok = R2.delete_object("photos/b.jpg")
+  end
+
+  test "promote/2 reports a missing source" do
+    Req.Test.stub(R2, fn conn -> Plug.Conn.send_resp(conn, 404, "") end)
+    assert {:error, :upload_object_not_found} = R2.promote("pending/photos/a.jpg", "photos/a.jpg")
+  end
 end

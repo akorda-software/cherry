@@ -92,12 +92,14 @@ ENV APP_VERSION=${APP_VERSION}
 
 EXPOSE 4000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD curl -fsS http://localhost:4000/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD sh -c 'curl -fsS "http://localhost:${PORT:-4000}/healthz" || exit 1'
 
 # If using an environment that doesn't automatically reap zombie processes, it is
 # advised to add an init process such as tini via `apt-get install`
 # above and adding an entrypoint. See https://github.com/krallin/tini for details
 # ENTRYPOINT ["/tini", "--"]
 
-CMD ["/app/bin/server"]
+# Migraciones + catálogo de etiquetas (idempotente) y después el servidor.
+# `bin/migrate` toma el lock de migraciones: varias réplicas pueden arrancar a la vez.
+CMD ["/bin/sh", "-c", "/app/bin/migrate && exec /app/bin/server"]

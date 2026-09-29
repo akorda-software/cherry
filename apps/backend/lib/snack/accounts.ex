@@ -30,6 +30,8 @@ defmodule Snack.Accounts do
     |> case do
       {:ok, :ok} ->
         SnackWeb.Endpoint.broadcast("user_socket:#{user_id}", "disconnect", %{})
+        # Photos are deleted physically (retried by the sweeper on failure).
+        Snack.Dating.PhotoStorage.purge_user_photos(user_id)
         {:ok, :deleted}
 
       error ->

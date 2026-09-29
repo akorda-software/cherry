@@ -4,16 +4,38 @@ defmodule Snack.Dating.Social do
   deshacer el último "no", perfil público, likes recibidos (visibles y gratis) y
   el resumen de actividad para los badges.
 
-  Visibilidad de otro perfil (perfil público y destino de un swipe): existe,
-  ni su perfil ni su cuenta están borrados, no hay bloqueo en ninguna dirección
-  y, además, es descubrible (completo, no pausado), o hay match vivo entre
-  ambos, o esa persona dio like al viewer.
+  ## Viewer activo
+
+  Hacer swipe, deshacer y ver perfiles ajenos exige que el viewer tenga el perfil
+  completo, descubrible, sin pausar y sin borrar (`viewer_status/1`). La única
+  excepción es el perfil público de alguien con quien hay match vivo (para el
+  chat) y el propio perfil (vista previa).
+
+  ## Visibilidad de otro perfil
+
+  Perfil público y destino de un swipe. Siempre: existe, ni su perfil ni su
+  cuenta están borrados y no hay bloqueo en ninguna dirección. Además:
+
+    * con match vivo entre ambos → visible (aunque los filtros duros ya no
+      casen, para poder seguir en el chat);
+    * si no, tiene que ser descubrible (completo, descubrible, no pausado) y
+      pasar los mismos filtros duros que el feed y la bandeja de likes:
+      etiquetas bloqueadas en ambas direcciones, género y edad preferidos del
+      viewer, matriz de intención simétrica y `compatible_only` del viewer; y
+      los de la otra persona hacia el viewer (género, edad, `compatible_only`)
+      salvo que tenga un like *pendiente* al viewer (su like es su
+      consentimiento, igual que en la bandeja de likes).
+
+  Un like histórico ya no da visibilidad: tras un unmatch o una caducidad, la
+  ex pareja solo se ve si es descubrible y pasa los filtros. Cualquier fallo
+  responde igual (`:profile_not_found`), sin revelar la razón.
   """
 
   import Ecto.Query
 
   alias Snack.Accounts.User
   alias Snack.Dating
+  alias Snack.Dating.Discovery
   alias Snack.Dating.Conversation
   alias Snack.Dating.DiscoveryPreference
   alias Snack.Dating.Inbox
@@ -38,20 +60,34 @@ defmodule Snack.Dating.Social do
 
   @doc """
   Registra un like/dislike del viewer con errores semánticos:
-  `:invalid_action_type`, `:cannot_swipe_self`, `:profile_not_found` (destino
-  inexistente o no visible) y `:already_swiped`.
+  `:invalid_action_type`, `:profile_paused` / `:profile_incomplete` (viewer no
+  activo, ver `viewer_status/1`), `:cannot_swipe_self`, `:profile_not_found`
+  (destino inexistente o no visible) y `:already_swiped`.
   """
-  def swipe(%Profile{id: viewer_id}, target_id, action_type) do
+  def swipe(%Profile{id: viewer_id} = viewer, target_id, action_type) do
     with :ok <- validate_action_type(action_type),
+         :ok <- viewer_status(viewer),
          {:ok, target_id} <- cast_profile_id(target_id),
          :ok <- validate_not_self(viewer_id, target_id),
-         {:ok, status} <- swipe_target_status(viewer_id, target_id),
+         {:ok, status} <- swipe_target_status(viewer, target_id),
          :ok <- validate_not_swiped(status) do
       %{actor_profile_id: viewer_id, target_profile_id: target_id, action_type: action_type}
       |> Dating.record_swipe()
       |> normalize_swipe_result()
     end
   end
+
+  @doc """
+  ¿Puede el viewer hacer swipe, deshacer y ver perfiles ajenos? `:ok`,
+  `{:error, :profile_paused}` o `{:error, :profile_incomplete}` (incompleto, no
+  descubrible o borrado). Mismas reglas que `GET /api/discovery/feed`.
+  """
+  def viewer_status(%Profile{is_paused: true}), do: {:error, :profile_paused}
+
+  def viewer_status(%Profile{is_complete: true, is_discoverable: true, deleted_at: nil}),
+    do: :ok
+
+  def viewer_status(%Profile{}), do: {:error, :profile_incomplete}
 
   defp validate_action_type(action_type) when action_type in @action_types, do: :ok
   defp validate_action_type(_action_type), do: {:error, :invalid_action_type}
@@ -62,7 +98,7 @@ defmodule Snack.Dating.Social do
   defp validate_not_swiped(%{viewer_swiped: true}), do: {:error, :already_swiped}
   defp validate_not_swiped(_status), do: :ok
 
-  defp swipe_target_status(viewer_id, target_id) do
+  defp swipe_target_status(%Profile{id: viewer_id} = viewer, target_id) do
     now = now()
 
     status =
@@ -73,13 +109,7 @@ defmodule Snack.Dating.Social do
           where: p.id == ^target_id and is_nil(p.deleted_at) and is_nil(u.deleted_at),
           where: not exists(subquery(blocked_pair_query(viewer_id, target_id))),
           select: %{
-            discoverable: p.is_discoverable and not p.is_paused,
-            liked_viewer:
-              fragment(
-                "EXISTS (SELECT 1 FROM swipe_actions s WHERE s.actor_profile_id = ? AND s.target_profile_id = ? AND s.action_type = 'like')",
-                p.id,
-                type(^viewer_id, :binary_id)
-              ),
+            discoverable: p.is_complete and p.is_discoverable and not p.is_paused,
             viewer_swiped:
               fragment(
                 "EXISTS (SELECT 1 FROM swipe_actions s WHERE s.actor_profile_id = ? AND s.target_profile_id = ?)",
@@ -99,10 +129,11 @@ defmodule Snack.Dating.Social do
         )
       )
 
-    if status && (status.discoverable || status.liked_viewer || status.live_match) do
-      {:ok, status}
-    else
-      {:error, :profile_not_found}
+    cond do
+      is_nil(status) -> {:error, :profile_not_found}
+      status.live_match -> {:ok, status}
+      status.discoverable and compatible?(viewer, target_id) -> {:ok, status}
+      true -> {:error, :profile_not_found}
     end
   end
 
@@ -116,32 +147,39 @@ defmodule Snack.Dating.Social do
     end
   end
 
+  # The pair became blocked while the swipe waited for the pair lock.
+  defp normalize_swipe_result({:error, :blocked}), do: {:error, :profile_not_found}
   defp normalize_swipe_result({:error, reason}), do: {:error, reason}
 
   # ── Undo ───────────────────────────────────────────────────────────────
 
   @doc """
   Deshace el swipe más reciente del viewer si fue un `dislike` de hace menos de
-  10 minutos y el perfil sigue siendo visible. Devuelve `{:ok, target_profile_id}`
-  o `{:error, :nothing_to_undo}`.
+  10 minutos. Devuelve `{:ok, target_profile_id}`, `{:error, :nothing_to_undo}`
+  o el error de `viewer_status/1`.
+
+  El deshacer no depende de que la otra persona siga siendo visible: borra el
+  «no» del viewer igualmente (si vuelve a ser visible, reaparecerá en el feed).
+  Quien llama decide si puede devolver la card (`public_profile/2`).
 
   `swipe_actions.inserted_at` tiene resolución de segundos: entre swipes del
   mismo segundo se prioriza el `dislike`.
   """
-  def undo_last_dislike(%Profile{id: viewer_id}) do
-    Repo.transaction(fn ->
-      # Serialise concurrent undos of the same viewer.
-      Repo.one!(from(p in Profile, where: p.id == ^viewer_id, lock: "FOR UPDATE", select: p.id))
+  def undo_last_dislike(%Profile{id: viewer_id} = viewer) do
+    with :ok <- viewer_status(viewer) do
+      Repo.transaction(fn ->
+        # Serialise concurrent undos of the same viewer.
+        Repo.one!(from(p in Profile, where: p.id == ^viewer_id, lock: "FOR UPDATE", select: p.id))
 
-      with %SwipeAction{action_type: "dislike"} = swipe <- last_swipe(viewer_id),
-           true <- within_undo_window?(swipe),
-           {:ok, _status} <- swipe_target_status(viewer_id, swipe.target_profile_id) do
-        Repo.delete!(swipe)
-        swipe.target_profile_id
-      else
-        _nothing -> Repo.rollback(:nothing_to_undo)
-      end
-    end)
+        with %SwipeAction{action_type: "dislike"} = swipe <- last_swipe(viewer_id),
+             true <- within_undo_window?(swipe) do
+          Repo.delete!(swipe)
+          swipe.target_profile_id
+        else
+          _nothing -> Repo.rollback(:nothing_to_undo)
+        end
+      end)
+    end
   end
 
   defp last_swipe(viewer_id) do
@@ -167,31 +205,32 @@ defmodule Snack.Dating.Social do
   @doc """
   Perfil público de `target_id` visto por el viewer. Devuelve
   `{:ok, %{row: fila, media: media, match: %{id, conversation_id} | nil}}` o
-  `{:error, :profile_not_found}` si no es visible.
+  `{:error, :profile_not_found}` si no es visible (ver el `@moduledoc`).
   """
-  def public_profile(%Profile{id: viewer_id}, target_id) do
+  def public_profile(%Profile{id: viewer_id} = viewer, target_id) do
     now = now()
 
     with {:ok, target_id} <- cast_profile_id(target_id),
          %{} = row <- Map.get(ProfileCards.rows(viewer_id, [target_id], now), target_id),
          match = live_match_between(viewer_id, target_id, now),
-         true <- public_visible?(row, viewer_id, match) do
+         true <- public_visible?(row, viewer, match) do
       {:ok, %{row: row, media: ProfileCards.load_media(viewer_id, [target_id]), match: match}}
     else
       _not_visible -> {:error, :profile_not_found}
     end
   end
 
-  defp public_visible?(row, viewer_id, match) do
+  defp public_visible?(row, %Profile{id: viewer_id} = viewer, match) do
     profile = row.profile
 
     cond do
       profile.deleted_at != nil or row.user_deleted_at != nil -> false
       profile.id == viewer_id -> true
       row.blocked -> false
-      profile.is_discoverable and not profile.is_paused -> true
       match != nil -> true
-      true -> row.liked_viewer
+      viewer_status(viewer) != :ok -> false
+      not (profile.is_complete and profile.is_discoverable and not profile.is_paused) -> false
+      true -> compatible?(viewer, profile.id)
     end
   end
 
@@ -215,9 +254,11 @@ defmodule Snack.Dating.Social do
 
   @doc """
   Likes recibidos a los que el viewer aún no ha respondido, más reciente primero.
-  Excluye bloqueos (ambas direcciones), cuentas/perfiles borrados, perfiles
-  pausados, etiquetas bloqueadas (ambas direcciones) y perfiles fuera del género
-  y rango de edad preferidos por el viewer.
+  Solo de perfiles completos, descubribles y sin pausar; excluye bloqueos
+  (ambas direcciones), cuentas/perfiles borrados y aplica los filtros duros del
+  lado del viewer (`apply_viewer_side_filters/3`): etiquetas bloqueadas en
+  ambas direcciones, género y edad preferidos (misma fecha UTC que el feed),
+  intención y `compatible_only` del viewer.
 
   Devuelve `{:ok, %{likes: [%{liked_at, profile_id}], next_cursor}}`.
   """
@@ -282,36 +323,83 @@ defmodule Snack.Dating.Social do
         select: 1
       )
 
-    query =
-      from(s in SwipeAction,
-        as: :swipe,
-        join: p in Profile,
-        as: :liker,
-        on: p.id == s.actor_profile_id,
-        join: u in User,
-        on: u.id == p.user_id,
-        where: s.target_profile_id == ^viewer_id and s.action_type == "like",
-        where: is_nil(p.deleted_at) and is_nil(u.deleted_at) and p.is_paused == false,
-        where: not exists(subquery(responded)),
-        where: not exists(subquery(blocked)),
-        # Tag blocks apply in both directions, as in discovery.
-        where:
-          fragment(
-            "NOT EXISTS (SELECT 1 FROM profile_tags pt JOIN profile_blocked_tags vb ON vb.tag_id = pt.tag_id WHERE pt.profile_id = ? AND vb.profile_id = ?)",
-            p.id,
-            type(^viewer_id, :binary_id)
-          ),
-        where:
-          fragment(
-            "NOT EXISTS (SELECT 1 FROM profile_blocked_tags lb JOIN profile_tags vt ON vt.tag_id = lb.tag_id WHERE lb.profile_id = ? AND vt.profile_id = ?)",
-            p.id,
-            type(^viewer_id, :binary_id)
-          )
-      )
+    from(s in SwipeAction,
+      as: :swipe,
+      join: p in Profile,
+      as: :other,
+      on: p.id == s.actor_profile_id,
+      join: u in User,
+      on: u.id == p.user_id,
+      where: s.target_profile_id == ^viewer_id and s.action_type == "like",
+      where: is_nil(p.deleted_at) and is_nil(u.deleted_at),
+      where: p.is_complete and p.is_discoverable and not p.is_paused,
+      where: not exists(subquery(responded)),
+      where: not exists(subquery(blocked))
+    )
+    |> apply_viewer_side_filters(viewer, Date.utc_today())
+  end
 
+  # ── Hard filters ───────────────────────────────────────────────────────
+
+  # Hard discovery filters between the viewer and the profile bound as `:other`
+  # (feed rules, see `Snack.Dating.Discovery`), evaluated for a single target.
+  defp compatible?(%Profile{} = viewer, target_id) do
+    today = Date.utc_today()
+
+    from(p in Profile, as: :other, where: p.id == ^target_id, select: 1)
+    |> apply_viewer_side_filters(viewer, today)
+    |> apply_other_side_filters(viewer, today)
+    |> Repo.exists?()
+  end
+
+  # Filters the viewer imposes (and tag blocks, which are symmetric): what the
+  # likes inbox applies to every liker.
+  defp apply_viewer_side_filters(query, %Profile{id: viewer_id} = viewer, today) do
     query
-    |> apply_viewer_preferences(preferences_for(viewer))
+    # Tag blocks apply in both directions, as in discovery.
+    |> where(
+      [other: p],
+      fragment(
+        "NOT EXISTS (SELECT 1 FROM profile_tags pt JOIN profile_blocked_tags vb ON vb.tag_id = pt.tag_id WHERE pt.profile_id = ? AND vb.profile_id = ?)",
+        p.id,
+        type(^viewer_id, :binary_id)
+      )
+    )
+    |> where(
+      [other: p],
+      fragment(
+        "NOT EXISTS (SELECT 1 FROM profile_blocked_tags lb JOIN profile_tags vt ON vt.tag_id = lb.tag_id WHERE lb.profile_id = ? AND vt.profile_id = ?)",
+        p.id,
+        type(^viewer_id, :binary_id)
+      )
+    )
+    |> apply_viewer_preferences(preferences_for(viewer), viewer_id, today)
     |> apply_intent_compatibility(viewer.what_i_am_looking_for)
+  end
+
+  # Filters the other person imposes on the viewer (their gender/age
+  # preferences and their `compatible_only`), waived while they have a pending
+  # like to the viewer: that like is their consent, as in the likes inbox.
+  defp apply_other_side_filters(query, %Profile{id: viewer_id} = viewer, today) do
+    viewer_age = viewer.birth_date && Profile.age_on(viewer.birth_date, today)
+
+    where(
+      query,
+      [other: p],
+      fragment(
+        "EXISTS (SELECT 1 FROM swipe_actions l WHERE l.actor_profile_id = ? AND l.target_profile_id = ? AND l.action_type = 'like' AND NOT EXISTS (SELECT 1 FROM swipe_actions r WHERE r.actor_profile_id = l.target_profile_id AND r.target_profile_id = l.actor_profile_id))",
+        p.id,
+        type(^viewer_id, :binary_id)
+      ) or
+        fragment(
+          "NOT EXISTS (SELECT 1 FROM discovery_preferences dp WHERE dp.profile_id = ? AND (NOT COALESCE(CASE ?::text WHEN 'man' THEN dp.show_men WHEN 'woman' THEN dp.show_women WHEN 'non_binary' THEN dp.show_non_binary END, false) OR NOT COALESCE(?::int BETWEEN dp.age_min AND dp.age_max, false) OR (dp.compatible_only AND NOT EXISTS (SELECT 1 FROM profile_tags a JOIN profile_tags b ON b.tag_id = a.tag_id JOIN tags t ON t.id = a.tag_id AND t.is_active WHERE a.profile_id = ? AND b.profile_id = ?))))",
+          p.id,
+          ^viewer.gender,
+          ^viewer_age,
+          p.id,
+          type(^viewer_id, :binary_id)
+        )
+    )
   end
 
   defp preferences_for(%Profile{discovery_preference: %DiscoveryPreference{} = pref}), do: pref
@@ -319,24 +407,47 @@ defmodule Snack.Dating.Social do
   defp preferences_for(%Profile{id: viewer_id}),
     do: Repo.get_by(DiscoveryPreference, profile_id: viewer_id)
 
-  defp apply_viewer_preferences(query, nil), do: query
+  defp apply_viewer_preferences(query, nil, _viewer_id, _today), do: query
 
-  defp apply_viewer_preferences(query, %DiscoveryPreference{} = pref) do
+  defp apply_viewer_preferences(query, %DiscoveryPreference{} = pref, viewer_id, today) do
     genders =
       [{"man", pref.show_men}, {"woman", pref.show_women}, {"non_binary", pref.show_non_binary}]
       |> Enum.filter(&elem(&1, 1))
       |> Enum.map(&elem(&1, 0))
 
-    from([liker: p] in query,
-      where: p.gender in ^genders,
-      where:
+    query =
+      from([other: p] in query,
+        where: p.gender in ^genders,
+        # Same sargable birth_date range and UTC date as the feed (Feb 29 included).
+        where:
+          fragment(
+            "? <= (?::date - make_interval(years => ?::int))::date",
+            p.birth_date,
+            ^today,
+            ^pref.age_min
+          ),
+        where:
+          fragment(
+            "? > (?::date - make_interval(years => ?::int + 1))::date",
+            p.birth_date,
+            ^today,
+            ^pref.age_max
+          )
+      )
+
+    if pref.compatible_only do
+      where(
+        query,
+        [other: p],
         fragment(
-          "EXTRACT(YEAR FROM AGE(CURRENT_DATE, ?::date)) BETWEEN ? AND ?",
-          p.birth_date,
-          ^pref.age_min,
-          ^pref.age_max
+          "EXISTS (SELECT 1 FROM profile_tags a JOIN profile_tags b ON b.tag_id = a.tag_id JOIN tags t ON t.id = a.tag_id AND t.is_active WHERE a.profile_id = ? AND b.profile_id = ?)",
+          p.id,
+          type(^viewer_id, :binary_id)
         )
-    )
+      )
+    else
+      query
+    end
   end
 
   # Same symmetric intent matrix as the feed ("a ver qué pasa" sees everyone;
@@ -344,8 +455,8 @@ defmodule Snack.Dating.Social do
   defp apply_intent_compatibility(query, nil), do: query
 
   defp apply_intent_compatibility(query, intent) do
-    intents = Snack.Dating.Discovery.compatible_intents(intent)
-    from([liker: p] in query, where: p.what_i_am_looking_for in ^intents)
+    intents = Discovery.compatible_intents(intent)
+    from([other: p] in query, where: p.what_i_am_looking_for in ^intents)
   end
 
   defp apply_likes_cursor(query, nil), do: query

@@ -16,7 +16,10 @@ export interface DiscoveryApi {
    * dio like, la respuesta es `{ matchCreated: true, match }` al instante.
    */
   recordAction(request: DiscoveryActionRequest): Promise<DiscoveryActionResponse>;
-  /** Deshace el último "no" (< 10 min). Error 422 `nothing_to_undo` si no hay nada que deshacer. */
+  /**
+   * Deshace el último "no" (< 10 min). Error 422 `nothing_to_undo` si no hay nada que deshacer.
+   * `profile` es `null` si se deshizo pero esa persona ya no es visible.
+   */
   undo(): Promise<DiscoveryUndoResponse>;
 }
 

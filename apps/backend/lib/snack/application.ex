@@ -16,6 +16,8 @@ defmodule Snack.Application do
       Snack.Dating.Discovery.TagWeights,
       # Marks expired matches (30 days without messages); reads already apply it lazily.
       Snack.Dating.MatchExpirySweeper,
+      # Physically deletes deleted photos and abandoned uploads (no-op under the test sandbox).
+      Snack.Dating.PhotoStorageSweeper,
       # Start a worker by calling: Snack.Worker.start_link(arg)
       # {Snack.Worker, arg},
       # Start to serve requests, typically the last entry
@@ -25,6 +27,8 @@ defmodule Snack.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Snack.Supervisor]
+    # Misconfigured sign-in must be loud at boot, not a silent 401 per login.
+    Snack.Auth.warn_missing_audiences()
     Supervisor.start_link(children, opts)
   end
 

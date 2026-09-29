@@ -209,6 +209,33 @@ defmodule SnackWeb.Controllers.Api.MatchChatControllerTest do
                ctx.conn |> get("/api/matches") |> json_response(200)
     end
 
+    test "sending over REST broadcasts new_message and marks as read up to that message",
+         ctx do
+      SnackWeb.Endpoint.subscribe("chat:#{ctx.conversation.id}")
+
+      assert %{"message" => %{"id" => id, "body" => "¿Café?"}} =
+               ctx.conn
+               |> post("/api/conversations/#{ctx.conversation.id}/messages", %{"body" => "¿Café?"})
+               |> json_response(200)
+
+      assert_receive %Phoenix.Socket.Broadcast{
+        event: "new_message",
+        payload: %{id: ^id, body: "¿Café?"}
+      }
+
+      refute_receive %Phoenix.Socket.Broadcast{event: "new_message"}
+
+      message = Repo.get!(Snack.Dating.Message, id)
+
+      read =
+        Repo.get_by!(Snack.Dating.ConversationRead,
+          conversation_id: ctx.conversation.id,
+          profile_id: ctx.viewer.id
+        )
+
+      assert DateTime.compare(read.last_read_at, message.inserted_at) == :eq
+    end
+
     test "only participants can mark as read", ctx do
       outsider = person()
 

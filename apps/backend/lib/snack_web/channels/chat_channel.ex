@@ -42,11 +42,10 @@ defmodule SnackWeb.ChatChannel do
              body: body
            }) do
         {:ok, message} ->
-          # Replying implies having read everything before.
-          Dating.Inbox.mark_read(conversation_id, profile_id)
-          payload = SnackWeb.ChatJSON.message(message)
-          broadcast!(socket, "new_message", payload)
-          {:reply, {:ok, %{message: payload}}, socket}
+          # Replying implies having read everything up to this message.
+          # `Dating.send_message/1` already broadcast `new_message`.
+          Dating.Inbox.mark_read(conversation_id, profile_id, message.inserted_at)
+          {:reply, {:ok, %{message: SnackWeb.ChatJSON.message(message)}}, socket}
 
         {:error, changeset} ->
           {:reply, {:error, format_send_error(changeset)}, socket}

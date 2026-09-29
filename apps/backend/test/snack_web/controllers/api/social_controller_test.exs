@@ -50,13 +50,14 @@ defmodule SnackWeb.Controllers.Api.SocialControllerTest do
                ctx.conn |> get("/api/profiles/#{other.id}") |> json_response(200)
     end
 
-    test "a non-discoverable profile is visible if it liked you or matched you", ctx do
+    test "a non-discoverable profile is visible only with a live match", ctx do
+      # A like from a paused person no longer makes them visible.
       %{profile: liker} = person()
       like!(liker, ctx.viewer)
       {:ok, _} = Dating.pause_profile(liker)
 
-      assert %{"profile" => %{"likedYou" => true}} =
-               ctx.conn |> get("/api/profiles/#{liker.id}") |> json_response(200)
+      assert %{"error" => "profile_not_found"} =
+               ctx.conn |> get("/api/profiles/#{liker.id}") |> json_response(404)
 
       %{profile: matched} = person()
       {match, conversation} = mutual_match!(ctx.viewer, matched)

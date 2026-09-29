@@ -31,14 +31,16 @@ defmodule SnackWeb.Endpoint do
 
   # Profile photos of the local storage adapter (Snack.Storage.Local), stored as
   # UPLOADS_DIR/<storage_key>. The directory is resolved per request (runtime
-  # config). Only `profiles/` is exposed (never the `.tmp/` staging area), files
-  # are immutable (unique keys, no overwrites) and directories are never listed.
+  # config). Only published photos are exposed: `photos/` (random keys) and the
+  # legacy `profiles/`; never the `pending/` upload area nor `.tmp/`.
+  # Directories are never listed. Deleted photos are removed from disk, so the
+  # cache lifetime is one day (not "immutable"): caches forget them soon.
   plug(Plug.Static,
     at: "/uploads",
     from: {Snack.Storage.Local, :uploads_dir, []},
-    only: ~w(profiles),
+    only: ~w(photos profiles),
     gzip: false,
-    cache_control_for_etags: "public, max-age=31536000, immutable",
+    cache_control_for_etags: "public, max-age=86400",
     headers: %{"x-content-type-options" => "nosniff"}
   )
 

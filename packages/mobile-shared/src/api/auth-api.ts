@@ -31,13 +31,13 @@ export function createSessionApi(httpClient: HttpClient): SessionApi {
     refresh(refreshToken) {
       return httpClient.post<SessionBundle>("/api/session/refresh", { refreshToken });
     },
+    /** `DELETE /api/session` (la única ruta de revocación del backend). */
     async revoke(refreshToken) {
-      if (httpClient.delete) {
-        await httpClient.delete<void>("/api/session", { refreshToken });
-        return;
+      if (!httpClient.delete) {
+        throw new Error("SessionApi.revoke necesita un HttpClient con delete() (DELETE /api/session).");
       }
 
-      await httpClient.post<void>("/api/session/revoke", { refreshToken });
+      await httpClient.delete<void>("/api/session", { refreshToken });
     }
   };
 }

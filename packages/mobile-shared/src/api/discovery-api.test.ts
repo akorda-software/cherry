@@ -104,7 +104,6 @@ describe("createDiscoveryApi", () => {
           whatIAmLookingFor: "go_with_the_flow",
           distanceLabel: "Cerca de ti",
           distanceKmApprox: 1,
-          score: 0,
           sharedTagsCount: 0,
           photoUrl: null,
           photoCount: 0,
@@ -121,7 +120,17 @@ describe("createDiscoveryApi", () => {
       const result = await api.undo();
 
       expect(http.post).toHaveBeenCalledWith("/api/discovery/undo", {});
-      expect(result.profile.id).toBe("profile-1");
+      expect(result.profile?.id).toBe("profile-1");
+    });
+
+    it("passes through a null profile (undone, but no longer visible)", async () => {
+      const http = createMockHttpClient();
+      const response: DiscoveryUndoResponse = { undone: true, profile: null };
+      vi.mocked(http.post).mockResolvedValueOnce(response);
+
+      const result = await createDiscoveryApi(http).undo();
+
+      expect(result).toEqual({ undone: true, profile: null });
     });
   });
 });

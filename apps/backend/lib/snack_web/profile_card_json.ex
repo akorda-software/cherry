@@ -13,7 +13,8 @@ defmodule SnackWeb.ProfileCardJSON do
   @doc """
   Card (`DiscoveryProfileCard`). `row` usa las claves de las filas del feed; las
   claves sociales (`liked_viewer`, `is_newcomer`, `beyond_preferred_distance`)
-  son opcionales para funcionar con filas de cualquier origen.
+  son opcionales para funcionar con filas de cualquier origen. Nunca incluye la
+  puntuación del ranking: delata señales privadas (actividad, likes pendientes).
   """
   def card(conn, row, media) do
     photos = ProfileCards.photos_for(media, row.id)
@@ -30,7 +31,6 @@ defmodule SnackWeb.ProfileCardJSON do
       whatIAmLookingFor: row.what_i_am_looking_for,
       distanceLabel: distance_label(distance_m),
       distanceKmApprox: approximate_distance_km(distance_m),
-      score: Map.get(row, :score) || 0,
       sharedTagsCount: Map.get(row, :shared_tags_count) || Enum.count(tags, &elem(&1, 1)),
       photoUrl: primary_photo_url,
       photoCount: photo_count(photos, row),

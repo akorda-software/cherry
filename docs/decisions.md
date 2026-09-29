@@ -6,6 +6,21 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-09-29 — Visibilidad social coherente con el feed y medios efímeros
+
+- **Contexto:** La revisión de seguridad del overhaul encontró que el perfil público y el destino de un swipe saltaban los filtros duros del feed (etiquetas bloqueadas, intención, género/edad), que un like histórico mantenía visible a una ex pareja (y su distancia en vivo), que cualquiera sin perfil activo podía hacer swipe, que la card exponía la puntuación (actividad, likes pendientes), que la ubicación aceptaba cualquier geometría y que las fotos subidas o borradas quedaban públicas para siempre.
+- **Decisión:**
+  1. **Una sola regla de visibilidad** para feed, likes, perfil público y swipe: si no hay match vivo, el otro perfil tiene que ser descubrible y pasar los filtros duros en ambas direcciones; las preferencias de la otra persona hacia mí se relajan solo si tiene un like pendiente hacia mí (su like es su consentimiento). Con match vivo el perfil sigue visible para el chat. Un like antiguo no da visibilidad. Los fallos responden 404 indistinguible.
+  2. **Viewer activo** (completo, descubrible, sin pausar) para hacer swipe, deshacer y ver perfiles ajenos, salvo el perfil de un match vivo.
+  3. **La puntuación no sale del servidor.**
+  4. **Ubicación:** solo lat/lng desde el cliente, siempre en rejilla de 500 m, como mucho una actualización por minuto; la BD solo guarda puntos.
+  5. **Fotos efímeras:** claves aleatorias sin id de perfil, subida a zona de espera no pública y publicación al completar; límites de intents; borrado físico al borrar foto o cuenta y barrido periódico de subidas abandonadas; caché de un día en lugar de «immutable».
+  6. Deshacer un «no» no depende de que la otra persona siga visible: se deshace y la respuesta lleva `profile: null`.
+- **Motivación:** `PRODUCT.md` (anti-predatoria, las etiquetas mandan, bloqueos siempre). Evita acoso tras un unmatch, triangulación por distancia y hosting gratuito en nuestro almacenamiento.
+- **Referencias:** `docs/05-backend-api.md`, `docs/06-contratos-mobile-backend.md`, `Snack.Dating.Social`, `Snack.Dating.PhotoStorage`.
+
+---
+
 ## D-2026-09-29 — Ranking de discovery v2
 
 - **Contexto:** El ranking v1 tenía estos huecos:

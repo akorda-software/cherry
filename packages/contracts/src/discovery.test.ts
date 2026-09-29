@@ -19,7 +19,6 @@ const card: DiscoveryProfileCard = {
   whatIAmLookingFor: "relationship",
   distanceLabel: "Cerca de ti",
   distanceKmApprox: 2,
-  score: 88,
   sharedTagsCount: 3,
   photoUrl: "https://example.com/photo1.jpg",
   photoCount: 2,

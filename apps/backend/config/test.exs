@@ -6,11 +6,36 @@ import Config
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 #
-# Si DATABASE_URL está definido (p. ej. cuando localhost:5432 está ocupado por
-# otro proyecto), se usa tal cual.
-if System.get_env("DATABASE_URL") do
+# BD de tests: TEST_DATABASE_URL si está definida; si no, DATABASE_URL solo si
+# su base de datos es de tests (el nombre contiene `_test`, p. ej. snack_test o
+# snack_test_fix). Así un DATABASE_URL de dev exportado en la shell nunca hace
+# que `mix test` machaque snack_dev. Sin ninguna, localhost:5432/snack_test.
+test_database_url =
+  case {System.get_env("TEST_DATABASE_URL"), System.get_env("DATABASE_URL")} do
+    {url, _} when is_binary(url) and url != "" ->
+      url
+
+    {_, url} when is_binary(url) and url != "" ->
+      database =
+        url |> URI.parse() |> Map.get(:path, "") |> to_string() |> String.trim_leading("/")
+
+      if String.contains?(database, "_test") do
+        url
+      else
+        raise """
+        refusing to run tests against DATABASE_URL database #{inspect(database)}:
+        its name must contain "_test" (tests wipe their database). Use
+        TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_test mix test
+        """
+      end
+
+    _none ->
+      nil
+  end
+
+if test_database_url do
   config :snack, Snack.Repo,
-    url: System.get_env("DATABASE_URL"),
+    url: test_database_url,
     pool: Ecto.Adapters.SQL.Sandbox,
     pool_size: System.schedulers_online() * 2,
     types: Snack.PostgresTypes

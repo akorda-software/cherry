@@ -16,6 +16,8 @@ defmodule Snack.Dating.ProfilePhotoUploadIntent do
     field(:size_bytes, :integer)
     field(:expires_at, :utc_datetime)
     field(:completed_at, :utc_datetime)
+    # Stored object(s) physically deleted (Snack.Dating.PhotoStorage).
+    field(:storage_deleted_at, :utc_datetime)
 
     belongs_to(:profile, Profile)
 

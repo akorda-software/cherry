@@ -10,33 +10,14 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
   def feed(conn, params) do
     profile = conn.assigns.current_profile
 
-    cond do
-      is_nil(profile) ->
+    case profile && Social.viewer_status(profile) do
+      nil ->
         profile_not_found(conn)
 
-      profile.is_paused ->
-        conn
-        |> put_status(:forbidden)
-        |> json(%{
-          error: "profile_paused",
-          reason: "your profile is paused",
-          onboardingRequired: false,
-          nextOnboardingStep: nil
-        })
+      {:error, reason} ->
+        inactive_viewer(conn, profile, reason)
 
-      !(profile.is_complete && profile.is_discoverable && is_nil(profile.deleted_at)) ->
-        {_complete?, next_step} = SnackWeb.Onboarding.state(profile)
-
-        conn
-        |> put_status(:forbidden)
-        |> json(%{
-          error: "profile_incomplete",
-          reason: "complete your profile to browse",
-          onboardingRequired: true,
-          nextOnboardingStep: next_step
-        })
-
-      true ->
+      :ok ->
         with {:ok, limit} <- SnackWeb.Pagination.limit(params, 20),
              {:ok, %{profiles: rows, next_cursor: next_cursor}} <-
                Dating.discovery_feed(profile.id, limit: limit, cursor: Map.get(params, "cursor")) do
@@ -66,6 +47,9 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
         {:error, :profile_not_found} ->
           profile_not_found(conn)
 
+        {:error, reason} when reason in [:profile_paused, :profile_incomplete] ->
+          inactive_viewer(conn, profile, reason)
+
         {:error, :already_swiped} ->
           conn |> put_status(:conflict) |> json(%{error: "already_swiped"})
 
@@ -90,17 +74,26 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
     end
   end
 
+  @doc """
+  Deshace el último «no». Si el perfil ya no es visible (pausa, bloqueo,
+  filtros...), el deshacer se aplica igualmente y `profile` es `null`.
+  """
   def undo(conn, _params) do
     profile = conn.assigns.current_profile
 
     with %{} <- profile,
-         {:ok, target_id} <- Social.undo_last_dislike(profile),
-         %{} = row <- Map.get(ProfileCards.rows(profile.id, [target_id]), target_id) do
-      media = ProfileCards.load_media(profile.id, [target_id])
-      json(conn, %{undone: true, profile: ProfileCardJSON.card(conn, row, media)})
+         {:ok, target_id} <- Social.undo_last_dislike(profile) do
+      card =
+        case Social.public_profile(profile, target_id) do
+          {:ok, %{row: row, media: media}} -> ProfileCardJSON.card(conn, row, media)
+          {:error, :profile_not_found} -> nil
+        end
+
+      json(conn, %{undone: true, profile: card})
     else
       nil -> profile_not_found(conn)
       {:error, :nothing_to_undo} -> unprocessable(conn, :nothing_to_undo)
+      {:error, reason} -> inactive_viewer(conn, profile, reason)
     end
   end
 
@@ -122,6 +115,31 @@ defmodule SnackWeb.Controllers.Api.DiscoveryController do
           %{id: other_id, displayName: nil, age: nil, photoUrl: nil}
         end
     }
+  end
+
+  # Same 403 bodies as the feed: swipes, undo and the feed need an active viewer.
+  defp inactive_viewer(conn, _profile, :profile_paused) do
+    conn
+    |> put_status(:forbidden)
+    |> json(%{
+      error: "profile_paused",
+      reason: "your profile is paused",
+      onboardingRequired: false,
+      nextOnboardingStep: nil
+    })
+  end
+
+  defp inactive_viewer(conn, profile, :profile_incomplete) do
+    {_complete?, next_step} = SnackWeb.Onboarding.state(profile)
+
+    conn
+    |> put_status(:forbidden)
+    |> json(%{
+      error: "profile_incomplete",
+      reason: "complete your profile to browse",
+      onboardingRequired: true,
+      nextOnboardingStep: next_step
+    })
   end
 
   defp profile_not_found(conn) do

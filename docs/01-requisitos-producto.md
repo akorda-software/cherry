@@ -1,6 +1,6 @@
 # Requisitos de producto
 
-Reglas de negocio de la v1. Son requisitos de producto: el estado de implementación de cada uno se consulta en `10-plan-fases.md`.
+Reglas de negocio de la v1. Salvo donde se indica, están implementadas y el backend las aplica; lo pendiente está en `10-plan-fases.md` y `11-deuda-tecnica-pendiente.md`.
 
 ## Autenticación
 
@@ -12,7 +12,7 @@ Reglas de negocio de la v1. Son requisitos de producto: el estado de implementac
 
 Campos obligatorios para completar:
 
-- Nombre, fecha de nacimiento (la edad se deriva), género, interested-in, qué busco, bio, fotos, tags positivos, tags bloqueados, preferencias de discovery y ubicación.
+- Nombre, fecha de nacimiento (la edad se deriva; 18+), género, interested-in, qué busco, bio, fotos, tags positivos, preferencias de discovery y ubicación. Los tags bloqueados son opcionales.
 
 Reglas concretas:
 
@@ -20,9 +20,9 @@ Reglas concretas:
 |---|---|
 | Bio | obligatoria, 20–240 caracteres |
 | Fotos activas | 2–4 |
-| Tags positivos | máx. 8 (catálogo cerrado) |
-| Tags bloqueados | máx. 5 (catálogo cerrado) |
-| Catálogo de tags | cerrado, sin texto libre (52 etiquetas con emoji seedeadas en categorías: interests, active, lifestyle, values, personality, pets, relationship) |
+| Tags positivos | mín. 1 para completar el perfil (la app pide 3 en sus pantallas), máx. 8 (catálogo cerrado) |
+| Tags bloqueados | opcionales, máx. 5 (catálogo cerrado); una etiqueta no puede ser a la vez positiva y bloqueada |
+| Catálogo de tags | cerrado, sin texto libre: 52 etiquetas con emoji en 7 categorías (interests, active, lifestyle, values, personality, pets, relationship), definidas en `Snack.Dating.TagCatalog` y sincronizadas por `priv/repo/seeds.exs` / `bin/migrate` |
 
 - `gender` y `interested_in` son conceptos separados; `interested_in` admite múltiples selecciones.
 - Géneros: man / woman / non_binary.
@@ -31,7 +31,7 @@ Reglas concretas:
 
 ## Preferencias de discovery
 
-- Rango de edad entre 18 y 100 con mínimo ≤ máximo.
+- Rango de edad entre 18 y 100 con mínimo ≤ máximo (el selector de la app llega a 99).
 - Distancia: 10 / 25 / 50 / 100 km o sin límite (`999999`). Cualquier otro valor se rechaza.
 - Al menos una selección en interested-in.
 - «Ampliar distancia si hay poca oferta» (`expand_distance`), activada por defecto.
@@ -41,7 +41,8 @@ Reglas concretas:
 ## Ubicación
 
 - Obligatoria para discovery en v1; sin fallback manual (código postal/ciudad).
-- Se usa la ubicación actual del dispositivo, refrescada al abrir la app.
+- Se usa la ubicación actual del dispositivo (permiso de primer plano). Hoy solo se envía en el paso de ubicación del onboarding: ni se refresca al abrir la app ni se puede cambiar después (ver `11-deuda-tecnica-pendiente.md`).
+- El backend ignora las actualizaciones a menos de 60 s de la anterior.
 - Solo se almacena ubicación aproximada (rejilla de 500 m); nunca se exponen coordenadas exactas.
 - Si el permiso se deniega, el onboarding no puede completarse y discovery queda bloqueado.
 
@@ -85,7 +86,7 @@ Reglas concretas:
 
 ## Chat
 
-- Solo texto (sin imágenes/audio/vídeo), mensajes no vacíos.
+- Solo texto (sin imágenes/audio/vídeo), de 1 a 2000 caracteres, cifrado en reposo.
 - Cualquiera de los dos puede enviar el primero.
 - Existe solo tras match activo; participantes únicamente.
 
@@ -96,9 +97,15 @@ Reglas concretas:
 
 ## Anti-abuso
 
-Protecciones técnicas (no límites de monetización):
+Protecciones técnicas (no límites de monetización). Implementadas hoy:
 
-- Detección de velocidad de swipe imposible y rate-limiting de comportamiento sospechoso.
+- Subida de fotos: máx. 4 intents vivos y 20 por hora por perfil, zona de espera no pública y verificación del binario.
+- Ubicación: como mucho una actualización por minuto, siempre en rejilla de 500 m.
+- Reportes idempotentes (uno abierto por pareja reporter–reportado).
+
+Pendientes (ver `11-deuda-tecnica-pendiente.md`):
+
+- Detección de velocidad de swipe imposible y rate-limiting de comportamiento sospechoso (también en login y refresh).
 - Límites a patrones abusivos de creación de cuentas.
 - Flags internas para usuarios sospechosos.
 
@@ -113,7 +120,8 @@ Capacidades de admin:
 
 - Revisar usuarios, perfiles, reportes y fotos; deshabilitar cuentas.
 - Los endpoints admin pueden permanecer privados fuera del contrato móvil.
+- Hoy solo existen funciones de contexto (`list_reports`, `update_report`, `disable_profile`), sin rutas ni vistas.
 
 ## Métricas
 
-Captura mínima sobre `analytics_events`: finalización de onboarding y perfil, likes enviados, matches creados, conversaciones iniciadas, primera respuesta, retención D1/D7, reportes y bloques.
+Captura mínima sobre `analytics_events`: finalización de onboarding y perfil, likes enviados, matches creados, conversaciones iniciadas, primera respuesta, retención D1/D7, reportes y bloques. Pendiente: la tabla y `Snack.Dating.track_event/1` existen, pero hoy no se registra ningún evento.

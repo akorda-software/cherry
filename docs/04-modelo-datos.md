@@ -4,6 +4,8 @@ Esquema real de PostgreSQL/PostGIS, según las migraciones de `apps/backend/priv
 
 ## Fundación auth (20260412195822)
 
+Extensión `pgcrypto`. Tablas:
+
 - `users` — cuenta canónica.
 - `provider_identities` — vinculación provider ↔ user (credenciales Google/Apple).
 - `devices` — dispositivos de sesión (`user_id` + `installation_id` únicos).
@@ -28,7 +30,7 @@ Extensión PostGIS + uuid-ossp. Tablas:
 | `matches` | profile_a_id, profile_b_id, status (active/unmatched/expired), matched_at, expires_at, first_message_at, unmatched_at | un match por pareja (índice único `idx_matches_canonical_pair` sobre `LEAST/GREATEST` de los dos perfiles). expires_at = matched_at + 30 días (`:match_expiry_days`) hasta el primer mensaje, que lo pone a NULL. La caducidad se aplica lazy en todas las lecturas (`expires_at <= now` = caducado) y `MatchExpirySweeper` pasa el status a `expired` cada hora |
 | `conversations` | match_id (FK único) | sin columna status: el gate de mensajería vive en `matches.status`/`expires_at` |
 | `conversation_reads` | conversation_id, profile_id, last_read_at | único por (conversation_id, profile_id); no leídos = mensajes del otro con `inserted_at > last_read_at`. Upsert que nunca retrocede |
-| `messages` | conversation_id, sender_profile_id, body (1–2000) | paginado por inserted_at; **body cifrado en reposo** (AES-256-GCM vía `Snack.Crypto`, clave en `MESSAGE_ENCRYPTION_KEY` — ver D-2026-08-21) |
+| `messages` | conversation_id, sender_profile_id, body (1–2000) | paginado por `(inserted_at, id)`, marcas de tiempo con microsegundos desde 20260929170000; **body cifrado en reposo** (AES-256-GCM vía `Snack.Crypto`, clave en `MESSAGE_ENCRYPTION_KEY` — ver D-2026-08-21) |
 | `user_blocks` | actor_profile_id, target_profile_id, reason | únicos por par |
 | `reports` | reporter_profile_id, target_profile_id, reason, details, status, reviewed_at/by | revisión admin |
 | `analytics_events` | profile_id/user_id, event_name, payload jsonb | append-only |
@@ -41,10 +43,14 @@ Extensión PostGIS + uuid-ossp. Tablas:
 | 20260429101000 | `profile_photo_upload_intents` — intents de subida firmados (R2/S3 o token local) con expiración y single-use |
 | 20260429102000 | `push_tokens` — token Expo por sesión/plataforma/installation, estado active/inactive |
 | 20260617100000 | `discovery_preferences.discovery_mode`: preferencia de presentación del cliente; no afecta al ranking |
+| 20260821100000 | Cifra en reposo los cuerpos de mensaje que aún estaban en claro (D-2026-08-21); el `down` los descifra |
+| 20260905170000 | Propaga los perfiles ya borrados a sus cuentas (`users.deleted_at`) y revoca sus credenciales (ver abajo) |
+| 20260905170100 | Caduca los intents de subida de fotos antiguos pendientes (ver abajo) |
 | 20260929113715 | Ranking de discovery v2 (D-2026-09-29): `profiles.completed_at`/`last_active_at` (backfill: `updated_at` en perfiles completos; actividad = máximo de `updated_at` y último login de dispositivo), `discovery_preferences.expand_distance`. Normaliza preferencias guardadas: distancias fuera de catálogo suben a la siguiente opción; `age_min > age_max` se intercambian. Añade el índice parcial de likes recibidos y la tabla `discovery_tag_weights` |
 | 20260929114512 | `tags.emoji` (nullable) para el catálogo con emoji |
 | 20260929120000 | `conversation_reads` (estado de lectura por participante) y ampliación a 30 días de los matches pendientes creados con la regla de 7 días (D-2026-09-29), solo si aún no han caducado (`expires_at > now()`: nunca resucita un match caducado). El `down` solo elimina la tabla |
 | 20260929154521 | `swipe_actions_dislikes_received_index`: índice parcial para excluir del feed a quien ya dio dislike al viewer (D-2026-09-29). Sin `CONCURRENTLY` (ver [Reglas de migraciones](#reglas-de-migraciones)) |
+| 20260929170000 | `messages.inserted_at`/`updated_at` y `conversation_reads.last_read_at` con microsegundos: dos mensajes del mismo segundo ya no se desordenan al recargar y un mensaje llegado en el mismo segundo en que se abre el chat no cuenta como leído |
 | 20260929180000 | `profile_locations` solo admite puntos: las filas no-punto existentes pasan a su centroide en la rejilla de 500 m (las vacías se borran) y se añade el CHECK `profile_locations_coordinates_point` |
 | 20260929181000 | Limpieza física de fotos: `storage_deleted_at` en `profile_photos` y `profile_photo_upload_intents`, índices para el barrido y para el límite de intents por perfil/hora. Las fotos ya inactivas o de cuentas ya borradas se limpian en el primer barrido |
 

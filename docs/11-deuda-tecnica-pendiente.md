@@ -1,71 +1,36 @@
 # Deuda técnica pendiente
 
-Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21). Ordenados por impacto.
+Huecos conocidos entre producto, contratos, documentación y código a 2026-09-29, tras el rediseño «Libreta kawaii» y su revisión. Ordenados por impacto dentro de cada bloque. Lo ya resuelto no se lista aquí: está en `progress.md`, `decisions.md` y el historial de git.
 
 ## Móvil
 
-3. Sin cliente para: chat WS (sin dependencia de socket) y push-token. *(Los clientes REST de fotos, likes, perfil público, matches, chat, safety, settings y resumen existen desde 2026-09-29 en `@snack/mobile-shared`; falta usarlos en la app.)*
-4. `isPaused` ignorado en el shell y el feed (el dominio lo modela y el backend lo expone).
-5. Estados de feed diferenciados ausentes (poca oferta, perfil incompleto, pausado, offline); solo existe un empty-state genérico con reintento.
-6. `home.tsx` sin renombrar a `discover.tsx`; falta tab Matches.
-7. Modal de match sin CTA a conversación.
-9. Sin tests de las pantallas de onboarding. *(El resolver ya tiene tests: `src/features/onboarding/domain/resume.test.ts`.)*
-10. Dirección visual sin decidir: tema neobrutal activo vs paleta dating planificada (ver `08-identidad-visual.md`).
+1. **Sin notificaciones push.** La app no registra token (`POST /api/me/push-token` no se usa; no depende de `expo-notifications`) ni gestiona la recepción o la apertura de una notificación. El backend ya envía los avisos de match y mensaje nuevos (`Snack.Notifications`), así que hoy no llega ninguno.
+2. **Verificada solo en Expo Web.** Hápticos, cámara y galería, teclado en Android, permiso de ubicación nativo, login nativo con Google/Apple y el socket del chat en redes móviles no se han probado en un dispositivo real. Falta una pasada en Android e iOS antes de cualquier prueba con personas.
+3. **`apps/mobile/android/` es un prebuild antiguo y está en git.** Hay 37 ficheros versionados del 2026-04-15 aunque `.gitignore` excluye `apps/mobile/android/`. No reflejan `app.config.ts` actual: faltan, entre otros, los permisos de ubicación y cámara y los plugins añadidos después. `expo run:android` usa ese directorio si existe. Arreglo: sacarlo del índice (`git rm -r --cached apps/mobile/android`) y generar siempre con `npx expo prebuild --clean`.
+4. **Ubicación congelada tras el onboarding.** Solo se envía en el paso de ubicación: no se refresca al abrir la app (como pide `01-requisitos-producto.md`) y no hay forma de cambiarla desde Yo o Ajustes. Quien se muda sigue viendo gente de su zona antigua.
+5. **Sin modo oscuro.** `userInterfaceStyle: "light"` y un único tema (`light-theme.ts`); no se usa `useColorScheme`. La arquitectura de tokens admite un segundo tema con el mismo contrato (`createTheme`).
+6. **Sin estado «sin conexión».** Descubrir y el resto de pantallas tratan un fallo de red como error genérico con reintento; no hay detección de conectividad.
+7. **Expo Go no sirve para entrar.** En Expo Go no se crean servicios de login y la app se queda en la pantalla de carga (deducido del código). Hace falta un build de desarrollo, Expo Web con el login de desarrollo o `EXPO_PUBLIC_MOCK_AUTH=true`.
+8. **«Continuar con Apple» también se muestra en web**, donde Sign in with Apple nativo no está disponible (la condición es `Platform.OS !== "android"`).
+9. **Sin tests de renderizado de las pantallas de producto** (onboarding, Descubrir, Likes, Chats, Yo): se prueban dominio, stores y componentes del sistema de diseño.
+10. **Acerca de no menciona la licencia del software (AGPL-3.0)**, solo la de las fuentes; el enlace «Ver el código» depende de compilar con `EXPO_PUBLIC_SOURCE_URL`.
+11. El selector de edad de Filtros llega a 99; el backend admite hasta 100.
 
 ## Backend
 
-17. Flag `strict_profile_completion` permite desactivar la exigencia de fotos/ubicación en completitud; el contrato v1 las hace obligatorias — **en dev está a `false`** (`config/dev.exs:8`); asegurar `true` en entornos reales.
+1. **Admin sin rutas ni vistas.** Los reportes se guardan (`reports`) y existen `list_reports/2`, `update_report/2` y `disable_profile/1`, pero no hay forma de revisarlos salvo consultando la base de datos. Con usuarios reales, la moderación no escala.
+2. **Borrar la cuenta no purga los datos.** Solo se borran físicamente las fotos. Cuenta, identidad del proveedor, email, perfil (nombre, fecha de nacimiento, bio, última ubicación aproximada), swipes, matches, mensajes (cifrados) y reportes se conservan sin plazo. Falta una política de retención y un borrado real (o anonimización) tras un periodo de gracia. Consecuencia actual: la misma cuenta de Google/Apple no puede volver a registrarse.
+3. **Anti-abuso activo pendiente.** No hay rate limiting de swipes, de login (`/api/auth/:provider/callback`) ni de refresh, ni límites a la creación de cuentas, ni flags de usuarios sospechosos. Las únicas protecciones son las de subida de fotos, ubicación y reportes. Tampoco hay plug `RemoteIp`: detrás de un proxy, la IP que ve Phoenix es la del proxy.
+4. **Métricas sin capturar.** Existe `analytics_events` y `Snack.Dating.track_event/1`, pero nada lo llama: no se registra ningún evento de producto.
+5. **Índices sin `CONCURRENTLY` sobre `swipe_actions`.** `20260929113715_discovery_ranking_v2` (`swipe_actions_likes_received_index`) y `20260929154521_add_dislikes_received_index` crean índices normales, que bloquean escrituras en `swipe_actions` mientras se construyen. Inocuo en el primer despliegue (tabla vacía y `stop-first`); con una tabla grande ya en producción habría que usar `migration_lock: :pg_advisory_lock` y una migración propia con `@disable_ddl_transaction true` (detalle en `04-modelo-datos.md`, «Reglas de migraciones»).
+6. **`decimal` 2.4.1.** El arreglo del aviso conocido está en 3.x y `ecto 3.13` exige `~> 2.0`: actualizar cuando Ecto lo admita. El resto de dependencias se actualizó el 2026-09-29.
+7. **Coste del feed lineal en candidatos** (unos 20–25 µs cada uno; 10–42 ms p50 con 3.000–10.000 perfiles). Con decenas de miles de candidatos en un mismo radio habrá que precalcular (cola de candidatos o estadísticas de atención por perfil).
+8. **`compatible_only` simétrico, pendiente de validar con el propietario.** Hoy, si cualquiera de los dos lo activa, se exige una etiqueta en común en ambos sentidos (D-2026-09-29, ranking v2).
+9. **Una sola réplica.** Sin clúster de Erlang (libcluster) el PubSub del chat no cruza nodos: no se puede escalar horizontalmente el backend.
+10. **Fotos sin moderación.** Se verifican existencia, tamaño, MIME y cabecera binaria; no hay decodificación completa ni moderación de contenido.
+11. **`strict_profile_completion` es `false` en dev** (`config/dev.exs`): en desarrollo se puede completar el perfil sin fotos ni ubicación, y el comentario de ese fichero («not wired yet») ya no es cierto. En producción vale `true` por defecto; no desactivarlo en instancias reales.
 
-## Proceso
+## Documentación e infraestructura
 
-24. Trabajo extenso sin commitear (~58 modificados + ~42 sin trackear tras la reestructuración de docs): consolidar en commits antes de seguir creciendo sobre él.
-
-## Resuelto el 2026-09-29 (revisión Fable del overhaul «Libreta kawaii»)
-
-- #1 (bloqueante) Onboarding completable: el móvil tiene pasos de fotos y ubicación, y el resolver (`resolveResumeStep` en `apps/mobile/src/features/onboarding/domain/resume.ts`, usado por `app/(onboarding)/index.tsx`) mapea cada `nextOnboardingStep` y cada campo de `missing[]` a su paso (`photos`→fotos, `location`→ubicación, `discovery_preferences`→«a quién quieres conocer»). Con tests.
-- Distancia con selector cerrado: Filtros solo ofrece 10, 25, 50, 100 km y «Sin límite» (`DISTANCE_OPTIONS` en `apps/mobile/src/features/discovery/domain/filters.ts`) y el onboarding usa 50 km por defecto. Si el backend rechaza con 422 la edad o distancia guardadas en «a quién quieres conocer», el paso reintenta una vez con los valores por defecto.
-- Reanudar el onboarding da por respondido el paso de etiquetas con 1 positiva (lo que exige el backend); dentro del paso la UI sigue pidiendo 3 para continuar.
-
-## Resuelto el 2026-09-29 (bienvenida, Yo y Ajustes)
-
-- #8 El login ya no navega a Descubrir: tras entrar vuelve a `/` y `app/index.tsx` espera al bootstrap para decidir (onboarding o Descubrir).
-- Recargar el bootstrap con uno ya cargado lo revalida en segundo plano (los guards no desmontan la zona privada al pausar el perfil) y descarta respuestas que llegan tras cerrar sesión o tras una recarga más reciente.
-- Cerrar sesión deja la sesión local limpia aunque falle revocarla en el servidor (sin red o cuenta ya borrada).
-- Pausa/reanudación y borrado de cuenta usados desde la app (pestaña Yo y Ajustes); el borrado limpia la sesión y vuelve a la bienvenida.
-
-## Resuelto el 2026-09-29 (ranking de discovery v2)
-
-- #13 `discovery_mode` se conserva como preferencia de presentación del cliente (swipe o feed): el feed y su orden son los mismos en ambos modos (D-2026-09-29).
-- #22 `PUT /api/me/discovery-preferences` valida en cada guardado, también parcial: `distance_km` ∈ {10, 25, 50, 100, 999999}, edades 18–100 y `age_min ≤ age_max`. Si falla, 422 por campo sin guardar nada. La migración `20260929113715` normaliza los valores antiguos (distancia a la siguiente opción; edades invertidas se intercambian).
-- Pendientes relacionados:
-  - El coste del feed es lineal en candidatos (unos 20–25 µs cada uno). Con decenas de miles de candidatos en un radio habrá que precalcular.
-  - Aplicar `compatible_only` de forma simétrica está pendiente de validar con el propietario.
-
-## Resuelto el 2026-09-29 (almacenamiento, etiquetas y datos de demo)
-
-- #23 `PUT /api/me/tags` y `/api/me/blocked-tags` rechazan con 422 `invalid_tags` los IDs desconocidos, mal formados o inactivos y con 422 `tag_conflict` una etiqueta que quedaría a la vez positiva y bloqueada (con bloqueo de fila del perfil para evitar carreras).
-- Fotos sin R2: almacenamiento local (`STORAGE_ADAPTER=local`, por defecto en dev) con el mismo contrato de subida; el paso de fotos del onboarding ya se puede completar en dev e instancias propias (el móvil ya tiene el paso, ver #1 más abajo).
-- `PUT /api/me/photos/order` expuesto; la reordenación exige la lista completa de fotos activas y ya no deja fotos con posiciones temporales cuando alguna conserva su sitio.
-- Login de desarrollo por persona (`{email}`) y `priv/repo/demo_seeds.exs` con datos de demo realistas.
-- Pendiente relacionado: borrar una foto no elimina el binario (ni en disco ni en R2) ni compacta posiciones.
-
-## Resuelto el 2026-09-29 (API social)
-
-- #2 Cliente de ubicación con el contrato `latitude/longitude/accuracyMeters/recordedAt`.
-- #11 `GET /api/matches` (y `GET /api/conversations`) con foto, último mensaje descifrado y `unreadCount` (tabla `conversation_reads`), en una consulta.
-- #12 403 del feed con `onboardingRequired`/`nextOnboardingStep`; los perfiles en pausa reciben 403 `profile_paused`.
-- #16 Swipes con errores semánticos: 409 `already_swiped`, 422 `cannot_swipe_self`/`invalid_action_type`, 404 `profile_not_found` si el destino no existe o no es visible.
-- #18 Tests de controller para bootstrap, safety, settings, matches y chat.
-- #21 Matches caducados (30 días) fuera de listas, badges y perfil público; historial REST cerrado para conversaciones no activas; barrido periódico que marca `expired`.
-- Carrera de likes simultáneos: `record_swipe` serializa cada pareja con un advisory lock de transacción, así que el segundo like siempre ve el primero y se crea exactamente un match (garantía en BD: índice único `idx_matches_canonical_pair`). Test con conexiones reales concurrentes en `test/snack/swipe_concurrency_test.exs`.
-
-## Resuelto el 2026-09-05
-
-- Bloqueos aplicados al envío REST/WS y a broadcasts pendientes; envíos serializados con bloqueos por match.
-- Historial REST carga el match antes de comprobar participantes; valida límite y cursor.
-- Cuenta desactivada con revocación de todas las sesiones y push tokens, desconexión WS y denegación de nuevos logins; funciona antes del onboarding.
-- Discovery extraído a `Snack.Dating.Discovery`, scoring/límite en SQL y cursor opaco coherente con el orden. Corregidos el filtro de tags bloqueados y el conteo de tags compartidos con UUIDs.
-- Fotos verificadas contra R2 y subida condicional para impedir sobrescrituras posteriores. Retirado el endpoint de creación directa de metadatos.
-- Reanudar un perfil completo restaura la visibilidad.
-
-Las fotos se comprueban por metadatos y cabecera binaria; la decodificación completa/moderación y la purga física de datos tras borrar una cuenta siguen fuera de esta implementación.
+2. **Sin `eas.json`** ni pipeline de build móvil: la compilación de la app para las tiendas es manual (`12-self-hosting.md` §8).
+3. `docs/starter-guide.md` sigue en inglés y describe el starter genérico, no el producto.

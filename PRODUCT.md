@@ -19,7 +19,7 @@ Snack es una app de citas **open source, 100 % gratuita y self-hosteable**. Exis
 ## Positioning
 
 - Gratis de verdad y para siempre: todo lo que otras apps cobran (ver quién te ha dado like, filtros, etc.) aquí es gratuito.
-- Open source y self-hosteable: cualquiera puede auditarla o montar su propia instancia.
+- Open source (AGPL-3.0) y self-hosteable: cualquiera puede auditarla o montar su propia instancia (`docs/12-self-hosting.md`), y nadie puede cerrar una versión modificada.
 - Las **etiquetas** son el núcleo: cada persona elige etiquetas que la definen (positivas) y etiquetas que bloquea; el algoritmo nunca muestra a alguien con una etiqueta bloqueada, y la compatibilidad por etiquetas pesa más que la proximidad pura.
 - Filosofía anti-predatoria: la app busca que el usuario esté cómodo y consiga lo que necesita, no maximizar el tiempo de uso.
 
@@ -35,7 +35,7 @@ Snack es una app de citas **open source, 100 % gratuita y self-hosteable**. Exis
 
 - Backend Phoenix + PostgreSQL/PostGIS; auth solo con Google y Apple (sesiones propias de Phoenix); fotos subidas a almacenamiento S3-compatible (R2, MinIO…) o al disco del propio servidor (self-hosting), siempre con verificación en servidor.
 - Perfil: nombre, fecha de nacimiento (18+), género (hombre / mujer / no binario), a quién quiere conocer (multiselección), qué busca (relación / casual / conocer gente / a ver qué pasa), bio de 20–240 caracteres, 2–4 fotos, ubicación aproximada (rejilla de 500 m, nunca coordenadas exactas).
-- Etiquetas: catálogo cerrado de ~50 en categorías (intereses, vida activa, estilo de vida, valores, personalidad, mascotas, relación y familia); máx. 8 positivas y máx. 5 bloqueadas. El bloqueo de etiquetas se aplica en ambas direcciones.
+- Etiquetas: catálogo cerrado de 52 en 7 categorías (intereses, vida activa, estilo de vida, valores, personalidad, mascotas, relación y familia); máx. 8 positivas y máx. 5 bloqueadas. El bloqueo de etiquetas se aplica en ambas direcciones.
 - Intención: cada intención ve la suya más "a ver qué pasa", que es compatible con todas; la misma intención puntúa más; relación y casual nunca se cruzan. Simétrico.
 - Match por like mutuo; el match caduca a los **30 días** si nadie escribe (decisión 2026-09-29, sustituye a los 7 días del v1). Chat solo texto.
 - Likes ilimitados, sin cuotas diarias; protecciones anti-abuso técnicas, nunca límites de monetización.
@@ -49,7 +49,7 @@ Snack es una app de citas **open source, 100 % gratuita y self-hosteable**. Exis
 
 ## Evidence on Hand
 
-- Catálogo real de 52 etiquetas con emoji en `apps/backend/priv/repo/seeds.exs`.
+- Catálogo real de 52 etiquetas con emoji en `apps/backend/lib/snack/dating/tag_catalog.ex` (lo sincronizan `priv/repo/seeds.exs` y `bin/migrate`).
 - Documentación de producto y contratos en `docs/`.
 - No hay testimonios, usuarios reales, métricas ni prensa: no se deben inventar cifras, reseñas ni número de usuarios.
 

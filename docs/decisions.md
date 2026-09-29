@@ -6,6 +6,32 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-09-29 — Licencia AGPL-3.0
+
+- **Contexto:** Snack es open source, gratuita y self-hosteable (`PRODUCT.md`). Con una licencia permisiva (MIT, Apache) cualquiera podría coger el código, modificarlo, montar una instancia cerrada y cobrar por lo que aquí es gratis (likes, filtros, deshacer), sin devolver nada. Al ser un servicio en red, ni siquiera la GPL obligaría a publicar esos cambios, porque la app no se «distribuye» al usar el servidor.
+- **Decisión:** Licencia **GNU AGPL-3.0** (texto en `LICENSE`; `"license": "AGPL-3.0-only"` en el `package.json` raíz). Quien modifique Snack y lo ofrezca a otras personas, también a través de la red, tiene que ofrecerles el código de su versión. La app lo facilita con el enlace «Ver el código» de Acerca de (`EXPO_PUBLIC_SOURCE_URL`).
+- **Motivación:** Nadie puede cerrar una instancia modificada y cobrar por ella a espaldas de sus usuarios; las mejoras de cualquier instancia vuelven a estar disponibles para todos. Encaja con la filosofía anti-predatoria y con que cualquiera pueda auditar el servicio que usa.
+- **Consecuencias:** Montar una instancia propia sigue siendo libre (`docs/12-self-hosting.md`); lo que no se puede es ocultar el código modificado. Las dependencias y fuentes incluidas conservan sus licencias (las fuentes, SIL OFL 1.1).
+- **Referencias:** `LICENSE`, `README.md`, `docs/12-self-hosting.md`.
+
+---
+
+## D-2026-09-29 — Dirección visual «Libreta kawaii»
+
+- **Contexto:** La app llevaba un tema «neobrutal» provisional (D-2026-06-18) y una paleta dating planificada sin decidir. `PRODUCT.md` fija como compromiso de marca del propietario un **neobrutalismo kawaii a tope** con pasteles muy vivos, animaciones cuidadas y una app que «te abraza».
+- **Decisión:** Dirección **«Libreta kawaii»**, elegida por el propietario frente a otra propuesta kawaii («Hoja de pegatinas») y frente al estándar del sector (foto a sangre, degradado oscuro e interfaz blanca genérica):
+  1. Neobrutalismo kawaii pastel: tinta ciruela sobre papel de puntos, contornos de tinta y sombras duras sin desenfoque, siete pasteles (fresa, menta, lavanda, limonada, cielo, melocotón, tomate) con variantes `fill`/`soft`/`deep`.
+  2. Cada perfil es una página de libreta: fotos con washi tape, etiquetas como pegatinas troqueladas y un sello «¡ME GUSTA!».
+  3. Tipografía: **Mochiy Pop One** (titulares), **M PLUS Rounded 1c** (interfaz) y **Yomogi** (anotaciones a mano), subseteadas a latín para no empaquetar glifos CJK.
+  4. Mascota **Mochi**, con varias caras para estados vacíos, errores y celebraciones.
+  5. Iconos propios (un único set SVG) y movimiento de sistema (pulsar, pegar, aparecer) con soporte de «reducir movimiento».
+- **Motivación:** Diferencia a Snack del arquetipo del sector y encarna su tono cálido y anti-predatorio. La arquitectura de tokens (D-2026-04-13) permite aplicarla sin tocar la lógica de producto.
+- **Consecuencias:** Solo hay tema claro (`userInterfaceStyle: "light"`); el modo oscuro queda como deuda. Reglas y componentes en `docs/08-identidad-visual.md`.
+- **Sustituye:** D-2026-06-18 (dirección «neobrutal» provisional con azul `#3A41E0`).
+- **Referencias:** `docs/08-identidad-visual.md`, `apps/mobile/src/shared/ui/`, `apps/mobile/assets/fonts/README.md`.
+
+---
+
 ## D-2026-09-29 — Visibilidad social coherente con el feed y medios efímeros
 
 - **Contexto:** La revisión de seguridad del overhaul encontró que el perfil público y el destino de un swipe saltaban los filtros duros del feed (etiquetas bloqueadas, intención, género/edad), que un like histórico mantenía visible a una ex pareja (y su distancia en vivo), que cualquiera sin perfil activo podía hacer swipe, que la card exponía la puntuación (actividad, likes pendientes), que la ubicación aceptaba cualquier geometría y que las fotos subidas o borradas quedaban públicas para siempre.
@@ -81,6 +107,7 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
   3. En BD, las fotos locales guardan la ruta relativa (`/uploads/...`) y la API siempre devuelve URLs absolutas: base `PUBLIC_BASE_URL` o, si no está definida, el host de la petición (la misma BD sirve a `localhost`, a la IP de la LAN o a un túnel en dev).
   4. **R2/S3:** el adaptador R2 admite `S3_ENDPOINT` + `S3_REGION` para MinIO, Garage u otro S3 (path-style), sin cambiar el comportamiento con R2.
 - **Consecuencias:** en local las fotos pasan a formar parte del estado del servidor: `UPLOADS_DIR` debe estar en un volumen persistente e incluirse en los backups. Phoenix sirve los binarios (suficiente para el volumen esperado; se puede poner una CDN o proxy con caché delante gracias a las cabeceras inmutables). Cambiar de adaptador no migra fotos: las ya guardadas siguen sirviéndose desde `/uploads` mientras exista el directorio. Sin moderación ni decodificación completa de imagen (igual que con R2). Borrar una foto solo la desactiva; la purga física sigue pendiente.
+- **Actualización (D-2026-09-29, visibilidad social y medios efímeros):** las subidas van a una zona de espera `pending/` y se publican al completar; borrar una foto o la cuenta borra el objeto físicamente; la caché pasa de «inmutable» a un día.
 - **Rechazadas:** exigir MinIO/Garage para self-hosting (otro servicio que operar para instancias pequeñas); subida multipart a Phoenix (cambiaría el contrato del móvil); URLs absolutas en BD (rompe al cambiar de host o de dominio).
 - **Referencias:** `docs/06-contratos-mobile-backend.md` (Fotos), `docs/05-backend-api.md`, `lib/cherry/storage.ex`.
 
@@ -108,6 +135,7 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 - **Contexto:** En Tinder deshacer es de pago; un swipe accidental a la izquierda frustra.
 - **Decisión:** `POST /api/discovery/undo` deshace el swipe más reciente solo si fue un `dislike` de hace menos de 10 minutos y el perfil sigue visible, y devuelve su card para reinsertarla. Se pueden encadenar mientras cada último swipe cumpla la regla. Los likes no se deshacen (pueden haber creado un match y notificado a la otra persona).
+- **Actualización (D-2026-09-29, visibilidad social):** el «no» se deshace aunque la persona ya no sea visible; entonces la respuesta lleva `profile: null` y no se reinserta nada.
 - **Motivación:** Comodidad del usuario sin coste; la ventana corta evita convertirlo en un historial de rechazos.
 - **Sustituye:** «sin undo» de las decisiones heredadas (2026-04-28).
 
@@ -129,7 +157,7 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
-## D-2026-06-18 — Dirección visual «neobrutal» para la app móvil (en curso)
+## D-2026-06-18 — Dirección visual «neobrutal» para la app móvil (sustituida por D-2026-09-29, «Libreta kawaii»)
 
 - **Contexto:** El plan visual de dating (plan de pantallas original, recuperable del historial de git) definía una paleta cálida (Cream/Coral/Mint/Lavender) sobre tokens semánticos. El trabajo en curso de onboarding/discovery aplicó en su lugar un tema «neobrutal» con azul `#3A41E0` como primario (`light-theme.ts`, `tokens/primitives/*`, sin commitear).
 - **Decisión:** Avanzar con la dirección neobrutal como tema activo del starter mientras no se retome la paleta dating. La arquitectura de tokens (primitivos → semánticos → temas) no cambia: retematizar sigue siendo editar `themes/` + `tokens/primitives/`.

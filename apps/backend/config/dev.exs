@@ -3,9 +3,9 @@ import Config
 # Enable dev-only endpoints (test login, etc.)
 config :snack, :enable_dev_test_login, true
 
-# Relax profile completeness rules in dev so onboarding can finish without
-# uploading photos or setting a location (those features are not wired yet).
-config :snack, :strict_profile_completion, false
+# Same completeness rules as production: photos (local storage) and location
+# work in dev, so onboarding must prove them end to end.
+config :snack, :strict_profile_completion, true
 
 # Photos on local disk, served at /uploads (override with STORAGE_ADAPTER /
 # UPLOADS_DIR). The directory is gitignored.

@@ -49,7 +49,7 @@ export function BioNote({ value, onChange, error, autoFocus = false, testID = "b
           maxLength={BIO_MAX}
           multiline
           onChangeText={onChange}
-          placeholder="Escribe aquí algo que te represente..."
+          placeholder="Escribe aquí algo que te represente…"
           placeholderTextColor={theme.semantic.text.faint}
           ref={input}
           selectionColor={c.fresaDeep}

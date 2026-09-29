@@ -132,7 +132,7 @@ describe("shared ui primitives", () => {
 
     expect(screen.getByRole("separator", { name: "Profile section" })).toBeInTheDocument();
     expect(screen.getByText("sam@example.com")).toBeInTheDocument();
-    expect(screen.getByLabelText("Pat, selected user badge")).toBeInTheDocument();
+    expect(screen.getByLabelText("Pat, seleccionado")).toBeInTheDocument();
   });
 
   it("keeps the legacy button tone working", () => {

@@ -102,7 +102,7 @@ export function DiscoverEmpty({
       actionIcon="sliders"
       actionLabel="Ampliar filtros"
       compact={compact}
-      description="Vuelve en un rato o amplía tu radio: siempre llega gente nueva."
+      description="Vuelve en un rato o amplía tus filtros."
       mood="sleepy"
       onAction={onWidenFilters}
       onSecondary={retrying ? undefined : onRetry}

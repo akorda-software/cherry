@@ -50,5 +50,5 @@ export default function OnboardingIndexRoute() {
     })();
   }, [callApi, hint, navigation, userId]);
 
-  return <LoadingScreen message="Abriendo tu libreta..." testID="onboarding-resolving" />;
+  return <LoadingScreen message="Abriendo tu libreta…" testID="onboarding-resolving" />;
 }

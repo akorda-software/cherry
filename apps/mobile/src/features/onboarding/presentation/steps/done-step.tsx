@@ -102,7 +102,7 @@ export function DoneStep() {
 
   if (phase === "error") {
     return (
-      <StepPage centered step="done" testID="onboarding-step-done" title="Casi, casi...">
+      <StepPage centered step="done" testID="onboarding-step-done" title="Casi, casi…">
         <ErrorState compact message={error ?? ""} mood="sad" testID="onboarding-done-error" />
       </StepPage>
     );
@@ -125,10 +125,10 @@ export function DoneStep() {
       subtitle={
         done
           ? "Ya puedes descubrir gente con tus etiquetas en común. Gratis, sin trucos y a tu ritmo."
-          : "Pegando las últimas pegatinas..."
+          : "Pegando las últimas pegatinas…"
       }
       testID="onboarding-step-done"
-      title={done ? "¡Tu perfil está listo!" : "Un segundito..."}
+      title={done ? "¡Tu perfil está listo!" : "Un segundito…"}
     />
   );
 }

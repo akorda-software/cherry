@@ -66,7 +66,7 @@ export function SettingsScreen() {
           description={email ?? "Sin sesión"}
           icon="mail"
           iconColor="cielo"
-          label="Tu email"
+          label="Tu correo"
           testID="settings-email"
         />
         <ListRow

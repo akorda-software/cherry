@@ -4,6 +4,12 @@ export { MAX_BLOCKED_TAGS, MAX_POSITIVE_TAGS };
 
 /** Mínimo para continuar en el onboarding (backend admite 1; menos de 3 dice poco de ti). */
 export const MIN_POSITIVE_TAGS = 3;
+/**
+ * Lo que exige el backend para dar el perfil por completo. Al REANUDAR el onboarding basta con
+ * esto: quien ya tiene 1 o 2 etiquetas no rebota al paso de etiquetas (si pasa por él, la UI
+ * sigue pidiendo `MIN_POSITIVE_TAGS` para continuar).
+ */
+export const BACKEND_MIN_POSITIVE_TAGS = 1;
 /** A partir de aquí el perfil ya se entiende bien de un vistazo. */
 export const RECOMMENDED_POSITIVE_TAGS = 5;
 

@@ -156,6 +156,28 @@ describe("activity polling", () => {
     expect(fetchSummary).toHaveBeenCalledTimes(2);
   });
 
+  it("never reuses or applies a request started by a previous session", async () => {
+    let resolveOld!: (value: ActivitySummary) => void;
+    const fetchOld = vi.fn(
+      () =>
+        new Promise<ActivitySummary>((resolve) => {
+          resolveOld = resolve;
+        })
+    );
+    const releaseOld = acquireActivityPolling({ fetchSummary: fetchOld, appState: fakeAppState() });
+    releaseOld(); // cierre de sesión con la petición de A aún en vuelo
+
+    const fetchNew = vi.fn(async () => summary(0, 1, 0));
+    acquireActivityPolling({ fetchSummary: fetchNew, appState: fakeAppState() });
+    await refreshActivitySummary({ force: true });
+    expect(fetchNew).toHaveBeenCalled();
+    expect(useActivityStore.getState().summary).toEqual(summary(0, 1, 0));
+
+    resolveOld(summary(9, 9, 9));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(useActivityStore.getState().summary).toEqual(summary(0, 1, 0));
+  });
+
   it("does nothing when nobody is listening", async () => {
     await refreshActivitySummary({ force: true });
     expect(useActivityStore.getState().summary).toBeNull();

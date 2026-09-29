@@ -184,6 +184,24 @@ describe("likes · responder", () => {
     expect(store().notice).toMatchObject({ tone: "error" });
   });
 
+  it("rolls back when recording the answer throws synchronously", async () => {
+    const deps = makeDeps();
+    await store().load(deps);
+    deps.recordAction.mockImplementationOnce(() => {
+      throw new Error("boom");
+    });
+
+    const result = await store().respond(deps, "b", "dislike");
+
+    expect(result.kind).toBe("failed");
+    expect(ids()).toEqual(["a", "b", "c"]);
+    expect(store().pending).toEqual({});
+    expect(store().lastPass).toBeNull();
+    expect(deps.onCountDelta).toHaveBeenNthCalledWith(1, -1);
+    expect(deps.onCountDelta).toHaveBeenNthCalledWith(2, 1);
+    expect(store().notice).toMatchObject({ tone: "error" });
+  });
+
   it("keeps the card out when it was already answered elsewhere", async () => {
     const deps = makeDeps();
     await store().load(deps);
@@ -283,6 +301,19 @@ describe("likes · deshacer el «no»", () => {
     expect(await store().undoPass(deps)).toBe(false);
   });
 
+  it("undoes kindly when that person is no longer available", async () => {
+    const deps = makeDeps();
+    await store().load(deps);
+    await store().respond(deps, "b", "dislike");
+    deps.undo.mockResolvedValueOnce({ undone: true, profile: null } as unknown as DiscoveryUndoResponse);
+
+    expect(await store().undoPass(deps)).toBe(true);
+    expect(ids()).toEqual(["a", "c"]);
+    expect(store().lastPass).toBeNull();
+    expect(store().notice).toMatchObject({ tone: "info", message: "Deshecho, pero esa persona ya no está disponible." });
+    expect(deps.onCountDelta).toHaveBeenLastCalledWith(-1);
+  });
+
   it("explains when it is too late to undo", async () => {
     const deps = makeDeps();
     await store().load(deps);
@@ -309,6 +340,36 @@ describe("likes · otros", () => {
     await store().load(deps);
     store().removeProfile("a");
     expect(ids()).toEqual(["b", "c"]);
+  });
+
+  it("drops a match that lands after the session changed", async () => {
+    const deps = makeDeps();
+    await store().load(deps);
+    const pending = deferred<DiscoveryActionResponse>();
+    deps.recordAction.mockReturnValueOnce(pending.promise);
+
+    const responding = store().respond(deps, "b", "like");
+    store().reset();
+    pending.resolve({ matchCreated: true, match: MATCH });
+
+    expect(await responding).toEqual({ kind: "ignored" });
+    expect(deps.onMatch).not.toHaveBeenCalled();
+    expect(store()).toMatchObject({ likes: [], pending: {}, notice: null });
+  });
+
+  it("does not roll back into another session when the answer fails late", async () => {
+    const deps = makeDeps();
+    await store().load(deps);
+    const pending = deferred<DiscoveryActionResponse>();
+    deps.recordAction.mockReturnValueOnce(pending.promise);
+
+    const responding = store().respond(deps, "b", "like");
+    store().reset();
+    pending.reject(new TypeError("offline"));
+
+    expect(await responding).toEqual({ kind: "ignored" });
+    expect(store()).toMatchObject({ likes: [], notice: null });
+    expect(deps.onCountDelta).toHaveBeenCalledTimes(1);
   });
 
   it("ignores responses that land after a reset", async () => {

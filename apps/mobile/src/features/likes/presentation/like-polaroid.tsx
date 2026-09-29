@@ -35,6 +35,11 @@ export interface LikePolaroidProps {
   enterDelay: number | null;
   /** Retardo del sello «¡Te ha dado like!» (cae de golpe al aparecer). */
   stampDelay: number;
+  /**
+   * Ya estaba en la página (la lista virtualizada la vuelve a montar al hacer scroll):
+   * sin entrada ni sello que cae; aparece tal cual.
+   */
+  settled?: boolean;
   onOpen(profileId: string): void;
   onLike(profileId: string): void;
   onPass(profileId: string): void;
@@ -55,6 +60,7 @@ export const LikePolaroid = memo(function LikePolaroid({
   busy,
   enterDelay,
   stampDelay,
+  settled = false,
   onOpen,
   onLike,
   onPass
@@ -64,7 +70,7 @@ export const LikePolaroid = memo(function LikePolaroid({
   const c = theme.primitives.color;
   const profile = like.profile;
   const [leaving, setLeaving] = useState<"like" | "pass" | null>(null);
-  const [stampOn, setStampOn] = useState(stampDelay <= 0);
+  const [stampOn, setStampOn] = useState(settled || stampDelay <= 0);
 
   useEffect(() => {
     if (stampOn) {
@@ -90,7 +96,8 @@ export const LikePolaroid = memo(function LikePolaroid({
     requestAnimationFrame(() => (kind === "like" ? onLike(profile.id) : onPass(profile.id)));
   }
 
-  const entering = reduced
+  const entering =
+    reduced || settled
     ? undefined
     : enterDelay === null
       ? ZoomIn.duration(260)
@@ -191,7 +198,7 @@ export const LikePolaroid = memo(function LikePolaroid({
 
         {stampOn ? (
           <View style={styles.stampAnchor}>
-            <Stamp label="¡Te ha dado like!" rotation={-9} size="sm" slam tone="fresa" />
+            <Stamp label="¡Te ha dado like!" rotation={-9} size="sm" slam={!settled} tone="fresa" />
           </View>
         ) : null}
       </PressableScale>

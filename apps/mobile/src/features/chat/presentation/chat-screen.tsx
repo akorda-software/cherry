@@ -65,6 +65,7 @@ export function ChatScreen({ conversationId }: { conversationId: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmUnmatch, setConfirmUnmatch] = useState(false);
   const [unmatching, setUnmatching] = useState(false);
+  const [unmatchError, setUnmatchError] = useState<string | null>(null);
   const [safetyOpen, setSafetyOpen] = useState(false);
   const unmatch = useUnmatch();
 
@@ -84,8 +85,10 @@ export function ChatScreen({ conversationId }: { conversationId: string }) {
     }
   }, [router]);
 
+  // Vuelve a la pestaña Chats que ya está en la pila (sin apilar otro navegador de pestañas);
+  // si no existe (enlace directo), la sustituye.
   const leaveToChats = useCallback(() => {
-    router.replace(appShellRoutes.chats);
+    router.dismissTo(appShellRoutes.chats);
   }, [router]);
 
   const openProfile = useCallback(() => {
@@ -123,16 +126,15 @@ export function ChatScreen({ conversationId }: { conversationId: string }) {
     }
 
     setUnmatching(true);
+    setUnmatchError(null);
     try {
       await unmatch(match.id);
       setConfirmUnmatch(false);
       toast.show({ message: `Has deshecho el match con ${name ?? "esta persona"}.`, icon: "heart-crack" });
       leaveToChats();
     } catch (error) {
-      toast.show({
-        message: friendlyErrorMessage(error, "No hemos podido deshacer el match. Inténtalo otra vez."),
-        tone: "error"
-      });
+      // Dentro de la hoja: un toast quedaría debajo del Modal.
+      setUnmatchError(friendlyErrorMessage(error, "No hemos podido deshacer el match. Inténtalo otra vez."));
     } finally {
       setUnmatching(false);
     }
@@ -296,9 +298,13 @@ export function ChatScreen({ conversationId }: { conversationId: string }) {
         cancelLabel="Mejor no"
         confirmLabel="Sí, deshacer"
         destructive
+        error={unmatchError}
         loading={unmatching}
         message="Dejaréis de veros y esta conversación se cerrará para los dos. Sin dramas."
-        onCancel={() => setConfirmUnmatch(false)}
+        onCancel={() => {
+          setConfirmUnmatch(false);
+          setUnmatchError(null);
+        }}
         onConfirm={() => void confirmUnmatchNow()}
         testID="chat-unmatch-confirm"
         title={`¿Deshacer el match con ${displayName}?`}

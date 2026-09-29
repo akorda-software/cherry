@@ -84,10 +84,17 @@ export function assembleAuthServices(deps: AuthDependencies): SessionShellServic
     }
   });
 
-  const logoutSession = createLogoutSession({
+  const revokeAndClear = createLogoutSession({
     storage,
     sessionApi
   });
+  const logoutSession = {
+    execute(session: SessionBundle | null) {
+      // Cualquier refresco o reintento en vuelo de esta sesión deja de valer.
+      sessionManager.invalidate();
+      return revokeAndClear.execute(session);
+    }
+  };
 
   const testSignIn = createTestSignInService({ httpClient, storage });
 

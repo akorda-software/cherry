@@ -120,7 +120,8 @@ export function useChatSession(
             useActivityStore.getState().adjust({ unreadConversationsCount: -1 });
           }
           matches.markRead(conversationId);
-          void refreshActivitySummary({ force: true });
+          // El badge ya se ajustó en local: basta un refresco agrupado (sin `force`), no uno por lectura.
+          void refreshActivitySummary();
         },
         onUnavailable() {
           const match = useMatchesStore

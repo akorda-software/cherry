@@ -48,7 +48,6 @@ describe("firstIncompleteStep", () => {
     ["one photo", { photos: [makePhoto(1)] }, "photos"],
     ["two photos but one deleted", { photos: [makePhoto(1), makePhoto(2, { isActive: false })] }, "photos"],
     ["no tags", { tags: [] }, "tags"],
-    ["two tags (below the minimum of 3)", { tags: [makeTag(1), makeTag(2)] }, "tags"],
     ["missing bio", { bio: null }, "bio"],
     ["short bio", { bio: "Hola, soy yo" }, "bio"],
     ["bio of spaces", { bio: " ".repeat(30) }, "bio"],
@@ -58,6 +57,11 @@ describe("firstIncompleteStep", () => {
 
   it.each(singleGaps)("%s → %s", (_label, overrides, expected) => {
     expect(firstIncompleteStep(makeProfile(overrides), NOW)).toBe(expected);
+  });
+
+  it("accepts the backend minimum of 1 positive tag when resuming (no bounce back to tags)", () => {
+    expect(firstIncompleteStep(makeProfile({ tags: [makeTag(1)] }), NOW)).toBe("done");
+    expect(firstIncompleteStep(makeProfile({ tags: [makeTag(1), makeTag(2)] }), NOW)).toBe("done");
   });
 
   it("follows THE FLOW order, not the backend order (photos after intent, tags before bio)", () => {
@@ -109,7 +113,7 @@ describe("firstIncompleteStep", () => {
       ["interested", { discoveryPreferences: makePreferences() }],
       ["intent", { whatIAmLookingFor: "go_with_the_flow" }],
       ["photos", { photos: [makePhoto(1), makePhoto(3)] }],
-      ["tags", { tags: [makeTag(1), makeTag(2), makeTag(3)] }],
+      ["tags", { tags: [makeTag(1)] }],
       ["bio", { bio: "Una bio de más de veinte caracteres." }],
       ["location", { hasLocation: true }]
     ];

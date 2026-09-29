@@ -11,13 +11,16 @@ interface CreateLogoutSessionOptions {
 export function createLogoutSession({ storage, sessionApi }: CreateLogoutSessionOptions) {
   return {
     async execute(session: SessionBundle | null): Promise<void> {
+      // El refresh token rota: el guardado es el vigente (el de la sesión en memoria puede ser viejo).
+      const stored = session === null ? null : await storage.read().catch(() => null);
       await storage.clear();
 
       if (session === null) {
         return;
       }
 
-      await sessionApi.revoke(session.refreshToken);
+      const current = stored !== null && stored.user.id === session.user.id ? stored : session;
+      await sessionApi.revoke(current.refreshToken);
     }
   };
 }

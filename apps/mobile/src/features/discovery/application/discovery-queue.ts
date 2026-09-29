@@ -37,6 +37,7 @@ export type DiscoveryQueueStatus = "idle" | "loading" | "ready" | "error" | "pau
 export type DiscoveryQueueNotice =
   | { id: number; kind: "action_failed"; message: string; profileId: string }
   | { id: number; kind: "nothing_to_undo"; message: string }
+  | { id: number; kind: "undo_unavailable"; message: string }
   | { id: number; kind: "undo_failed"; message: string };
 
 /** Una card que vuelve a la cabeza de la cola (deshacer o fallo al guardar). */
@@ -73,6 +74,11 @@ export interface DiscoveryQueueState {
   pending: Record<string, DiscoveryActionType>;
   /** Último «no» confirmado localmente: permite un deshacer instantáneo. */
   lastPass: DiscoveryProfileCard | null;
+  /**
+   * Si tiene sentido ofrecer ↺. Se apaga al recargar por cambio de filtros (el último «no»
+   * puede no cumplirlos) y se vuelve a encender con la siguiente decisión.
+   */
+  canUndo: boolean;
   undoing: boolean;
   notice: DiscoveryQueueNotice | null;
   lastReturn: DiscoveryQueueReturn | null;
@@ -87,6 +93,8 @@ export type DiscoveryActResult =
 
 export type DiscoveryUndoResult =
   | { status: "undone"; card: DiscoveryProfileCard }
+  /** El backend lo deshizo, pero esa persona ya no es visible (`profile: null`). */
+  | { status: "unavailable" }
   | { status: "nothing_to_undo" }
   | { status: "failed"; error: unknown }
   | { status: "busy" };
@@ -94,8 +102,11 @@ export type DiscoveryUndoResult =
 export interface DiscoveryQueueActions {
   /** Liga la cola a un usuario; si es otro distinto, la vacía. */
   bind(ownerId: string | null): void;
-  /** Carga (o recarga) la primera página. */
-  load(): Promise<void>;
+  /**
+   * Carga (o recarga) la primera página. Con `filtersChanged`, además olvida el último «no»
+   * y desactiva ↺ hasta la siguiente decisión: deshacer reinsertaría a alguien fuera de los filtros.
+   */
+  load(options?: DiscoveryLoadOptions): Promise<void>;
   /** Siguiente página (no hace nada si ya se está pidiendo o no hay más). */
   loadMore(): Promise<void>;
   /** Like/dislike optimista: sale de la cola al instante y vuelve si falla la red. */
@@ -108,7 +119,14 @@ export interface DiscoveryQueueActions {
   reset(): void;
 }
 
+export interface DiscoveryLoadOptions {
+  filtersChanged?: boolean;
+}
+
 export type DiscoveryQueueStore = DiscoveryQueueState & DiscoveryQueueActions;
+
+/** Respuesta de deshacer tal y como puede llegar: el backend responde `profile: null` si ya no es visible. */
+type UndoPayload = Omit<DiscoveryUndoResponse, "profile"> & { profile: DiscoveryUndoResponse["profile"] | null };
 
 const INITIAL_STATE: DiscoveryQueueState = {
   ownerId: null,
@@ -121,6 +139,7 @@ const INITIAL_STATE: DiscoveryQueueState = {
   nextOnboardingStep: null,
   pending: {},
   lastPass: null,
+  canUndo: true,
   undoing: false,
   notice: null,
   lastReturn: null,
@@ -144,6 +163,8 @@ export function createDiscoveryQueue(
 
   let cursor: string | null = null;
   let generation = 0;
+  /** Solo cambia con `reset()` (cambio de sesión): distingue «otra carga» de «otra persona». */
+  let session = 0;
   let seq = 0;
   let emptyPagesInARow = 0;
   /** Perfiles decididos en esta sesión: nunca se vuelven a meter desde una página posterior. */
@@ -253,13 +274,14 @@ export function createDiscoveryQueue(
         set({ ownerId });
       },
 
-      async load() {
+      async load(options) {
         generation += 1;
         const gen = generation;
         cursor = null;
         emptyPagesInARow = 0;
 
         set({
+          ...(options?.filtersChanged ? { lastPass: null, canUndo: false } : null),
           status: "loading",
           profiles: [],
           hasMore: true,
@@ -362,7 +384,9 @@ export function createDiscoveryQueue(
 
         const index = state.profiles.findIndex((profile) => profile.id === card.id);
         const previousLastPass = state.lastPass;
+        const previousCanUndo = state.canUndo;
         const gen = generation;
+        const ses = session;
         decided.add(card.id);
 
         set({
@@ -370,6 +394,7 @@ export function createDiscoveryQueue(
           pending: { ...state.pending, [card.id]: action },
           // El backend solo deshace el ÚLTIMO swipe si fue un «no».
           lastPass: action === "dislike" ? card : null,
+          canUndo: true,
           loadMoreFailed: false,
           lastRemoval: { seq: nextSeq(), profileId: card.id, card, action, index }
         });
@@ -377,6 +402,10 @@ export function createDiscoveryQueue(
         maybeLoadMore();
 
         const clearPending = () => {
+          if (ses !== session) {
+            return;
+          }
+
           const { [card.id]: _removed, ...rest } = get().pending;
           set({ pending: rest });
         };
@@ -395,7 +424,8 @@ export function createDiscoveryQueue(
           const response = await request;
           clearPending();
 
-          if (response.matchCreated) {
+          // Un match que llega tras cambiar de sesión no es de quien está ahora en la app.
+          if (response.matchCreated && ses === session) {
             resolveDeps().onMatch?.(response.match);
           }
 
@@ -419,6 +449,7 @@ export function createDiscoveryQueue(
                 ? [...current.profiles.slice(0, at), card, ...current.profiles.slice(at)]
                 : current.profiles,
               lastPass: current.lastPass?.id === card.id ? previousLastPass : current.lastPass,
+              canUndo: current.lastPass?.id === card.id ? previousCanUndo : current.canUndo,
               lastReturn: stillOut
                 ? { seq: nextSeq(), profileId: card.id, reason: "rollback", action }
                 : current.lastReturn,
@@ -433,13 +464,20 @@ export function createDiscoveryQueue(
 
           return { status: "rolled_back", error };
         } finally {
-          inflight.delete(card.id);
+          if (inflight.get(card.id) === request) {
+            inflight.delete(card.id);
+          }
         }
       },
 
       async undo() {
         if (get().undoing) {
           return { status: "busy" };
+        }
+
+        if (!get().canUndo) {
+          // Los filtros cambiaron desde el último «no»: ↺ está apagado hasta la siguiente decisión.
+          return { status: "nothing_to_undo" };
         }
 
         set({ undoing: true });
@@ -461,8 +499,41 @@ export function createDiscoveryQueue(
           });
         }
 
+        const dropOptimistic = () => {
+          if (!optimistic || gen !== generation) {
+            return;
+          }
+
+          decided.add(optimistic.id);
+          const index = get().profiles.findIndex((profile) => profile.id === optimistic.id);
+
+          set({
+            profiles: get().profiles.filter((profile) => profile.id !== optimistic.id),
+            lastRemoval:
+              index === -1
+                ? get().lastRemoval
+                : { seq: nextSeq(), profileId: optimistic.id, card: optimistic, action: "dislike", index }
+          });
+        };
+
         try {
-          const response = await resolveDeps().undo();
+          const response = (await resolveDeps().undo()) as UndoPayload;
+
+          if (!response.profile) {
+            // Deshecho en el servidor, pero esa persona ya no es visible: se va sin drama.
+            dropOptimistic();
+            set({
+              undoing: false,
+              lastPass: null,
+              notice: {
+                id: nextSeq(),
+                kind: "undo_unavailable",
+                message: "Deshecho, pero esa persona ya no está disponible."
+              }
+            });
+            return { status: "unavailable" };
+          }
+
           const card = createDiscoveryProfileCard(response.profile);
           decided.delete(card.id);
 
@@ -494,18 +565,7 @@ export function createDiscoveryQueue(
 
           return { status: "undone", card };
         } catch (error) {
-          if (optimistic && gen === generation) {
-            decided.add(optimistic.id);
-            const index = get().profiles.findIndex((profile) => profile.id === optimistic.id);
-
-            set({
-              profiles: get().profiles.filter((profile) => profile.id !== optimistic.id),
-              lastRemoval:
-                index === -1
-                  ? get().lastRemoval
-                  : { seq: nextSeq(), profileId: optimistic.id, card: optimistic, action: "dislike", index }
-            });
-          }
+          dropOptimistic();
 
           const nothing = apiErrorCode(error) === "nothing_to_undo";
 
@@ -558,6 +618,7 @@ export function createDiscoveryQueue(
 
       reset() {
         generation += 1;
+        session += 1;
         cursor = null;
         emptyPagesInARow = 0;
         decided.clear();

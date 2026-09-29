@@ -768,6 +768,34 @@ describe("chat session · historial antiguo", () => {
     expect(session.getState().loadingOlder).toBe(false);
   });
 
+  it("discards an older page that lands after a backfill replaced the list", async () => {
+    const { session, socket, channel, api } = await startJoined({}, page([msg("m3", OTHER, "tres", 3)], "c-old"));
+    const older = deferred<ConversationMessagesPage>();
+    api.listMessages.mockReturnValueOnce(older.promise);
+    const loading = session.loadOlder();
+
+    // Reconexión con hueco: la lista se sustituye y se pagina desde «c-new».
+    socket.simulateClose();
+    api.listMessages.mockResolvedValueOnce(
+      page([msg("m90", OTHER, "noventa", 900), msg("m91", OTHER, "noventa y uno", 901)], "c-new")
+    );
+    socket.simulateOpen();
+    channel.simulateJoinOk();
+    await flush();
+    expect(session.getState().messages.map((m) => m.id)).toEqual(["m91", "m90"]);
+
+    older.resolve(page([msg("m2", OTHER, "dos", 2)], null));
+    await loading;
+
+    const state = session.getState();
+    expect(state.messages.map((m) => m.id)).toEqual(["m91", "m90"]);
+    expect(state).toMatchObject({ loadingOlder: false, hasOlder: true });
+
+    api.listMessages.mockResolvedValueOnce(page([msg("m80", OTHER, "ochenta", 800)], null));
+    await session.loadOlder();
+    expect(api.listMessages).toHaveBeenLastCalledWith({ cursor: "c-new", limit: CHAT_PAGE_SIZE });
+  });
+
   it("flags an error to retry loading older messages", async () => {
     const { session, api } = await startJoined({}, page([msg("m3", OTHER, "tres", 3)], "c1"));
     api.listMessages.mockRejectedValueOnce(new TypeError("offline"));

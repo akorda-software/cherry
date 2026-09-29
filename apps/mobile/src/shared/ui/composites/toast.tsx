@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Platform, Pressable, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -127,23 +127,38 @@ function ToastSticker({ item }: { item: ToastItem }) {
   const opacity = useSharedValue(0);
   const turn = useSharedValue(reduced ? -1.5 : -7);
   const leaving = useRef(false);
+  const [exiting, setExiting] = useState(false);
+  /** En salida: el arrastre ya no puede tocar `y` (cancelaría la animación y el relevo). */
+  const exitingValue = useSharedValue(false);
+  const fallback = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Pasa al siguiente aviso una sola vez y solo si este sigue siendo el actual.
+  const advance = useCallback(() => {
+    if (fallback.current) {
+      clearTimeout(fallback.current);
+      fallback.current = null;
+    }
+    if (useToastStore.getState().current?.id === item.id) {
+      next();
+    }
+  }, [item.id, next]);
 
   function leave() {
     if (leaving.current) {
       return;
     }
     leaving.current = true;
-    const finish = (finished?: boolean) => {
+    exitingValue.value = true;
+    setExiting(true);
+    // Aunque la salida se interrumpa (`finished === false`), el relevo ocurre igual.
+    const finish = () => {
       "worklet";
-      if (finished) {
-        runOnJS(next)();
-      }
+      runOnJS(advance)();
     };
     opacity.value = withTiming(0, { duration: 180 });
     y.value = reduced ? 0 : withTiming(-110, { duration: 200 }, finish);
-    if (reduced) {
-      setTimeout(next, 190);
-    }
+    // Respaldo (y camino normal con movimiento reducido).
+    fallback.current = setTimeout(advance, reduced ? 190 : 400);
   }
 
   useEffect(() => {
@@ -162,16 +177,28 @@ function ToastSticker({ item }: { item: ToastItem }) {
     }
 
     const timer = setTimeout(leave, item.duration);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (fallback.current) {
+        clearTimeout(fallback.current);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const swipe = Gesture.Pan()
+    .enabled(!exiting)
     .activeOffsetY([-6, 6])
     .onUpdate((event) => {
+      if (exitingValue.value) {
+        return;
+      }
       y.value = event.translationY < 0 ? event.translationY : event.translationY * 0.2;
     })
     .onEnd((event) => {
+      if (exitingValue.value) {
+        return;
+      }
       if (event.translationY < -24 || event.velocityY < -500) {
         runOnJS(leave)();
       } else {

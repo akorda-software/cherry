@@ -76,8 +76,9 @@ export function useFiltersForm({ preferences, queue }: FiltersFormDeps): Filters
       }
 
       if (result.changed) {
-        // Recarga ya: al volver a Descubrir, la pila refleja los filtros nuevos.
-        void queue.getState().load();
+        // Recarga ya: al volver a Descubrir, la pila refleja los filtros nuevos. El último «no»
+        // puede no cumplirlos, así que ↺ se apaga hasta la siguiente decisión.
+        void queue.getState().load({ filtersChanged: true });
       }
 
       touched.current = false;

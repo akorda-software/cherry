@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { BackHandler, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 
 import { friendlyErrorMessage } from "../../../../shared/api";
@@ -64,6 +64,15 @@ export function DoneStep() {
         void complete();
       }
     }, [complete])
+  );
+
+  // Android: el botón/gesto atrás no vuelve a los pasos mientras se confirma ni una vez
+  // completado (iOS ya lo impide con `gestureEnabled: false`). Solo si falla se puede volver.
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener("hardwareBackPress", () => phaseRef.current !== "error");
+      return () => subscription.remove();
+    }, [])
   );
 
   const start = async () => {

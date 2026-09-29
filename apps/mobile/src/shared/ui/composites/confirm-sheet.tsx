@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { Mascot, type MascotMood } from "../art";
 import { Button } from "../primitives/button";
 import { Text } from "../primitives/text";
+import { FormMessage } from "./form-message";
 import { Sheet } from "./sheet";
 
 export interface ConfirmSheetProps {
@@ -17,6 +18,10 @@ export interface ConfirmSheetProps {
   loading?: boolean;
   /** Mochi encima del título (`null` = sin Mochi). */
   mood?: MascotMood | null;
+  /**
+   * Error de la confirmación, pintado dentro de la hoja: un toast quedaría debajo del Modal.
+   */
+  error?: string | null;
   onConfirm(): void;
   onCancel(): void;
   testID?: string;
@@ -32,6 +37,7 @@ export function ConfirmSheet({
   destructive = false,
   loading = false,
   mood,
+  error,
   onConfirm,
   onCancel,
   testID
@@ -80,6 +86,11 @@ export function ConfirmSheet({
             {message}
           </Text>
         ) : null}
+        {error ? (
+          <FormMessage style={styles.error} tone="error">
+            {error}
+          </FormMessage>
+        ) : null}
       </View>
     </Sheet>
   );
@@ -91,5 +102,8 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingTop: 4,
     paddingBottom: 8
+  },
+  error: {
+    alignSelf: "stretch"
   }
 });

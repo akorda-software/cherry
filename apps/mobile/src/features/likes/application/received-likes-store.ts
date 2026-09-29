@@ -241,6 +241,7 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
       }
 
       const entry = likes[index]!;
+      const respondGeneration = generation;
       set({
         likes: likes.filter((like) => like.profile.id !== profileId),
         pending: { ...pending, [profileId]: action },
@@ -249,11 +250,25 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
       });
       deps.onCountDelta?.(-1);
 
-      const request = deps.recordAction({ targetProfileId: profileId, actionType: action });
+      let request: Promise<DiscoveryActionResponse>;
+
+      try {
+        request = deps.recordAction({ targetProfileId: profileId, actionType: action });
+      } catch (error) {
+        // Un fallo síncrono se trata igual que uno de red: rollback y aviso.
+        request = Promise.reject(error);
+      }
+
       actionsInFlight.set(profileId, request);
 
       try {
         const response = await request;
+
+        if (respondGeneration !== generation) {
+          // La sesión cambió (o se vació la bandeja) mientras viajaba: nada de esto es ya nuestro.
+          return { kind: "ignored" };
+        }
+
         clearPending(profileId);
 
         if (response.matchCreated) {
@@ -263,6 +278,10 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
 
         return { kind: "done" };
       } catch (error) {
+        if (respondGeneration !== generation) {
+          return { kind: "ignored" };
+        }
+
         clearPending(profileId);
         const code = apiErrorCode(error);
 
@@ -290,7 +309,9 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
         deps.onCountDelta?.(1);
         return { kind: "failed", error };
       } finally {
-        actionsInFlight.delete(profileId);
+        if (actionsInFlight.get(profileId) === request) {
+          actionsInFlight.delete(profileId);
+        }
       }
     },
 
@@ -302,6 +323,7 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
       }
 
       const profileId = lastPass.like.profile.id;
+      const undoGeneration = generation;
       set({ undoing: true });
 
       try {
@@ -315,7 +337,19 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
 
         const response = await deps.undo();
 
-        if (response.profile.id === profileId) {
+        if (undoGeneration !== generation) {
+          return false;
+        }
+
+        // El backend puede deshacer y responder `profile: null` si esa persona ya no es visible.
+        const undoneProfile = (response as { profile: DiscoveryUndoResponse["profile"] | null }).profile;
+
+        if (!undoneProfile) {
+          set({ lastPass: null, notice: notice("info", "Deshecho, pero esa persona ya no está disponible.") });
+          return true;
+        }
+
+        if (undoneProfile.id === profileId) {
           set({ likes: insertAt(get().likes, lastPass.like, lastPass.index) });
           deps.onCountDelta?.(1);
         }
@@ -323,6 +357,10 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
         set({ lastPass: null });
         return true;
       } catch (error) {
+        if (undoGeneration !== generation) {
+          return false;
+        }
+
         set({
           lastPass: null,
           notice:

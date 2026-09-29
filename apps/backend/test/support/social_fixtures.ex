@@ -35,7 +35,7 @@ defmodule Snack.TestSupport.SocialFixtures do
 
   @doc "Inserta un mensaje con `inserted_at` controlado (cifrado vía el tipo del schema)."
   def insert_message!(conversation, sender, body, %DateTime{} = at) do
-    at = DateTime.truncate(at, :second)
+    at = %{DateTime.truncate(at, :second) | microsecond: {0, 6}}
 
     message =
       %Message{}
@@ -49,7 +49,7 @@ defmodule Snack.TestSupport.SocialFixtures do
       |> Repo.insert!()
 
     from(m in Match, where: m.id == ^conversation.match_id and is_nil(m.first_message_at))
-    |> Repo.update_all(set: [first_message_at: at, expires_at: nil])
+    |> Repo.update_all(set: [first_message_at: DateTime.truncate(at, :second), expires_at: nil])
 
     message
   end

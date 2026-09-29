@@ -568,7 +568,7 @@ defmodule Snack.DatingTest do
 
       conversation = Repo.get_by!(Snack.Dating.Conversation, match_id: match.id)
 
-      now = DateTime.truncate(DateTime.utc_now(), :second)
+      now = DateTime.utc_now()
 
       for i <- 1..3 do
         at = DateTime.add(now, -i, :second)

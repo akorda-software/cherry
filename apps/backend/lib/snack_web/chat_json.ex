@@ -16,7 +16,8 @@ defmodule SnackWeb.ChatJSON do
       conversationId: msg.conversation_id,
       senderProfileId: msg.sender_profile_id,
       body: msg.body,
-      insertedAt: msg.inserted_at
+      # Milisegundos en JSON: seguro para cualquier motor JS (Hermes incluido).
+      insertedAt: DateTime.truncate(msg.inserted_at, :millisecond)
     }
   end
 

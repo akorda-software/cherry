@@ -14,7 +14,7 @@ defmodule Snack.Dating.ConversationRead do
   @foreign_key_type :binary_id
 
   schema "conversation_reads" do
-    field(:last_read_at, :utc_datetime)
+    field(:last_read_at, :utc_datetime_usec)
 
     belongs_to(:conversation, Conversation)
     belongs_to(:profile, Profile)

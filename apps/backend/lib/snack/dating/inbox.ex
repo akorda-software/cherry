@@ -20,7 +20,9 @@ defmodule Snack.Dating.Inbox do
   alias Snack.Dating.UserBlock
   alias Snack.Repo
 
-  @cursor_prefix "m1:"
+  # m2: instante en microsegundos. m1 (segundos) se sigue aceptando por compatibilidad.
+  @cursor_prefix "m2:"
+  @legacy_cursor_prefix "m1:"
 
   @type entry :: %{
           match: %Match{},
@@ -106,7 +108,7 @@ defmodule Snack.Dating.Inbox do
   Marca la conversación como leída por `profile_id` hasta `now` (nunca retrocede).
   Solo participantes; funciona aunque el match ya no esté activo.
   """
-  def mark_read(conversation_id, profile_id, now \\ now()) do
+  def mark_read(conversation_id, profile_id, now \\ DateTime.utc_now()) do
     with {:ok, conversation_id} <- Ecto.UUID.cast(conversation_id),
          %Match{} = match <- match_for_conversation(conversation_id),
          true <- participant?(match, profile_id) do
@@ -195,7 +197,7 @@ defmodule Snack.Dating.Inbox do
     do: profile_id in [a, b]
 
   defp upsert_read(conversation_id, profile_id, now) do
-    now = DateTime.truncate(now, :second)
+    now = to_usec(now)
 
     %ConversationRead{}
     |> ConversationRead.changeset(%{
@@ -233,7 +235,8 @@ defmodule Snack.Dating.Inbox do
   end
 
   defp encode_cursor(%Message{inserted_at: at, id: id}) do
-    Base.url_encode64(@cursor_prefix <> Integer.to_string(DateTime.to_unix(at)) <> ":" <> id,
+    Base.url_encode64(
+      @cursor_prefix <> Integer.to_string(DateTime.to_unix(at, :microsecond)) <> ":" <> id,
       padding: false
     )
   end
@@ -242,12 +245,13 @@ defmodule Snack.Dating.Inbox do
   defp decode_cursor(""), do: {:ok, nil}
 
   defp decode_cursor(cursor) when is_binary(cursor) and byte_size(cursor) <= 256 do
-    with {:ok, @cursor_prefix <> payload} <- Base.url_decode64(cursor, padding: false),
+    with {:ok, decoded} <- Base.url_decode64(cursor, padding: false),
+         {:ok, unit, payload} <- cursor_unit(decoded),
          [unix, id] <- String.split(payload, ":", parts: 2),
          {unix, ""} <- Integer.parse(unix),
-         {:ok, at} <- DateTime.from_unix(unix),
+         {:ok, at} <- DateTime.from_unix(unix, unit),
          {:ok, id} <- Ecto.UUID.cast(id) do
-      {:ok, {:before, at, id}}
+      {:ok, {:before, to_usec(at), id}}
     else
       _opaque_cursor_invalid -> decode_legacy_cursor(cursor)
     end
@@ -257,10 +261,18 @@ defmodule Snack.Dating.Inbox do
 
   defp decode_legacy_cursor(cursor) do
     case DateTime.from_iso8601(cursor) do
-      {:ok, at, _offset} -> {:ok, {:before_time, DateTime.truncate(at, :second)}}
+      {:ok, at, _offset} -> {:ok, {:before_time, to_usec(at)}}
       _error -> {:error, :invalid_cursor}
     end
   end
+
+  defp cursor_unit(@cursor_prefix <> payload), do: {:ok, :microsecond, payload}
+  defp cursor_unit(@legacy_cursor_prefix <> payload), do: {:ok, :second, payload}
+  defp cursor_unit(_decoded), do: :error
+
+  # Los campos :utc_datetime_usec exigen precisión 6 al volcarse a la BD.
+  defp to_usec(%DateTime{microsecond: {value, _precision}} = at),
+    do: %{at | microsecond: {value, 6}}
 
   defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
 end

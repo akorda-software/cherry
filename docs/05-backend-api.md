@@ -4,6 +4,14 @@ Superficie REST y WebSocket **implementada** en `apps/backend` (fuente: `lib/sna
 
 Pipelines: `:api` (público), `:authenticated_api` (valida JWT + expiración + familia de sesión no revocada, y registra la actividad del perfil en `last_active_at` como mucho cada 15 min — `SnackWeb.Plugs.TrackActivity`).
 
+## Salud (público)
+
+| Ruta | Descripción |
+|---|---|
+| `GET /healthz` | Liveness sin BD: `{status: "ok", version}` (`APP_VERSION`, horneada en la imagen) |
+| `GET /readyz` | Hace `SELECT 1` en la BD: `{status: "ready", version}` o 503 `{status: "unavailable"}` |
+| `GET /openapi.yaml` | Contrato OpenAPI (fichero estático `priv/static/openapi.yaml`) |
+
 ## Auth y sesión (público)
 
 | Ruta | Descripción |
@@ -75,7 +83,7 @@ Caducidad: 30 días sin mensajes (`config :snack, :match_expiry_days`), aplicada
 | `POST /api/users/:profile_id/block` | Bloqueo idempotente; oculta en ambas direcciones discovery, likes, perfil público, matches y conversaciones, y cierra la mensajería (REST y WS). 422 `cannot_block_self`; 404 `profile_not_found` (también si el perfil o su cuenta están borrados) |
 | `POST /api/users/:profile_id/report` | Reporte de moderación: `reason` ∈ `fake_profile`, `inappropriate_photos`, `harassment`, `spam`, `underage`, `offensive_bio`, `other` (si no → 422 `invalid_report_reason`); `details` opcional ≤ 1000 (422 `details_too_long`); 422 `cannot_report_self`; 404 `profile_not_found` (también si el perfil o su cuenta están borrados: no se distingue de uno inexistente). Idempotente: con un reporte abierto del mismo reporter sobre el mismo perfil devuelve ese reporte sin crear otro |
 | `POST /api/me/pause` / `POST /api/me/unpause` | Pausa/restaura descubribilidad (si el perfil sigue completo) |
-| `DELETE /api/me/account` | Soft-delete; excluido de discovery; datos mínimos para auditoría. Las fotos se borran físicamente del almacenamiento |
+| `DELETE /api/me/account` | Soft-delete de cuenta y perfil (funciona también sin perfil): revoca todas las sesiones y tokens push, desconecta sus sockets e impide volver a entrar con esa cuenta. Las fotos se borran físicamente del almacenamiento; el resto de registros (perfil, matches, mensajes cifrados, reportes) se conserva |
 
 ## Tags (autenticado)
 
@@ -101,4 +109,8 @@ Solo con `STORAGE_ADAPTER=local` (`Snack.Storage.Local`, D-2026-09-29):
 
 ## Admin
 
-Sin rutas HTTP expuestas; capacidades en contexto (`list_reports`, `update_report`, `disable_profile`) para tooling interno futuro.
+Sin rutas HTTP ni vistas; capacidades en contexto (`Snack.Dating.list_reports/2`, `update_report/2`, `disable_profile/1`) para tooling interno futuro. Hoy los reportes se revisan directamente en la tabla `reports`.
+
+## Push
+
+`Snack.Notifications` envía por la Expo Push API un aviso de match nuevo y de mensaje nuevo a los tokens activos de la otra persona (formato en `06-contratos-mobile-backend.md`). La app móvil todavía no registra tokens (`POST /api/me/push-token` no se usa), así que en la práctica no sale ninguno.

@@ -18,6 +18,9 @@ services:
     environment:
       MIX_ENV: dev
       DATABASE_URL: ecto://postgres:postgres@postgres/snack_dev
+    # mix phx.server dentro del contenedor (dev.exs escucha en 0.0.0.0:4000).
+    ports:
+      - "4000:4000"
     volumes:
       - ..:/workspace
     depends_on:

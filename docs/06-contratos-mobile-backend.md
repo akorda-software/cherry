@@ -227,8 +227,8 @@ Push (sin cambios de mecanismo): `new_match` → título «¡Match con Lucía! �
 
 ## Push tokens
 
-`POST /api/me/push-token` con `{expoPushToken, platform, installationId}` → `{ok, pushToken{id, platform, installationId, status, lastSeenAt}}`. Token válido `ExponentPushToken[...]`/`ExpoPushToken[...]`; ligado a la sesión autenticada; re-registro actualiza y desactiva duplicados.
+`POST /api/me/push-token` con `{expoPushToken, platform, installationId}` → `{ok, pushToken{id, platform, installationId, status, lastSeenAt}}`. Token válido `ExponentPushToken[...]`/`ExpoPushToken[...]`; ligado a la sesión autenticada; re-registro actualiza y desactiva duplicados. La app móvil todavía no llama a este endpoint (no registra tokens ni gestiona notificaciones).
 
 ## Feature flags
 
-El móvil no hardcodea flags: los lee de `GET /api/config` (el bootstrap no incluye flags). Flag off ⇒ sin entrada de navegación y pantalla autogateada del módulo opcional.
+El móvil no hardcodea flags: los lee de `GET /api/config` (el bootstrap no incluye flags). Flag off ⇒ sin entrada de navegación y pantalla autogateada del módulo opcional. Hoy el backend no define ningún flag (`{"features": {}}`) y el registro de módulos opcionales del móvil está vacío.

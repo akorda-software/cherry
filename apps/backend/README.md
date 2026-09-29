@@ -1,13 +1,15 @@
 # Backend
 
-Phoenix backend for the mobile starter.
+Phoenix backend of Snack (dating API, sessions, chat and photo storage). Self-hosting guide (Spanish): `../../docs/12-self-hosting.md`.
 
 ## Responsibilities
 
 - completes provider auth callbacks for Google and Apple
 - issues, refreshes, and revokes sessions
 - exposes runtime config through `/api/config`
-- exposes the dating REST API for bootstrap, onboarding, discovery, matches, chat, safety, settings, photo uploads, and push-token registration
+- exposes the dating REST API for bootstrap, onboarding, discovery (ranking v2, undo), received likes, public profiles, activity summary, matches, chat, safety, settings, photo uploads, and push-token registration
+- serves the chat WebSocket (`/socket`, channel `chat:{conversationId}`)
+- exposes `/healthz` (liveness + version) and `/readyz` (database ping)
 - serves the OpenAPI spec at `/openapi.yaml`
 
 ## API Documentation
@@ -19,9 +21,10 @@ Phoenix backend for the mobile starter.
 
 ## Local Setup
 
-1. Run `mix setup`
-2. Start the server with `mix phx.server`
-3. Use `.env.example` as the local runtime template when wiring real env vars
+1. Start PostGIS: `docker compose -f ../../infra/docker-compose.yml up postgres -d` (port 5510)
+2. `cp .env.example .env` (in dev, `config/runtime.exs` loads `.env`; its `DATABASE_URL` already points to port 5510)
+3. `mix setup` (deps, database, migrations and the tag catalog)
+4. `mix phx.server` (port 4000, all interfaces)
 
 ## Photo storage
 
@@ -30,7 +33,7 @@ Photos go through `Snack.Storage` (`STORAGE_ADAPTER`):
 - `local` (dev default): files under `UPLOADS_DIR` (`priv/uploads` in dev, gitignored), uploaded with a signed `PUT /api/uploads/:token` and served at `/uploads`. Nothing to configure in dev; URLs follow the host you call the API with (`localhost`, LAN IP, tunnel) unless `PUBLIC_BASE_URL` is set.
 - `r2`: Cloudflare R2, or any S3-compatible service with `S3_ENDPOINT` + `S3_REGION` (MinIO, Garage...).
 
-Prod requires `STORAGE_ADAPTER` (and `UPLOADS_DIR` on a persistent volume for `local`). See `../../infra/deploy/README.md` §3.1 and `docs/decisions.md` D-2026-09-29.
+Prod requires `STORAGE_ADAPTER` (and `UPLOADS_DIR` on a persistent volume plus `PUBLIC_BASE_URL` for `local`). See `../../docs/12-self-hosting.md` §5 and `docs/decisions.md` D-2026-09-29.
 
 ## Demo data (dev only)
 
@@ -70,6 +73,10 @@ With the compose PostGIS on port 5510: `DATABASE_URL=ecto://postgres:postgres@lo
 - `MESSAGE_ENCRYPTION_KEY`
 - `STORAGE_ADAPTER` (`local` | `r2`), `UPLOADS_DIR`, `PUBLIC_BASE_URL`, `UPLOAD_MAX_BYTES`, `UPLOAD_URL_TTL_SECONDS`
 - `R2_*`, `S3_ENDPOINT`, `S3_REGION` (R2/S3 adapter)
+- `CORS_ALLOWED_ORIGINS` (web clients only)
+- `APPLE_JWKS_CACHE_TTL_MS`, `EXPO_PUSH_*`, `APP_VERSION`, `ECTO_IPV6`
+
+Full list with defaults and which ones are mandatory in prod: `../../docs/12-self-hosting.md` §4.
 
 ## Verification
 

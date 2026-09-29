@@ -2,40 +2,57 @@
 
 ## Suites
 
-| Suite | Comando | Estado |
+Cifras de la última ejecución (2026-09-29), todas en verde:
+
+| Suite | Comando | Tests |
 |---|---|---|
-| Backend (ExUnit) | `pnpm test:backend` → `mix test` en `apps/backend` | 215 tests verdes |
-| Móvil (vitest + jsdom) | `pnpm --filter @snack/mobile test` | 131 tests verdes |
-| Mobile-shared (vitest) | `pnpm --filter @snack/mobile-shared test` | incluido en `test:mobile` |
-| Contracts (vitest) | `pnpm test:contracts` | 18 tests verdes |
+| Backend (ExUnit) | `pnpm test:backend` → `mix test` en `apps/backend` | 384 |
+| Móvil (vitest + jsdom) | `pnpm --filter @snack/mobile test` | 678 (95 ficheros) |
+| Mobile-shared (vitest) | `pnpm --filter @snack/mobile-shared test` | 43 |
+| Contracts (vitest) | `pnpm test:contracts` | 23 |
 
 `pnpm test:mobile` ejecuta: typecheck de mobile y mobile-shared → tests mobile-shared → tests mobile → tests contracts. `pnpm test` = móvil + backend.
 
 ## Entorno del backend
 
-Los tests requieren **PostgreSQL 17 + PostGIS** en `localhost:5432` (usuario/pass `postgres`, DB `snack_test`; ver `config/test.exs`). Con el PostGIS del compose de `infra/` (puerto 5510): `TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_test mix test`. `DATABASE_URL` solo se usa en tests si el nombre de la BD contiene `_test` (p. ej. `snack_test_fix` para una copia aislada); si apunta a otra (p. ej. `snack_dev` exportado en la shell), `mix test` se niega a arrancar en vez de machacarla. `mix test` crea y migra la DB automáticamente.
+Sin variables, los tests usan **PostgreSQL 17 + PostGIS** en `localhost:5432` (usuario/pass `postgres`, DB `snack_test`; ver `config/test.exs`). Con el PostGIS del compose de `infra/` (puerto 5510):
 
-Cobertura: umbral 90% configurado en `mix.exs`.
+```bash
+cd apps/backend
+TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_test mix test
+```
+
+`DATABASE_URL` solo se usa en tests si el nombre de la BD contiene `_test` (p. ej. `snack_test_fix` para una copia aislada); si apunta a otra (p. ej. `snack_dev` exportado en la shell), `mix test` se niega a arrancar en vez de machacarla. `mix test` crea y migra la DB automáticamente. Para correr la suite en paralelo con un servidor de desarrollo, usa otra BD y otro directorio de build: `TEST_DATABASE_URL=…/snack_test_x MIX_BUILD_ROOT=_build_x mix test`.
+
+En CI (`.github/workflows/ci.yml`) el backend se prueba contra un servicio `postgis/postgis:17-3.5` en el puerto 5432.
+
+Cobertura: umbral 90 % configurado en `mix.exs` (`mix test --cover`).
 
 ## Qué se prueba
 
 ### Backend
-- Dominio dating completo (`dating_test.exs`): perfiles draft, completitud, discovery con filtros/scoring, swipes, matches, conversaciones.
-- Controllers API: profile, discovery, chat REST, push-token, tags.
-- Canal de chat: join rules, envío, broadcasts.
-- Auth: validación/expiración de tokens REST y WS, rotación y revocación por reuso.
+- Dominio dating (`dating_test.exs`, `discovery_test.exs`): perfiles draft, completitud, ranking v2 con sus filtros duros y puntuación, swipes, matches, conversaciones, caducidad.
+- Concurrencia real: dos likes simultáneos crean exactamente un match (`swipe_concurrency_test.exs`).
+- Controllers API: auth y login de desarrollo, sesión, config, bootstrap/safety/settings, perfil, fotos y etiquetas, subidas locales, discovery (paginación, ranking, deshacer), API social y visibilidad, matches y chat, push-token, etiquetas.
+- Canal de chat: reglas de join, envío, lectura y broadcasts.
+- Auth: validación/expiración de tokens REST y WS, rotación y revocación por reuso; proveedores Google/Apple.
+- Almacenamiento (local y R2 con respuestas simuladas), cifrado de mensajes, configuración de runtime y `Snack.Release.seed/0`.
 
 ### Móvil
-- Routing: root navigation, private shell, onboarding resolver, runtime config.
-- Features: session manager (refresh/retry), auth providers y callbacks, discovery feed hook (optimismo + rollback), tag selection.
-- UI: contrato de tokens/tema, componentes.
+- Routing: navegación raíz, zona privada, cierre de sesión y runtime config (`test/router/*`).
+- Features (`src/features/**/*.test.ts`): sesión (refresh/retry), proveedores y callbacks de auth, onboarding (pasos, reanudación, preferencias, fecha de nacimiento), cola de discovery (optimismo, rollback, deshacer), likes, matches, chat (sesión de socket, mensajes), fotos, ubicación, seguridad, ajustes y pestaña Yo.
+- UI (`test/ui/*`): contrato de tokens/tema y componentes (botones, pegatinas, conmutador, campos, hojas, avisos, barra de pestañas).
 
 ### Contracts
-- Serialización/forma de los DTOs compartidos (session, auth, discovery).
+- Forma de los DTOs compartidos (session, auth, config, discovery y social).
 
 ## Mocks nativos
 
-`apps/mobile/test/mocks/` simula los módulos nativos usados (15 mocks) para jsdom: expo-secure-store, google-signin, expo-apple-authentication, datetimepicker, expo-image, flash-list, react-native, react-native-svg, expo-router (+drawer), expo-application, expo-device, expo-constants, expo-crypto, react-native-safe-area-context. Setup central en `test/setup.ts`.
+`apps/mobile/test/mocks/` simula los módulos nativos usados para jsdom (22 mocks): expo-apple-authentication, expo-application, expo-constants, expo-crypto, expo-device, expo-font, expo-haptics, expo-image, expo-linear-gradient, expo-router (+drawer), expo-secure-store, expo-splash-screen, expo-status-bar, expo-system-ui, flash-list, google-signin, react-native, react-native-gesture-handler, react-native-reanimated, react-native-safe-area-context y react-native-svg. Setup central en `test/setup.ts`.
+
+## Verificación manual
+
+La app solo se ha verificado a mano en **Expo Web** (con capturas en `.impeccable/review/`, fuera de git). Los hápticos, la cámara, el teclado de Android, el login nativo con Google/Apple y el permiso de ubicación nativo no se han probado en un dispositivo real (ver `11-deuda-tecnica-pendiente.md`).
 
 ## Datos de demo (solo dev)
 
@@ -50,4 +67,7 @@ Se entra con `POST /api/auth/dev/test-login` y `{"email": "demo@snack.dev"}`; cu
 
 ## Huecos conocidos
 
-Sin tests de controller dedicados para bootstrap/safety/settings/match; sin tests de las pantallas de onboarding ni del resolver `stepToRoute`. Detalle en `11-deuda-tecnica-pendiente.md`.
+- Sin tests de renderizado de las pantallas de producto (onboarding, Descubrir, Likes, Chats, Yo): se prueban su dominio y sus stores, no las pantallas.
+- Sin pruebas E2E ni en dispositivo real.
+
+Detalle en `11-deuda-tecnica-pendiente.md`.

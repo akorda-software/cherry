@@ -6,15 +6,14 @@ Huecos conocidos entre producto, contratos, documentación y código a 2026-09-2
 
 1. **Sin notificaciones push.** La app no registra token (`POST /api/me/push-token` no se usa; no depende de `expo-notifications`) ni gestiona la recepción o la apertura de una notificación. El backend ya envía los avisos de match y mensaje nuevos (`Snack.Notifications`), así que hoy no llega ninguno.
 2. **Verificada solo en Expo Web.** Hápticos, cámara y galería, teclado en Android, permiso de ubicación nativo, login nativo con Google/Apple y el socket del chat en redes móviles no se han probado en un dispositivo real. Falta una pasada en Android e iOS antes de cualquier prueba con personas.
-3. **`apps/mobile/android/` es un prebuild antiguo y está en git.** Hay 37 ficheros versionados del 2026-04-15 aunque `.gitignore` excluye `apps/mobile/android/`. No reflejan `app.config.ts` actual: faltan, entre otros, los permisos de ubicación y cámara y los plugins añadidos después. `expo run:android` usa ese directorio si existe. Arreglo: sacarlo del índice (`git rm -r --cached apps/mobile/android`) y generar siempre con `npx expo prebuild --clean`.
-4. **Ubicación congelada tras el onboarding.** Solo se envía en el paso de ubicación: no se refresca al abrir la app (como pide `01-requisitos-producto.md`) y no hay forma de cambiarla desde Yo o Ajustes. Quien se muda sigue viendo gente de su zona antigua.
-5. **Sin modo oscuro.** `userInterfaceStyle: "light"` y un único tema (`light-theme.ts`); no se usa `useColorScheme`. La arquitectura de tokens admite un segundo tema con el mismo contrato (`createTheme`).
-6. **Sin estado «sin conexión».** Descubrir y el resto de pantallas tratan un fallo de red como error genérico con reintento; no hay detección de conectividad.
-7. **Expo Go no sirve para entrar.** En Expo Go no se crean servicios de login y la app se queda en la pantalla de carga (deducido del código). Hace falta un build de desarrollo, Expo Web con el login de desarrollo o `EXPO_PUBLIC_MOCK_AUTH=true`.
-8. **«Continuar con Apple» también se muestra en web**, donde Sign in with Apple nativo no está disponible (la condición es `Platform.OS !== "android"`).
-9. **Sin tests de renderizado de las pantallas de producto** (onboarding, Descubrir, Likes, Chats, Yo): se prueban dominio, stores y componentes del sistema de diseño.
-10. **Acerca de no menciona la licencia del software (AGPL-3.0)**, solo la de las fuentes; el enlace «Ver el código» depende de compilar con `EXPO_PUBLIC_SOURCE_URL`.
-11. El selector de edad de Filtros llega a 99; el backend admite hasta 100.
+3. **Ubicación congelada tras el onboarding.** Solo se envía en el paso de ubicación: no se refresca al abrir la app (como pide `01-requisitos-producto.md`) y no hay forma de cambiarla desde Yo o Ajustes. Quien se muda sigue viendo gente de su zona antigua.
+4. **Sin modo oscuro.** `userInterfaceStyle: "light"` y un único tema (`light-theme.ts`); no se usa `useColorScheme`. La arquitectura de tokens admite un segundo tema con el mismo contrato (`createTheme`).
+5. **Sin estado «sin conexión».** Descubrir y el resto de pantallas tratan un fallo de red como error genérico con reintento; no hay detección de conectividad.
+6. **Expo Go no sirve para entrar.** En Expo Go no se crean servicios de login y la app se queda en la pantalla de carga (deducido del código). Hace falta un build de desarrollo, Expo Web con el login de desarrollo o `EXPO_PUBLIC_MOCK_AUTH=true`.
+7. **«Continuar con Apple» también se muestra en web**, donde Sign in with Apple nativo no está disponible (la condición es `Platform.OS !== "android"`).
+8. **Sin tests de renderizado de las pantallas de producto** (onboarding, Descubrir, Likes, Chats, Yo): se prueban dominio, stores y componentes del sistema de diseño.
+9. **Acerca de no menciona la licencia del software (AGPL-3.0)**, solo la de las fuentes; el enlace «Ver el código» depende de compilar con `EXPO_PUBLIC_SOURCE_URL`.
+10. El selector de edad de Filtros llega a 99; el backend admite hasta 100.
 
 ## Backend
 
@@ -28,10 +27,8 @@ Huecos conocidos entre producto, contratos, documentación y código a 2026-09-2
 8. **`compatible_only` simétrico, pendiente de validar con el propietario.** Hoy, si cualquiera de los dos lo activa, se exige una etiqueta en común en ambos sentidos (D-2026-09-29, ranking v2).
 9. **Una sola réplica.** Sin clúster de Erlang (libcluster) el PubSub del chat no cruza nodos: no se puede escalar horizontalmente el backend.
 10. **Fotos sin moderación.** Se verifican existencia, tamaño, MIME y cabecera binaria; no hay decodificación completa ni moderación de contenido.
-11. **`strict_profile_completion` es `false` en dev** (`config/dev.exs`): en desarrollo se puede completar el perfil sin fotos ni ubicación, y el comentario de ese fichero («not wired yet») ya no es cierto. En producción vale `true` por defecto; no desactivarlo en instancias reales.
 
 ## Documentación e infraestructura
 
-1. **`infra/deploy/README.md` §3.1 (runbook personal) tiene afirmaciones antiguas sobre las fotos locales:** rutas `profiles/<perfil>/<uuid>` (hoy `photos/<clave aleatoria>`), caché inmutable de un año (hoy un día) y «las fotos borradas solo se desactivan» (hoy se borran físicamente). La referencia vigente es `12-self-hosting.md` §5 y `06-contratos-mobile-backend.md`.
-2. **Sin `eas.json`** ni pipeline de build móvil: la compilación de la app para las tiendas es manual (`12-self-hosting.md` §8).
-3. `docs/starter-guide.md` sigue en inglés y describe el starter genérico, no el producto.
+1. **Sin `eas.json`** ni pipeline de build móvil: la compilación de la app para las tiendas es manual (`12-self-hosting.md` §8).
+2. `docs/starter-guide.md` sigue en inglés y describe el starter genérico, no el producto.

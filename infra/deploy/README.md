@@ -74,14 +74,14 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 
 **`local` (sin S3, recomendado para las primeras pruebas):**
 
-- Las fotos se escriben en `UPLOADS_DIR/profiles/<perfil>/<uuid>.<ext>` y Phoenix las sirve en `https://<dominio>/uploads/...` con caché inmutable de un año (Cloudflare las cachea por extensión). La subida es un `PUT /api/uploads/<token>` firmado; no hace falta abrir nada más que el propio backend.
+- La subida es un `PUT /api/uploads/<token>` firmado que escribe en `UPLOADS_DIR/pending/` (no público); al completarla la foto pasa a `UPLOADS_DIR/photos/<clave aleatoria>.<ext>` (sin id de perfil) y Phoenix la sirve en `https://<dominio>/uploads/...` con `Cache-Control: public, max-age=86400` (Cloudflare la cachea por extensión). Las fotos antiguas en `profiles/` se siguen sirviendo. No hace falta abrir nada más que el propio backend.
 - `UPLOADS_DIR` debe ser un **volumen persistente** (no el sistema de ficheros del contenedor: se perdería en cada despliegue). En Dokploy: *Advanced → Volumes* → bind mount del host `/var/lib/snack/uploads` en el contenedor en la misma ruta. El contenedor corre como `nobody`:
   ```bash
   sudo mkdir -p /var/lib/snack/uploads && sudo chown 65534:65534 /var/lib/snack/uploads
   ```
 - Definir `PUBLIC_BASE_URL=https://<dominio>` para que las URLs absolutas no dependan de las cabeceras `Host` que lleguen tras Caddy/Traefik.
 - Tamaño: máx. 2 MB por foto (`UPLOAD_MAX_BYTES`) × 4 fotos por perfil; vigilar el disco de 40 GB de la VM o montar un disco/volumen dedicado. Ni Caddy ni Traefik limitan el cuerpo por defecto; Cloudflare (plan gratuito) admite hasta 100 MB.
-- Backups: `UPLOADS_DIR` forma parte del estado junto con PostgreSQL (ver §8). Las fotos borradas por los usuarios solo se desactivan; su purga física sigue pendiente.
+- Backups: `UPLOADS_DIR` forma parte del estado junto con PostgreSQL (ver §8). Borrar una foto o la cuenta borra el fichero; un barrido cada 10 min elimina subidas abandonadas. Como la caché es de un día, una foto borrada puede seguir en la CDN hasta 24 h (purgar en Cloudflare si urge).
 
 **`r2` (Cloudflare R2 o S3 compatible):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL_BASE` y `R2_ACCOUNT_ID` (R2) o `S3_ENDPOINT` + `S3_REGION` (MinIO, Garage…, direccionamiento path-style). El CORS del bucket debe permitir `PUT` con `Content-Type` e `If-None-Match`. Sin credenciales, `upload-intent` responde 503 `storage_not_configured`. Cambiar de `local` a `r2` no migra fotos: las antiguas siguen sirviéndose desde `/uploads` mientras exista el directorio. Las credenciales R2/S3 necesitan lectura, escritura **y borrado** de objetos: `complete` copia `pending/<key>` a `<key>` y borra el original, y el barrido (`Snack.Dating.PhotoStorageSweeper`, cada 10 min) borra fotos borradas y subidas abandonadas. Con bucket público, añade una regla de ciclo de vida que borre el prefijo `pending/` a 1 día (defensa en profundidad: esas claves son aleatorias y el barrido ya las borra). Con `local` en prod, `PUBLIC_BASE_URL` es obligatoria (las URLs de fotos no se construyen con la cabecera `Host`).
 

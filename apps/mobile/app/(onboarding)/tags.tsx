@@ -1,5 +1,5 @@
-import { TagSelectionScreen } from "../../src/features/tags";
+import { TagsStep } from "../../src/features/onboarding";
 
-export default function OnboardingTagsRoute() {
-  return <TagSelectionScreen />;
+export default function OnboardingTagsStepRoute() {
+  return <TagsStep />;
 }

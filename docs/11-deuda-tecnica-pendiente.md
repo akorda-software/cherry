@@ -13,7 +13,6 @@ Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21)
 5. Estados de feed diferenciados ausentes (poca oferta, perfil incompleto, pausado, offline); solo existe un empty-state genérico con reintento.
 6. `home.tsx` sin renombrar a `discover.tsx`; falta tab Matches.
 7. Modal de match sin CTA a conversación.
-8. Login navega a home sin esperar bootstrap (carrera latente; `index.tsx` la corrige después).
 9. Sin tests de las pantallas de onboarding ni del resolver `stepToRoute` (justo donde está el bug de mapeo).
 10. Dirección visual sin decidir: tema neobrutal activo vs paleta dating planificada (ver `08-identidad-visual.md`).
 
@@ -24,6 +23,13 @@ Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21)
 ## Proceso
 
 24. Trabajo extenso sin commitear (~58 modificados + ~42 sin trackear tras la reestructuración de docs): consolidar en commits antes de seguir creciendo sobre él.
+
+## Resuelto el 2026-09-29 (bienvenida, Yo y Ajustes)
+
+- #8 El login ya no navega a Descubrir: tras entrar vuelve a `/` y `app/index.tsx` espera al bootstrap para decidir (onboarding o Descubrir).
+- Recargar el bootstrap con uno ya cargado lo revalida en segundo plano (los guards no desmontan la zona privada al pausar el perfil) y descarta respuestas que llegan tras cerrar sesión o tras una recarga más reciente.
+- Cerrar sesión deja la sesión local limpia aunque falle revocarla en el servidor (sin red o cuenta ya borrada).
+- Pausa/reanudación y borrado de cuenta usados desde la app (pestaña Yo y Ajustes); el borrado limpia la sesión y vuelve a la bienvenida.
 
 ## Resuelto el 2026-09-29 (ranking de discovery v2)
 

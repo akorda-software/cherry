@@ -29,6 +29,8 @@ interface BootstrapStoreState {
   refresh(): Promise<void>;
 }
 
+let refreshSequence = 0;
+
 function toError(error: unknown): string {
   return error instanceof Error ? error.message : "Unable to load app bootstrap";
 }
@@ -49,7 +51,8 @@ export const useBootstrapStore = create<BootstrapStoreState>((set, get) => ({
   },
 
   refresh: async () => {
-    const { service, executeAuthenticated, sessionStatus } = get();
+    const { service, executeAuthenticated, sessionStatus, status, bootstrap: current } = get();
+    const requestId = ++refreshSequence;
 
     if (sessionStatus !== "signed-in") {
       set({ status: "idle", bootstrap: null, error: null });
@@ -60,12 +63,24 @@ export const useBootstrapStore = create<BootstrapStoreState>((set, get) => ({
       return;
     }
 
-    set({ status: "loading", bootstrap: null, error: null });
+    // Con un bootstrap ya cargado se revalida en segundo plano: los guards no desmontan la
+    // zona privada (p. ej. al pausar el perfil) y, si falla, se conserva el anterior.
+    const revalidating = status === "ready" && current !== null;
+    if (!revalidating) {
+      set({ status: "loading", bootstrap: null, error: null });
+    }
 
     try {
       const bootstrap = (await executeAuthenticated((token) => service.fetchBootstrap(token))) as AppBootstrap;
+      // Una recarga más reciente o un cierre de sesión dejan esta respuesta obsoleta.
+      if (requestId !== refreshSequence) {
+        return;
+      }
       set({ status: "ready", bootstrap, error: null });
     } catch (error) {
+      if (requestId !== refreshSequence || revalidating) {
+        return;
+      }
       set({ status: "error", bootstrap: null, error: toError(error) });
     }
   }

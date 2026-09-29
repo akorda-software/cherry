@@ -167,17 +167,13 @@ defmodule SnackWeb.Controllers.Api.DiscoverySocialTest do
       end
     end
 
-    test "a paused person who liked you can still be liked back", ctx do
+    test "a paused person who liked you cannot be liked back until they unpause", ctx do
       like!(ctx.candidate, ctx.viewer)
       {:ok, _} = Dating.pause_profile(ctx.candidate)
+      body = %{"target_profile_id" => ctx.candidate.id, "action_type" => "like"}
 
-      assert %{"matchCreated" => true} =
-               ctx.conn
-               |> post("/api/discovery/actions", %{
-                 "target_profile_id" => ctx.candidate.id,
-                 "action_type" => "like"
-               })
-               |> json_response(200)
+      assert %{"error" => "profile_not_found"} =
+               ctx.conn |> post("/api/discovery/actions", body) |> json_response(404)
     end
 
     test "invalid action types and missing params are unprocessable", ctx do
@@ -202,7 +198,7 @@ defmodule SnackWeb.Controllers.Api.DiscoverySocialTest do
                ctx.conn |> post("/api/discovery/undo") |> json_response(200)
 
       assert card["id"] == ctx.candidate.id
-      assert card["score"] == 0
+      refute Map.has_key?(card, "score")
       assert [%{"url" => _} | _] = card["photos"]
       assert card["distanceLabel"] == "Cerca de ti"
       refute Repo.get_by(SwipeAction, actor_profile_id: ctx.viewer.id)

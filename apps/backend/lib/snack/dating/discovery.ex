@@ -35,7 +35,7 @@ defmodule Snack.Dating.Discovery do
 
   | Component | Points |
   |---|---|
-  | Tag affinity | 45 × Σw(shared) / √(Σw(viewer tags) · Σw(candidate tags)), IDF weights (`TagWeights`) |
+  | Tag affinity | 45 × Σw(shared) / √(Σw(viewer tags) · Σw(candidate tags)), IDF weights (`TagWeights`), active catalog tags only |
   | Intent | +10 same intent; +4 compatible through `go_with_the_flow` |
   | Reciprocity | +12 when the candidate already liked the viewer (`liked_viewer`) |
   | Newcomer | +8 at `completed_at`, decreasing linearly to 0 after 7 days (`is_newcomer`) |
@@ -46,7 +46,10 @@ defmodule Snack.Dating.Discovery do
 
   Tag affinity is a weighted Ochiai/cosine coefficient: with uniform weights it is
   `shared / √(|viewer tags| · |candidate tags|)`; IDF weights make rare shared tags
-  count more. It dominates the score (45 points vs. 10 for distance).
+  count more. It dominates the score (45 points vs. 10 for distance). Tags the
+  catalog deactivated (`tags.is_active = false`) are ignored by the affinity,
+  `shared_tags_count` and `compatible_only` (cards hide them too); tag blocks
+  still apply to every tag.
 
   ## Pagination stability
 
@@ -359,15 +362,20 @@ defmodule Snack.Dating.Discovery do
         else: "TRUE"
 
     """
+    -- One row per ACTIVE catalog tag with its weight (default when the pinned
+    -- generation has none). Inactive tags never count for affinity nor
+    -- shared_tags_count (cards hide them); blocks still use every tag.
     WITH weights AS MATERIALIZED (
-      SELECT w.tag_id, w.weight
-      FROM discovery_tag_weights w
-      WHERE w.generation = #{ph.(:generation)}::bigint
+      SELECT t.id AS tag_id, COALESCE(w.weight, #{default_weight}) AS weight
+      FROM tags t
+      LEFT JOIN discovery_tag_weights w
+        ON w.tag_id = t.id AND w.generation = #{ph.(:generation)}::bigint
+      WHERE t.is_active
     ),
     viewer_tags AS MATERIALIZED (
-      SELECT vt.tag_id, COALESCE(w.weight, #{default_weight}) AS weight
+      SELECT vt.tag_id, w.weight
       FROM unnest(#{ph.(:tags)}::uuid[]) AS vt(tag_id)
-      LEFT JOIN weights w ON w.tag_id = vt.tag_id
+      JOIN weights w ON w.tag_id = vt.tag_id
     ),
     candidates AS MATERIALIZED (
       SELECT p.id,
@@ -437,9 +445,9 @@ defmodule Snack.Dating.Discovery do
       CROSS JOIN LATERAL (
         SELECT count(vt.tag_id)::int AS shared_count,
                COALESCE(sum(vt.weight), 0) AS shared_weight,
-               COALESCE(sum(COALESCE(w.weight, #{default_weight})), 0) AS total_weight
+               COALESCE(sum(w.weight), 0) AS total_weight
         FROM profile_tags t
-        LEFT JOIN weights w ON w.tag_id = t.tag_id
+        JOIN weights w ON w.tag_id = t.tag_id
         LEFT JOIN viewer_tags vt ON vt.tag_id = t.tag_id
         WHERE t.profile_id = c.id
       ) ts

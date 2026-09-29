@@ -12,7 +12,9 @@ defmodule Snack.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      # `:tar` → _build/prod/snack-<version>.tar.gz (infra/deploy/deploy-backend.sh).
+      releases: [snack: [steps: [:assemble, :tar]]]
     ]
   end
 

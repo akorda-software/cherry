@@ -80,7 +80,10 @@ defmodule SnackWeb.Controllers.Api.UploadControllerTest do
              "maxBytes" => 10_000
            } = intent
 
-    assert String.starts_with?(storage_key, "profiles/#{profile.id}/")
+    # Random key, nothing about the profile in the path.
+    assert "photos/" <> file = storage_key
+    refute String.contains?(storage_key, profile.id)
+    assert file =~ ~r/^[0-9a-f]{32}\.jpg$/
     assert public_url == "http://www.example.com/uploads/#{storage_key}"
 
     # The upload URL carries its own authorisation: no Bearer header.
@@ -89,7 +92,11 @@ defmodule SnackWeb.Controllers.Api.UploadControllerTest do
            |> put(URI.parse(upload_url).path, @jpeg)
            |> json_response(200) == %{"ok" => true}
 
-    assert File.read!(Path.join(dir, storage_key)) == @jpeg
+    # Uploaded to the non-public pending area until completed.
+    assert File.read!(Path.join(dir, "pending/" <> storage_key)) == @jpeg
+    refute File.exists?(Path.join(dir, storage_key))
+    assert get(build_conn(), "/uploads/#{storage_key}").status == 404
+    assert get(build_conn(), "/uploads/pending/#{storage_key}").status == 404
 
     assert %{"photo" => photo} =
              authed_conn
@@ -103,6 +110,8 @@ defmodule SnackWeb.Controllers.Api.UploadControllerTest do
              |> json_response(200)
 
     assert %{"storageKey" => ^storage_key, "url" => ^public_url, "position" => 1} = photo
+    assert File.read!(Path.join(dir, storage_key)) == @jpeg
+    refute File.exists?(Path.join(dir, "pending/" <> storage_key))
 
     stored = Repo.get_by!(Dating.ProfilePhoto, storage_key: storage_key)
     assert stored.url == "/uploads/#{storage_key}"
@@ -114,7 +123,7 @@ defmodule SnackWeb.Controllers.Api.UploadControllerTest do
     assert served.status == 200
     assert served.resp_body == @jpeg
     assert get_resp_header(served, "content-type") == ["image/jpeg"]
-    assert get_resp_header(served, "cache-control") == ["public, max-age=31536000, immutable"]
+    assert get_resp_header(served, "cache-control") == ["public, max-age=86400"]
     assert get_resp_header(served, "x-content-type-options") == ["nosniff"]
   end
 
@@ -133,7 +142,7 @@ defmodule SnackWeb.Controllers.Api.UploadControllerTest do
              |> json_response(200)
 
     assert String.starts_with?(upload_url, "https://api.snack.example/api/uploads/")
-    assert String.starts_with?(public_url, "https://api.snack.example/uploads/profiles/")
+    assert String.starts_with?(public_url, "https://api.snack.example/uploads/photos/")
   end
 
   test "rejects a second PUT to the same URL with 412", %{profile: profile} do
@@ -143,6 +152,145 @@ defmodule SnackWeb.Controllers.Api.UploadControllerTest do
 
     assert %{"error" => "upload_already_exists"} =
              path |> conn_put(@jpeg <> "x") |> json_response(412)
+  end
+
+  test "a PUT after completing cannot recreate the pending object", %{
+    profile: profile,
+    dir: dir
+  } do
+    {path, key} = local_intent(profile)
+    assert conn_put(path, @jpeg).status == 200
+
+    assert {:ok, _photo} =
+             Dating.complete_photo_upload(profile, %{"storageKey" => key})
+
+    assert %{"error" => "upload_already_exists"} =
+             path |> conn_put(@jpeg) |> json_response(412)
+
+    refute File.exists?(Path.join(dir, "pending/" <> key))
+  end
+
+  test "deleting a photo removes its file", %{
+    authed_conn: authed_conn,
+    profile: profile,
+    dir: dir
+  } do
+    {path, key} = local_intent(profile)
+    assert conn_put(path, @jpeg).status == 200
+    assert {:ok, photo} = Dating.complete_photo_upload(profile, %{"storageKey" => key})
+    assert File.exists?(Path.join(dir, key))
+
+    assert %{"ok" => true} =
+             authed_conn |> delete("/api/me/photos/#{photo.id}") |> json_response(200)
+
+    refute File.exists?(Path.join(dir, key))
+    assert get(build_conn(), "/uploads/#{key}").status == 404
+    assert Repo.get!(Dating.ProfilePhoto, photo.id).storage_deleted_at
+  end
+
+  test "deleting the account removes every photo file", %{
+    authed_conn: authed_conn,
+    profile: profile,
+    dir: dir
+  } do
+    {path, key} = local_intent(profile)
+    assert conn_put(path, @jpeg).status == 200
+    assert {:ok, _photo} = Dating.complete_photo_upload(profile, %{"storageKey" => key})
+
+    assert authed_conn |> delete("/api/me/account") |> json_response(200)
+    refute File.exists?(Path.join(dir, key))
+  end
+
+  test "the sweeper deletes abandoned uploads once the intent expires", %{
+    profile: profile,
+    dir: dir
+  } do
+    {path, key} = local_intent(profile)
+    assert conn_put(path, @jpeg).status == 200
+    pending = Path.join(dir, "pending/" <> key)
+    assert File.exists?(pending)
+
+    # Not before expiry (plus a grace period).
+    assert %{intents: 0} = Snack.Dating.PhotoStorage.sweep()
+    assert File.exists?(pending)
+
+    later = DateTime.add(DateTime.utc_now(), 3600, :second)
+    assert %{intents: 1} = Snack.Dating.PhotoStorage.sweep(later)
+    refute File.exists?(pending)
+
+    assert Repo.get_by!(Dating.ProfilePhotoUploadIntent, storage_key: key).storage_deleted_at
+    assert %{intents: 0} = Snack.Dating.PhotoStorage.sweep(later)
+  end
+
+  test "the sweeper purges photos deleted before physical deletion existed", %{
+    profile: profile,
+    dir: dir
+  } do
+    File.mkdir_p!(Path.join(dir, "profiles/legacy"))
+    File.write!(Path.join(dir, "profiles/legacy/a.jpg"), @jpeg)
+
+    {:ok, photo} =
+      Dating.create_photo(%{
+        profile_id: profile.id,
+        storage_key: "profiles/legacy/a.jpg",
+        url: "/uploads/profiles/legacy/a.jpg",
+        position: 1,
+        is_active: false
+      })
+
+    # Photos linked from elsewhere (demo seeds) are never touched.
+    {:ok, _external} =
+      Dating.create_photo(%{
+        profile_id: profile.id,
+        storage_key: "demo/someone/1",
+        url: "https://example.com/1.jpg",
+        position: 2,
+        is_active: false
+      })
+
+    assert %{photos: 2} = Snack.Dating.PhotoStorage.sweep()
+    refute File.exists?(Path.join(dir, "profiles/legacy/a.jpg"))
+    assert Repo.get!(Dating.ProfilePhoto, photo.id).storage_deleted_at
+    assert %{photos: 0} = Snack.Dating.PhotoStorage.sweep()
+  end
+
+  test "limits live upload intents per profile and intents per hour", %{
+    authed_conn: authed_conn,
+    profile: profile
+  } do
+    body = %{"position" => 1, "contentType" => "image/jpeg", "sizeBytes" => byte_size(@jpeg)}
+
+    for _ <- 1..4 do
+      assert authed_conn |> post("/api/me/photos/upload-intent", body) |> json_response(200)
+    end
+
+    assert %{"error" => "too_many_upload_intents"} =
+             authed_conn |> post("/api/me/photos/upload-intent", body) |> json_response(429)
+
+    # Expired intents no longer count as live, but they do count per hour.
+    Repo.update_all(Dating.ProfilePhotoUploadIntent,
+      set: [
+        expires_at: DateTime.add(DateTime.utc_now(), -60, :second) |> DateTime.truncate(:second)
+      ]
+    )
+
+    for _ <- 1..16 do
+      {:ok, _} =
+        Dating.create_photo_upload_intent(profile, %{
+          position: 1,
+          content_type: "image/jpeg",
+          size_bytes: 100
+        })
+
+      Repo.update_all(Dating.ProfilePhotoUploadIntent,
+        set: [
+          expires_at: DateTime.add(DateTime.utc_now(), -60, :second) |> DateTime.truncate(:second)
+        ]
+      )
+    end
+
+    assert %{"error" => "upload_rate_limited"} =
+             authed_conn |> post("/api/me/photos/upload-intent", body) |> json_response(429)
   end
 
   test "rejects expired and tampered tokens with 403", %{profile: profile} do
@@ -270,10 +418,13 @@ defmodule SnackWeb.Controllers.Api.UploadControllerTest do
     File.mkdir_p!(Path.join(dir, ".tmp"))
     File.write!(Path.join(dir, ".tmp/leak.part"), "secret")
     File.mkdir_p!(Path.join(dir, "profiles/p1"))
+    File.mkdir_p!(Path.join(dir, "pending/photos"))
+    File.write!(Path.join(dir, "pending/photos/x.jpg"), @jpeg)
     File.write!(Path.join(dir, "notes.txt"), "secret")
 
     for path <- [
           "/uploads/.tmp/leak.part",
+          "/uploads/pending/photos/x.jpg",
           "/uploads/profiles",
           "/uploads/profiles/p1",
           "/uploads/notes.txt"

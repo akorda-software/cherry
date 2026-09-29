@@ -78,11 +78,49 @@ defmodule SnackWeb.Controllers.Api.SafetySettingsBootstrapTest do
 
     test "accepts every documented reason", ctx do
       for reason <- Snack.Dating.Safety.report_reasons() do
+        target = complete_profile_fixture(user_fixture())
+
         assert %{"report" => %{"reason" => ^reason, "details" => nil}} =
                  ctx.conn
-                 |> post("/api/users/#{ctx.other.id}/report", %{"reason" => reason})
+                 |> post("/api/users/#{target.id}/report", %{"reason" => reason})
                  |> json_response(200)
       end
+    end
+
+    test "is idempotent while the previous report is open", ctx do
+      path = "/api/users/#{ctx.other.id}/report"
+
+      assert %{"report" => %{"id" => id, "reason" => "spam"}} =
+               ctx.conn |> post(path, %{"reason" => "spam"}) |> json_response(200)
+
+      assert %{"report" => %{"id" => ^id, "reason" => "spam"}} =
+               ctx.conn |> post(path, %{"reason" => "harassment"}) |> json_response(200)
+
+      assert Repo.aggregate(Report, :count) == 1
+
+      # Once moderated, a new report can be filed.
+      Repo.update_all(Report, set: [status: "reviewed"])
+
+      assert %{"report" => %{"id" => new_id, "reason" => "harassment"}} =
+               ctx.conn |> post(path, %{"reason" => "harassment"}) |> json_response(200)
+
+      assert new_id != id
+    end
+
+    test "a deleted profile or account is indistinguishable from an unknown one", ctx do
+      deleted_user = user_fixture()
+      deleted = complete_profile_fixture(deleted_user)
+      {:ok, _} = Snack.Accounts.delete_account(deleted_user)
+
+      assert %{"error" => "profile_not_found"} =
+               ctx.conn
+               |> post("/api/users/#{deleted.id}/report", %{"reason" => "spam"})
+               |> json_response(404)
+
+      assert %{"error" => "profile_not_found"} =
+               ctx.conn |> post("/api/users/#{deleted.id}/block") |> json_response(404)
+
+      assert Repo.aggregate(Report, :count) == 0
     end
 
     test "validates reason, details, self and target", ctx do

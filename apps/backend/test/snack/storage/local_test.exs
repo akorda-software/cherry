@@ -242,6 +242,32 @@ defmodule Snack.Storage.LocalTest do
     end
   end
 
+  describe "promote/2 and delete_object/1" do
+    test "move a pending object to its public key and delete objects", %{dir: dir} do
+      write_object(dir, "pending/photos/a.jpg", @jpeg)
+
+      assert :ok = Local.promote("pending/photos/a.jpg", "photos/a.jpg")
+      assert File.read!(Path.join(dir, "photos/a.jpg")) == @jpeg
+      refute File.exists?(Path.join(dir, "pending/photos/a.jpg"))
+
+      # Idempotent from the caller's point of view.
+      assert {:error, :upload_object_not_found} =
+               Local.promote("pending/photos/a.jpg", "photos/a.jpg")
+
+      assert :ok = Local.delete_object("photos/a.jpg")
+      refute File.exists?(Path.join(dir, "photos/a.jpg"))
+      assert :ok = Local.delete_object("photos/a.jpg")
+      assert :ok = Local.delete_object("../outside.jpg")
+    end
+
+    test "a pending key cannot be uploaded again once published", %{dir: dir} do
+      write_object(dir, "photos/b.jpg", @jpeg)
+
+      assert {:error, :upload_already_exists} =
+               Local.begin_upload(claims("pending/photos/b.jpg"))
+    end
+  end
+
   defp claims(key, content_type \\ "image/jpeg"),
     do: %{storage_key: key, content_type: content_type, max_bytes: 1_000}
 

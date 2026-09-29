@@ -6,7 +6,15 @@ defmodule Snack.Storage.R2 do
   El móvil sube directamente al bucket con una URL SigV4 prefirmada (path-style)
   que firma `Content-Type` e `If-None-Match: *`, de modo que no puede
   sobrescribir un objeto ya subido. `verify_upload/1` consulta el objeto por la
-  API autenticada (HEAD + lectura parcial condicionada por ETag).
+  API autenticada (HEAD + lectura parcial condicionada por ETag); `promote/2`
+  lo copia de la zona de espera (`pending/`) a su clave definitiva y
+  `delete_object/1` borra objetos (fotos borradas, cuentas borradas, subidas
+  abandonadas).
+
+  Un bucket con acceso público expone también `pending/`: las claves son
+  aleatorias y el barrido las borra al caducar el intent, pero conviene añadir
+  una regla de ciclo de vida que borre `pending/` a 1 día (ver
+  `infra/deploy/README.md`).
 
   Sin `:endpoint` se usa R2 (`https://<account_id>.r2.cloudflarestorage.com`,
   región `auto`). Con `:endpoint` (env `S3_ENDPOINT`, p. ej.
@@ -128,6 +136,37 @@ defmodule Snack.Storage.R2 do
     end
   end
 
+  @doc "Server-side copy (`x-amz-copy-source`) followed by a delete of the source."
+  @impl Snack.Storage
+  def promote(from_key, to_key) do
+    with {:ok, config} <- config(),
+         {:ok, _copy} <-
+           object_request(config, to_key, :put,
+             headers: [
+               {"x-amz-copy-source",
+                "/#{encode_path(config[:bucket_name])}/#{encode_path(from_key)}"}
+             ]
+           ) do
+      case object_request(config, from_key, :delete) do
+        {:ok, _deleted} -> :ok
+        # The copy is published; the sweeper removes the leftover later.
+        {:error, :upload_object_not_found} -> :ok
+        {:error, _reason} -> :ok
+      end
+    end
+  end
+
+  @impl Snack.Storage
+  def delete_object(storage_key) do
+    with {:ok, config} <- config() do
+      case object_request(config, storage_key, :delete) do
+        {:ok, _response} -> :ok
+        {:error, :upload_object_not_found} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
   defp object_request(config, storage_key, method, opts \\ []) do
     endpoint = endpoint(config)
 
@@ -152,7 +191,7 @@ defmodule Snack.Storage.R2 do
            |> Keyword.merge(opts)
            |> Keyword.merge(Keyword.get(config, :request_options, []))
          ) do
-      {:ok, %{status: status} = response} when status in [200, 206] -> {:ok, response}
+      {:ok, %{status: status} = response} when status in [200, 204, 206] -> {:ok, response}
       {:ok, %{status: 404}} -> {:error, :upload_object_not_found}
       {:ok, %{status: 412}} -> {:error, :upload_object_changed}
       _ -> {:error, :storage_unavailable}

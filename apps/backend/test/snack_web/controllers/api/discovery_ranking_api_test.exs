@@ -116,10 +116,13 @@ defmodule SnackWeb.Controllers.Api.DiscoveryRankingApiTest do
           action_type: "like"
         })
 
-      assert %{"profiles" => [%{"id" => id, "score" => score}], "nextCursor" => nil} =
+      assert %{"profiles" => [%{"id" => id} = card], "nextCursor" => nil} =
                conn |> get("/api/discovery/feed") |> json_response(200)
 
       assert id == candidate.id
+      # The score orders the feed but never reaches the client (private signals).
+      refute Map.has_key?(card, "score")
+      assert {:ok, %{profiles: [%{score: score}]}} = Dating.discovery_feed(viewer.id)
 
       # 45 tags (identical sets) + 10 intent + 12 reciprocity + 10 distance, plus 0..4 exploration.
       assert score >= 77 and score <= 81

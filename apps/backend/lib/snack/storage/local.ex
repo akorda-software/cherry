@@ -8,12 +8,14 @@ defmodule Snack.Storage.Local do
     * `presign_put/3` devuelve `upload_url = /api/uploads/<token>`, donde el
       token (`Phoenix.Token`) firma la storage key, el MIME, el tamaño máximo y
       la caducidad (= TTL del intent). La ruta es pública: el token autoriza.
-    * `PUT /api/uploads/<token>` escribe el objeto en `uploads_dir/<storage_key>`
-      de forma atómica (fichero temporal + enlace duro) y nunca sobrescribe:
-      si el objeto ya existe responde 412, igual que `If-None-Match: *` en S3.
-    * Las fotos se sirven con `Plug.Static` en `/uploads/<storage_key>` y en BD
-      se guarda la ruta relativa; la API la devuelve absoluta con
-      `SnackWeb.MediaUrl`.
+    * `PUT /api/uploads/<token>` escribe el objeto en la zona de espera
+      `uploads_dir/pending/<storage_key>` de forma atómica (fichero temporal +
+      enlace duro) y nunca sobrescribe: si el objeto ya existe (en espera o ya
+      publicado) responde 412, igual que `If-None-Match: *` en S3.
+    * `promote/2` (al completar) lo mueve a `uploads_dir/<storage_key>`.
+    * Solo se sirven `photos/` y `profiles/` (claves antiguas) con `Plug.Static`
+      en `/uploads/<storage_key>`; `pending/` y `.tmp/` nunca. En BD se guarda
+      la ruta relativa; la API la devuelve absoluta con `SnackWeb.MediaUrl`.
 
   Configuración (`config :snack, Snack.Storage.Local`): `:uploads_dir`,
   `:max_upload_bytes`, `:upload_url_ttl_seconds`, `:allowed_content_types`.
@@ -121,6 +123,48 @@ defmodule Snack.Storage.Local do
     end
   end
 
+  @impl Snack.Storage
+  def promote(from_key, to_key) do
+    with {:ok, from_path} <- object_path(from_key),
+         {:ok, to_path} <- object_path(to_key) do
+      cond do
+        not File.regular?(from_path) ->
+          {:error, :upload_object_not_found}
+
+        File.mkdir_p(Path.dirname(to_path)) != :ok ->
+          {:error, :storage_unavailable}
+
+        true ->
+          case publish(from_path, to_path) do
+            # Random keys: an existing destination is this same upload,
+            # published by an earlier attempt.
+            result when result in [:ok, {:error, :upload_already_exists}] ->
+              _ = File.rm(from_path)
+              :ok
+
+            {:error, reason} ->
+              {:error, reason}
+          end
+      end
+    else
+      {:error, :invalid_storage_key} -> {:error, :upload_object_not_found}
+    end
+  end
+
+  @impl Snack.Storage
+  def delete_object(storage_key) do
+    with {:ok, path} <- object_path(storage_key) do
+      case File.rm(path) do
+        :ok -> :ok
+        {:error, :enoent} -> :ok
+        {:error, _reason} -> {:error, :storage_unavailable}
+      end
+    else
+      # Nothing we could have stored there.
+      {:error, :invalid_storage_key} -> :ok
+    end
+  end
+
   # ── Upload endpoint support (`PUT /api/uploads/:token`) ───────────────
 
   @doc """
@@ -157,7 +201,7 @@ defmodule Snack.Storage.Local do
   """
   def begin_upload(%{storage_key: storage_key, content_type: content_type, max_bytes: max_bytes}) do
     with {:ok, dest_path} <- object_path(storage_key),
-         false <- File.exists?(dest_path),
+         false <- File.exists?(dest_path) or published?(storage_key),
          tmp_dir = Path.join(uploads_dir(), @tmp_dir_name),
          :ok <- File.mkdir_p(tmp_dir),
          :ok <- sweep_stale_tmp(tmp_dir),
@@ -314,9 +358,29 @@ defmodule Snack.Storage.Local do
       else: head
   end
 
+  # The descriptor is always closed, even when datasync fails.
   defp sync_and_close(%Upload{fd: fd}) do
-    with :ok <- :file.datasync(fd) do
-      :file.close(fd)
+    synced = :file.datasync(fd)
+    closed = :file.close(fd)
+
+    case {synced, closed} do
+      {:ok, :ok} -> :ok
+      {{:error, reason}, _closed} -> {:error, reason}
+      {:ok, {:error, reason}} -> {:error, reason}
+    end
+  end
+
+  # A re-PUT of a pending key must not recreate it once it has been published.
+  defp published?(storage_key) do
+    case Storage.published_key(storage_key) do
+      nil ->
+        false
+
+      published_key ->
+        case object_path(published_key) do
+          {:ok, path} -> File.exists?(path)
+          {:error, _invalid} -> false
+        end
     end
   end
 

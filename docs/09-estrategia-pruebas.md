@@ -13,7 +13,7 @@
 
 ## Entorno del backend
 
-Los tests requieren **PostgreSQL 17 + PostGIS** en `localhost:5432` (usuario/pass `postgres`, DB `snack_test`; ver `config/test.exs`). El compose de `infra/` expone dev en el puerto 5510; para tests, levantar una instancia PostGIS en 5432 o ajustar config. `mix test` crea y migra la DB automáticamente.
+Los tests requieren **PostgreSQL 17 + PostGIS** en `localhost:5432` (usuario/pass `postgres`, DB `snack_test`; ver `config/test.exs`). Con el PostGIS del compose de `infra/` (puerto 5510): `TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_test mix test`. `DATABASE_URL` solo se usa en tests si el nombre de la BD contiene `_test` (p. ej. `snack_test_fix` para una copia aislada); si apunta a otra (p. ej. `snack_dev` exportado en la shell), `mix test` se niega a arrancar en vez de machacarla. `mix test` crea y migra la DB automáticamente.
 
 Cobertura: umbral 90% configurado en `mix.exs`.
 
@@ -39,7 +39,7 @@ Cobertura: umbral 90% configurado en `mix.exs`.
 
 ## Datos de demo (solo dev)
 
-`mix run priv/repo/demo_seeds.exs` (con el PostGIS del compose: `DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_dev`) crea un escenario realista para probar y capturar todas las pantallas: 53 perfiles sintéticos completos alrededor de Madrid (1–40 km, 20–45 años, hombres, mujeres y personas no binarias, intenciones y etiquetas variadas, 2–4 fotos) más dos cuentas principales:
+`mix run priv/repo/demo_seeds.exs` (con el PostGIS del compose: `DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_dev`; se niega a correr fuera de `MIX_ENV=dev` o contra una BD cuyo nombre no termine en `_dev`) crea un escenario realista para probar y capturar todas las pantallas: 53 perfiles sintéticos completos alrededor de Madrid (1–40 km, 20–45 años, hombres, mujeres y personas no binarias, intenciones y etiquetas variadas, 2–4 fotos) más dos cuentas principales:
 
 | Cuenta | Para qué |
 |---|---|

@@ -39,7 +39,7 @@ mix run priv/repo/seeds.exs        # 52-tag catalog (any environment, idempotent
 mix run priv/repo/demo_seeds.exs   # dev only: ~55 realistic profiles around Madrid
 ```
 
-`demo_seeds.exs` refuses to run outside `MIX_ENV=dev`, re-seeds the tag catalog and is idempotent (re-running resets the demo scenario without duplicating anything). Log in with the dev endpoint:
+`demo_seeds.exs` refuses to run outside `MIX_ENV=dev` or against a database whose name does not end in `_dev`, re-seeds the tag catalog and is idempotent (re-running resets the demo scenario without duplicating anything). Log in with the dev endpoint:
 
 ```bash
 curl -X POST localhost:4000/api/auth/dev/test-login -H 'content-type: application/json' \
@@ -66,10 +66,29 @@ With the compose PostGIS on port 5510: `DATABASE_URL=ecto://postgres:postgres@lo
 - `GOOGLE_WEB_CLIENT_ID`
 - `GOOGLE_IOS_CLIENT_ID`
 - `GOOGLE_JWKS_CACHE_TTL_MS`
+- `APPLE_AUDIENCES`
+- `MESSAGE_ENCRYPTION_KEY`
 - `STORAGE_ADAPTER` (`local` | `r2`), `UPLOADS_DIR`, `PUBLIC_BASE_URL`, `UPLOAD_MAX_BYTES`, `UPLOAD_URL_TTL_SECONDS`
 - `R2_*`, `S3_ENDPOINT`, `S3_REGION` (R2/S3 adapter)
 
 ## Verification
 
-- `MIX_ENV=test mix test`
+- `mix test` (localhost:5432/snack_test by default). With the compose PostGIS:
+  `TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_test mix test`.
+  `DATABASE_URL` is only honoured when its database name contains `_test`: tests
+  wipe their database, so a dev `DATABASE_URL` exported in the shell makes
+  `mix test` refuse to run instead of wiping `snack_dev`.
 - `mix precommit`
+
+## Releases and Docker
+
+- `MIX_ENV=prod mix release` builds `_build/prod/rel/snack` and the tarball
+  `_build/prod/snack-<version>.tar.gz` (used by `infra/deploy/deploy-backend.sh`).
+- `bin/migrate` runs the migrations and then syncs the tag catalog (idempotent;
+  never the demo data); `bin/seed` only syncs the catalog. The Docker image runs
+  `bin/migrate && exec bin/server` by default.
+- In prod the release refuses to boot with missing or weak secrets, without
+  `PHX_HOST`, or (with `STORAGE_ADAPTER=local`) without `UPLOADS_DIR` and
+  `PUBLIC_BASE_URL`; the error lists every problem at once. A provider without
+  audiences (`GOOGLE_WEB_CLIENT_ID`/`GOOGLE_IOS_CLIENT_ID`, `APPLE_AUDIENCES`) is
+  logged at boot: its logins would all be rejected.

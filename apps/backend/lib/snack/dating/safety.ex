@@ -9,8 +9,10 @@ defmodule Snack.Dating.Safety do
 
   import Ecto.Query
 
+  alias Snack.Accounts.User
   alias Snack.Dating
   alias Snack.Dating.Profile
+  alias Snack.Dating.Report
   alias Snack.Dating.UserBlock
   alias Snack.Repo
 
@@ -20,7 +22,10 @@ defmodule Snack.Dating.Safety do
   def report_reasons, do: @report_reasons
   def max_details_length, do: @max_details_length
 
-  @doc "Bloquea `target_id`. Errores: `:profile_not_found`, `:cannot_block_self`."
+  @doc """
+  Bloquea `target_id`. Errores: `:profile_not_found` (inexistente o borrado),
+  `:cannot_block_self`.
+  """
   def block(%Profile{id: actor_id}, target_id) do
     with {:ok, target_id} <- existing_profile_id(target_id),
          :ok <- not_self(actor_id, target_id, :cannot_block_self) do
@@ -41,26 +46,71 @@ defmodule Snack.Dating.Safety do
   end
 
   @doc """
-  Reporta `target_id`. Errores: `:profile_not_found`, `:cannot_report_self`,
-  `:invalid_report_reason`, `:details_too_long`.
+  Reporta `target_id`. Errores: `:profile_not_found` (también si el perfil o su
+  cuenta están borrados, sin distinguirlo de uno inexistente),
+  `:cannot_report_self`, `:invalid_report_reason`, `:details_too_long`.
+
+  Idempotente: si ya hay un reporte abierto del mismo reporter sobre el mismo
+  perfil, lo devuelve sin crear otro (serializado por pareja).
   """
   def report(%Profile{id: reporter_id}, target_id, reason, details) do
     with {:ok, target_id} <- existing_profile_id(target_id),
          :ok <- not_self(reporter_id, target_id, :cannot_report_self),
          :ok <- validate_reason(reason),
          {:ok, details} <- normalize_details(details) do
-      Dating.report_profile(%{
-        reporter_profile_id: reporter_id,
-        target_profile_id: target_id,
-        reason: reason,
-        details: details
-      })
+      Repo.transaction(fn ->
+        lock_report_pair(reporter_id, target_id)
+
+        case open_report(reporter_id, target_id) do
+          %Report{} = report ->
+            report
+
+          nil ->
+            case Dating.report_profile(%{
+                   reporter_profile_id: reporter_id,
+                   target_profile_id: target_id,
+                   reason: reason,
+                   details: details
+                 }) do
+              {:ok, report} -> report
+              {:error, changeset} -> Repo.rollback(changeset)
+            end
+        end
+      end)
     end
   end
 
+  defp open_report(reporter_id, target_id) do
+    Repo.one(
+      from(r in Report,
+        where:
+          r.reporter_profile_id == ^reporter_id and r.target_profile_id == ^target_id and
+            r.status == "open",
+        order_by: [asc: r.inserted_at],
+        limit: 1
+      )
+    )
+  end
+
+  defp lock_report_pair(reporter_id, target_id) do
+    <<key::signed-integer-size(64), _rest::binary>> =
+      :crypto.hash(:sha256, "snack.report:" <> reporter_id <> ":" <> target_id)
+
+    Repo.query!("SELECT pg_advisory_xact_lock($1)", [key])
+  end
+
+  # Live profiles only: a deleted profile or account answers exactly like an
+  # unknown id.
   defp existing_profile_id(id) when is_binary(id) do
     with {:ok, id} <- Ecto.UUID.cast(id),
-         true <- Repo.exists?(from(p in Profile, where: p.id == ^id)) do
+         true <-
+           Repo.exists?(
+             from(p in Profile,
+               join: u in User,
+               on: u.id == p.user_id,
+               where: p.id == ^id and is_nil(p.deleted_at) and is_nil(u.deleted_at)
+             )
+           ) do
       {:ok, id}
     else
       _missing -> {:error, :profile_not_found}

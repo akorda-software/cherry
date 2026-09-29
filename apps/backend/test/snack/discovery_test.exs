@@ -383,6 +383,57 @@ defmodule Snack.Dating.DiscoveryTest do
     end
   end
 
+  describe "inactive catalog tags" do
+    defp deactivate!(tag) do
+      Repo.update_all(from(t in "tags", where: t.id == type(^tag.id, :binary_id)),
+        set: [is_active: false]
+      )
+    end
+
+    test "count neither for affinity, shared_tags_count nor compatible_only" do
+      [a, b, retired] = for _ <- 1..3, do: tag()
+      viewer = viewer(tags: [a, b, retired])
+      both = person(tags: [a, b])
+      with_retired = person(tags: [a, b, retired])
+      only_retired = person(tags: [retired, tag()])
+      strict_viewer = viewer(compatible_only: true, tags: [retired])
+
+      assert row(viewer, with_retired).shared_tags_count == 3
+      assert only_retired.id in feed_ids(strict_viewer)
+
+      deactivate!(retired)
+
+      units = fn candidate -> base_units(viewer, row(viewer, candidate)) end
+      assert row(viewer, with_retired).shared_tags_count == 2
+      assert row(viewer, only_retired).shared_tags_count == 0
+      # Identical active tags on both sides: full affinity, as if the retired
+      # tag did not exist.
+      assert units.(with_retired) == units.(both)
+      assert units.(both) - units.(only_retired) == 4500
+      refute only_retired.id in feed_ids(strict_viewer)
+    end
+
+    test "get no IDF weight" do
+      active = tag()
+      retired = tag()
+      _someone = person(gender: "woman", show: [:women], tags: [active, retired])
+      deactivate!(retired)
+
+      assert {:ok, generation} = TagWeights.refresh()
+
+      tag_ids =
+        Repo.all(
+          from(w in "discovery_tag_weights",
+            where: w.generation == ^generation,
+            select: type(w.tag_id, :binary_id)
+          )
+        )
+
+      assert active.id in tag_ids
+      refute retired.id in tag_ids
+    end
+  end
+
   describe "reciprocity" do
     test "a candidate who already liked the viewer gets +12 and is flagged" do
       viewer = viewer()

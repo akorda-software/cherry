@@ -8,6 +8,7 @@ defmodule Snack.Dating.Discovery.TagWeights do
   profile and account not deleted) and `n_tag` the discoverable profiles that
   carry the tag, so sharing a rare tag ("Vegano/a") is worth more than sharing a
   popular one ("Música"). `N` is floored at 1 so weights are always positive.
+  Only active catalog tags get a weight: the feed ignores inactive tags.
 
   ## Why a cache instead of computing per request
 
@@ -106,6 +107,7 @@ defmodule Snack.Dating.Discovery.TagWeights do
     FROM tags t
     CROSS JOIN total
     LEFT JOIN counts c ON c.tag_id = t.id
+    WHERE t.is_active
     """
   end
 

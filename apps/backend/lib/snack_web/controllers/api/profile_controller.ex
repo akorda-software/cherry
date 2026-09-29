@@ -145,6 +145,11 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
           |> put_status(:unprocessable_entity)
           |> json(%{error: "too_many_photos"})
 
+        {:error, reason} when reason in [:too_many_upload_intents, :upload_rate_limited] ->
+          conn
+          |> put_status(:too_many_requests)
+          |> json(%{error: Atom.to_string(reason)})
+
         {:error, changeset} ->
           conn
           |> put_status(:unprocessable_entity)
@@ -328,12 +333,11 @@ defmodule SnackWeb.Controllers.Api.ProfileController do
     profile = conn.assigns.current_profile
 
     if profile do
-      attrs =
-        params
-        |> Map.put("profile_id", profile.id)
-        |> Map.put_new("recorded_at", DateTime.utc_now())
+      attrs = Map.put_new(params, "recorded_at", DateTime.utc_now())
 
-      case Dating.upsert_location(attrs) do
+      # Only latitude/longitude, snapped to the grid and throttled (see
+      # `Dating.update_client_location/2`).
+      case Dating.update_client_location(profile.id, attrs) do
         {:ok, _} ->
           Dating.sync_completed_profile_state(profile)
           json(conn, %{ok: true})

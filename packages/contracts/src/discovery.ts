@@ -34,8 +34,11 @@ export interface DiscoveryProfileCard {
   /** Etiqueta aproximada generada por backend ("Cerca de ti", "A unos 15 km", "A más de 100 km"). `null` si falta alguna ubicación (solo fuera del feed). */
   distanceLabel: string | null;
   distanceKmApprox: number | null;
-  /** Puntuación de ranking del feed; `0` en cards que no vienen del feed (likes, deshacer). */
-  score: number;
+  /**
+   * @deprecated El backend ya no lo envía: la puntuación de ranking delataba señales
+   * privadas (actividad, likes pendientes). Se eliminará del contrato.
+   */
+  score?: number;
   sharedTagsCount: number;
   /** Foto principal (absoluta). Equivale a `photos[0]?.url`. */
   photoUrl: string | null;
@@ -85,9 +88,14 @@ export interface DiscoveryActionRequest {
 }
 
 /** `POST /api/discovery/undo`: deshace el último "no" (< 10 min) y devuelve su card. */
+/**
+ * `POST /api/discovery/undo`. El «no» se deshace siempre que fuera el último swipe y
+ * tenga < 10 min; `profile` es `null` si esa persona ya no es visible (pausa,
+ * bloqueo, filtros...): no hay card que reinsertar.
+ */
 export interface DiscoveryUndoResponse {
   undone: true;
-  profile: DiscoveryProfileCard;
+  profile: DiscoveryProfileCard | null;
 }
 
 /**

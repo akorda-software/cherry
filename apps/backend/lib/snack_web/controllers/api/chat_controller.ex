@@ -61,8 +61,9 @@ defmodule SnackWeb.Controllers.Api.ChatController do
 
       case Dating.send_message(attrs) do
         {:ok, message} ->
-          # Replying implies having read everything before.
-          Inbox.mark_read(message.conversation_id, profile.id)
+          # Replying implies having read everything up to this message (the
+          # `new_message` broadcast happens in `Dating.send_message/1`).
+          Inbox.mark_read(message.conversation_id, profile.id, message.inserted_at)
           json(conn, %{message: ChatJSON.message(message)})
 
         {:error, reason} when reason in [:not_participant, :conversation_not_active] ->

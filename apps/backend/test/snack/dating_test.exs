@@ -348,6 +348,42 @@ defmodule Snack.DatingTest do
     end
   end
 
+  describe "upsert_location/1 geometry" do
+    test "rejects anything but a WGS 84 point" do
+      profile = profile_fixture(user_fixture())
+
+      for coordinates <- [
+            %Geo.Polygon{
+              coordinates: [[{-3.7, 40.4}, {-3.6, 40.4}, {-3.6, 40.5}, {-3.7, 40.4}]],
+              srid: 4326
+            },
+            %Geo.Point{coordinates: {-3.7, 40.4}, srid: 3857},
+            %Geo.Point{coordinates: {-3.7, 140.4}, srid: 4326},
+            %{"type" => "Point", "coordinates" => [-3.7, 40.4]}
+          ] do
+        assert {:error, %Ecto.Changeset{}} =
+                 Dating.upsert_location(%{
+                   profile_id: profile.id,
+                   coordinates: coordinates,
+                   recorded_at: DateTime.utc_now()
+                 })
+      end
+
+      assert Dating.get_location(profile.id) == nil
+    end
+
+    test "the database only stores points" do
+      profile = profile_fixture(user_fixture())
+
+      assert_raise Postgrex.Error, ~r/profile_locations_coordinates_point/, fn ->
+        Repo.query!(
+          "INSERT INTO profile_locations (profile_id, coordinates, recorded_at, inserted_at, updated_at) VALUES ($1, ST_GeogFromText('POLYGON((-3.7 40.4, -3.6 40.4, -3.6 40.5, -3.7 40.4))'), now(), now(), now())",
+          [Ecto.UUID.dump!(profile.id)]
+        )
+      end
+    end
+  end
+
   describe "get_location/1" do
     test "returns the location" do
       user = user_fixture()

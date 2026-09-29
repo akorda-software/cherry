@@ -70,7 +70,9 @@ El móvil puede guardar estado local de UX (índice de pantalla, formularios no 
 ```
 
 - Rangos válidos: lat −90..90, lng −180..180; `accuracyMeters` y `recordedAt` opcionales.
-- El backend normaliza a rejilla de privacidad de **500 m** antes de persistir en PostGIS.
+- Solo se aceptan `latitude`/`longitude`: cualquier otra clave de geometría (p. ej. `coordinates` GeoJSON) se ignora; sin lat/lng → 422.
+- El backend normaliza **siempre** a rejilla de privacidad de **500 m** antes de persistir en PostGIS (la BD solo admite puntos).
+- Una actualización a menos de 60 s de la anterior se ignora y responde igual `{ "ok": true }`: no reintentar en bucle.
 - Ninguna API devuelve coordenadas crudas.
 
 ## Distancia en cards
@@ -108,11 +110,11 @@ Reglas de etiqueta: `<2 km` → «Cerca de ti»; 2–10 → redondeo a 1 km; 10�
 - Ranking v2 (D-2026-09-29), calculado en PostgreSQL. Orden: tramo de distancia ascendente, puntuación descendente y UUID ascendente para desempatar.
   - Primero va todo el radio preferido. Con `expandDistance` y distancia acotada, detrás llegan los perfiles hasta min(2 × radio, radio + 100 km), marcados con `beyondPreferredDistance: true` (p. ej. un aviso «un poco más lejos»).
   - Cuando se acaba el feed (`nextCursor: null`), ya no queda nadie compatible en el radio ampliado. Es el estado de «poca oferta»: invita a ampliar distancia o edad, sin insistir.
-  - `score` (0–97) es orientativo y no debe mostrarse como nota. `likedYou` indica que la otra persona ya te dio like (like = match al instante). `isNewcomer` indica que completó el perfil hace menos de 7 días.
+  - La puntuación ordena el feed pero **no se envía** (delataba actividad y likes pendientes). `likedYou` indica que la otra persona ya te dio like (like = match al instante). `isNewcomer` indica que completó el perfil hace menos de 7 días.
 - Estabilidad: el cursor fija el instante de referencia (novedad, actividad, likes pendientes) y la generación de pesos de etiquetas, así que el paso del tiempo o un recálculo de pesos no reordenan un feed en curso. Los filtros de seguridad se evalúan en cada petición. Que alguien edite su perfil a mitad de sesión puede moverlo de página: el cliente deduplica por `id`. Los cursores anteriores a v2 responden 422 `invalid_cursor`: reiniciar el feed.
-- Acción: `POST /api/discovery/actions` con `{ "target_profile_id": "…", "action_type": "like" | "dislike" }`. Respuesta: `{ "matchCreated": false }` o `{ "matchCreated": true, "match": { "id", "conversationId", "matchedAt", "expiresAt", "otherProfile": { "id", "displayName", "age", "photoUrl" } } }`. Errores: 409 `already_swiped`, 422 `cannot_swipe_self` / `invalid_action_type`, 404 `profile_not_found` (destino inexistente o no visible: retirar la card).
+- Acción: `POST /api/discovery/actions` con `{ "target_profile_id": "…", "action_type": "like" | "dislike" }`. Respuesta: `{ "matchCreated": false }` o `{ "matchCreated": true, "match": { "id", "conversationId", "matchedAt", "expiresAt", "otherProfile": { "id", "displayName", "age", "photoUrl" } } }`. Errores: 409 `already_swiped`, 422 `cannot_swipe_self` / `invalid_action_type`, 404 `profile_not_found` (destino inexistente o no visible, p. ej. porque ahora bloqueas alguna de sus etiquetas: retirar la card), 403 `profile_paused` / `profile_incomplete` (mismos cuerpos que el feed: el viewer tiene que estar activo para hacer swipe, también desde la pestaña de likes).
 - No existe endpoint de «hide»: ocultar = dislike.
-- Deshacer: `POST /api/discovery/undo` (sin body) → `{ "undone": true, "profile": card }` si el último swipe fue un «no» de hace < 10 min; si no, 422 `nothing_to_undo`. Reinsertar la card devuelta al principio de la pila.
+- Deshacer: `POST /api/discovery/undo` (sin body) → `{ "undone": true, "profile": card | null }` si el último swipe fue un «no» de hace < 10 min; si no, 422 `nothing_to_undo` (403 `profile_paused` / `profile_incomplete` con viewer inactivo). Reinsertar la card devuelta al principio de la pila. **`profile: null`** = el «no» se deshizo pero esa persona ya no es visible (pausa, bloqueo, filtros): no reinsertar nada.
 
 Card (`DiscoveryProfileCard`, también en likes y deshacer):
 
@@ -120,7 +122,7 @@ Card (`DiscoveryProfileCard`, también en likes y deshacer):
 {
   "id": "…", "displayName": "Lucía", "age": 30, "bio": "…", "gender": "woman",
   "whatIAmLookingFor": "relationship", "distanceLabel": "A unos 2 km", "distanceKmApprox": 2,
-  "score": 0, "sharedTagsCount": 1, "photoUrl": "https://…/1.png", "photoCount": 2,
+  "sharedTagsCount": 1, "photoUrl": "https://…/1.png", "photoCount": 2,
   "photos": [{ "id": "…", "url": "https://…/1.png", "position": 1 }],
   "tags": [{ "id": "…", "slug": "music", "label": "Música", "category": "interests",
              "sortOrder": 1, "emoji": "🎵", "shared": true }],
@@ -128,12 +130,12 @@ Card (`DiscoveryProfileCard`, también en likes y deshacer):
 }
 ```
 
-`tags` son las positivas activas del otro perfil, compartidas primero; `photos` las activas por posición (URL absoluta); `score` solo tiene sentido en el feed (0 en el resto).
+`tags` son las positivas activas del otro perfil, compartidas primero; `photos` las activas por posición (URL absoluta). `sharedTagsCount` solo cuenta etiquetas activas del catálogo (coincide con las `shared` visibles). `score` ya no se envía (queda como opcional obsoleto en `@snack/contracts`).
 
 ## Likes recibidos y perfil público
 
-- `GET /api/likes/received?cursor&limit` → `{ "likes": [{ "likedAt": "…", "profile": card }], "nextCursor": "…" | null }`. `limit` 1–50 (30 por defecto); cursor opaco (24 h). Responder con `POST /api/discovery/actions`: `like` → match al instante; `dislike` → sale de la lista.
-- `GET /api/profiles/:id` → `{ "profile": PublicProfile }` (campos de la card sin `score`/`photoUrl`/`photoCount`/`sharedTagsCount`/`beyondPreferredDistance`, más `youLiked`, `matchId`, `conversationId`). 404 `profile_not_found` si no es visible.
+- `GET /api/likes/received?cursor&limit` → `{ "likes": [{ "likedAt": "…", "profile": card }], "nextCursor": "…" | null }`. Solo likes de perfiles activos que pasan tus filtros (etiquetas, género, edad, intención y tu `compatibleOnly`). `limit` 1–50 (30 por defecto); cursor opaco (24 h). Responder con `POST /api/discovery/actions`: `like` → match al instante; `dislike` → sale de la lista.
+- `GET /api/profiles/:id` → `{ "profile": PublicProfile }` (campos de la card sin `photoUrl`/`photoCount`/`sharedTagsCount`/`beyondPreferredDistance`, más `youLiked`, `matchId`, `conversationId`). 404 `profile_not_found` si no es visible: aplica los mismos filtros duros que el feed (etiquetas bloqueadas en ambas direcciones, intención, género/edad, `compatibleOnly`) y exige viewer activo, **salvo match vivo** (el perfil de un match sigue visible para el chat). Un like antiguo no da visibilidad (tras unmatch/caducidad, solo si es descubrible).
 - `GET /api/me/summary` → `{ "receivedLikesCount": 1, "newMatchesCount": 0, "unreadConversationsCount": 2 }` para badges.
 
 ## Matches y chat REST
@@ -152,7 +154,7 @@ Card (`DiscoveryProfileCard`, también en likes y deshacer):
 - `GET /api/conversations` → `{ "conversations": [ConversationSummary] }` (`id` = conversación, `matchId`, mismos `otherProfile`/`lastMessage`/`unreadCount`/`expiresAt`, `insertedAt`).
 - `GET /api/conversations/:id/messages?cursor&limit` → `{ "messages": [ChatMessage] (nuevos primero), "nextCursor": "…" | null }`. 403 `conversation_not_active` si el match se deshizo, caducó, hay bloqueo o una cuenta se borró.
 - `POST /api/conversations/:id/messages` `{ "body" }` → `{ "message": ChatMessage }`; `POST /api/conversations/:id/read` → `{ "ok": true }` (llamarlo al abrir el chat y al recibir mensajes con el chat abierto).
-- `POST /api/matches/:id/unmatch`, `POST /api/users/:id/block` → `{ "ok": true }`; `POST /api/users/:id/report` `{ "reason": ReportReason, "details"? }` → `{ "report": { "id", "reason", "details", "status", "insertedAt" } }`.
+- `POST /api/matches/:id/unmatch`, `POST /api/users/:id/block` → `{ "ok": true }`; `POST /api/users/:id/report` `{ "reason": ReportReason, "details"? }` → `{ "report": { "id", "reason", "details", "status", "insertedAt" } }`. Reportar de nuevo con un reporte abierto devuelve el mismo reporte. Perfil o cuenta borrados → 404 `profile_not_found`, como un id inexistente.
 - Caducidad: un match sin mensajes caduca a los **30 días** (`expiresAt`); tras el primer mensaje `expiresAt` es `null`. Los caducados desaparecen de las listas.
 
 ## Fotos
@@ -160,24 +162,24 @@ Card (`DiscoveryProfileCard`, también en likes y deshacer):
 El flujo es el mismo con cualquier almacenamiento (`STORAGE_ADAPTER`, ver D-2026-09-29): el móvil nunca sabe si detrás hay disco local o un bucket.
 
 1. `POST /api/me/photos/upload-intent` con `{position, contentType, sizeBytes}` →
-   `{storageKey, uploadUrl, publicUrl, method: "PUT", headers, expiresAt, maxBytes}`. `contentType` ∈ `image/jpeg`, `image/png`, `image/webp`; `sizeBytes` ≤ `maxBytes` (2 MB por defecto); el intent caduca a los 600 s.
+   `{storageKey, uploadUrl, publicUrl, method: "PUT", headers, expiresAt, maxBytes}`. `contentType` ∈ `image/jpeg`, `image/png`, `image/webp`; `sizeBytes` ≤ `maxBytes` (2 MB por defecto); el intent caduca a los 600 s. `storageKey` es aleatoria (`photos/<hex>.<ext>`). Límites: 4 intents vivos por perfil y 20 por hora → 429 `too_many_upload_intents` / `upload_rate_limited` (no reintentar en bucle: esperar a que caduquen o completar los pendientes).
 2. El móvil sube el binario con `PUT uploadUrl`, cuerpo crudo (no multipart) y **todos** los headers devueltos (`Content-Type` e `If-None-Match: *`). No puede sobrescribir ese objeto: un segundo PUT devuelve 412. Ante un resultado de red incierto, intentar `complete` antes de crear otro intent.
-3. `POST /api/me/photos/complete` con `{storageKey, publicUrl, position, contentType, sizeBytes, width?, height?}` → `{photo}`. Posición y URL salen del intent: el body solo se contrasta con él (`publicUrl` puede ser la URL absoluta recibida en el paso 1).
+3. `POST /api/me/photos/complete` con `{storageKey, publicUrl, position, contentType, sizeBytes, width?, height?}` → `{photo}`. Posición y URL salen del intent: el body solo se contrasta con él (`publicUrl` puede ser la URL absoluta recibida en el paso 1). Hasta este paso el objeto vive en una zona de espera no pública; `publicUrl` no sirve nada antes de completar.
 
-Reglas: intent single-use con expiración; key debe pertenecer al perfil; máx. 4 activas; borrar foto desactiva metadato.
+Reglas: intent single-use con expiración; key debe pertenecer al perfil; máx. 4 activas; borrar foto desactiva el metadato y borra el objeto (su URL deja de servir). Las subidas nunca completadas se borran al caducar.
 
 URLs: la API devuelve **siempre URLs absolutas** (`uploadUrl`, `publicUrl`, `photo.url`, fotos de cards y perfiles). Con almacenamiento local la BD guarda la ruta relativa (`/uploads/<storageKey>`) y la API la resuelve contra `PUBLIC_BASE_URL` si está configurada o, si no, contra el host con el que llegó la petición (útil en dev: `localhost`, IP de la LAN o túnel).
 
 ### Almacenamiento local (`STORAGE_ADAPTER=local`, por defecto en dev)
 
 - `uploadUrl` = `<base>/api/uploads/<token>`. El token (`Phoenix.Token`) firma la storage key, el MIME, el tamaño máximo y la caducidad del intent; la ruta es pública (sin `Authorization`): el token es la autorización, igual que una URL prefirmada.
-- `PUT /api/uploads/:token` lee el cuerpo por fragmentos con límite de tamaño, exige el MIME firmado y la cabecera binaria JPEG/PNG/WebP, y publica el objeto de forma atómica en `UPLOADS_DIR/<storageKey>`. Responde `100 Continue` a `Expect: 100-continue`.
+- `PUT /api/uploads/:token` lee el cuerpo por fragmentos con límite de tamaño, exige el MIME firmado y la cabecera binaria JPEG/PNG/WebP, y escribe el objeto de forma atómica en la zona de espera `UPLOADS_DIR/pending/<storageKey>`; `complete` lo mueve a `UPLOADS_DIR/<storageKey>`. Responde `100 Continue` a `Expect: 100-continue`.
 - Respuestas: 200 `{ "ok": true }`; 403 `upload_token_invalid` / `upload_token_expired`; 413 `upload_too_large`; 415 `upload_content_type_mismatch`; 422 `upload_invalid_image`; 412 `upload_already_exists`; 503 `storage_unavailable`; 404 si la instancia no usa almacenamiento local.
-- Las fotos se sirven en `GET /uploads/<storageKey>` (`Plug.Static`, `Cache-Control: public, max-age=31536000, immutable`, `X-Content-Type-Options: nosniff`); solo bajo `profiles/`, sin listados de directorios. Las claves son únicas y los objetos nunca se reescriben.
+- Las fotos se sirven en `GET /uploads/<storageKey>` (`Plug.Static`, `Cache-Control: public, max-age=86400`, `X-Content-Type-Options: nosniff`); solo bajo `photos/` y `profiles/` (claves antiguas), nunca `pending/`, sin listados de directorios. Las claves son únicas y los objetos nunca se reescriben; se borran al borrar la foto o la cuenta.
 
 ### R2 / S3 compatible (`STORAGE_ADAPTER=r2`)
 
-`uploadUrl` es una URL SigV4 prefirmada (path-style) que firma `Content-Type`, `host` e `If-None-Match: *`. Sin `S3_ENDPOINT` apunta a Cloudflare R2; con `S3_ENDPOINT` (+ `S3_REGION`) a MinIO, Garage u otro servicio S3. La configuración CORS del bucket debe permitir los headers devueltos y las credenciales del backend deben tener lectura/escritura de objetos. Las operaciones condicionales usadas están documentadas en [la compatibilidad S3 de R2](https://developers.cloudflare.com/r2/api/s3/api/).
+`uploadUrl` es una URL SigV4 prefirmada (path-style) que firma `Content-Type`, `host` e `If-None-Match: *`. Sin `S3_ENDPOINT` apunta a Cloudflare R2; con `S3_ENDPOINT` (+ `S3_REGION`) a MinIO, Garage u otro servicio S3. La configuración CORS del bucket debe permitir los headers devueltos y las credenciales del backend deben tener lectura/escritura/borrado de objetos (`complete` hace `CopyObject` de `pending/<storageKey>` a `<storageKey>` y borra el original). Un bucket público expone también `pending/` (claves aleatorias, borradas al caducar el intent): conviene una regla de ciclo de vida que borre `pending/` a 1 día. Las operaciones condicionales usadas están documentadas en [la compatibilidad S3 de R2](https://developers.cloudflare.com/r2/api/s3/api/).
 
 ### Verificación en `complete`
 
@@ -219,7 +221,7 @@ Reply y broadcast:
 { "event": "new_message", "payload": { "id": "…", "conversationId": "…", "senderProfileId": "…", "body": "hola", "insertedAt": "…" } }
 ```
 
-`typing` es transitorio y no requerido. Reconexión: socket fresco → rejoins → backfill REST por historial → merge por `id`. El WS nunca es historia durable. Enviar (REST o WS) marca la conversación como leída para el emisor; los mensajes recibidos por el socket con el chat abierto se marcan con `POST /api/conversations/:id/read`.
+`typing` es transitorio y no requerido. Reconexión: socket fresco → rejoins → backfill REST por historial → merge por `id`. El WS nunca es historia durable. Enviar (REST o WS) emite `new_message` en `chat:{id}` una sola vez (también el envío REST llega a los sockets) y marca la conversación como leída para el emisor hasta ese mensaje; los mensajes recibidos por el socket con el chat abierto se marcan con `POST /api/conversations/:id/read`.
 
 Push (sin cambios de mecanismo): `new_match` → título «¡Match con Lucía! 💘», `data {type, matchId, profileId, conversationId}`; `new_message` → «Lucía te ha escrito», `data {type, conversationId, messageId, senderProfileId}`.
 

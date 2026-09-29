@@ -57,7 +57,58 @@ if config_env() == :dev do
   end
 end
 
-config :snack, SnackWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+port =
+  case Integer.parse(System.get_env("PORT", "4000") |> String.trim()) do
+    {port, ""} when port in 1..65_535 ->
+      port
+
+    _invalid ->
+      raise """
+      environment variable PORT is invalid: #{inspect(System.get_env("PORT"))}.
+      Use an integer between 1 and 65535 (default 4000).
+      """
+  end
+
+config :snack, SnackWeb.Endpoint, http: [port: port]
+
+# Prod: every missing or weak required variable in a single error, so a fresh
+# install is fixed in one pass instead of one restart per variable.
+if config_env() == :prod do
+  env = fn name -> System.get_env(name, "") |> String.trim() end
+
+  placeholder? = fn value ->
+    String.downcase(value) in ["cambiar", "change", "changeme", "change_me"]
+  end
+
+  missing =
+    ~w(DATABASE_URL SECRET_KEY_BASE AUTH_ACCESS_TOKEN_SALT AUTH_REFRESH_TOKEN_SALT
+       MESSAGE_ENCRYPTION_KEY PHX_HOST STORAGE_ADAPTER)
+    |> Enum.filter(&(env.(&1) == ""))
+
+  weak =
+    [
+      {"SECRET_KEY_BASE", 64},
+      {"MESSAGE_ENCRYPTION_KEY", 32},
+      {"AUTH_ACCESS_TOKEN_SALT", 32},
+      {"AUTH_REFRESH_TOKEN_SALT", 32}
+    ]
+    |> Enum.reject(fn {name, _min} -> name in missing end)
+    |> Enum.filter(fn {name, min} ->
+      value = env.(name)
+      String.length(value) < min or placeholder?.(value)
+    end)
+
+  if missing != [] or weak != [] do
+    raise """
+    invalid production configuration.
+    #{Enum.map_join(missing, "", &"\n  - #{&1} is missing")}#{Enum.map_join(weak, "", fn {name, min} -> "\n  - #{name} is too weak (placeholder or shorter than #{min} characters)" end)}
+
+    Generate each secret with `mix phx.gen.secret` (64 characters) or
+    `openssl rand -base64 48`. PHX_HOST is the public host name of the API
+    (e.g. api.snack.example); STORAGE_ADAPTER is local or r2.
+    """
+  end
+end
 
 split_csv_env = fn var, fallback ->
   System.get_env(var, fallback)
@@ -172,7 +223,23 @@ if config_env() != :test do
     upload_url_ttl_seconds: String.to_integer(System.get_env("UPLOAD_URL_TTL_SECONDS", "600"))
 
   # Base absoluta de las URLs de medios relativas (almacenamiento local), p. ej.
-  # https://api.snack.example. Sin definir ⇒ se usa el host de cada petición.
+  # https://api.snack.example. Sin definir ⇒ se usa el host de cada petición,
+  # que el cliente controla (cabecera Host): en prod con `local` es obligatoria.
+  if config_env() == :prod and storage_adapter == "local" do
+    case URI.parse(public_base_url) do
+      %URI{scheme: scheme, host: host}
+      when scheme in ["http", "https"] and host not in [nil, ""] ->
+        :ok
+
+      _invalid ->
+        raise """
+        environment variable PUBLIC_BASE_URL is required with STORAGE_ADAPTER=local.
+        Set it to the public origin of the API (e.g. https://api.snack.example):
+        upload and photo URLs are built from it instead of the request Host header.
+        """
+    end
+  end
+
   if public_base_url != "", do: config(:snack, :public_base_url, public_base_url)
 end
 
@@ -278,7 +345,10 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  # Required (checked above): URLs and force_ssl redirects are built from it.
+  host =
+    System.get_env("PHX_HOST") ||
+      raise "environment variable PHX_HOST is missing (e.g. api.snack.example)"
 
   config :snack, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 

@@ -4,7 +4,8 @@ defmodule Snack.Repo.Migrations.CreateConversationReads do
   matches/conversaciones y los badges de `GET /api/me/summary`.
 
   También alarga a 30 días la caducidad de los matches pendientes (sin mensajes)
-  creados con la regla anterior de 7 días (D-2026-09-29 — caducidad a 30 días).
+  creados con la regla anterior de 7 días (D-2026-09-29 — caducidad a 30 días),
+  solo si aún no han caducado.
   """
   use Ecto.Migration
 
@@ -35,6 +36,9 @@ defmodule Snack.Repo.Migrations.CreateConversationReads do
       AND first_message_at IS NULL
       AND expires_at IS NOT NULL
       AND matched_at + interval '30 days' > expires_at
+      -- Never resurrect a match that already expired (expiry is lazy: its
+      -- status may still be 'active').
+      AND expires_at > (now() AT TIME ZONE 'utc')
     """)
   end
 

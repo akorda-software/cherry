@@ -32,6 +32,20 @@ export function createSessionManager({
     }
   }
 
+  // Un solo refresco a la vez: el backend rota el refresh token y reusarlo revoca la sesión
+  // entera, así que varios 401 simultáneos (volver a primer plano) deben compartir el refresco.
+  let refreshInFlight: Promise<SessionBundle | null> | null = null;
+
+  function refreshOnce(session: SessionBundle): Promise<SessionBundle | null> {
+    if (refreshInFlight === null) {
+      refreshInFlight = refreshAndPersist(session).finally(() => {
+        refreshInFlight = null;
+      });
+    }
+
+    return refreshInFlight;
+  }
+
   return {
     async bootstrap(): Promise<SessionBundle | null> {
       const session = await storage.read();
@@ -44,7 +58,7 @@ export function createSessionManager({
         return session;
       }
 
-      return refreshAndPersist(session);
+      return refreshOnce(session);
     },
 
     async executeWithRefresh<T>(request: (accessToken: string) => Promise<T>): Promise<T> {
@@ -62,7 +76,13 @@ export function createSessionManager({
           throw error;
         }
 
-        const refreshed = await refreshAndPersist(session);
+        // Otra petición pudo rotar la sesión mientras esta volaba: reintenta con la guardada.
+        const latest = await storage.read();
+        if (latest != null && latest.accessToken !== session.accessToken) {
+          return request(latest.accessToken);
+        }
+
+        const refreshed = await refreshOnce(latest ?? session);
 
         if (refreshed === null) {
           throw new Error("session_refresh_failed");

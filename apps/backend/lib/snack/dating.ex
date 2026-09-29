@@ -1018,6 +1018,7 @@ defmodule Snack.Dating do
     |> where([m], m.conversation_id == ^conversation_id)
     |> then(fn q ->
       if cursor do
+        cursor = %{cursor | microsecond: {elem(cursor.microsecond, 0), 6}}
         where(q, [m], m.inserted_at < ^cursor)
       else
         q

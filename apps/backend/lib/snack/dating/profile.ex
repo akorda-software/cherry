@@ -96,11 +96,17 @@ defmodule Snack.Dating.Profile do
 
   def age(%{birth_date: nil}), do: nil
 
-  def age(%{birth_date: %Date{} = birth_date}) do
-    today = Date.utc_today()
+  def age(%{birth_date: %Date{} = birth_date}), do: age_on(birth_date, Date.utc_today())
+
+  @doc """
+  Edad cumplida en `today`. Compara (mes, día) en vez de construir el cumpleaños
+  de este año, que sería una fecha inválida para quien nació un 29 de febrero
+  (en años no bisiestos cumple el 1 de marzo).
+  """
+  def age_on(%Date{} = birth_date, %Date{} = today) do
     years = today.year - birth_date.year
 
-    if Date.compare(today, %{birth_date | year: today.year}) == :lt do
+    if {today.month, today.day} < {birth_date.month, birth_date.day} do
       years - 1
     else
       years

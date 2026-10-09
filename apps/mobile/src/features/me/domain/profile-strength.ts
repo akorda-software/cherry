@@ -50,7 +50,7 @@ type ProfileSnapshot = Pick<
   | "displayName"
   | "birthDate"
   | "gender"
-  | "whatIAmLookingFor"
+  | "lookingFor"
 >;
 
 function plural(count: number, one: string, many: string) {
@@ -109,7 +109,7 @@ export function assessProfileStrength(profile: ProfileSnapshot): ProfileStrength
     !profile.displayName?.trim() ||
     profile.birthDate === null ||
     profile.gender === null ||
-    profile.whatIAmLookingFor === null;
+    (profile.lookingFor ?? []).length === 0;
 
   if (basicsMissing) {
     essentials.push({

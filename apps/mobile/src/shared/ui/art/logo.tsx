@@ -22,19 +22,19 @@ export interface LogoProps {
   testID?: string;
 }
 
-// Unidades de la caja de la palabra (364 × 100).
+// Unidades de la caja de la palabra (≈ 395 × 100).
 const RIM = 13;
 const OUTLINE = 6;
 const SHADOW = 9;
 const LETTER_STROKE = 9;
 const HEART_SCALE = 2.1;
-const HEART_TRANSFORM = `translate(372 -30) scale(${HEART_SCALE}) rotate(14 12 12)`;
+const HEART_TRANSFORM = `translate(403 -30) scale(${HEART_SCALE}) rotate(14 12 12)`;
 const VIEWBOX = {
-  sticker: { x: -22, y: -48, w: 472, h: 179 },
-  plain: { x: -6, y: -34, w: 434, h: 140 }
+  sticker: { x: -22, y: -48, w: 503, h: 179 },
+  plain: { x: -6, y: -34, w: 465, h: 140 }
 } as const;
 
-/** Logo «snack»: la palabra en Mochiy como pegatina troquelada, con un corazón. */
+/** Logo «snack»: la palabra en Rubik Black como pegatina troquelada, con un corazón. */
 export const Logo = memo(function Logo({
   height = 40,
   variant = "sticker",

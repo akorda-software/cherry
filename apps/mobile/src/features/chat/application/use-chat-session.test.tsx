@@ -114,7 +114,7 @@ describe("useChatSession", () => {
 
   it("marks as read when focused and clears the unread count in the chats list", async () => {
     await act(async () => {
-      await useMatchesStore.getState().load(async () => [match()]);
+      await useMatchesStore.getState().load(async () => ({ matches: [match()], nextCursor: null }));
     });
 
     renderHook(() => useChatSession(CONV, { otherProfileId: OTHER, focused: true }));
@@ -157,7 +157,7 @@ describe("useChatSession", () => {
 
   it("sends and patches the chats list with my message", async () => {
     await act(async () => {
-      await useMatchesStore.getState().load(async () => [match()]);
+      await useMatchesStore.getState().load(async () => ({ matches: [match()], nextCursor: null }));
     });
     const { result } = renderHook(() => useChatSession(CONV, { otherProfileId: OTHER, focused: true }));
     await flush();
@@ -177,7 +177,7 @@ describe("useChatSession", () => {
 
   it("drops the match from the list when the conversation is no longer available", async () => {
     await act(async () => {
-      await useMatchesStore.getState().load(async () => [match()]);
+      await useMatchesStore.getState().load(async () => ({ matches: [match()], nextCursor: null }));
     });
     chatApi.listMessages
       .mockReset()

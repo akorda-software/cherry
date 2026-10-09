@@ -67,7 +67,7 @@ export const SelfPreviewCard = memo(function SelfPreviewCard({ profile, paused, 
         </View>
         <NameSticker age={person.age} name={person.displayName} size="lg" style={styles.name} />
         <View style={styles.meta}>
-          <IntentBadge intent={person.whatIAmLookingFor} />
+          <IntentBadge intents={person.lookingFor} />
           {tags.length > 0 ? (
             <Inline gap="sm">
               {tags.slice(0, VISIBLE_TAGS).map((tag, index) => (

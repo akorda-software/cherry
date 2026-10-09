@@ -1,12 +1,10 @@
-import { describeIntent, type PersonSource, profileBadges, sharedTags, toProfilePerson } from "../../profile-card";
+import { describeIntents, type PersonSource, profileBadges, sharedTags, toProfilePerson } from "../../profile-card";
 
 /** Descripción para lectores de pantalla de una card (swipe o feed). */
 export function describePerson(source: PersonSource): string {
   const person = toProfilePerson(source);
   const parts: string[] = [person.age === null ? person.displayName : `${person.displayName}, ${person.age} años`];
-  const intent = describeIntent(person.whatIAmLookingFor);
-
-  if (intent) {
+  for (const intent of describeIntents(person.lookingFor)) {
     parts.push(intent.sentence);
   }
 

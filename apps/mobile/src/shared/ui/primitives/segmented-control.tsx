@@ -8,6 +8,7 @@ import { usePop } from "../motion/pop";
 import { springs } from "../motion/springs";
 import { useTheme } from "../providers/theme-provider";
 import type { PastelName } from "../tokens/primitives/color";
+import { HardShadow } from "./hard-shadow";
 import { IconSlot } from "./icon-slot";
 import { Text } from "./text";
 
@@ -79,9 +80,10 @@ export function SegmentedControl<const T extends string>({
   }
 
   return (
-    <View
+    <HardShadow
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="tablist"
+      elevation="sm"
       style={[
         styles.outer,
         {
@@ -92,7 +94,6 @@ export function SegmentedControl<const T extends string>({
           backgroundColor: c.white,
           alignSelf: fullWidth ? "stretch" : "flex-start"
         },
-        theme.primitives.elevation.sm,
         style
       ]}
       testID={testID}
@@ -135,7 +136,7 @@ export function SegmentedControl<const T extends string>({
           />
         ))}
       </View>
-    </View>
+    </HardShadow>
   );
 }
 
@@ -191,8 +192,6 @@ function Segment<T extends string>({
         </Animated.View>
       ) : null}
       <Text
-        adjustsFontSizeToFit
-        minimumFontScale={0.8}
         numberOfLines={1}
         style={styles.label}
         variant={size === "sm" ? "caption" : "label"}

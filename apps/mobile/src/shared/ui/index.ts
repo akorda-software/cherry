@@ -17,6 +17,7 @@ export * from "./primitives/avatar";
 export * from "./primitives/badge";
 export * from "./primitives/button";
 export * from "./primitives/divider";
+export * from "./primitives/hard-shadow";
 export * from "./primitives/heading";
 export * from "./primitives/icon-button";
 export * from "./primitives/icon-slot";

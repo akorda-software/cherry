@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated, { FadeIn, FadeInUp, useReducedMotion } from "react-native-reanimated";
 
-import { Icon, Text, easings, useTheme } from "../../../shared/ui";
+import { easings, HardShadow, Icon, Text, useTheme } from "../../../shared/ui";
 import { formatClockTime } from "../domain/time-format";
 import type { BubblePosition, TimelineMessage } from "../domain/timeline";
 
@@ -55,7 +55,8 @@ export const MessageBubble = memo(function MessageBubble({ message, live, onRetr
   const entering = live ? (reduced ? FadeIn.duration(140) : FadeInUp.duration(220).easing(easings.out)) : undefined;
 
   const bubble = (
-    <View
+    <HardShadow
+      elevation="sm"
       style={[
         styles.bubble,
         corners(position, mine),
@@ -64,14 +65,13 @@ export const MessageBubble = memo(function MessageBubble({ message, live, onRetr
           borderColor: c.ink,
           borderWidth: theme.primitives.border.regular,
           opacity: sending ? 0.78 : 1
-        },
-        theme.primitives.elevation.sm
+        }
       ]}
     >
       <Text selectable style={styles.body} variant="body">
         {message.body}
       </Text>
-    </View>
+    </HardShadow>
   );
 
   return (

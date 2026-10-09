@@ -13,15 +13,14 @@ describe("AboutScreen", () => {
     delete extra.sourceUrl;
   });
 
-  it("tells the manifesto without inventing links", async () => {
+  it("explains how it works and the license, without slogans or invented links", async () => {
     renderRoute(<AboutScreen />);
 
-    expect(await screen.findByRole("heading", { name: /Una app de citas\s+de tu parte\./ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "¿Por qué es gratis?" })).toBeInTheDocument();
-    expect(screen.getByText("No vendemos tus datos ni tu atención.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Cómo funciona" })).toBeInTheDocument();
     expect(screen.getByText("Redondeamos tu ubicación a 500 m. Nunca compartimos la exacta.")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Código abierto" })).toBeInTheDocument();
-    expect(screen.getByText(/libre bajo licencia AGPL-3\.0/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Licencia" })).toBeInTheDocument();
+    expect(screen.getByText(/licencia AGPL-3\.0/)).toBeInTheDocument();
+    expect(screen.queryByText(/gratis|trucos|muros de pago|anuncios/i)).not.toBeInTheDocument();
     expect(screen.getByText(/SIL Open Font License/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ver el código" })).not.toBeInTheDocument();
   });

@@ -19,8 +19,9 @@ import {
   Appear,
   Button,
   chatHref,
-  HeartBurst,
   haptics,
+  HardShadow,
+  HeartBurst,
   Mascot,
   PaperBackground,
   pastelForName,
@@ -201,7 +202,8 @@ function Polaroid({ uri, name, width }: { uri: string | null; name: string; widt
   const tone = theme.primitives.pastel[pastelForName(name)];
 
   return (
-    <View
+    <HardShadow
+      elevation="lg"
       style={[
         styles.polaroid,
         {
@@ -210,8 +212,7 @@ function Polaroid({ uri, name, width }: { uri: string | null; name: string; widt
           borderColor: c.ink,
           borderWidth: theme.primitives.border.bold,
           borderRadius: theme.primitives.radius.xs
-        },
-        theme.primitives.elevation.lg
+        }
       ]}
     >
       <View
@@ -233,7 +234,7 @@ function Polaroid({ uri, name, width }: { uri: string | null; name: string; widt
           <Text variant="hero">{name.trim().slice(0, 1).toUpperCase()}</Text>
         )}
       </View>
-    </View>
+    </HardShadow>
   );
 }
 

@@ -1,7 +1,8 @@
 import { memo, type PropsWithChildren, useEffect } from "react";
 import { type StyleProp, View, type ViewStyle } from "react-native";
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 
+import { HardShadow } from "../primitives/hard-shadow";
 import { useTheme } from "../providers/theme-provider";
 import type { PastelName } from "../tokens/primitives/color";
 import type { ElevationLevel } from "../tokens/primitives/elevation";
@@ -65,8 +66,10 @@ export const Sticker = memo(function Sticker({
   }));
 
   return (
-    <Animated.View
+    <HardShadow
       testID={testID}
+      animatedStyle={animatedStyle}
+      elevation={elevation}
       style={[
         {
           alignSelf: "flex-start",
@@ -76,8 +79,6 @@ export const Sticker = memo(function Sticker({
           borderRadius: outerRadius,
           padding: rim
         },
-        theme.primitives.elevation[elevation],
-        animatedStyle,
         style
       ]}
     >
@@ -97,6 +98,6 @@ export const Sticker = memo(function Sticker({
       >
         {children}
       </View>
-    </Animated.View>
+    </HardShadow>
   );
 });

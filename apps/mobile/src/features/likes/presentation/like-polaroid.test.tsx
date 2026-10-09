@@ -15,7 +15,7 @@ function like(overrides: Partial<ReceivedLike["profile"]> = {}): ReceivedLike {
       age: 30,
       bio: null,
       gender: "man",
-      whatIAmLookingFor: "relationship",
+      lookingFor: ["relationship"],
       distanceLabel: null,
       distanceKmApprox: null,
       score: 0,

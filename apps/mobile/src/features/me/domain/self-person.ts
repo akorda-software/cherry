@@ -18,7 +18,7 @@ export function toSelfPerson(profile: Profile): ProfilePerson {
     age: profile.age,
     bio: profile.bio,
     gender: profile.gender,
-    whatIAmLookingFor: profile.whatIAmLookingFor,
+    lookingFor: profile.lookingFor ?? [],
     distanceLabel: null,
     photos,
     tags: profile.tags.map((tag) => ({ ...tag, shared: false })),

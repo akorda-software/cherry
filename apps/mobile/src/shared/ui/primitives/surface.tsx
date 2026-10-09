@@ -6,8 +6,9 @@ import { useTheme } from "../providers/theme-provider";
 import type { AppTheme } from "../themes/theme-types";
 import type { primitiveBorderTokens } from "../tokens/primitives/border";
 import type { PastelName } from "../tokens/primitives/color";
-import { type ElevationLevel, elevationOffsets } from "../tokens/primitives/elevation";
+import type { ElevationLevel } from "../tokens/primitives/elevation";
 import type { primitiveRadiusTokens } from "../tokens/primitives/radius";
+import { HardShadow, HardShadowLayer, splitShadowStyle } from "./hard-shadow";
 import { PressableScale } from "./pressable-scale";
 import { resolveSpacing, type SpacingKey } from "./stack";
 
@@ -125,8 +126,6 @@ export function Surface({
   }
 
   if (clip) {
-    const offset = elevationOffsets[elevation];
-
     return (
       <View
         accessibilityHint={accessibilityHint}
@@ -135,42 +134,27 @@ export function Surface({
         testID={testID}
         {...props}
       >
-        {offset > 0 ? (
-          <View
-            style={[
-              styles.shadow,
-              { top: offset, left: offset, right: -offset, bottom: -offset, borderRadius, backgroundColor: theme.primitives.color.ink }
-            ]}
-          />
-        ) : null}
-        <View style={[face, styles.clip, styles.grow]}>{children}</View>
+        <HardShadowLayer elevation={elevation} radius={borderRadius} />
+        <View style={[face, styles.clip, splitShadowStyle(style).sized ? styles.grow : null]}>{children}</View>
       </View>
     );
   }
 
   return (
-    <View
+    <HardShadow
       accessibilityHint={accessibilityHint}
       accessibilityLabel={accessibilityLabel}
-      style={[
-        face,
-        theme.primitives.elevation[elevation],
-        rotate ? { transform: [{ rotate: `${rotate}deg` }] } : null,
-        style
-      ]}
+      elevation={elevation}
+      style={[face, rotate ? { transform: [{ rotate: `${rotate}deg` }] } : null, style]}
       testID={testID}
       {...props}
     >
       {children}
-    </View>
+    </HardShadow>
   );
 }
 
 const styles = StyleSheet.create({
-  shadow: {
-    position: "absolute",
-    pointerEvents: "none"
-  },
   clip: {
     overflow: "hidden"
   },

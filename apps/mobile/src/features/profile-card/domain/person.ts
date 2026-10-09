@@ -15,7 +15,8 @@ export interface ProfilePerson {
   age: number | null;
   bio: string | null;
   gender: string | null;
-  whatIAmLookingFor: string | null;
+  /** Qué busca (`lookingFor`): 1–4 intenciones en orden canónico; `[]` si no se sabe. */
+  lookingFor: string[];
   distanceLabel: string | null;
   photos: PhotoSummary[];
   /** Compartidas primero (ver `sortTagsForDisplay`). */
@@ -49,7 +50,7 @@ export function toProfilePerson(source: PersonSource): ProfilePerson {
     age: typeof source.age === "number" ? source.age : null,
     bio: source.bio ?? null,
     gender: source.gender ?? null,
-    whatIAmLookingFor: source.whatIAmLookingFor ?? null,
+    lookingFor: Array.isArray(source.lookingFor) ? source.lookingFor : [],
     distanceLabel: source.distanceLabel ?? null,
     photos,
     tags,

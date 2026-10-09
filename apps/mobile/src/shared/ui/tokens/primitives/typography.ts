@@ -4,13 +4,14 @@
  * fuentes; elige la familia del peso que quieras.
  */
 export const fontFamilies = {
-  display: "MochiyPopOne",
-  regular: "MPLUSRounded1c-Regular",
-  medium: "MPLUSRounded1c-Medium",
-  bold: "MPLUSRounded1c-Bold",
-  extraBold: "MPLUSRounded1c-ExtraBold",
-  black: "MPLUSRounded1c-Black",
-  hand: "Yomogi"
+  display: "Rubik-Black",
+  regular: "Rubik-Regular",
+  medium: "Rubik-Medium",
+  bold: "Rubik-Bold",
+  extraBold: "Rubik-ExtraBold",
+  black: "Rubik-Black",
+  /** Antes manuscrita; ahora la misma Rubik (nada de letra «a mano» infantil). */
+  hand: "Rubik-Medium"
 } as const;
 
 export interface TextVariantToken {
@@ -22,31 +23,32 @@ export interface TextVariantToken {
 }
 
 /**
- * Escala tipográfica. Titulares en Mochiy Pop One (pop japonés), interfaz y
- * texto en M PLUS Rounded 1c, anotaciones manuscritas en Yomogi (≥ 18 pt).
+ * Escala tipográfica, toda en Rubik: titulares en Black con interletraje cerrado,
+ * interfaz en Medium/Bold/ExtraBold. Los interlineados cubren el ascendente y el
+ * descendente de Rubik (≈ 1.19 em) para que «¿», «¡», tildes y «g» nunca se recorten.
  */
 export const textVariantTokens = {
-  hero: { fontFamily: fontFamilies.display, fontSize: 40, lineHeight: 46, letterSpacing: -0.4 },
-  title1: { fontFamily: fontFamilies.display, fontSize: 30, lineHeight: 36, letterSpacing: -0.3 },
-  title2: { fontFamily: fontFamilies.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.2 },
-  title3: { fontFamily: fontFamilies.display, fontSize: 19, lineHeight: 25 },
-  body: { fontFamily: fontFamilies.medium, fontSize: 16, lineHeight: 23 },
+  hero: { fontFamily: fontFamilies.display, fontSize: 40, lineHeight: 48, letterSpacing: -1 },
+  title1: { fontFamily: fontFamilies.display, fontSize: 30, lineHeight: 37, letterSpacing: -0.7 },
+  title2: { fontFamily: fontFamilies.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.4 },
+  title3: { fontFamily: fontFamilies.display, fontSize: 19, lineHeight: 24, letterSpacing: -0.2 },
+  body: { fontFamily: fontFamilies.regular, fontSize: 16, lineHeight: 23 },
   bodyStrong: { fontFamily: fontFamilies.bold, fontSize: 16, lineHeight: 23 },
-  callout: { fontFamily: fontFamilies.medium, fontSize: 15, lineHeight: 21 },
-  label: { fontFamily: fontFamilies.extraBold, fontSize: 15, lineHeight: 20 },
-  caption: { fontFamily: fontFamilies.bold, fontSize: 13, lineHeight: 18 },
+  callout: { fontFamily: fontFamilies.regular, fontSize: 15, lineHeight: 21 },
+  label: { fontFamily: fontFamilies.bold, fontSize: 15, lineHeight: 20 },
+  caption: { fontFamily: fontFamilies.medium, fontSize: 13, lineHeight: 18 },
   micro: {
-    fontFamily: fontFamilies.extraBold,
+    fontFamily: fontFamilies.bold,
     fontSize: 11,
     lineHeight: 14,
     letterSpacing: 0.8,
     textTransform: "uppercase"
   },
   button: { fontFamily: fontFamilies.extraBold, fontSize: 17, lineHeight: 22 },
-  buttonSmall: { fontFamily: fontFamilies.extraBold, fontSize: 15, lineHeight: 20 },
-  hand: { fontFamily: fontFamilies.hand, fontSize: 20, lineHeight: 25 },
-  stamp: { fontFamily: fontFamilies.display, fontSize: 26, lineHeight: 30, letterSpacing: 1, textTransform: "uppercase" },
-  numeral: { fontFamily: fontFamilies.display, fontSize: 22, lineHeight: 26 }
+  buttonSmall: { fontFamily: fontFamilies.bold, fontSize: 15, lineHeight: 20 },
+  hand: { fontFamily: fontFamilies.medium, fontSize: 17, lineHeight: 24 },
+  stamp: { fontFamily: fontFamilies.display, fontSize: 24, lineHeight: 30, letterSpacing: 0.5, textTransform: "uppercase" },
+  numeral: { fontFamily: fontFamilies.display, fontSize: 22, lineHeight: 27 }
 } as const satisfies Record<string, TextVariantToken>;
 
 export type TextVariant = keyof typeof textVariantTokens;

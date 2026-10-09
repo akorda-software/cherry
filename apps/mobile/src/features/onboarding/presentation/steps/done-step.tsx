@@ -124,7 +124,7 @@ export function DoneStep() {
       step="done"
       subtitle={
         done
-          ? "Ya puedes descubrir gente con tus etiquetas en común. Gratis, sin trucos y a tu ritmo."
+          ? "Ya puedes descubrir gente con tus etiquetas en común."
           : "Pegando las últimas pegatinas…"
       }
       testID="onboarding-step-done"

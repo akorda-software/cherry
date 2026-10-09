@@ -3,15 +3,29 @@ import { useEffect, useState } from "react";
 import { useProfileDraftStore } from "../../application/profile-draft-store";
 import { saveBio } from "../../application/step-actions";
 import { useStepCta } from "../../application/step-cta-store";
-import { validateBio } from "../../domain/profile-fields";
+import { BIO_MIN, validateBio } from "../../domain/profile-fields";
 import { BioNote } from "../fields/bio-note";
 import { StepPage } from "../step-page";
 import { useOnboardingNavigation } from "../use-onboarding-navigation";
 import { useProfileDraft } from "../use-profile-draft";
 import { useStepSave } from "../use-step-save";
 
-/** Paso 9: la bio como nota adhesiva (20–240) con arranques de inspiración. */
+/** Paso 9: la descripción (20–240 caracteres), con ideas opcionales para empezar. */
 export function BioStep() {
+  // El estado vive en `BioForm`: al escribir solo se repintan el campo y el contador, no la página.
+  return (
+    <StepPage
+      step="bio"
+      subtitle={`Unas líneas sobre ti. Mínimo ${BIO_MIN} caracteres.`}
+      testID="onboarding-step-bio"
+      title="Tu descripción"
+    >
+      <BioForm />
+    </StepPage>
+  );
+}
+
+function BioForm() {
   const { profile, ready, callApi } = useProfileDraft();
   const navigation = useOnboardingNavigation();
   const { busy, error, setError, run } = useStepSave();
@@ -43,21 +57,14 @@ export function BioStep() {
   useStepCta("bio", { enabled: ready && validation.ok, busy, onPress: submit });
 
   return (
-    <StepPage
-      step="bio"
-      subtitle="Algo que haga sonreír a quien lo lea. Entre 20 y 240 caracteres."
-      testID="onboarding-step-bio"
-      title="Cuéntanos algo"
-    >
-      <BioNote
-        error={error}
-        onChange={(next) => {
-          setBio(next);
-          if (error) setError(null);
-        }}
-        testID="onboarding-bio"
-        value={value}
-      />
-    </StepPage>
+    <BioNote
+      error={error}
+      onChange={(next) => {
+        setBio(next);
+        if (error) setError(null);
+      }}
+      testID="onboarding-bio"
+      value={value}
+    />
   );
 }

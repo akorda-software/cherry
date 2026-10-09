@@ -1,7 +1,7 @@
 import { StyleSheet, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
-import { Button, Icon, LoadingDots, Pill, Skeleton, SkeletonGroup, Text, useTheme } from "../../../shared/ui";
+import { Button, HardShadow, Icon, LoadingDots, Pill, Skeleton, SkeletonGroup, Text, useTheme } from "../../../shared/ui";
 import { formatLongDate } from "../domain/time-format";
 
 /** Separador de día: «Hoy», «Ayer», «12 de septiembre». */
@@ -27,19 +27,19 @@ export function TypingBubble({ name }: { name: string }) {
       style={styles.typingRow}
       testID="chat-typing"
     >
-      <View
+      <HardShadow
+        elevation="sm"
         style={[
           styles.typing,
           {
             backgroundColor: c.white,
             borderColor: c.ink,
             borderWidth: theme.primitives.border.regular
-          },
-          theme.primitives.elevation.sm
+          }
         ]}
       >
         <LoadingDots accessibilityLabel={`${name} está escribiendo`} color={c.ink} size={7} />
-      </View>
+      </HardShadow>
     </Animated.View>
   );
 }

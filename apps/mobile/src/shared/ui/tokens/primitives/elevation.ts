@@ -1,13 +1,21 @@
 /**
- * Sombras duras de neobrutalismo: desplazadas, sin desenfoque, en tinta.
- * Se expresan con `boxShadow` (nueva arquitectura en iOS/Android y web), así
- * que se ven igual de duras en las tres plataformas. Al pulsar, el elemento se
- * desplaza hacia su sombra y esta se reduce (ver `pressedElevation`).
+ * Sombras duras de neobrutalismo: desplazadas abajo a la derecha, sin desenfoque, en tinta.
+ *
+ * Se pintan SIEMPRE como una vista hermana detrás de la cara (`HardShadow`, o
+ * `HardShadowLayer` / `PressableScale` en piezas propias), nunca con `boxShadow`: en
+ * Android (Fabric) `boxShadow` es caro de pintar y el mazo de Descubrir iba a tirones
+ * (78 % de frames lentos con él, 55 % sin él). Una vista de color no cuesta casi nada.
+ * Lo que manda es `elevationOffsets` (px de desplazamiento de cada nivel); al pulsar,
+ * el elemento se desplaza hacia su sombra hasta taparla.
  */
 import { primitiveColorTokens } from "./color";
 
 const INK = primitiveColorTokens.ink;
 
+/**
+ * Heredado, solo por compatibilidad (`theme.primitives.elevation`): NO lo esparzas en
+ * estilos. Usa `<HardShadow elevation="md">` (sombra como vista hermana).
+ */
 export const primitiveElevationTokens = {
   none: { boxShadow: "0px 0px 0px rgba(0, 0, 0, 0)" },
   xs: { boxShadow: `1px 1px 0px ${INK}` },

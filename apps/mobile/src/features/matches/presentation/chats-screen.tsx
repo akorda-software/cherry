@@ -7,6 +7,7 @@ import type { MatchSummary } from "@snack/contracts";
 import { friendlyErrorMessage } from "../../../shared/api";
 import {
   Badge,
+  Button,
   Divider,
   EmptyState,
   ErrorState,
@@ -176,10 +177,26 @@ export function ChatsScreen() {
           loading || centered ? { paddingHorizontal: padding } : null
         ]}
         refreshControl={loading ? undefined : refreshControl}
+        onScroll={({ nativeEvent }) => {
+          if (nativeEvent.layoutMeasurement.height + nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - 240) {
+            if (list.hasMore && !list.loadingMore && !list.error) void list.loadMore();
+          }
+        }}
+        scrollEventThrottle={200}
         showsVerticalScrollIndicator={false}
         testID="chats-list"
       >
         {body}
+        {list.hasMore ? (
+          <View style={{ paddingHorizontal: padding }}>
+            <Button
+              label={list.loadingMore ? "Cargando chats…" : "Cargar más chats"}
+              disabled={list.loadingMore}
+              onPress={() => void list.loadMore()}
+              testID="chats-load-more"
+            />
+          </View>
+        ) : null}
       </ScrollView>
     </Screen>
   );

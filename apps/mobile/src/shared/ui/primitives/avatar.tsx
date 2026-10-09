@@ -4,6 +4,7 @@ import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 import { useTheme } from "../providers/theme-provider";
 import type { PastelName } from "../tokens/primitives/color";
 import type { ElevationLevel } from "../tokens/primitives/elevation";
+import { HardShadow } from "./hard-shadow";
 import { Text } from "./text";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -58,34 +59,37 @@ export function Avatar({
   const ringColor = ring ? theme.primitives.pastel[ring === true ? "fresa" : ring].fill : null;
   const ringGap = Math.max(3, Math.round(px * 0.07));
 
-  const face = (
-    <View
-      style={[
-        styles.face,
-        {
-          width: px,
-          height: px,
-          borderRadius: px / 2,
-          borderWidth: border,
-          borderColor: c.ink,
-          backgroundColor: fill
-        },
-        ringColor ? null : theme.primitives.elevation[elevation]
-      ]}
+  const faceStyle: StyleProp<ViewStyle> = [
+    styles.face,
+    {
+      width: px,
+      height: px,
+      borderRadius: px / 2,
+      borderWidth: border,
+      borderColor: c.ink,
+      backgroundColor: fill
+    }
+  ];
+  const content = uri ? (
+    <Image contentFit="cover" source={{ uri }} style={styles.image} transition={180} />
+  ) : (
+    <Text
+      color={c.ink}
+      maxFontSizeMultiplier={1}
+      style={{ fontFamily: theme.primitives.fonts.display, fontSize: px * 0.42, lineHeight: px * 0.52 }}
     >
-      {uri ? (
-        <Image contentFit="cover" source={{ uri }} style={styles.image} transition={180} />
-      ) : (
-        <Text
-          color={c.ink}
-          maxFontSizeMultiplier={1}
-          style={{ fontFamily: theme.primitives.fonts.display, fontSize: px * 0.42, lineHeight: px * 0.52 }}
-        >
-          {initial}
-        </Text>
-      )}
-    </View>
+      {initial}
+    </Text>
   );
+  // Con aro, la sombra es del aro; sin él, de la cara (vista hermana, nunca `boxShadow`).
+  const face =
+    ringColor || elevation === "none" ? (
+      <View style={faceStyle}>{content}</View>
+    ) : (
+      <HardShadow elevation={elevation} style={faceStyle}>
+        {content}
+      </HardShadow>
+    );
 
   return (
     <View
@@ -96,7 +100,8 @@ export function Avatar({
       testID={testID}
     >
       {ringColor ? (
-        <View
+        <HardShadow
+          elevation={elevation}
           style={[
             styles.ring,
             {
@@ -105,12 +110,11 @@ export function Avatar({
               borderWidth: theme.primitives.border.regular,
               borderColor: c.ink,
               backgroundColor: ringColor
-            },
-            theme.primitives.elevation[elevation]
+            }
           ]}
         >
           {face}
-        </View>
+        </HardShadow>
       ) : (
         face
       )}

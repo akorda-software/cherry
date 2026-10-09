@@ -18,7 +18,7 @@ function card(id: string): DiscoveryProfileCard {
     age: 30,
     bio: null,
     gender: "woman",
-    whatIAmLookingFor: "relationship",
+    lookingFor: ["relationship"],
     distanceLabel: null,
     distanceKmApprox: null,
     score: 0,

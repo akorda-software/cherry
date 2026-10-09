@@ -7,7 +7,16 @@ import { FormMessage, Icon, Stack, Surface, Text, TextField, useTheme } from "..
 import { useProfileDraftStore } from "../../application/profile-draft-store";
 import { stepSaveErrorMessage } from "../../application/step-actions";
 import { ageFromIsoDate, birthdayPartsFromIso } from "../../domain/birthday";
-import { DISPLAY_NAME_MAX, isGender, isRelationshipIntent, normalizeDisplayName, validateDisplayName } from "../../domain/profile-fields";
+import {
+  DISPLAY_NAME_MAX,
+  isGender,
+  MIN_INTENTS,
+  normalizeDisplayName,
+  normalizeIntents,
+  sameIntents,
+  toggleIntent,
+  validateDisplayName
+} from "../../domain/profile-fields";
 import { ChoiceCard } from "../fields/choice-card";
 import { GENDER_OPTIONS, INTENT_OPTIONS } from "../fields/profile-options";
 import { useProfileDraft } from "../use-profile-draft";
@@ -17,10 +26,10 @@ import { EditScaffold, toastSaved, useLeaveEdit } from "./edit-scaffold";
 interface BasicsForm {
   name: string;
   gender: Gender | null;
-  intent: RelationshipIntent | null;
+  intents: RelationshipIntent[];
 }
 
-/** Editar lo básico: nombre, género e intención (la fecha se ve, pero no se cambia). */
+/** Editar lo básico: nombre, género y qué buscas (una o varias; la fecha se ve, pero no se cambia). */
 export function EditBasicsScreen() {
   const theme = useTheme();
   const { profile, ready, failed, retry, callApi } = useProfileDraft();
@@ -33,26 +42,26 @@ export function EditBasicsScreen() {
       setForm({
         name: profile.displayName ?? "",
         gender: isGender(profile.gender) ? profile.gender : null,
-        intent: isRelationshipIntent(profile.whatIAmLookingFor) ? profile.whatIAmLookingFor : null
+        intents: normalizeIntents(profile.lookingFor)
       });
     }
   }, [form, profile, ready]);
 
-  const current = form ?? { name: "", gender: null, intent: null };
+  const current: BasicsForm = form ?? { name: "", gender: null, intents: [] };
   const nameValidation = validateDisplayName(current.name);
   const dirty =
     !!profile &&
     !!form &&
     (normalizeDisplayName(current.name) !== (profile.displayName ?? "") ||
       current.gender !== profile.gender ||
-      current.intent !== profile.whatIAmLookingFor);
-  const canSave = nameValidation.ok && current.gender !== null && current.intent !== null;
+      !sameIntents(current.intents, normalizeIntents(profile.lookingFor)));
+  const canSave = nameValidation.ok && current.gender !== null && current.intents.length >= MIN_INTENTS;
   const birth = birthdayPartsFromIso(profile?.birthDate);
   const age = profile?.age ?? ageFromIsoDate(profile?.birthDate);
 
   const save = () =>
     void run(async () => {
-      if (!nameValidation.ok || !current.gender || !current.intent) {
+      if (!nameValidation.ok || !current.gender || current.intents.length < MIN_INTENTS) {
         return;
       }
 
@@ -60,7 +69,7 @@ export function EditBasicsScreen() {
         api.updateProfile({
           displayName: nameValidation.value,
           gender: current.gender,
-          whatIAmLookingFor: current.intent
+          lookingFor: current.intents
         })
       );
       useProfileDraftStore.getState().setProfile(saved);
@@ -130,9 +139,12 @@ export function EditBasicsScreen() {
           ))}
         </Stack>
 
-        <Stack accessibilityRole="radiogroup" gap="sm">
+        <Stack gap="sm">
           <Text accessibilityRole="header" variant="title3">
             ¿Qué buscas?
+          </Text>
+          <Text color="muted" testID="edit-basics-intent-hint" variant="caption">
+            {current.intents.length === 0 ? "Elige al menos una para poder guardar." : "Puedes elegir varias."}
           </Text>
           {INTENT_OPTIONS.map((option) => (
             <ChoiceCard
@@ -141,8 +153,11 @@ export function EditBasicsScreen() {
               icon={option.icon}
               key={option.value}
               label={option.label}
-              onPress={() => setForm((value) => (value ? { ...value, intent: option.value } : value))}
-              selected={current.intent === option.value}
+              multiple
+              onPress={() =>
+                setForm((value) => (value ? { ...value, intents: toggleIntent(value.intents, option.value) } : value))
+              }
+              selected={current.intents.includes(option.value)}
               size="md"
               testID={`edit-basics-intent-${option.value}`}
             />

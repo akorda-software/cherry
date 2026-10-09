@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import type { DiscoveryProfileCard } from "@snack/contracts";
 
-import { Appear, Icon, PopIn, useTheme, WashiTape } from "../../../../shared/ui";
+import { Appear, HardShadow, IconButton, PopIn, Text, useTheme, WashiTape } from "../../../../shared/ui";
 import {
   MetaLine,
   NameSticker,
@@ -15,10 +15,38 @@ import {
 
 /** Borde blanco de la polaroid alrededor de la foto. */
 export const POLAROID_MARGIN = 10;
+/** Franja de datos bajo la foto: pegatina del nombre que asoma, etiquetas y la línea de datos (dos renglones). */
+const INFO_HEIGHT = 118;
+/** Pie con los botones ✕ ↺ · Ver perfil · ♥, dentro de la carta (como en el feed). */
+export const SWIPE_FOOTER_HEIGHT = 72;
+const PASS_SIZE = 48;
+const UNDO_SIZE = 40;
+const LIKE_SIZE = 64;
+const FOOTER_INSET = 4;
+const FOOTER_GAP = 10;
 
-/** Alto de la foto dentro de una card de `height` puntos (~70 % del alto). */
+/** Alto de la foto dentro de una card de `height` puntos: lo que dejan la franja de datos y el pie. */
 export function swipePhotoHeight(height: number): number {
-  return Math.round(Math.max(height - 170, height * 0.64));
+  return Math.round(Math.max(height - 2 * POLAROID_MARGIN - INFO_HEIGHT - SWIPE_FOOTER_HEIGHT, height * 0.46));
+}
+
+export type SwipeFooterTarget = "dislike" | "undo" | "open" | "like";
+
+/**
+ * Qué botón del pie hay en (x, y), en coordenadas de la card. Los botones del pie solo
+ * pintan: el toque lo resuelve el gesto de la card (así nunca compiten arrastre y botón).
+ * Zonas algo más anchas que los botones para acertar con el pulgar.
+ */
+export function swipeFooterHit(x: number, y: number, width: number, height: number): SwipeFooterTarget | null {
+  const footerTop = height - POLAROID_MARGIN - SWIPE_FOOTER_HEIGHT;
+  if (y < footerTop - 6) return null;
+  const passEnd = POLAROID_MARGIN + FOOTER_INSET + PASS_SIZE;
+  const undoEnd = passEnd + FOOTER_GAP + UNDO_SIZE;
+  const likeStart = width - POLAROID_MARGIN - FOOTER_INSET - LIKE_SIZE;
+  if (x < passEnd + FOOTER_GAP / 2) return "dislike";
+  if (x < undoEnd + FOOTER_GAP) return "undo";
+  if (x > likeStart - FOOTER_GAP) return "like";
+  return "open";
 }
 
 interface SwipeCardFaceProps {
@@ -28,14 +56,16 @@ interface SwipeCardFaceProps {
   photoIndex: number;
   isTop: boolean;
   flying: boolean;
+  /** Hay un «no» que recuperar (el ↺ del pie se ve activo). */
+  canUndo: boolean;
 }
 
 /**
- * Card polaroid: foto ~70 % del alto con dos tiras de washi en las esquinas, nombre en
- * pegatina que se sale por el borde inferior de la foto, etiquetas en común como
- * pegatinas amarillas con destello y los datos que ayudan a decidir.
+ * Card polaroid: foto con dos tiras de washi en las esquinas, nombre en pegatina que se
+ * sale por el borde inferior de la foto, etiquetas en común, los datos que ayudan a
+ * decidir y, abajo, el pie con ✕ ↺ · Ver perfil · ♥ (como en el feed).
  */
-export const SwipeCardFace = memo(function SwipeCardFace({ card, width, height, photoIndex, isTop, flying }: SwipeCardFaceProps) {
+export const SwipeCardFace = memo(function SwipeCardFace({ card, width, height, photoIndex, isTop, flying, canUndo }: SwipeCardFaceProps) {
   const theme = useTheme();
   const c = theme.primitives.color;
   const person = useMemo(() => toProfilePerson(card), [card]);
@@ -45,7 +75,8 @@ export const SwipeCardFace = memo(function SwipeCardFace({ card, width, height, 
   const tapeWidth = Math.min(Math.max(width * 0.24, 64), 96);
 
   return (
-    <View
+    <HardShadow
+      elevation="lg"
       style={[
         styles.card,
         {
@@ -56,8 +87,7 @@ export const SwipeCardFace = memo(function SwipeCardFace({ card, width, height, 
           borderColor: c.ink,
           borderWidth: theme.primitives.border.bold,
           borderRadius: theme.primitives.radius.md
-        },
-        theme.primitives.elevation.lg
+        }
       ]}
     >
       <PhotoCarousel
@@ -79,33 +109,30 @@ export const SwipeCardFace = memo(function SwipeCardFace({ card, width, height, 
           por debajo de la de arriba. Al llegar arriba, los datos aparecen con un fundido. */}
       {isTop || flying ? (
         <Appear from="none" style={styles.info}>
-          <ProfileBadges includeShared={!hasShared} limit={3} person={person} singleLine size="sm" />
           {hasShared ? (
-            <TagStickerRow limit={3} sharedOnly size="sm" tags={person.tags} testID={isTop ? "swipe-shared-tags" : undefined} />
-          ) : null}
-          <View style={styles.bottomRow}>
-            <View style={styles.meta}>
-              <MetaLine distanceLabel={person.distanceLabel} intent={person.whatIAmLookingFor} />
-            </View>
-            {/* Solo aspecto de botón: el toque en la franja lo gestiona el gesto de la card
-                (así nunca se abre dos veces) y los lectores usan la acción «Ver perfil completo». */}
-            <View
-              pointerEvents="none"
-              style={[
-                styles.openButton,
-                {
-                  backgroundColor: c.white,
-                  borderColor: c.ink,
-                  borderWidth: theme.primitives.border.regular
-                },
-                theme.primitives.elevation.sm
-              ]}
-              testID={isTop ? "swipe-open-profile" : undefined}
-            >
-              <Icon name="arrow-up" size={20} />
-            </View>
-          </View>
+            <TagStickerRow limit={2} sharedOnly size="sm" tags={person.tags} testID={isTop ? "swipe-shared-tags" : undefined} />
+          ) : (
+            <ProfileBadges includeShared limit={3} person={person} singleLine size="sm" />
+          )}
+          <MetaLine distanceLabel={person.distanceLabel} intents={person.lookingFor} />
         </Appear>
+      ) : null}
+
+      {isTop || flying ? (
+        // Solo pintan: el toque lo resuelve el gesto de la card con `swipeFooterHit`
+        // (los lectores de pantalla usan las acciones de la card).
+        <View pointerEvents="none" style={styles.footer} testID={isTop ? "swipe-footer" : undefined}>
+          <View style={styles.footerSide}>
+            <IconButton accessibilityLabel="Paso" color="lavanda" icon="x" onPress={noop} size="md" />
+            <IconButton accessibilityLabel="Deshacer el último no" color="limonada" disabled={!canUndo} icon="undo" onPress={noop} size="sm" />
+          </View>
+          <View style={styles.open} testID={isTop ? "swipe-open-profile" : undefined}>
+            <Text color="muted" numberOfLines={1} variant="label">
+              Ver perfil
+            </Text>
+          </View>
+          <IconButton accessibilityLabel="Me gusta" color="fresa" icon="heart" iconFill={c.white} onPress={noop} size="lg" />
+        </View>
       ) : null}
 
       {isTop || flying ? (
@@ -119,9 +146,11 @@ export const SwipeCardFace = memo(function SwipeCardFace({ card, width, height, 
           </PopIn>
         </>
       ) : null}
-    </View>
+    </HardShadow>
   );
 });
+
+function noop() {}
 
 const styles = StyleSheet.create({
   card: {
@@ -133,32 +162,30 @@ const styles = StyleSheet.create({
     right: 56
   },
   info: {
-    flex: 1,
+    height: INFO_HEIGHT,
     paddingTop: 34,
     paddingHorizontal: 4,
     gap: 8,
-    justifyContent: "flex-start"
+    overflow: "hidden"
   },
-  bottomRow: {
+  footer: {
+    height: SWIPE_FOOTER_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
-    marginTop: "auto"
+    paddingHorizontal: FOOTER_INSET
   },
-  meta: {
+  footerSide: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: FOOTER_GAP
+  },
+  open: {
     flex: 1,
-    minWidth: 0
+    alignItems: "center"
   },
   tape: {
     position: "absolute",
     top: -8
-  },
-  openButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center"
   }
 });

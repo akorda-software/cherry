@@ -6,7 +6,10 @@ import {
   graphemeCount,
   insertBioStarter,
   normalizeDisplayName,
+  normalizeIntents,
+  sameIntents,
   suggestedFirstName,
+  toggleIntent,
   validateBio,
   validateDisplayName
 } from "./profile-fields";
@@ -51,5 +54,25 @@ describe("bio", () => {
   it("does not insert a starter that would overflow the limit", () => {
     const full = "a".repeat(BIO_MAX - 3);
     expect(insertBioStarter(full, "Me ganas si...")).toBe(full);
+  });
+});
+
+describe("intents", () => {
+  it("normalizes to valid, unique intents in canonical order", () => {
+    expect(normalizeIntents(["go_with_the_flow", "friends", "casual", "casual"])).toEqual(["casual", "go_with_the_flow"]);
+    expect(normalizeIntents("meet_people")).toEqual(["meet_people"]);
+    expect(normalizeIntents(null)).toEqual([]);
+    expect(normalizeIntents(undefined)).toEqual([]);
+  });
+
+  it("toggles an intent keeping the canonical order", () => {
+    expect(toggleIntent(["meet_people"], "relationship")).toEqual(["relationship", "meet_people"]);
+    expect(toggleIntent(["relationship", "meet_people"], "relationship")).toEqual(["meet_people"]);
+    expect(toggleIntent([], "casual")).toEqual(["casual"]);
+  });
+
+  it("compares selections regardless of order", () => {
+    expect(sameIntents(["casual", "meet_people"], ["meet_people", "casual"])).toBe(true);
+    expect(sameIntents(["casual"], ["casual", "meet_people"])).toBe(false);
   });
 });

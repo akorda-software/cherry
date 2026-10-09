@@ -56,7 +56,8 @@ describe("SettingsScreen", () => {
     expect(await screen.findByText("user@example.com")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Cuenta" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Pausar mi perfil" })).toBeInTheDocument();
-    expect(screen.getByText("Redondeamos tu ubicación a 500 m. Nunca compartimos la exacta.")).toBeInTheDocument();
+    expect(screen.getByText(/Se actualiza sola al abrir la app, redondeada a 500 m/)).toBeInTheDocument();
+    expect(screen.getByText(/Para bloquear o reportar a alguien, abre su perfil o vuestro chat/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Zona de peligro" })).toBeInTheDocument();
     expect(screen.getByText("Snack · versión 1.2.3")).toBeInTheDocument();
     delete config.version;

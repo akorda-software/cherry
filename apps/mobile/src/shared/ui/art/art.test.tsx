@@ -90,7 +90,7 @@ describe("Stamp", () => {
     const { getByText } = render(<Stamp label="¡Me gusta!" tone="fresa" />);
     const text = getByText("¡Me gusta!");
     expect(text.style.textTransform).toBe("uppercase");
-    expect(text.style.color).toBe("rgb(176, 21, 79)");
+    expect(text.style.color).toBe("rgb(189, 36, 15)");
   });
 
   it("supports circle stamps with ornaments and slam-in", () => {

@@ -26,15 +26,21 @@ export function genderLabel(gender: Gender | null): string | null {
 }
 
 export function ownIntentLabel(intent: RelationshipIntent | null): string | null {
-  return intent ? OWN_INTENT_LABELS[intent] : null;
+  return intent ? (OWN_INTENT_LABELS[intent] ?? null) : null;
 }
 
-/** «30 años · Mujer · Una relación» (solo lo que haya). */
-export function describeBasics(profile: Pick<Profile, "age" | "gender" | "whatIAmLookingFor">): string {
+/** «Una relación · Conocer gente» (en el orden en que llegan, que es el canónico); `null` si no hay ninguna. */
+export function ownIntentsLabel(intents: ReadonlyArray<RelationshipIntent> | null | undefined): string | null {
+  const labels = (intents ?? []).map(ownIntentLabel).filter((label): label is string => label !== null);
+  return labels.length > 0 ? labels.join(" · ") : null;
+}
+
+/** «30 años · Mujer · Una relación · Conocer gente» (solo lo que haya). */
+export function describeBasics(profile: Pick<Profile, "age" | "gender" | "lookingFor">): string {
   const parts = [
     profile.age !== null ? `${profile.age} años` : null,
     genderLabel(profile.gender),
-    ownIntentLabel(profile.whatIAmLookingFor)
+    ownIntentsLabel(profile.lookingFor)
   ].filter((part): part is string => part !== null);
 
   return parts.length > 0 ? parts.join(" · ") : "Por completar";

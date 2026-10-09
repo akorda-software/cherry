@@ -31,13 +31,11 @@ describe("LoginScreen", () => {
     platform.OS = originalOS;
   });
 
-  it("welcomes with the headline, the promises and both providers", async () => {
+  it("welcomes with a plain headline, no slogans, and both providers", async () => {
     renderRoute(<LoginScreen />);
 
-    expect(await screen.findByRole("heading", { name: /Ligar\s+sin trucos\./ })).toBeInTheDocument();
-    expect(screen.getByText("Gratis. Para siempre.")).toBeInTheDocument();
-    expect(screen.getByText("Sin muros de pago")).toBeInTheDocument();
-    expect(screen.getByText("Código abierto")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Conoce gente\s+cerca de ti\./ })).toBeInTheDocument();
+    expect(screen.queryByText(/gratis|trucos|muros de pago|código abierto/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continuar con Google" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continuar con Apple" })).toBeInTheDocument();
   });

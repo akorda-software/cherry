@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import type { MatchSummary } from "@snack/contracts";
@@ -7,7 +7,7 @@ import { createMatchesApi } from "@snack/mobile-shared";
 import { refreshActivitySummary } from "../../activity/application/activity-poller";
 import { useAuthedApi } from "../../auth/presentation";
 import { splitMatches, type MatchSections } from "../domain/match-list";
-import { selectMatchByConversationId, useMatchesStore, type MatchesLoadMode } from "./matches-store";
+import { getMatchesSessionEpoch, selectMatchByConversationId, useMatchesStore, type MatchesLoadMode } from "./matches-store";
 
 /** Carga de `GET /api/matches` con auth (estable mientras no cambie la sesión). */
 export function useMatchesLoader(): (mode?: MatchesLoadMode) => Promise<void> {
@@ -24,6 +24,9 @@ export interface MatchesListResult extends MatchSections {
   status: ReturnType<typeof useMatchesStore.getState>["status"];
   error: unknown;
   refreshing: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
+  loadMore(): Promise<void>;
   reload(): Promise<void>;
   refresh(): Promise<void>;
   refreshSilently(): Promise<void>;
@@ -32,12 +35,15 @@ export interface MatchesListResult extends MatchSections {
 /** Pestaña Chats: matches separados en «Nuevos matches» y conversaciones. Carga al montar. */
 export function useMatchesList(): MatchesListResult {
   const load = useMatchesLoader();
-  const { matches, status, error, refreshing } = useMatchesStore(
+  const callApi = useAuthedApi(createMatchesApi);
+  const { matches, status, error, refreshing, loadingMore, nextCursor } = useMatchesStore(
     useShallow((state) => ({
       matches: state.matches,
       status: state.status,
       error: state.error,
-      refreshing: state.refreshing
+      refreshing: state.refreshing,
+      loadingMore: state.loadingMore,
+      nextCursor: state.nextCursor
     }))
   );
 
@@ -53,6 +59,9 @@ export function useMatchesList(): MatchesListResult {
     status,
     error,
     refreshing,
+    loadingMore,
+    hasMore: nextCursor !== null,
+    loadMore: useCallback(() => useMatchesStore.getState().loadMore((cursor) => callApi((api) => api.list({ cursor }))), [callApi]),
     reload: useCallback(() => load("initial"), [load]),
     refresh: useCallback(async () => {
       await Promise.all([load("refresh"), refreshActivitySummary({ force: true })]);
@@ -70,20 +79,35 @@ export function useMatchForConversation(conversationId: string): {
   status: ReturnType<typeof useMatchesStore.getState>["status"];
   reload(): Promise<void>;
 } {
-  const load = useMatchesLoader();
+  const callApi = useAuthedApi(createMatchesApi);
   const selector = useMemo(() => selectMatchByConversationId(conversationId), [conversationId]);
   const match = useMatchesStore(selector);
-  const status = useMatchesStore((state) => state.status);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const requestGeneration = useRef(0);
+
+  const reload = useCallback(async () => {
+    const request = ++requestGeneration.current;
+    const session = getMatchesSessionEpoch();
+    const current = () => request === requestGeneration.current && session === getMatchesSessionEpoch();
+    setStatus("loading");
+    try {
+      const entry = await callApi((api) => api.getForConversation(conversationId));
+      if (!current()) return;
+      useMatchesStore.getState().upsertFetchedMatch(entry);
+      setStatus("ready");
+    } catch {
+      if (current()) setStatus("error");
+    }
+  }, [callApi, conversationId]);
 
   useEffect(() => {
-    if (match === null && status !== "loading") {
-      void load(status === "ready" ? "silent" : "initial");
+    if (selectMatchByConversationId(conversationId)(useMatchesStore.getState()) === null) {
+      void reload();
     }
-    // Solo al entrar en la conversación: no queremos bucles si de verdad no existe.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, load]);
+    return () => { requestGeneration.current += 1; };
+  }, [conversationId, reload]);
 
-  return { match, status, reload: useCallback(() => load("initial"), [load]) };
+  return { match, status: match ? "ready" : status, reload };
 }
 
 /** Deshacer match: llama al backend y lo quita de la lista. */

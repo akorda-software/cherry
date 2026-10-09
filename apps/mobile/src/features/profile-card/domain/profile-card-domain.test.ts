@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { DiscoveryProfileCard, ProfileTag, PublicProfile } from "@snack/contracts";
 
 import { profileBadges } from "./badges";
-import { describeIntent } from "./intent";
+import { describeIntent, describeIntents, intentsText } from "./intent";
 import {
   groupOtherTagsByCategory,
   nameWithAge,
@@ -32,7 +32,7 @@ function card(overrides: Partial<DiscoveryProfileCard> = {}): DiscoveryProfileCa
     age: 29,
     bio: "Hola",
     gender: "woman",
-    whatIAmLookingFor: "relationship",
+    lookingFor: ["relationship"],
     distanceLabel: "Cerca de ti",
     distanceKmApprox: 1,
     score: 10,
@@ -73,7 +73,7 @@ describe("toProfilePerson", () => {
       age: 31,
       bio: null,
       gender: "non_binary",
-      whatIAmLookingFor: "go_with_the_flow",
+      lookingFor: ["go_with_the_flow"],
       distanceLabel: null,
       distanceKmApprox: null,
       photos: [],
@@ -168,6 +168,25 @@ describe("describeIntent", () => {
   it("tolerates unknown or empty values", () => {
     expect(describeIntent(null)).toBeNull();
     expect(describeIntent("space_travel")?.key).toBe("unknown");
+  });
+});
+
+describe("describeIntents", () => {
+  it("describes every intent once, in canonical order", () => {
+    expect(describeIntents(["go_with_the_flow", "relationship", "relationship"]).map((intent) => intent.key)).toEqual([
+      "relationship",
+      "go_with_the_flow"
+    ]);
+    expect(describeIntents("casual").map((intent) => intent.key)).toEqual(["casual"]);
+    expect(describeIntents(null)).toEqual([]);
+  });
+
+  it("joins the labels or the sentences with a middle dot", () => {
+    const intents = describeIntents(["meet_people", "casual"]);
+
+    expect(intentsText(intents)).toBe("Algo casual · Conocer gente");
+    expect(intentsText(intents, true)).toBe("Busca algo casual · Quiere conocer gente");
+    expect(intentsText([])).toBeNull();
   });
 });
 

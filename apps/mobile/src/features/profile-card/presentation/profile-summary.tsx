@@ -41,7 +41,7 @@ export const ProfileSummary = memo(function ProfileSummary({
           bajo el nombre: son lo que más os une y lo primero que se busca. */}
       {full ? <TagCloud animateShared layout="grouped" tags={person.tags} testID={testID ? `${testID}-tags` : undefined} /> : null}
       <ProfileBadges includeShared={!full} person={person} size={full ? "md" : "sm"} testID={testID ? `${testID}-badges` : undefined} />
-      <MetaLine distanceLabel={person.distanceLabel} intent={person.whatIAmLookingFor} sentence={full} />
+      <MetaLine distanceLabel={person.distanceLabel} intents={person.lookingFor} sentence={full} />
       {full ? null : <TagStickerRow limit={4} size="sm" tags={person.tags} />}
       <BioNote bio={person.bio} numberOfLines={full ? undefined : 3} tilt={full ? -1 : -1.5} />
     </Stack>
@@ -49,23 +49,24 @@ export const ProfileSummary = memo(function ProfileSummary({
 });
 
 export function MetaLine({
-  intent,
+  intents,
   distanceLabel,
   sentence = false
 }: {
-  intent: string | null;
+  /** `lookingFor` de la persona. */
+  intents: ReadonlyArray<string>;
   distanceLabel: string | null;
   sentence?: boolean;
 }) {
   const theme = useTheme();
 
-  if (!intent && !distanceLabel) {
+  if (intents.length === 0 && !distanceLabel) {
     return null;
   }
 
   return (
     <View style={styles.meta}>
-      <IntentBadge intent={intent} sentence={sentence} size="sm" />
+      <IntentBadge intents={intents} sentence={sentence} size="sm" />
       {distanceLabel ? (
         <View accessibilityLabel={distanceLabel} accessibilityRole="text" accessible style={styles.distance}>
           <Icon color={theme.semantic.icon.muted} name="pin" size={16} />

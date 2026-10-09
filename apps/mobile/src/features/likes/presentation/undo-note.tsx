@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
-import Animated, { FadeInDown, FadeOut, useReducedMotion } from "react-native-reanimated";
+import { FadeInDown, FadeOut, useReducedMotion } from "react-native-reanimated";
 
-import { Button, Icon, Text, useTheme } from "../../../shared/ui";
+import { Button, HardShadow, Icon, Text, useTheme } from "../../../shared/ui";
 
 export interface UndoNoteProps {
   /** Identifica el «no» actual (reinicia el temporizador). `null` = oculta. */
@@ -52,8 +52,10 @@ export function UndoNote({
 
   return (
     <View style={[styles.host, { bottom: bottomOffset }]}>
-      <Animated.View
+      <HardShadow
         accessibilityLiveRegion="polite"
+        animated
+        elevation="md"
         entering={reduced ? undefined : FadeInDown.duration(240)}
         exiting={FadeOut.duration(160)}
         key={passKey}
@@ -64,8 +66,7 @@ export function UndoNote({
             borderColor: c.ink,
             borderWidth: theme.primitives.border.regular,
             borderRadius: theme.primitives.radius.md
-          },
-          theme.primitives.elevation.md
+          }
         ]}
         testID="likes-undo"
       >
@@ -95,7 +96,7 @@ export function UndoNote({
         >
           Deshacer
         </Button>
-      </Animated.View>
+      </HardShadow>
     </View>
   );
 }

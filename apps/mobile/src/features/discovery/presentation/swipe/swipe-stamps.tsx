@@ -6,7 +6,7 @@ import Animated, {
   useAnimatedStyle
 } from "react-native-reanimated";
 
-import { Icon, Stamp, Text, useTheme } from "../../../../shared/ui";
+import { HardShadow, Icon, Stamp, Text, useTheme } from "../../../../shared/ui";
 
 interface SwipeStampsProps {
   tx: SharedValue<number>;
@@ -98,7 +98,8 @@ export function SwipeOpenHint({ tx, ty, photoAreaHeight }: SwipeOpenHintProps) {
       pointerEvents="none"
       style={[styles.hintWrap, { top: photoAreaHeight - 64 }, style]}
     >
-      <View
+      <HardShadow
+        elevation="sm"
         style={[
           styles.hint,
           {
@@ -106,15 +107,14 @@ export function SwipeOpenHint({ tx, ty, photoAreaHeight }: SwipeOpenHintProps) {
             borderColor: theme.primitives.color.ink,
             borderWidth: theme.primitives.border.thin,
             borderRadius: theme.primitives.radius.pill
-          },
-          theme.primitives.elevation.sm
+          }
         ]}
       >
         <Icon name="arrow-up" size={18} />
         <Text maxFontSizeMultiplier={1.2} variant="label">
           Suelta para ver su perfil
         </Text>
-      </View>
+      </HardShadow>
     </Animated.View>
   );
 }

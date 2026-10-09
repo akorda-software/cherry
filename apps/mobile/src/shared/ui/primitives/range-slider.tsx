@@ -20,6 +20,7 @@ import { haptics } from "../motion/haptics";
 import { springs } from "../motion/springs";
 import { useTheme } from "../providers/theme-provider";
 import type { PastelName } from "../tokens/primitives/color";
+import { HardShadow } from "./hard-shadow";
 import { Text } from "./text";
 
 const THUMB = 30;
@@ -279,7 +280,8 @@ function SliderCore({
         style={[styles.bubble, which === 1 ? lowBubbleStyle : highBubbleStyle]}
         importantForAccessibility="no-hide-descendants"
       >
-        <View
+        <HardShadow
+          elevation="xs"
           style={[
             styles.bubbleFace,
             {
@@ -287,14 +289,13 @@ function SliderCore({
               borderColor: c.ink,
               borderWidth: theme.primitives.border.thin,
               borderRadius: theme.primitives.radius.pill
-            },
-            theme.primitives.elevation.xs
+            }
           ]}
         >
           <Text numberOfLines={1} variant="caption">
             {formatLabel(value)}
           </Text>
-        </View>
+        </HardShadow>
       </Animated.View>
     );
   }
@@ -305,7 +306,8 @@ function SliderCore({
       testID={testID}
     >
       <View onLayout={handleLayout} style={styles.zone}>
-        <View
+        <HardShadow
+          elevation="sm"
           style={[
             styles.track,
             {
@@ -313,8 +315,7 @@ function SliderCore({
               borderWidth: theme.primitives.border.regular,
               borderColor: c.ink,
               backgroundColor: c.white
-            },
-            theme.primitives.elevation.sm
+            }
           ]}
         />
         <Animated.View

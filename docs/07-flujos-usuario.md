@@ -13,7 +13,7 @@ app/
 ├── (onboarding)/               # guard: sin sesión → login; perfil ya hecho → Descubrir
 │   ├── index                   # calcula el paso donde reanudar y apila los anteriores
 │   └── name → birthday → gender → interested → intent → photos
-│       → tags → blocked-tags → bio → location → done
+│       → tags → bio → location → done
 ├── (app)/                      # guard: sesión + bootstrap; onboardingRequired → onboarding
 │   ├── (tabs)/discover         # «Descubrir»
 │   ├── (tabs)/likes            # «Likes»
@@ -57,13 +57,12 @@ Marco común: barra «Paso N de 11», atrás en todos los pasos salvo el primero
 | 2 | Cumpleaños | «¿Cuándo naciste?» con día/mes/año y pegatina «Tienes N años» | Fecha real, 18+ | `PUT /api/me/profile` |
 | 3 | Género | «¿Cómo te identificas?»: Hombre / Mujer / No binario | Un toque elige y avanza | `PUT /api/me/profile` |
 | 4 | A quién | «¿A quién quieres conocer?»: Mujeres / Hombres / Personas no binarias | Al menos una | `PUT /api/me/discovery-preferences` (la primera vez crea edad según la tuya, 50 km, ampliar distancia y modo swipe; ante un 422 reintenta con esos valores) |
-| 5 | Intención | «¿Qué buscas?»: Relación / Algo casual / Conocer gente / A ver qué pasa | Un toque elige y avanza | `PUT /api/me/profile` |
+| 5 | Intención | «¿Qué buscas?»: Relación / Algo casual / Conocer gente / A ver qué pasa (puedes elegir varias) | Tocar marca o desmarca; «Continuar» con al menos una | `PUT /api/me/profile` (`looking_for`) |
 | 6 | Fotos | «Tus mejores fotos» desde la galería o la cámara; se suben al momento | 2–4 fotos | upload-intent → `PUT` → complete; borrar y reordenar |
-| 7 | Etiquetas | «Así soy yo» | Mínimo 3 para continuar, máximo 8 | `GET /api/tags`, `PUT /api/me/tags` |
-| 8 | Bloqueadas | «¿Algo que no va contigo?» (opcional: «Saltar») | Máximo 5; nunca una propia | `PUT /api/me/blocked-tags` |
-| 9 | Bio | «Cuéntanos algo» en una nota adhesiva con ideas para empezar | 20–240 caracteres | `PUT /api/me/profile` |
-| 10 | Ubicación | «¿Por dónde andas?» («Redondeamos tu ubicación a 500 m.») | Obligatoria, no se puede saltar | `POST /api/me/location` |
-| 11 | Listo | Confirmación | — | `POST /api/me/profile/complete` |
+| 7 | Etiquetas | «Tus etiquetas»: rejilla de fichas con + (me gusta) y − (bloquear) en la misma página | 3–8 con +; hasta 5 con − (opcional); nunca las dos a la vez | `GET /api/tags`, `PUT /api/me/tags`, `PUT /api/me/blocked-tags` |
+| 8 | Descripción | «Tu descripción»: campo grande con contador; ideas opcionales plegadas en «¿Sin ideas?» | 20–240 caracteres | `PUT /api/me/profile` |
+| 9 | Ubicación | «¿Por dónde andas?» («Redondeamos tu ubicación a 500 m.») | Obligatoria, no se puede saltar | `POST /api/me/location` |
+| 10 | Listo | Confirmación | — | `POST /api/me/profile/complete` |
 
 **Ubicación.** «Compartir mi ubicación» pide el permiso de primer plano. Si se deniega: «Sin tu zona no podemos enseñarte gente cerca. ¿Lo intentamos otra vez?». Si está bloqueado en el sistema: «Abrir Ajustes» y, al volver con el permiso concedido, reintenta sola. Si ya había una ubicación guardada, se puede continuar o «Actualizar mi ubicación».
 

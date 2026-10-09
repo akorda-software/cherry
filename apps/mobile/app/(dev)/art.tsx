@@ -23,6 +23,7 @@ import {
   WashiTape,
   washiPatterns
 } from "../../src/shared/ui/art";
+import { HardShadow } from "../../src/shared/ui/primitives/hard-shadow";
 import { useTheme } from "../../src/shared/ui/providers/theme-provider";
 import type { PastelName } from "../../src/shared/ui/tokens/primitives/color";
 
@@ -39,11 +40,10 @@ export default function ArtShowcaseRoute() {
 
 function useShowcaseFonts() {
   const [ready] = useFonts({
-    MochiyPopOne: require("../../assets/fonts/MochiyPopOne-Regular.ttf"),
-    "MPLUSRounded1c-Medium": require("../../assets/fonts/MPLUSRounded1c-Medium.ttf"),
-    "MPLUSRounded1c-Bold": require("../../assets/fonts/MPLUSRounded1c-Bold.ttf"),
-    "MPLUSRounded1c-ExtraBold": require("../../assets/fonts/MPLUSRounded1c-ExtraBold.ttf"),
-    Yomogi: require("../../assets/fonts/Yomogi-Regular.ttf")
+    "Rubik-Medium": require("../../assets/fonts/Rubik-Medium.ttf"),
+    "Rubik-Bold": require("../../assets/fonts/Rubik-Bold.ttf"),
+    "Rubik-ExtraBold": require("../../assets/fonts/Rubik-ExtraBold.ttf"),
+    "Rubik-Black": require("../../assets/fonts/Rubik-Black.ttf")
   });
   return ready;
 }
@@ -119,7 +119,7 @@ function LogoSection() {
 
 function MochiSection() {
   return (
-    <Section title="Mochi">
+    <Section title="Mascota">
       <View style={styles.center}>
         <Mascot size={200} mood="happy" accessibilityLabel="Mochi, la mascota de Snack, sonriendo" testID="mochi-hero" />
       </View>
@@ -307,22 +307,23 @@ function DemoButton({ label, onPress, testID }: { label: string; onPress: () => 
   const theme = useTheme();
 
   return (
-    <Pressable
-      testID={testID}
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => [
-        styles.button,
-        {
-          backgroundColor: theme.primitives.color.limonada,
-          borderColor: theme.primitives.color.ink,
-          borderWidth: theme.primitives.border.regular
-        },
-        pressed ? theme.primitives.elevation.none : theme.primitives.elevation.sm,
-        pressed && { transform: [{ translateX: 2 }, { translateY: 2 }] }
-      ]}
-    >
-      <Text style={[theme.primitives.text.buttonSmall, { color: theme.semantic.text.default }]}>{label}</Text>
+    <Pressable testID={testID} onPress={onPress} accessibilityRole="button">
+      {({ pressed }) => (
+        <HardShadow
+          elevation={pressed ? "none" : "sm"}
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.primitives.color.limonada,
+              borderColor: theme.primitives.color.ink,
+              borderWidth: theme.primitives.border.regular
+            },
+            pressed && { transform: [{ translateX: 2 }, { translateY: 2 }] }
+          ]}
+        >
+          <Text style={[theme.primitives.text.buttonSmall, { color: theme.semantic.text.default }]}>{label}</Text>
+        </HardShadow>
+      )}
     </Pressable>
   );
 }

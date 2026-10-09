@@ -40,8 +40,93 @@ function deferred<T>() {
 
 const store = () => useMatchesStore.getState();
 
+function load(fetchMatches: () => Promise<MatchSummary[]>, mode?: "initial" | "refresh" | "silent") {
+  return store().load(async () => ({ matches: await fetchMatches(), nextCursor: null }), mode);
+}
+
 beforeEach(() => {
   store().reset();
+});
+
+describe("matches store · pagination", () => {
+  it("appends a page once and preserves a newer local message", async () => {
+    await store().load(async () => ({ matches: [match("a")], nextCursor: "cursor-1" }));
+    const pending = deferred<{ matches: MatchSummary[]; nextCursor: string | null }>();
+    const fetch = vi.fn(() => pending.promise);
+    const first = store().loadMore(fetch);
+    const duplicate = store().loadMore(fetch);
+    store().applyMessage("conv-a", message("fresh", "conv-a", "me", 5000), { read: true });
+    pending.resolve({ matches: [match("a"), match("b")], nextCursor: null });
+    await Promise.all([first, duplicate]);
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledWith("cursor-1");
+    expect(store().matches.map((entry) => entry.id)).toEqual(["a", "b"]);
+    expect(store().matches[0]!.lastMessage?.id).toBe("fresh");
+    expect(store().nextCursor).toBeNull();
+  });
+
+  it("ignores an older page overtaken by a refresh", async () => {
+    await store().load(async () => ({ matches: [match("a")], nextCursor: "old" }));
+    const pending = deferred<{ matches: MatchSummary[]; nextCursor: string | null }>();
+    const more = store().loadMore(() => pending.promise);
+    await store().load(async () => ({ matches: [match("new")], nextCursor: "new-cursor" }), "refresh");
+    pending.resolve({ matches: [match("obsolete")], nextCursor: null });
+    await more;
+    expect(store().matches.map((entry) => entry.id)).toEqual(["new"]);
+    expect(store().nextCursor).toBe("new-cursor");
+  });
+
+  it("keeps the cursor after failure so loading more can retry", async () => {
+    await store().load(async () => ({ matches: [match("a")], nextCursor: "retry" }));
+    await store().loadMore(async () => { throw new Error("offline"); });
+    expect(store()).toMatchObject({ status: "ready", nextCursor: "retry", loadingMore: false });
+    await store().loadMore(async () => ({ matches: [match("b")], nextCursor: null }));
+    expect(store().matches).toHaveLength(2);
+  });
+
+  it("a response from the signed-out session cannot clear a newer in-flight request", async () => {
+    const old = deferred<MatchSummary[]>();
+    const oldLoad = load(() => old.promise);
+    store().reset();
+    const fresh = deferred<MatchSummary[]>();
+    const fetch = vi.fn(() => fresh.promise);
+    const freshLoad = load(fetch);
+    old.resolve([match("old")]);
+    await oldLoad;
+    const duplicate = load(fetch);
+    expect(fetch).toHaveBeenCalledOnce();
+    fresh.resolve([match("fresh")]);
+    await Promise.all([freshLoad, duplicate]);
+    expect(store().matches.map((entry) => entry.id)).toEqual(["fresh"]);
+  });
+
+  it("keeps a match arriving while the first page is in flight", async () => {
+    const pending = deferred<MatchSummary[]>();
+    const loading = load(() => pending.promise);
+    store().upsertFetchedMatch(match("just-created"));
+    pending.resolve([match("existing")]);
+    await loading;
+    expect(store().matches).toHaveLength(2);
+  });
+
+  it("keeps an older loaded conversation made active during a first-page refresh", async () => {
+    await store().load(async () => ({ matches: [match("older")], nextCursor: "more" }));
+    const pending = deferred<{ matches: MatchSummary[]; nextCursor: string | null }>();
+    const refreshing = store().load(() => pending.promise, "refresh");
+    store().applyMessage("conv-older", message("fresh", "conv-older", "other-older", 5000), { read: false });
+    pending.resolve({ matches: [match("first-page")], nextCursor: "new-cursor" });
+    await refreshing;
+    expect(store().matches[0]).toMatchObject({ id: "older", lastMessage: { id: "fresh" }, unreadCount: 1 });
+    expect(store().nextCursor).toBe("new-cursor");
+  });
+
+  it("a refresh cannot let an earlier direct lookup resurrect an unmatched entry", async () => {
+    store().upsertFetchedMatch(match("removed"));
+    store().removeMatch("removed");
+    await store().load(async () => ({ matches: [match("visible")], nextCursor: "more" }), "refresh");
+    store().upsertFetchedMatch(match("removed"));
+    expect(store().matches.map((entry) => entry.id)).toEqual(["visible"]);
+  });
 });
 
 describe("matches store · carga", () => {
@@ -51,7 +136,7 @@ describe("matches store · carga", () => {
       match("b", { lastMessage: message("m", "conv-b", "other-b", -1000) })
     ]);
 
-    const promise = store().load(fetchMatches);
+    const promise = load(fetchMatches);
     expect(store().status).toBe("loading");
     await promise;
 
@@ -64,8 +149,8 @@ describe("matches store · carga", () => {
     const pending = deferred<MatchSummary[]>();
     const fetchMatches = vi.fn(() => pending.promise);
 
-    const first = store().load(fetchMatches);
-    const second = store().load(fetchMatches, "silent");
+    const first = load(fetchMatches);
+    const second = load(fetchMatches, "silent");
     pending.resolve([match("a")]);
     await Promise.all([first, second]);
 
@@ -73,10 +158,10 @@ describe("matches store · carga", () => {
   });
 
   it("uses the refreshing flag for pull to refresh and keeps the list", async () => {
-    await store().load(async () => [match("a")]);
+    await load(async () => [match("a")]);
     const pending = deferred<MatchSummary[]>();
 
-    const refresh = store().load(() => pending.promise, "refresh");
+    const refresh = load(() => pending.promise, "refresh");
     expect(store().refreshing).toBe(true);
     expect(store().status).toBe("ready");
     expect(store().matches).toHaveLength(1);
@@ -89,13 +174,13 @@ describe("matches store · carga", () => {
 
   it("ends in error when the first load fails, but keeps the list on later failures", async () => {
     const boom = new TypeError("offline");
-    await store().load(async () => {
+    await load(async () => {
       throw boom;
     });
     expect(store()).toMatchObject({ status: "error", error: boom });
 
-    await store().load(async () => [match("a")]);
-    await store().load(async () => {
+    await load(async () => [match("a")]);
+    await load(async () => {
       throw boom;
     }, "refresh");
     expect(store()).toMatchObject({ status: "ready", error: boom, refreshing: false });
@@ -103,9 +188,9 @@ describe("matches store · carga", () => {
   });
 
   it("does not let a stale response resurrect an unmatched match or drop a fresher message", async () => {
-    await store().load(async () => [match("a"), match("b")]);
+    await load(async () => [match("a"), match("b")]);
     const pending = deferred<MatchSummary[]>();
-    const loading = store().load(() => pending.promise, "silent");
+    const loading = load(() => pending.promise, "silent");
 
     store().removeMatch("a");
     const fresh = message("new", "conv-b", "me", 5000);
@@ -120,7 +205,7 @@ describe("matches store · carga", () => {
 
   it("ignores a response that lands after a reset (sign out)", async () => {
     const pending = deferred<MatchSummary[]>();
-    const loading = store().load(() => pending.promise);
+    const loading = load(() => pending.promise);
     store().reset();
     pending.resolve([match("a")]);
     await loading;
@@ -147,7 +232,7 @@ describe("matches store · parches en vivo", () => {
   });
 
   it("applies messages and read state per conversation", async () => {
-    await store().load(async () => [match("a"), match("b")]);
+    await load(async () => [match("a"), match("b")]);
 
     store().applyMessage("conv-a", message("x", "conv-a", "other-a", 1000), { read: false });
     expect(store().matches[0]).toMatchObject({ id: "a", unreadCount: 1, lastMessage: { id: "x" } });
@@ -157,7 +242,7 @@ describe("matches store · parches en vivo", () => {
   });
 
   it("keeps the same array when nothing changes", async () => {
-    await store().load(async () => [match("a")]);
+    await load(async () => [match("a")]);
     const before = store().matches;
     store().markRead("conv-a");
     store().applyMessage("conv-zzz", message("x", "conv-zzz", "o", 0), { read: false });
@@ -165,7 +250,7 @@ describe("matches store · parches en vivo", () => {
   });
 
   it("removes a match after unmatching", async () => {
-    await store().load(async () => [match("a"), match("b")]);
+    await load(async () => [match("a"), match("b")]);
     store().removeMatch("a");
     expect(store().matches.map((m) => m.id)).toEqual(["b"]);
   });

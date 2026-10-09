@@ -13,7 +13,7 @@ import {
 
 import type { PhotoSummary } from "@snack/contracts";
 
-import { pastelForName, Text, useTheme, WashiTape } from "../../../shared/ui";
+import { HardShadow, pastelForName, Text, useTheme, WashiTape } from "../../../shared/ui";
 
 export interface PhotoCarouselProps {
   photos: readonly PhotoSummary[];
@@ -255,12 +255,9 @@ function Dots({ count, current }: { count: number; current: number }) {
 
   return (
     <View pointerEvents="none" style={styles.dotsWrap}>
-      <View
-        style={[
-          styles.dots,
-          { backgroundColor: c.white, borderColor: c.ink, borderWidth: theme.primitives.border.thin },
-          theme.primitives.elevation.xs
-        ]}
+      <HardShadow
+        elevation="xs"
+        style={[styles.dots, { backgroundColor: c.white, borderColor: c.ink, borderWidth: theme.primitives.border.thin }]}
       >
         {Array.from({ length: count }, (_, i) => (
           <View
@@ -273,7 +270,7 @@ function Dots({ count, current }: { count: number; current: number }) {
             ]}
           />
         ))}
-      </View>
+      </HardShadow>
     </View>
   );
 }

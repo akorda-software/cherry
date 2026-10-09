@@ -10,7 +10,7 @@ import Animated, {
 
 import type { DiscoveryActionType, DiscoveryProfileCard } from "@snack/contracts";
 
-import { easings, IconButton, Stamp, Text, useTheme } from "../../../../shared/ui";
+import { easings, HardShadow, IconButton, Stamp, Text, useTheme } from "../../../../shared/ui";
 import { NameSticker, PhotoCarousel, ProfileSummary, toProfilePerson } from "../../../profile-card";
 import { describePerson } from "../describe-person";
 
@@ -101,7 +101,8 @@ export const FeedPost = memo(function FeedPost({
       style={[styles.wrap, { width, marginBottom: FEED_POST_GAP }, animatedStyle]}
       testID={`feed-post-${card.id}`}
     >
-      <View
+      <HardShadow
+        elevation="md"
         style={[
           styles.post,
           {
@@ -110,8 +111,7 @@ export const FeedPost = memo(function FeedPost({
             borderColor: c.ink,
             borderWidth: theme.primitives.border.bold,
             borderRadius: theme.primitives.radius.md
-          },
-          theme.primitives.elevation.md
+          }
         ]}
       >
         <PhotoCarousel
@@ -186,7 +186,7 @@ export const FeedPost = memo(function FeedPost({
             />
           </View>
         ) : null}
-      </View>
+      </HardShadow>
     </Animated.View>
   );
 });

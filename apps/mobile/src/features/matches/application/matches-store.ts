@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { ChatMessage, DiscoveryMatch, MatchSummary } from "@snack/contracts";
+import type { ChatMessage, DiscoveryMatch, MatchesResponse, MatchSummary } from "@snack/contracts";
 
 import { onSignOut } from "../../auth/presentation/on-sign-out";
 import { applyMessageToMatch, lastActivityAt, matchSummaryFromDiscoveryMatch } from "../domain/match-list";
@@ -21,8 +21,12 @@ export interface MatchesState {
   error: unknown;
   refreshing: boolean;
   lastLoadedAt: number | null;
+  nextCursor: string | null;
+  loadingMore: boolean;
 
-  load(fetchMatches: () => Promise<MatchSummary[]>, mode?: MatchesLoadMode): Promise<void>;
+  load(fetchMatches: () => Promise<MatchesResponse>, mode?: MatchesLoadMode): Promise<void>;
+  loadMore(fetchPage: (cursor: string) => Promise<MatchesResponse>): Promise<void>;
+  upsertFetchedMatch(match: MatchSummary): void;
   /** Match recién creado (like mutuo): aparece en «Nuevos matches» al instante. */
   addFromDiscoveryMatch(match: DiscoveryMatch): void;
   applyMessage(conversationId: string, message: ChatMessage, options: { read: boolean }): void;
@@ -33,7 +37,14 @@ export interface MatchesState {
 }
 
 let inFlight: Promise<void> | null = null;
+let pageInFlight: Promise<void> | null = null;
 let generation = 0;
+let sessionEpoch = 0;
+
+/** Guards requests that may outlive sign-out without tying them to list refreshes. */
+export function getMatchesSessionEpoch(): number {
+  return sessionEpoch;
+}
 /** Matches quitados en local mientras una carga estaba en vuelo (no deben reaparecer). */
 const removedIds = new Set<string>();
 
@@ -47,8 +58,8 @@ function timeOf(iso: string | undefined): number {
 }
 
 /**
- * La respuesta del servidor manda sobre qué matches existen; si en local hay un mensaje más
- * reciente (enviado o recibido mientras la petición volaba), se conserva.
+ * La respuesta de esta página manda sobre sus entradas; si en local hay un
+ * mensaje más reciente (enviado o recibido durante la petición), se conserva.
  */
 export function mergeServerMatches(server: MatchSummary[], local: MatchSummary[]): MatchSummary[] {
   const localById = new Map(local.map((match) => [match.id, match]));
@@ -85,7 +96,9 @@ const initialState = {
   status: "idle" as MatchesStatus,
   error: null as unknown,
   refreshing: false,
-  lastLoadedAt: null as number | null
+  lastLoadedAt: null as number | null,
+  nextCursor: null as string | null,
+  loadingMore: false
 };
 
 export const useMatchesStore = create<MatchesState>((set, get) => ({
@@ -104,22 +117,30 @@ export const useMatchesStore = create<MatchesState>((set, get) => ({
       return inFlight;
     }
 
-    const loadGeneration = generation;
+    const loadGeneration = ++generation;
+    const initialActivity = new Map(get().matches.map((match) => [match.id, lastActivityAt(match)]));
+    pageInFlight = null;
+    set({ loadingMore: false });
 
-    inFlight = fetchMatches()
+    const request = fetchMatches()
       .then(
-        (matches) => {
+        (page) => {
           if (loadGeneration !== generation) {
             return;
           }
 
+          const serverIds = new Set(page.matches.map((match) => match.id));
+          const arrived = get().matches.filter((match) =>
+            !serverIds.has(match.id) && !removedIds.has(match.id) &&
+            (!initialActivity.has(match.id) || lastActivityAt(match) > initialActivity.get(match.id)!)
+          );
           set({
-            matches: mergeServerMatches(matches, get().matches),
+            matches: sortByActivity([...mergeServerMatches(page.matches, get().matches), ...arrived]),
+            nextCursor: page.nextCursor,
             status: "ready",
             error: null,
             lastLoadedAt: Date.now()
           });
-          removedIds.clear();
         },
         (error: unknown) => {
           if (loadGeneration !== generation) {
@@ -133,10 +154,42 @@ export const useMatchesStore = create<MatchesState>((set, get) => ({
         if (loadGeneration === generation) {
           set({ refreshing: false });
         }
-        inFlight = null;
+        if (inFlight === request) inFlight = null;
       });
 
-    return inFlight;
+    inFlight = request;
+    return request;
+  },
+
+  loadMore(fetchPage) {
+    const cursor = get().nextCursor;
+    if (!cursor || inFlight || get().status !== "ready") return Promise.resolve();
+    if (pageInFlight) return pageInFlight;
+    const pageGeneration = generation;
+    set({ loadingMore: true, error: null });
+
+    const request = fetchPage(cursor)
+      .then((page) => {
+        if (generation !== pageGeneration) return;
+        const existing = new Set(get().matches.map((match) => match.id));
+        const additions = page.matches.filter((match) => !existing.has(match.id) && !removedIds.has(match.id));
+        set({ matches: sortByActivity([...get().matches, ...additions]), nextCursor: page.nextCursor });
+      }, (error: unknown) => {
+        if (generation === pageGeneration) set({ error });
+      })
+      .finally(() => {
+        if (generation === pageGeneration) set({ loadingMore: false });
+        if (pageInFlight === request) pageInFlight = null;
+      });
+    pageInFlight = request;
+    return request;
+  },
+
+  upsertFetchedMatch(match) {
+    if (removedIds.has(match.id)) return;
+    const current = get().matches;
+    const merged = mergeServerMatches([match], current);
+    set({ matches: sortByActivity([...merged, ...current.filter((entry) => entry.id !== match.id)]) });
   },
 
   addFromDiscoveryMatch(match) {
@@ -192,7 +245,9 @@ export const useMatchesStore = create<MatchesState>((set, get) => ({
 
   reset() {
     generation += 1;
+    sessionEpoch += 1;
     inFlight = null;
+    pageInFlight = null;
     removedIds.clear();
     set({ ...initialState });
   }

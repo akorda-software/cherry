@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { memo, type PropsWithChildren } from "react";
 import { type StyleProp, Text, View, type ViewStyle } from "react-native";
 
+import { HardShadow } from "../primitives/hard-shadow";
 import { useTheme } from "../providers/theme-provider";
 import type { PastelName } from "../tokens/primitives/color";
 import { Icon } from "./icon";
@@ -14,7 +15,7 @@ export interface PolaroidFrameProps {
   width?: number;
   /** Proporción ancho/alto de la foto (def. 1). `"fill"`: la foto ocupa el alto disponible. */
   photoAspectRatio?: number | "fill";
-  /** Nota manuscrita (Yomogi) en la franja de abajo. */
+  /** Pie de foto en la franja de abajo. */
   caption?: string;
   /** Tiras de washi: en las dos esquinas de arriba, una centrada arriba o ninguna. */
   tapes?: "corners" | "top" | "none";
@@ -58,8 +59,9 @@ export const PolaroidFrame = memo(function PolaroidFrame({
   const tapeWidth = Math.min(Math.max((width ?? 260) * 0.3, 58), 96);
 
   return (
-    <View
+    <HardShadow
       testID={testID}
+      elevation={elevation}
       style={[
         {
           width,
@@ -72,7 +74,6 @@ export const PolaroidFrame = memo(function PolaroidFrame({
           paddingBottom: bottom,
           transform: [{ rotate: `${tilt}deg` }]
         },
-        theme.primitives.elevation[elevation],
         fill && { flex: 1 },
         style
       ]}
@@ -143,6 +144,6 @@ export const PolaroidFrame = memo(function PolaroidFrame({
           <WashiTape width={tapeWidth * 1.2} height={24} color={tapeColors[0]} pattern={tapePattern} rotation={-3} />
         </View>
       ) : null}
-    </View>
+    </HardShadow>
   );
 });

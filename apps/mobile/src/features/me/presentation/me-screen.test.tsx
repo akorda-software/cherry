@@ -36,6 +36,7 @@ function profileFixture(overrides: Partial<Profile> = {}): Profile {
     birthDate: "1997-07-14",
     age: 29,
     gender: "woman",
+    lookingFor: ["relationship"],
     whatIAmLookingFor: "relationship",
     bio: "Cocino las croquetas de mi abuela mejor que ella (que no se entere).",
     isComplete: true,
@@ -172,7 +173,9 @@ describe("MeScreen", () => {
       expect(useToastStore.getState().current?.message).toBe("Perfil en pausa. Tomarte un respiro está bien.")
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Reanudar" }));
+    // Sin aviso arriba que empuje la pantalla: el estado lo cuenta la propia fila.
+    expect(screen.queryByTestId("me-paused-banner")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: "Pausar mi perfil" }));
 
     await waitFor(() => expect(screen.queryByText(PAUSED_MESSAGE)).not.toBeInTheDocument());
     expect(backend.callsTo("/api/me/unpause", "POST")).toHaveLength(1);

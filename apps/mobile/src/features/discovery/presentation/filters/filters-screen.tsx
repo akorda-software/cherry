@@ -7,7 +7,6 @@ import {
   Button,
   ErrorState,
   FormMessage,
-  Icon,
   IconSlot,
   Inline,
   ListRow,
@@ -36,7 +35,7 @@ import { useDiscoveryRuntime } from "../use-discovery-runtime";
 
 const DEPS = { preferences: discoveryPreferencesStore, queue: discoveryQueueStore };
 
-/** Filtros de Descubrir (modal): edad, distancia, a quién conocer y dos preferencias. Todo gratis. */
+/** Filtros de Descubrir (modal): edad, distancia, a quién conocer y dos preferencias. */
 export function FiltersScreen() {
   useDiscoveryRuntime();
   const router = useRouter();
@@ -108,8 +107,6 @@ export function FiltersScreen() {
       testID="filters-screen"
       tone="lavanda"
     >
-      <FreeNote />
-
       <Section title="Edad" value={ageRangeLabel(draft)}>
         <RangeSlider
           formatLabel={(value) => String(value)}
@@ -182,31 +179,6 @@ export function FiltersScreen() {
         />
       </ListSection>
     </Screen>
-  );
-}
-
-function FreeNote() {
-  const theme = useTheme();
-
-  return (
-    <View
-      accessibilityRole="text"
-      style={[
-        styles.free,
-        {
-          backgroundColor: theme.primitives.pastel.menta.soft,
-          borderColor: theme.primitives.color.ink,
-          borderWidth: theme.primitives.border.thin,
-          borderRadius: theme.primitives.radius.md
-        }
-      ]}
-      testID="filters-free-note"
-    >
-      <Icon fill={theme.primitives.color.menta} name="gift" size={22} />
-      <Text style={styles.flex} variant="callout">
-        Gratis, como todo aquí. En otras apps esto se paga.
-      </Text>
-    </View>
   );
 }
 
@@ -289,13 +261,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: 240
-  },
-  free: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12
   },
   sectionHead: {
     flexDirection: "row",

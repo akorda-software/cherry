@@ -53,6 +53,9 @@ interface SwipeDeckProps {
   describe(card: DiscoveryProfileCard): string;
   onDecide(card: DiscoveryProfileCard, action: DiscoveryActionType): void;
   onOpen(card: DiscoveryProfileCard): void;
+  /** Botón del pie de la card en (x, y) (ver `SwipeCard.hitTest`). */
+  hitTest?(x: number, y: number): "like" | "dislike" | "undo" | "open" | null;
+  onUndo?(): void;
   renderCard(card: DiscoveryProfileCard, info: SwipeCardRenderInfo): ReactNode;
 }
 
@@ -69,6 +72,8 @@ export const SwipeDeck = forwardRef<SwipeDeckHandle, SwipeDeckProps>(function Sw
     describe,
     onDecide,
     onOpen,
+    hitTest,
+    onUndo,
     renderCard
   },
   ref
@@ -265,7 +270,9 @@ export const SwipeDeck = forwardRef<SwipeDeckHandle, SwipeDeckProps>(function Sw
           index={index}
           onCommit={handleCommit}
           onExited={handleExited}
+          hitTest={hitTest}
           onOpen={onOpen}
+          onUndo={onUndo}
           order={order}
           photoAreaHeight={photoAreaHeight}
           progress={progress}

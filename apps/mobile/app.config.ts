@@ -1,4 +1,5 @@
 import type { ExpoConfig } from "expo/config";
+import { type ConfigPlugin, withAndroidManifest } from "expo/config-plugins";
 
 function readOptionalEnv(name: string): string | undefined {
   const value = process.env[name];
@@ -11,17 +12,32 @@ function readOptionalEnv(name: string): string | undefined {
   return trimmed === "" ? undefined : trimmed;
 }
 
+/**
+ * Un APK release bloquea HTTP en claro. Si el backend configurado para Android es `http://`
+ * (desarrollo en la LAN), se permite; con `https://` (producción) no se toca nada.
+ */
+const withCleartextForHttpBackend: ConfigPlugin<string | undefined> = (config, apiBaseUrl) =>
+  withAndroidManifest(config, (mod) => {
+    if (apiBaseUrl?.startsWith("http://")) {
+      const application = mod.modResults.manifest.application?.[0];
+      if (application) {
+        application.$["android:usesCleartextTraffic"] = "true";
+      }
+    }
+    return mod;
+  });
+
 export default (): ExpoConfig => {
   const googleIosUrlScheme = readOptionalEnv("GOOGLE_IOS_URL_SCHEME");
 
-  return {
+  const config: ExpoConfig = {
     name: readOptionalEnv("EXPO_APP_NAME") ?? "Snack",
     slug: readOptionalEnv("EXPO_APP_SLUG") ?? "snack",
     scheme: readOptionalEnv("EXPO_APP_SCHEME") ?? "snack",
     version: "0.0.0",
     platforms: ["android", "ios", "web"],
     userInterfaceStyle: "light",
-    backgroundColor: "#FFF6FB",
+    backgroundColor: "#FAF6F0",
     icon: "./assets/images/icon.png",
     android: {
       package: readOptionalEnv("EXPO_ANDROID_PACKAGE") ?? "app.snack.mobile",
@@ -29,7 +45,7 @@ export default (): ExpoConfig => {
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundImage: "./assets/images/adaptive-icon-background.png",
-        backgroundColor: "#C3B1FF",
+        backgroundColor: "#FFF1DF",
         monochromeImage: "./assets/images/adaptive-icon-monochrome.png"
       }
     },
@@ -70,7 +86,7 @@ export default (): ExpoConfig => {
         {
           image: "./assets/images/splash-icon.png",
           imageWidth: 220,
-          backgroundColor: "#FFF6FB",
+          backgroundColor: "#FAF6F0",
           resizeMode: "contain"
         }
       ]
@@ -83,4 +99,6 @@ export default (): ExpoConfig => {
       googleIosClientId: readOptionalEnv("EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID")
     }
   };
+
+  return withCleartextForHttpBackend(config, readOptionalEnv("EXPO_PUBLIC_API_BASE_URL_ANDROID"));
 };

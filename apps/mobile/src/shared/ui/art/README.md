@@ -18,7 +18,7 @@ en `ICONS_READY.md`.
 
 ## PaperBackground
 
-`<PaperBackground tone? dotted? spacing? animateTone? style? testID? />`
+`<PaperBackground tone? dotted? animateTone? style? testID? />`
 Papel de puntos a pantalla completa (`position: absolute`, `pointerEvents: none`), un único `<Pattern>`. `tone`
 tiñe con el `soft` de un pastel y funde el color al cambiar (onboarding). Primer hijo del contenedor.
 

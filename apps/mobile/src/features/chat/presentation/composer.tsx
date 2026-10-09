@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useState } from "react";
 import { Keyboard, Platform, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Divider, IconButton, Text, useTheme } from "../../../shared/ui";
+import { Divider, HardShadow, IconButton, Text, useTheme } from "../../../shared/ui";
 import { MAX_MESSAGE_LENGTH, countCharacters, validateMessageBody } from "../domain/chat-messages";
 
 /** En web el `textarea` nace con dos filas: que empiece en una, como en nativo. */
@@ -74,7 +74,8 @@ export const Composer = forwardRef<TextInput, ComposerProps>(function Composer(
     >
       <Divider />
       <View style={styles.row}>
-        <View
+        <HardShadow
+          elevation="sm"
           style={[
             styles.note,
             {
@@ -82,8 +83,7 @@ export const Composer = forwardRef<TextInput, ComposerProps>(function Composer(
               borderColor: tooLong ? theme.semantic.state.danger : c.ink,
               borderWidth: theme.primitives.border.regular,
               borderRadius: theme.primitives.radius.md
-            },
-            theme.primitives.elevation.sm
+            }
           ]}
         >
           <TextInput
@@ -119,7 +119,7 @@ export const Composer = forwardRef<TextInput, ComposerProps>(function Composer(
               {formatCount(length)} / {formatCount(MAX_MESSAGE_LENGTH)}
             </Text>
           ) : null}
-        </View>
+        </HardShadow>
         <IconButton
           accessibilityHint={canSend ? undefined : "Escribe algo para poder enviarlo"}
           accessibilityLabel="Enviar mensaje"

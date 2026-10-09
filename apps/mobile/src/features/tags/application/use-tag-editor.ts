@@ -7,6 +7,7 @@ import { executeTagSave, parseTagSaveError, planTagSave, type TagSaveErrorCode }
 import {
   DEFAULT_TAG_LIMITS,
   EMPTY_TAG_SELECTION,
+  pressTagControl,
   sameTagSelection,
   tagStateOf,
   toggleTag,
@@ -71,6 +72,11 @@ export interface UseTagEditorResult {
   stateOf(tagId: string): TagSelectionState;
   /** Aplica el toque y devuelve qué ha pasado (para animar, vibrar o avisar). */
   toggle(kind: TagKind, tagId: string, onConflict?: ConflictPolicy): ToggleOutcome;
+  /**
+   * «+» (`positive`) o «−» (`blocked`) de la página única: activa, desactiva o
+   * cambia de lista (ver `pressTagControl`). Referencia estable.
+   */
+  press(kind: TagKind, tagId: string): ToggleOutcome;
   /** Sustituye servidor y selección (tras cargar de backend). */
   reset(server: TagSelection): void;
   /** Guarda sin conflictos transitorios; lanza `TagSaveFailure` con mensaje amable. */
@@ -97,6 +103,19 @@ export function useTagEditor({ initial = EMPTY_TAG_SELECTION, limits = DEFAULT_T
   const toggle = useCallback(
     (kind: TagKind, tagId: string, onConflict?: ConflictPolicy) => {
       const result = toggleTag(selectionRef.current, kind, tagId, { limits, onConflict });
+
+      if (result.selection !== selectionRef.current) {
+        setSelection(result.selection);
+      }
+
+      return result.outcome;
+    },
+    [limits, setSelection]
+  );
+
+  const press = useCallback(
+    (kind: TagKind, tagId: string) => {
+      const result = pressTagControl(selectionRef.current, kind, tagId, limits);
 
       if (result.selection !== selectionRef.current) {
         setSelection(result.selection);
@@ -152,5 +171,5 @@ export function useTagEditor({ initial = EMPTY_TAG_SELECTION, limits = DEFAULT_T
   const stateOf = useCallback((tagId: string) => tagStateOf(selection, tagId), [selection]);
   const dirty = useMemo(() => !sameTagSelection(selection, server), [selection, server]);
 
-  return { selection, server, dirty, limits, stateOf, toggle, reset, save };
+  return { selection, server, dirty, limits, stateOf, toggle, press, reset, save };
 }

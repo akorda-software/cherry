@@ -7,18 +7,15 @@ import { createProfileApi } from "@snack/mobile-shared";
 
 import {
   appShellRoutes,
-  Button,
   Deco,
   EmptyState,
   ErrorState,
-  Icon,
   IconButton,
   ListRow,
   ListSection,
   Screen,
   Skeleton,
   SkeletonGroup,
-  Surface,
   Text,
   TopBar,
   useTheme
@@ -84,8 +81,6 @@ export function MeScreen() {
       scroll
       testID="me-screen"
     >
-      {pause.isPaused ? <PausedBanner onResume={() => void pause.toggle(false)} pending={pause.pending} /> : null}
-
       {me.status === "loading" ? <MeSkeleton previewWidth={previewWidth} /> : null}
 
       {me.status === "error" ? (
@@ -185,9 +180,9 @@ function ProfileSections({ profile, pause, previewWidth, go }: ProfileSectionsPr
       <ListSection footnote="Tomarte un respiro está bien." title="Visibilidad">
         <ListRow
           description={
-            pause.isPaused
-              ? "Nadie nuevo te ve. Tus chats siguen aquí."
-              : "Dejas de salir en Descubrir y en Likes. Tus chats siguen aquí."
+            // El estado vive en la propia fila (sin aviso arriba: al aparecer, empujaba la
+            // pantalla y el interruptor se escapaba del dedo).
+            pause.isPaused ? PAUSED_MESSAGE : "Dejas de salir en Descubrir y en Likes. Tus chats siguen aquí."
           }
           disabled={pause.pending}
           icon="moon"
@@ -199,43 +194,6 @@ function ProfileSections({ profile, pause, previewWidth, go }: ProfileSectionsPr
         />
       </ListSection>
     </>
-  );
-}
-
-function PausedBanner({ pending, onResume }: { pending: boolean; onResume(): void }) {
-  const theme = useTheme();
-
-  return (
-    <Surface border="regular" color="lavanda" elevation="sm" padding="md" radius="lg" soft testID="me-paused-banner">
-      <View accessibilityLiveRegion="polite" style={styles.bannerRow}>
-        <View
-          style={[
-            styles.bannerIcon,
-            {
-              backgroundColor: theme.primitives.pastel.lavanda.fill,
-              borderColor: theme.primitives.color.ink,
-              borderWidth: theme.primitives.border.thin
-            }
-          ]}
-        >
-          <Icon name="moon" size={22} />
-        </View>
-        <Text style={styles.bannerText} variant="callout">
-          {PAUSED_MESSAGE}
-        </Text>
-      </View>
-      <Button
-        icon="play"
-        loading={pending}
-        onPress={onResume}
-        size="sm"
-        style={styles.bannerButton}
-        testID="me-resume"
-        variant="secondary"
-      >
-        Reanudar
-      </Button>
-    </Surface>
   );
 }
 
@@ -264,25 +222,6 @@ const styles = StyleSheet.create({
   },
   handTitle: {
     transform: [{ rotate: "-2deg" }]
-  },
-  bannerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12
-  },
-  bannerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  bannerText: {
-    flex: 1
-  },
-  bannerButton: {
-    alignSelf: "flex-start",
-    marginTop: 12
   },
   skeleton: {
     gap: 18

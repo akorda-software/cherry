@@ -1,6 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
 import {
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   type ScrollViewProps,
@@ -9,6 +8,7 @@ import {
   View,
   type ViewStyle
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTabBarSpace } from "../app-shell/tab-bar-space";

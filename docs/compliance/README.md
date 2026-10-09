@@ -17,7 +17,7 @@ Dossier de trabajo para poder publicar Snack en App Store y Google Play cumplien
 | # | Archivo | Qué cubre | Estado |
 |---|---------|-----------|--------|
 | 01 | [Requisitos de las tiendas](./01-tiendas.md) | Checklist de Apple y Google para una app de citas | Pendiente |
-| 02 | [Mayoría de edad](./02-mayoria-de-edad.md) | Verificación 18+: DNI por NFC, proveedor de respaldo, app europea | Decidido el enfoque; sin construir |
+| 02 | [Mayoría de edad](./02-mayoria-de-edad.md) | Verificación 18+: DNI por NFC, proveedor de respaldo, app europea | Prototipo en `feat/dni-nfc` (servidor probado; NFC sin probar con DNI real) |
 | 03 | [Fotos](./03-fotos.md) | Moderación automática, abuso infantil por huella, duplicados | Pendiente (hay zona de espera) |
 | 04 | [Bots y cuentas falsas](./04-bots-y-cuentas-falsas.md) | Atestación del dispositivo, una persona = una cuenta, señales | Pendiente |
 | 05 | [Reportes y moderación](./05-reportes-y-moderacion.md) | Panel, agentes de IA, plazos, avisos, recursos | Parcial (reportar y bloquear sí; panel no) |

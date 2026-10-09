@@ -1,6 +1,6 @@
 # Mayoría de edad
 
-**Estado:** enfoque decidido (D-2026-10-09); sin construir. Hoy solo se pide la fecha de nacimiento y se exige 18+.
+**Estado:** prototipo en la rama `feat/dni-nfc` (ver [Estado del prototipo](#estado-del-prototipo)). Autenticación pasiva en el servidor, modelo de datos, API y módulo NFC construidos; falta probarlo con un DNI real ([guía](./02-nfc-pruebas-manana.md)). La verificación todavía no es obligatoria: el registro sigue pidiendo solo la fecha de nacimiento y exige 18+.
 
 ## Por qué
 
@@ -75,13 +75,106 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 
 ## Plan
 
-1. [ ] Prototipo NFC: leer DG1/DG2/SOD de un DNI real en Android y iPhone desde un módulo Expo.
-2. [ ] Autenticación pasiva en el backend con los certificados CSCA españoles.
-3. [ ] Comparación de caras selfie ↔ DG2 con modelo de código abierto en el servidor.
-4. [ ] Modelo de datos: estado de verificación del perfil + huella del documento; borrado inmediato del resto.
-5. [ ] Pantallas de verificación en el onboarding (antes de que el perfil sea visible).
+1. [~] Prototipo NFC: leer DG1/DG2/SOD de un DNI real en Android y iPhone desde un módulo Expo. *Módulo escrito (`apps/mobile/modules/document-nfc`); Android compila; iOS sin compilar; sin probar con un DNI real.*
+2. [x] Autenticación pasiva en el backend con los certificados CSCA españoles. *Probada con PKI sintética y fixtures de OpenSSL; falta un SOD español real.*
+3. [ ] Comparación de caras selfie ↔ DG2 con modelo de código abierto en el servidor. *Investigación hecha (abajo); sin construir.*
+4. [x] Modelo de datos: estado de verificación del perfil + huella del documento; borrado inmediato del resto.
+5. [~] Pantallas de verificación en el onboarding (antes de que el perfil sea visible). *Hay una pantalla de prueba en la ruta de desarrollo; no está en el onboarding.*
 6. [ ] Integración del proveedor de respaldo.
 7. [ ] Integración de la app europea cuando esté disponible en España.
+
+## Estado del prototipo
+
+*Actualizado el 2026-10-09, rama `feat/dni-nfc`. Pruebas con documento real: [`02-nfc-pruebas-manana.md`](./02-nfc-pruebas-manana.md).*
+
+### Qué hay
+
+**Backend (`apps/backend`)**
+
+- `Snack.Identity.Document.PassiveAuth`: autenticación pasiva completa (ICAO 9303-11).
+  - SOD (CMS SignedData + LDSSecurityObject): firma del SignerInfo con atributos firmados, comprobando `contentType` y `messageDigest`.
+  - Certificado del firmante dentro del SOD, validado contra un CSCA de confianza: nombre, AKI/SKI, firma, validez de ambos, uso de clave, que no sea CA y que no tenga extensiones críticas desconocidas.
+  - Hashes de DG1 y DG2.
+  - MRZ TD1 (DNI, TIE) y TD3 (pasaporte) con todos los dígitos de control.
+  - Algoritmos: RSA PKCS#1 v1.5, RSASSA-PSS, ECDSA (DER y *plain* de BSI) con curvas NIST y brainpool, también con parámetros explícitos; SHA-1/224/256/384/512.
+- **Lector DER y X.509 propios** (`Der`, `Certificate`). OTP 28 (`:public_key`) no decodifica certificados EC con parámetros explícitos, que es lo que recomienda ICAO (OpenSSL 3 tampoco los valida por defecto). Firmas con `:crypto`.
+  - Comprobado contra los **385 CSCA autofirmados reales** de la master list alemana: 279 RSA (también PSS) y 106 EC, la mayoría con parámetros explícitos. Todas las firmas verifican.
+- **Almacén de CSCA** (`TrustStore`): `priv/csca`, PEM/DER, `CSCA_PATHS`.
+  - Incluye los CSCA españoles 2, 3 y 4 (RSA-4096), con las huellas comprobadas contra la web de la Policía.
+  - `mix snack.csca` los lista y los extrae de una master list.
+  - Procedencia y actualización: `apps/backend/priv/csca/README.md`.
+- **Huella** (`Fingerprint`): HMAC-SHA256 con `DOCUMENT_FINGERPRINT_KEY`.
+- **Datos**:
+  - `age_verifications`: estado, método `nfc_dni | nfc_passport | provider | eu_wallet`, fecha y huella, con índice único (un documento, una cuenta).
+  - `age_verification_attempts`: solo fechas, para el límite de intentos.
+- **API**: `GET /api/me/verification` y `POST /api/me/verification/nfc`.
+  - Límite de 5 intentos por hora y 10 al día.
+  - Errores tipados: `document_not_verified` + `reason`, `underage`, `document_already_used`, `too_many_attempts`…
+  - Documentado en OpenAPI, `docs/06` y `packages/contracts/src/verification.ts`.
+- **Privacidad**:
+  - `dg1`, `dg2`, `sod`, `can` y `mrz` están en `:filter_parameters` (hay un test que comprueba `[FILTERED]` en los logs de Phoenix).
+  - Un fallo interno se registra sin argumentos ni mensaje.
+  - El log de resultado no lleva el usuario, así que no dice quién es menor.
+  - En dev hay diagnóstico de rechazos con datos públicos del certificado del firmante.
+- **`AGE_VERIFICATION_REQUIRED`** (desactivado por defecto). Con `true`:
+  - discovery, perfiles públicos, likes, matches y conversaciones responden 403 `age_verification_required` hasta verificarse;
+  - siguen abiertos el perfil propio, el bootstrap, la propia verificación, bloquear y reportar;
+  - el flag se publica en `/api/config`.
+- **Tests**: 110 nuevos en el backend (545 en total) y 31 en móvil, más 5 en contratos y mobile-shared. Usan una PKI sintética generada en los tests y SOD firmados por `openssl cms`.
+  - Cubren: caso válido, firma inválida, DG manipulado, cadena rota, certificado caducado o aún no válido, extensiones críticas, menores, cumpleaños el día justo y 29 de febrero, MRZ con dígitos de control erróneos (especímenes de ICAO 9303), huella, documento ya usado, límite de intentos, logs y la API.
+
+**Móvil (`apps/mobile`)**
+
+- **Módulo `modules/document-nfc`** (Expo Modules API). `readDocument({ can } | { mrz })` devuelve `{ dg1, dg2, sod }` en base64, con errores tipados.
+  - **Android:** JMRTD 0.8.9 + SCUBA (LGPL-2.1+), modo lector NFC, PACE con CAN y PACE/BAC con MRZ. **Compila y enlaza** en un APK debug arm64.
+  - **iOS:** NFCPassportReader 2.3.3 (MIT) incorporado con parches: PACE con CAN, sin BAC con CAN, sin logs de la clave y la corrección de la palabra de estado (`PATCHES.md`). OpenSSL-Universal 3.6.2000 (Apache-2.0). **Sin compilar**: solo se ha validado la sintaxis.
+  - Config plugin:
+    - `NFCReaderUsageDescription`;
+    - AID `A0000002471001`;
+    - entitlement NFC `TAG`;
+    - permiso NFC y `android.hardware.nfc` opcional;
+    - exclusiones de `META-INF` de BouncyCastle.
+- **Pantalla de prueba** `(dev)/verify-document`, también desde Ajustes → Pruebas, solo en `__DEV__`.
+  - Explica qué se lee, qué se guarda y qué se borra.
+  - Pide el CAN con un dibujo de dónde está, o los datos del pasaporte.
+  - Muestra los estados de lectura, envío, éxito y error con su acción.
+
+### Decisiones tomadas esta noche (revisables)
+
+1. **Parser DER/X.509 propio en vez de `:public_key`.** OTP 28 falla con los certificados EC de parámetros explícitos, que son habituales en eMRTD (172 de 609 en la master list alemana). El parser es pequeño, no depende de módulos ASN.1 internos de OTP y está probado contra certificados reales.
+2. **La huella sigue a la persona en DNI y TIE.**
+   - En tarjetas españolas se calcula con el número de DNI/NIE de los datos opcionales de la MRZ (`v1|ESP|ID|<número>`), que no cambia al renovar.
+   - En pasaportes y documentos extranjeros se calcula con el número del documento.
+   - **No se usa el «número personal» del pasaporte**: en pasaportes de menores sin DNI puede llevar el DNI de un progenitor (sin verificar del todo; ver fuentes del informe), y eso bloquearía a una persona por otra.
+   - Consecuencia: un DNI y un pasaporte de la misma persona dan huellas distintas, así que podría haber dos cuentas.
+3. **Validez de los certificados a fecha de hoy**, tanto del firmante como del CSCA. Un DNI cuyo certificado de firmante haya caducado se rechaza (`certificate_expired`). Es lo prudente; ver «DNI permanente» abajo.
+4. **Edad con la fecha UTC.** Es más estricta que la hora de Madrid: el día del cumpleaños se acepta desde la 01:00 o las 02:00 de España (según el horario). Las fechas con día o mes desconocidos (`<<`) se toman como la más tardía posible. Si nace un 29 de febrero, cumple el 1 de marzo en años no bisiestos.
+5. **Ya verificado con otro documento → 409 `already_verified`**; el mismo documento → idempotente. Una verificación `revoked` no se sustituye sola.
+6. **Intentos: solo se guarda la fecha** (ni el resultado ni nada del documento), y se purgan a las 24 h. Así no queda en la BD qué cuentas intentaron verificarse siendo menores.
+7. **El certificado del firmante debe venir dentro del SOD.** ICAO lo exige y no se mantiene un almacén aparte de certificados de firmante.
+8. **Endpoint activo si hay clave.** Sin `DOCUMENT_FINGERPRINT_KEY`, responde 503. En dev se usa una clave de relleno; en prod no hay valor por defecto y la clave tiene que tener al menos 32 caracteres.
+9. **Android no toca el proveedor criptográfico global** (sin `Security.insertProviderAt`): JMRTD 0.8.9 usa su propia instancia de BouncyCastle. Si en el móvil falla con `NoSuchAlgorithmException`, este es el primer sitio que hay que mirar.
+
+### Problemas abiertos
+
+- **Sin probar con hardware**: la lectura real en Android y en iPhone, la compilación de iOS y un SOD español real (algoritmos y DN reales del firmante).
+- **DNI permanente (mayores de 70):** la fecha de caducidad de la MRZ y la validez del certificado del firmante se desconocen [sin verificar]. Si el certificado del firmante caduca antes que el documento, se rechazaría. Hay que probarlo con un DNI permanente.
+- **Clonado y reutilización:** la autenticación pasiva prueba que los datos son del Estado, no que el chip sea el original ni que lo tenga quien usa el móvil.
+  - Un volcado de DG1/DG2/SOD del DNI de otra persona (por ejemplo, de un hermano mayor) pasaría.
+  - La huella impide reutilizarlo en una segunda cuenta, pero no en la primera.
+  - Lo cubre la fase de selfie ↔ DG2. Autenticación activa o de chip como refuerzo opcional (se verifica en el móvil).
+- **CRL:** no se consulta la lista de revocación de la Policía (`ESP.crl`). Revocar un certificado de firmante es raro, pero existe.
+- **Huella y borrado de cuenta:**
+  - Con el borrado de cuenta actual (lógico), la fila de verificación se conserva, así que la persona no podría verificarse de nuevo en una cuenta nueva.
+  - Con un borrado físico, `ON DELETE CASCADE` la elimina.
+  - Hay que decidir el plazo de conservación de la huella tras un borrado o un baneo (base legal: interés legítimo anti-fraude) y recogerlo en la EIPD (`06`).
+- **Clave de huella:** no se puede rotar sin volver a leer los documentos. Hay que guardarla con los backups.
+- **Obligatoriedad:** el flag bloquea la API REST social, pero falta:
+  - excluir de los feeds a los perfiles no verificados;
+  - comprobarlo en el WebSocket del chat;
+  - el paso de verificación en el onboarding.
+- **Pasaportes extranjeros:** solo se aceptan documentos cuyo CSCA esté en `priv/csca` (hoy, España). Para aceptar otros países habría que importar sus CSCA (master list del BSI) y revisar la MRZ de cada uno.
+- **Cobertura del backend:** `mix test --cover` ya estaba por debajo del umbral del 90 % antes de esta rama (86,9 % en `feat/kawaii-overhaul`). No es una regresión; se deja anotado.
 
 ## Fuentes
 

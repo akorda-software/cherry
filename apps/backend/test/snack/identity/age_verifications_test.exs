@@ -178,6 +178,57 @@ defmodule Snack.Identity.AgeVerificationsTest do
     end
   end
 
+  describe "development diagnostics" do
+    test "log only public metadata of the signer certificate", ctx do
+      Application.put_env(
+        :snack,
+        :age_verification,
+        Keyword.put(Application.get_env(:snack, :age_verification), :diagnostics, true)
+      )
+
+      doc = document(ctx, document_number: "ZZZ424242", personal_number: PKI.dni(42_424_242))
+      tampered = %{doc | dg2: PKI.dg2()}
+
+      log =
+        capture_log(fn ->
+          assert {:error, :data_group_mismatch} = verify(user_fixture(), tampered)
+        end)
+
+      assert log =~ "diagnostics (data_group_mismatch)"
+      assert log =~ "CN=ds test"
+      assert log =~ "CN=csca test"
+      assert log =~ "data_groups: [1, 2]"
+
+      for secret <- [
+            "ZZZ424242",
+            "42424242",
+            "PRUEBA",
+            Base.encode16(:crypto.hash(:sha256, doc.dg1))
+          ] do
+        refute log =~ secret
+      end
+    end
+
+    test "are off by default and skip errors that are not about the certificate", ctx do
+      log = capture_log(fn -> verify(user_fixture(), %{document(ctx) | dg2: PKI.dg2()}) end)
+      refute log =~ "diagnostics"
+
+      Application.put_env(
+        :snack,
+        :age_verification,
+        Keyword.put(Application.get_env(:snack, :age_verification), :diagnostics, true)
+      )
+
+      log = capture_log(fn -> verify(user_fixture(), document(ctx, birth: ~D[2015-01-01])) end)
+      refute log =~ "diagnostics"
+    end
+
+    test "diagnose/1 describes unreadable SODs without echoing them" do
+      assert %{error: :malformed_sod, size: 4, first_byte: 0x77} =
+               Snack.Identity.Document.PassiveAuth.diagnose(<<0x77, 2, 1, 2>>)
+    end
+  end
+
   describe "attempt limits" do
     test "5 per hour and 10 per day, also when they fail", ctx do
       user = user_fixture()

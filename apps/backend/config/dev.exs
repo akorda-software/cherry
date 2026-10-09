@@ -96,3 +96,7 @@ config :phoenix_live_view,
   debug_attributes: true,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
+
+# Age verification: log public metadata of the Document Signer certificate when
+# a real document is rejected (never document data). See AgeVerifications.
+config :snack, :age_verification, diagnostics: true

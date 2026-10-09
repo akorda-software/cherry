@@ -59,6 +59,64 @@ defmodule Snack.Identity.Document.PassiveAuth do
     end
   end
 
+  @doc """
+  Public, non-personal facts about an EF.SOD for debugging a rejection in
+  development: the Document Signer certificate (issuer, subject, validity,
+  algorithms), the LDS digest and which data groups the chip has. These are
+  shared by every document of a series; nothing read from DG1/DG2, no hash and
+  no document number is included.
+  """
+  @spec diagnose(binary()) :: map()
+  def diagnose(sod) when is_binary(sod) do
+    case Sod.parse(sod) do
+      {:ok, %Sod{} = parsed} ->
+        %{
+          content_type: parsed.content_type,
+          lds_digest: parsed.hash_algorithm,
+          data_groups: parsed.hashes |> Map.keys() |> Enum.sort(),
+          signers:
+            Enum.map(parsed.signers, fn signer ->
+              %{
+                digest: signer.digest,
+                signature_algorithm: algorithm_name(signer.signature_algorithm),
+                signed_attributes: signer.signed_attrs != nil,
+                sid: elem(signer.sid, 0)
+              }
+            end),
+          certificates: Enum.map(parsed.certificates, &describe_certificate/1)
+        }
+
+      {:error, reason} ->
+        %{error: reason, size: byte_size(sod), first_byte: :binary.first(sod <> <<0>>)}
+    end
+  end
+
+  defp describe_certificate(der) do
+    case Certificate.parse(der) do
+      {:ok, cert} ->
+        %{
+          subject: Certificate.describe_name(cert.subject),
+          issuer: Certificate.describe_name(cert.issuer),
+          not_before: cert.not_before,
+          not_after: cert.not_after,
+          key: elem(cert.public_key, 0),
+          signature_algorithm: algorithm_name(cert.signature_algorithm),
+          authority_key_id: cert.authority_key_id && Base.encode16(cert.authority_key_id),
+          unknown_critical_extensions: cert.unknown_critical_extensions
+        }
+
+      {:error, reason} ->
+        %{error: reason}
+    end
+  end
+
+  defp algorithm_name(element) do
+    case Signature.algorithm_identifier(element) do
+      {:ok, oid, _params} -> oid
+      _ -> :unreadable
+    end
+  end
+
   defp content_type(%Sod{content_type: type}) do
     if type == Sod.lds_security_object_oid(), do: :ok, else: {:error, :malformed_sod}
   end

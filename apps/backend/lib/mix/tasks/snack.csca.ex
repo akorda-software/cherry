@@ -111,21 +111,8 @@ defmodule Mix.Tasks.Snack.Csca do
     """)
   end
 
-  defp subject(cert), do: name(cert.subject)
-
-  defp name(%{normalized: attrs}) when is_list(attrs) do
-    labels = %{
-      "2.5.4.6" => "C",
-      "2.5.4.10" => "O",
-      "2.5.4.11" => "OU",
-      "2.5.4.3" => "CN",
-      "2.5.4.5" => "serialNumber"
-    }
-
-    Enum.map_join(attrs, ", ", fn {oid, value} -> "#{Map.get(labels, oid, oid)}=#{value}" end)
-  end
-
-  defp name(_name), do: "(unreadable name)"
+  defp subject(cert), do: Certificate.describe_name(cert.subject)
+  defp name(name), do: Certificate.describe_name(name)
 
   defp key({:rsa, n, _e}), do: "RSA #{bit_size(n)}"
   defp key({:ec, _point, curve}) when is_atom(curve), do: "EC #{curve}"

@@ -14,6 +14,11 @@ defmodule Snack.Identity.Document.Sod do
 
   alias Snack.Identity.Document.{Der, Signature}
 
+  # ICAO recommends one SignerInfo and one certificate; more is only accepted
+  # up to a small bound (each costs signature verifications).
+  @max_signers 2
+  @max_certificates 4
+
   @signed_data "1.2.840.113549.1.7.2"
   @lds_security_object "2.23.136.1.1.1"
   @content_type_attr "1.2.840.113549.1.9.3"
@@ -103,7 +108,8 @@ defmodule Snack.Identity.Document.Sod do
     fields = Enum.reject(fields, &match?({{:context, true, 1}, _, _}, &1))
 
     with [{{:universal, true, 17}, _, _} = signer_infos] <- fields,
-         {:ok, certificates} <- certificate_list(certs) do
+         {:ok, certificates} when length(certificates) <= @max_certificates <-
+           certificate_list(certs) do
       {:ok, certificates, signer_infos}
     else
       _ -> :error
@@ -130,6 +136,7 @@ defmodule Snack.Identity.Document.Sod do
       end)
       |> case do
         {:ok, []} -> :error
+        {:ok, list} when length(list) > @max_signers -> :error
         {:ok, list} -> {:ok, Enum.reverse(list)}
         error -> error
       end

@@ -75,6 +75,12 @@ defmodule SnackWeb.Controllers.Api.AgeVerificationControllerTest do
                authed_conn_for_user(ctx.user) |> get("/api/me/verification") |> json_response(200)
     end
 
+    test "the raw body of the request is not kept on the connection", %{conn: conn} = ctx do
+      response = post(conn, "/api/me/verification/nfc", body(document(ctx)))
+      assert json_response(response, 200)
+      refute Map.has_key?(response.private, :raw_body)
+    end
+
     test "passports", %{conn: conn} = ctx do
       assert %{"verification" => %{"method" => "nfc_passport"}} =
                conn
@@ -140,6 +146,13 @@ defmodule SnackWeb.Controllers.Api.AgeVerificationControllerTest do
       assert %{"error" => "underage"} =
                conn
                |> post("/api/me/verification/nfc", body(document(ctx, birth: ~D[2012-06-01])))
+               |> json_response(422)
+    end
+
+    test "expired documents", %{conn: conn} = ctx do
+      assert %{"error" => "document_expired"} =
+               conn
+               |> post("/api/me/verification/nfc", body(document(ctx, expiry: ~D[2021-03-01])))
                |> json_response(422)
     end
 

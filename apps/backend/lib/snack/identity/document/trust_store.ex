@@ -67,7 +67,7 @@ defmodule Snack.Identity.Document.TrustStore do
   defp default_path, do: Application.app_dir(:snack, "priv/csca")
 
   defp load({paths, certificates}) do
-    from_files = paths |> Enum.flat_map(&files/1) |> Enum.flat_map(&read_file/1)
+    from_files = paths |> Enum.flat_map(&safe_files/1) |> Enum.flat_map(&read_file/1)
 
     (certificates ++ from_files)
     |> Enum.uniq()
@@ -81,6 +81,14 @@ defmodule Snack.Identity.Document.TrustStore do
           []
       end
     end)
+  end
+
+  defp safe_files(path) do
+    files(path)
+  rescue
+    error ->
+      Logger.warning("CSCA trust store: cannot list #{path}: #{inspect(error.__struct__)}")
+      []
   end
 
   @doc false
@@ -107,7 +115,13 @@ defmodule Snack.Identity.Document.TrustStore do
       {:ok, content} ->
         # PEM files may carry text (e.g. `openssl x509 -text`) around the blocks.
         if String.contains?(content, "-----BEGIN CERTIFICATE-----") do
-          for {:Certificate, der, :not_encrypted} <- :public_key.pem_decode(content), do: der
+          try do
+            for {:Certificate, der, :not_encrypted} <- :public_key.pem_decode(content), do: der
+          rescue
+            _ ->
+              Logger.warning("CSCA trust store: #{path} is not valid PEM")
+              []
+          end
         else
           [content]
         end

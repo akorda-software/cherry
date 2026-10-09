@@ -121,6 +121,12 @@ export function serverErrorCopy(
         message: "Según el documento, aún no tienes 18 años. No hemos guardado nada.",
         action: "none"
       };
+    case "document_expired":
+      return {
+        title: "El documento está caducado",
+        message: "Usa un documento en vigor: un DNI, TIE o pasaporte sin caducar.",
+        action: "none"
+      };
     case "document_already_used":
       return {
         title: "Este documento ya está en otra cuenta",

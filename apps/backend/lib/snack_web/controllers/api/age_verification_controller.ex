@@ -74,6 +74,7 @@ defmodule SnackWeb.Controllers.Api.AgeVerificationController do
     do: send_error(conn, 422, "document_not_verified", %{reason: Atom.to_string(reason)})
 
   defp error(conn, :underage), do: send_error(conn, 422, "underage")
+  defp error(conn, :document_expired), do: send_error(conn, 422, "document_expired")
   defp error(conn, :document_already_used), do: send_error(conn, 409, "document_already_used")
   defp error(conn, :already_verified), do: send_error(conn, 409, "already_verified")
   defp error(conn, :verification_revoked), do: send_error(conn, 403, "verification_revoked")

@@ -52,7 +52,7 @@ export type DocumentNotVerifiedReason = (typeof DOCUMENT_NOT_VERIFIED_REASONS)[n
 
 /**
  * Errores de verificación (`error` del cuerpo):
- * - 422 `invalid_payload` | `underage` | `document_not_verified` (+ `reason`)
+ * - 422 `invalid_payload` | `underage` | `document_expired` | `document_not_verified` (+ `reason`)
  * - 409 `document_already_used` (otra cuenta) | `already_verified` (con otro documento)
  * - 403 `verification_revoked`
  * - 429 `too_many_attempts` (+ `retryAfter` en segundos y cabecera `Retry-After`)
@@ -64,6 +64,7 @@ export type DocumentNotVerifiedReason = (typeof DOCUMENT_NOT_VERIFIED_REASONS)[n
 export type AgeVerificationErrorCode =
   | "invalid_payload"
   | "underage"
+  | "document_expired"
   | "document_not_verified"
   | "document_already_used"
   | "already_verified"

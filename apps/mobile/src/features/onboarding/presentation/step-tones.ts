@@ -2,25 +2,24 @@ import type { PastelName } from "../../../shared/ui";
 import type { OnboardingStepKey } from "../domain/steps";
 
 /**
- * Papel de cada página del onboarding (raise del contrato: el fondo cambia de
- * pastel en cada paso). Dos pasos seguidos nunca comparten tono y ninguno
- * coincide con lo que se pinta encima (notas limonada, pegatinas bloqueadas tomate).
+ * Color de acento de cada paso del onboarding: barra de progreso, rotulador del
+ * título y tarjetas elegidas. El papel no se tiñe. Dos pasos seguidos nunca
+ * comparten color y se evitan menta y tomate (significan «me gusta» y «bloqueo»).
  */
 export const STEP_TONES: Record<OnboardingStepKey, PastelName> = {
   name: "fresa",
   birthday: "limonada",
   gender: "lavanda",
   interested: "cielo",
-  intent: "menta",
-  photos: "melocoton",
-  tags: "limonada",
-  "blocked-tags": "lavanda",
+  intent: "melocoton",
+  photos: "limonada",
+  tags: "lavanda",
   bio: "cielo",
-  location: "menta",
+  location: "melocoton",
   done: "fresa"
 };
 
-/** Relleno de las tarjetas elegidas en cada paso: el pastel del papel, en su tono pleno. */
+/** Relleno de las tarjetas elegidas en cada paso: su color de acento, en su tono pleno. */
 export function stepAccent(step: OnboardingStepKey): PastelName {
   return STEP_TONES[step];
 }

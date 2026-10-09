@@ -18,7 +18,7 @@ import { resolveOptionalNavigationEntries } from "../../optional-modules";
 import { readAppInfo } from "../infrastructure/app-info";
 import { DeleteAccountSheet } from "./delete-account-sheet";
 import { useDeleteAccountAction } from "./use-delete-account-action";
-import { useProfilePause } from "./use-profile-pause";
+import { PAUSED_MESSAGE, useProfilePause } from "./use-profile-pause";
 import { useUpdateMyLocation } from "./use-update-location";
 
 /** Ajustes: cuenta, visibilidad, privacidad, acerca de y, al final, la zona de peligro. */
@@ -86,7 +86,7 @@ export function SettingsScreen() {
         <ListRow
           description={
             pause.isPaused
-              ? "Nadie nuevo te ve. Tus chats siguen aquí."
+              ? PAUSED_MESSAGE
               : "Dejas de salir en Descubrir y en Likes. Tus chats siguen aquí."
           }
           disabled={pause.pending}
@@ -99,39 +99,24 @@ export function SettingsScreen() {
         />
       </ListSection>
 
-      <ListSection title="Privacidad y seguridad">
-        <ListRow
-          description="Redondeamos tu ubicación a 500 m. Nunca compartimos la exacta."
-          icon="pin"
-          iconColor="menta"
-          label="Ubicación aproximada"
-        />
+      <ListSection
+        footnote="Para bloquear o reportar a alguien, abre su perfil o vuestro chat y toca ⋯. Si bloqueas, dejáis de veros del todo y no le avisamos; los reportes son anónimos."
+        title="Privacidad y seguridad"
+      >
         <ListRow
           accessibilityHint={location.blocked ? "Abre los ajustes del sistema" : undefined}
           description={
             location.blocked
               ? "Snack no tiene permiso de ubicación. Actívalo en Ajustes y vuelve: la actualizamos sola."
-              : "¿Te has mudado? Así ves gente de tu nueva zona."
+              : "Se actualiza sola al abrir la app, redondeada a 500 m (nunca la exacta). Tócalo si te acabas de mudar."
           }
           disabled={location.pending}
-          icon={location.blocked ? "gear" : "refresh"}
+          icon={location.blocked ? "gear" : "pin"}
           iconColor="menta"
           label={location.blocked ? "Activar la ubicación en Ajustes" : "Actualizar mi ubicación"}
           onPress={location.run}
           testID="settings-update-location"
           trailing={location.pending ? <LoadingDots color={theme.primitives.color.ink} /> : "none"}
-        />
-        <ListRow
-          description="Dejáis de veros del todo: ni en Descubrir, ni en Likes, ni en el chat. No le avisamos."
-          icon="block"
-          iconColor="tomate"
-          label="Si bloqueas a alguien"
-        />
-        <ListRow
-          description="Hazlo desde su perfil o el chat. Queda registrado para revisarlo y nunca le decimos quién ha sido."
-          icon="flag"
-          iconColor="limonada"
-          label="Si reportas a alguien"
         />
       </ListSection>
 
@@ -145,7 +130,7 @@ export function SettingsScreen() {
 
       <ListSection title="Snack">
         <ListRow
-          description="Gratis, de código abierto y sin trucos"
+          description="Privacidad, licencia y versión"
           icon="heart"
           iconColor="fresa"
           label="Acerca de Snack"

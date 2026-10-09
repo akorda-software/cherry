@@ -54,8 +54,8 @@ describe("shared ui primitives", () => {
       </>
     );
 
-    expect(screen.getByText("Titular")).toHaveStyle({ fontFamily: "MochiyPopOne", fontSize: "30px" });
-    expect(screen.getByText("Secundario")).toHaveStyle({ fontFamily: "MPLUSRounded1c-Medium", color: "#6B5680" });
+    expect(screen.getByText("Titular")).toHaveStyle({ fontFamily: "Rubik-Black", fontSize: "30px" });
+    expect(screen.getByText("Secundario")).toHaveStyle({ fontFamily: "Rubik-Regular", color: "#5E5468" });
   });
 
   it("makes a pressable surface sink toward its shadow and call onPress", () => {

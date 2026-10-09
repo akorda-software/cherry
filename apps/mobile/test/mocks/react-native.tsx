@@ -186,7 +186,8 @@ export const StyleSheet = {
     return styles;
   },
   flatten(style: any) {
-    if (Array.isArray(style)) return Object.assign({}, ...style.filter(Boolean));
+    // Como en RN: recursivo (los estilos anidados `[a, [b, c]]` también se aplanan).
+    if (Array.isArray(style)) return flattenStyle(style);
     return style;
   },
 };

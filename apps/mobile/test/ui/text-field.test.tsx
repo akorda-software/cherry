@@ -52,6 +52,6 @@ describe("TextField", () => {
   it("renders the giant onboarding size with the display font", () => {
     renderWithTheme(<TextField label="¿Cómo te llamas?" size="xl" testID="name" value="Lucía" />);
 
-    expect(screen.getByTestId("name")).toHaveStyle({ fontFamily: "MochiyPopOne" });
+    expect(screen.getByTestId("name")).toHaveStyle({ fontFamily: "Rubik-Black" });
   });
 });

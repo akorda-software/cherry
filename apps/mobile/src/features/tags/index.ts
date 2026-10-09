@@ -6,4 +6,6 @@ export * from "./application/tag-editor-api";
 export * from "./application/use-tag-editor";
 export * from "./presentation/category-color";
 export * from "./presentation/tag-board";
-export * from "./presentation/tag-shelf";
+export * from "./presentation/tag-chip";
+export * from "./presentation/tag-summary";
+export * from "./presentation/use-tag-controls";

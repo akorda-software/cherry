@@ -20,6 +20,7 @@ apps/mobile/android/
 apps/mobile/.env
 apps/mobile/.env.local
 apps/mobile/.env.*.local
+apps/mobile/.mobile-dev
 .claude/
 
 # Capturas de revisión visual (efímeras)

@@ -8,6 +8,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import type { BootstrapConfig } from "@snack/contracts";
@@ -31,13 +32,11 @@ SplashScreen.setOptions({ duration: 220, fade: true });
 /** Fuentes con los nombres EXACTOS de `theme.primitives.fonts` (cada peso es una familia). */
 function fontAssets() {
   return {
-    [fontFamilies.display]: require("../assets/fonts/MochiyPopOne-Regular.ttf"),
-    [fontFamilies.regular]: require("../assets/fonts/MPLUSRounded1c-Regular.ttf"),
-    [fontFamilies.medium]: require("../assets/fonts/MPLUSRounded1c-Medium.ttf"),
-    [fontFamilies.bold]: require("../assets/fonts/MPLUSRounded1c-Bold.ttf"),
-    [fontFamilies.extraBold]: require("../assets/fonts/MPLUSRounded1c-ExtraBold.ttf"),
-    [fontFamilies.black]: require("../assets/fonts/MPLUSRounded1c-Black.ttf"),
-    [fontFamilies.hand]: require("../assets/fonts/Yomogi-Regular.ttf")
+    [fontFamilies.regular]: require("../assets/fonts/Rubik-Regular.ttf"),
+    [fontFamilies.medium]: require("../assets/fonts/Rubik-Medium.ttf"),
+    [fontFamilies.bold]: require("../assets/fonts/Rubik-Bold.ttf"),
+    [fontFamilies.extraBold]: require("../assets/fonts/Rubik-ExtraBold.ttf"),
+    [fontFamilies.black]: require("../assets/fonts/Rubik-Black.ttf")
   };
 }
 
@@ -83,22 +82,24 @@ export function RootLayout({
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <StatusBar style="dark" />
-          <RuntimeConfigProvider
-            apiBaseUrl={apiBaseUrl}
-            bootstrapConfig={bootstrapConfig}
-            reader={featureFlagReader}
-            loading={featureFlagLoading}
-          >
-            <SessionShellProvider services={services}>
-              <AppBootstrapProvider service={resolvedAppBootstrapService}>
-                {children ?? <Slot />}
-                <ToastHost />
-              </AppBootstrapProvider>
-            </SessionShellProvider>
-          </RuntimeConfigProvider>
-        </ThemeProvider>
+        <KeyboardProvider>
+          <ThemeProvider>
+            <StatusBar style="dark" />
+            <RuntimeConfigProvider
+              apiBaseUrl={apiBaseUrl}
+              bootstrapConfig={bootstrapConfig}
+              reader={featureFlagReader}
+              loading={featureFlagLoading}
+            >
+              <SessionShellProvider services={services}>
+                <AppBootstrapProvider service={resolvedAppBootstrapService}>
+                  {children ?? <Slot />}
+                  <ToastHost />
+                </AppBootstrapProvider>
+              </SessionShellProvider>
+            </RuntimeConfigProvider>
+          </ThemeProvider>
+        </KeyboardProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

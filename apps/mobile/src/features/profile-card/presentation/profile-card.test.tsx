@@ -24,7 +24,7 @@ function card(overrides: Partial<DiscoveryProfileCard> = {}): DiscoveryProfileCa
     age: 29,
     bio: "Me encanta el café de especialidad.",
     gender: "woman",
-    whatIAmLookingFor: "relationship",
+    lookingFor: ["relationship"],
     distanceLabel: "A unos 3 km",
     distanceKmApprox: 3,
     score: 1,
@@ -109,10 +109,23 @@ describe("profile atoms", () => {
   });
 
   it("IntentBadge reads the intent as a sentence", () => {
-    renderWithTheme(<IntentBadge intent="meet_people" />);
+    renderWithTheme(<IntentBadge intents={["meet_people"]} />);
 
     expect(screen.getByLabelText("Quiere conocer gente")).toBeInTheDocument();
     expect(screen.getByText("Conocer gente")).toBeInTheDocument();
+  });
+
+  it("IntentBadge shows every chosen intent, in canonical order", () => {
+    renderWithTheme(<IntentBadge intents={["go_with_the_flow", "relationship"]} />);
+
+    expect(screen.getByText("Busca pareja · A ver qué pasa")).toBeInTheDocument();
+    expect(screen.getByLabelText("Busca una relación. A ver qué pasa, sin prisas")).toBeInTheDocument();
+  });
+
+  it("IntentBadge renders nothing without intents", () => {
+    const { container } = renderWithTheme(<IntentBadge intents={[]} />);
+
+    expect(container.textContent).toBe("");
   });
 
   it("BioNote renders nothing without a bio", () => {

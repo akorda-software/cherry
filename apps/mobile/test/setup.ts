@@ -30,6 +30,7 @@ vi.mock("expo-splash-screen", async () => import("./mocks/expo-splash-screen"));
 vi.mock("expo-status-bar", async () => import("./mocks/expo-status-bar"));
 vi.mock("expo-system-ui", async () => import("./mocks/expo-system-ui"));
 vi.mock("expo-location", async () => import("./mocks/expo-location"));
+vi.mock("react-native-keyboard-controller", async () => import("./mocks/react-native-keyboard-controller"));
 
 afterEach(() => {
   cleanup();

@@ -1,11 +1,13 @@
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
-import { Keyboard, KeyboardAvoidingView, type LayoutChangeEvent, Platform, StyleSheet, View } from "react-native";
+import { Keyboard, type LayoutChangeEvent, Platform, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, IconButton, ProgressBar, Text, useTheme } from "../../../shared/ui";
 import { useStepCtaStore } from "../application/step-cta-store";
 import { ONBOARDING_STEP_KEYS, stepFromPathname, stepIndex, stepProgress } from "../domain/steps";
+import { stepAccent } from "./step-tones";
 import { useOnboardingNavigation } from "./use-onboarding-navigation";
 
 interface FrameMetrics {
@@ -112,7 +114,7 @@ export function OnboardingFrame({ children }: PropsWithChildren) {
             )}
             <ProgressBar
               accessibilityLabel={step ? `Paso ${index + 1} de ${ONBOARDING_STEP_KEYS.length}` : "Tu perfil"}
-              color="fresa"
+              color={step ? stepAccent(step) : "fresa"}
               size="lg"
               style={styles.progress}
               testID="onboarding-progress"

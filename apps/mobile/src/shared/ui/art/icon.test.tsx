@@ -63,15 +63,14 @@ describe("PaperBackground", () => {
     const root = container.querySelector("[data-testid=paper]") as HTMLElement;
     expect(root.style.pointerEvents).toBe("none");
     expect(root.style.backgroundColor).not.toBe("");
+    // En web (entorno de test) la trama es un <Pattern> SVG; en iOS/Android, una baldosa PNG repetida.
     expect(container.querySelector("pattern")).not.toBeNull();
-    const rect = container.querySelector("rect");
-    expect(rect?.getAttribute("fill")).toMatch(/^url\(#paper-dots-[\w-]+\)$/);
   });
 
   it("tints the paper with a pastel and can drop the dots", () => {
     const { container } = render(<PaperBackground testID="paper" tone="menta" dotted={false} />);
     const root = container.querySelector("[data-testid=paper]") as HTMLElement;
     expect(container.querySelector("pattern")).toBeNull();
-    expect(root.style.backgroundColor).toBe("rgb(210, 246, 231)");
+    expect(root.style.backgroundColor).toBe("rgb(217, 246, 227)");
   });
 });

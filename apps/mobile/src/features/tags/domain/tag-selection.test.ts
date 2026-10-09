@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   EMPTY_TAG_SELECTION,
+  pressTagControl,
   sameTagSelection,
   tagStateOf,
   toggleTag,
@@ -86,6 +87,71 @@ describe("toggleTag — blocked", () => {
     let selection = EMPTY_TAG_SELECTION;
     selection = toggleTag(selection, "blocked", "b1", { limits }).selection;
     expect(toggleTag(selection, "blocked", "b2", { limits }).outcome.type).toBe("limit_reached");
+  });
+});
+
+describe("pressTagControl — one page with + and − per tag", () => {
+  it("+ on a neutral tag likes it; + again brings it back to neutral", () => {
+    const liked = pressTagControl(EMPTY_TAG_SELECTION, "positive", "t1");
+    expect(liked.outcome).toEqual({ type: "added" });
+    expect(tagStateOf(liked.selection, "t1")).toBe("liked");
+
+    const neutral = pressTagControl(liked.selection, "positive", "t1");
+    expect(neutral.outcome).toEqual({ type: "removed" });
+    expect(tagStateOf(neutral.selection, "t1")).toBe("neutral");
+  });
+
+  it("− on a neutral tag blocks it; − again brings it back to neutral", () => {
+    const blocked = pressTagControl(EMPTY_TAG_SELECTION, "blocked", "t1");
+    expect(blocked.outcome).toEqual({ type: "added" });
+    expect(tagStateOf(blocked.selection, "t1")).toBe("blocked");
+    expect(tagStateOf(pressTagControl(blocked.selection, "blocked", "t1").selection, "t1")).toBe("neutral");
+  });
+
+  it("the other control switches the tag between lists", () => {
+    const liked = pressTagControl(EMPTY_TAG_SELECTION, "positive", "t1").selection;
+    const blocked = pressTagControl(liked, "blocked", "t1");
+    expect(blocked.outcome).toEqual({ type: "moved" });
+    expect(blocked.selection).toEqual({ positive: [], blocked: ["t1"] });
+
+    const likedAgain = pressTagControl(blocked.selection, "positive", "t1");
+    expect(likedAgain.outcome).toEqual({ type: "moved" });
+    expect(likedAgain.selection).toEqual({ positive: ["t1"], blocked: [] });
+  });
+
+  it("keeps the limits: 8 liked, 5 blocked, also when switching", () => {
+    const full: TagSelection = { positive: ids(8), blocked: ids(5, "b") };
+    expect(pressTagControl(full, "positive", "x").outcome).toEqual({ type: "limit_reached", limit: 8 });
+    expect(pressTagControl(full, "blocked", "x").outcome).toEqual({ type: "limit_reached", limit: 5 });
+
+    // Pasar una de «me gusta» a bloqueada con las bloqueadas llenas no toca nada.
+    const result = pressTagControl(full, "blocked", "t1");
+    expect(result.outcome).toEqual({ type: "limit_reached", limit: 5 });
+    expect(result.selection).toBe(full);
+    expect(tagStateOf(result.selection, "t1")).toBe("liked");
+  });
+
+  it("never leaves a tag in both lists, whatever the sequence of taps", () => {
+    const universe = ids(12);
+    let selection = EMPTY_TAG_SELECTION;
+    let seed = 7;
+    const random = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+
+    for (let tap = 0; tap < 2000; tap += 1) {
+      const tagId = universe[Math.floor(random() * universe.length)];
+      const kind = random() < 0.5 ? "positive" : "blocked";
+      selection = pressTagControl(selection, kind, tagId).selection;
+
+      const blocked = new Set(selection.blocked);
+      expect(selection.positive.some((id) => blocked.has(id))).toBe(false);
+      expect(new Set(selection.positive).size).toBe(selection.positive.length);
+      expect(new Set(selection.blocked).size).toBe(selection.blocked.length);
+      expect(selection.positive.length).toBeLessThanOrEqual(8);
+      expect(selection.blocked.length).toBeLessThanOrEqual(5);
+    }
   });
 });
 

@@ -45,7 +45,7 @@ interface LikeCard {
 }
 
 export const LIKES_INTRO =
-  "Aquí no escondemos nada: estas personas ya te han dado like. Si te gusta alguien, es match al instante.";
+  "Estas personas te han dado like. Si te gusta alguien, es match al instante.";
 
 function useGrid(horizontalPadding: number, maxWidth: number) {
   const { width } = useWindowDimensions();
@@ -55,7 +55,7 @@ function useGrid(horizontalPadding: number, maxWidth: number) {
   return { columns, cardWidth };
 }
 
-/** Pestaña Likes: quién te ha dado like, gratis y a la vista. */
+/** Pestaña Likes: quién te ha dado like, a la vista. */
 export function LikesScreen() {
   const theme = useTheme();
   const router = useRouter();

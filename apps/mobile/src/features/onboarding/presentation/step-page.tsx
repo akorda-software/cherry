@@ -4,7 +4,7 @@ import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import { Appear, ErrorState, PaperBackground, Stack, Text, useTheme } from "../../../shared/ui";
 import type { OnboardingStepKey } from "../domain/steps";
 import { useOnboardingFrame } from "./onboarding-frame";
-import { STEP_TONES } from "./step-tones";
+import { stepAccent } from "./step-tones";
 import { useProfileDraft } from "./use-profile-draft";
 
 export interface StepPageProps {
@@ -26,8 +26,9 @@ export interface StepPageProps {
 }
 
 /**
- * Página de un paso: su propio papel pastel (el tono cambia al pasar página),
- * el título como pregunta única y el contenido entre la cabecera y el pie
+ * Página de un paso: papel blanco roto (sin teñir) y el título como pregunta única,
+ * con la última palabra subrayada con el rotulador del paso (cada paso tiene su
+ * color de acento), y el contenido entre la cabecera y el pie
  * flotantes del marco. Entrada: el papel se asienta (funde y sube un poco);
  * con «reducir movimiento», solo funde.
  */
@@ -54,7 +55,7 @@ export function StepPage({
       <Stack align={centered ? "center" : undefined} gap="xs">
         {hero ?? null}
         <Text accessibilityRole="header" align={centered ? "center" : undefined} variant="title1">
-          {title}
+          <MarkedTitle color={theme.primitives.pastel[stepAccent(step)].fill} title={title} />
         </Text>
         {typeof subtitle === "string" ? (
           <Text align={centered ? "center" : undefined} color="muted">
@@ -94,7 +95,7 @@ export function StepPage({
 
   return (
     <View style={[styles.page, { backgroundColor: theme.semantic.color.screenBackground }]} testID={testID}>
-      <PaperBackground animateTone={false} tone={STEP_TONES[step]} />
+      <PaperBackground animateTone={false} />
       <View style={[styles.body, { marginTop: headerHeight, marginBottom: footerHeight }]}>
         {pinned}
         {scroll ? (
@@ -119,6 +120,26 @@ export function StepPage({
         )}
       </View>
     </View>
+  );
+}
+
+/** Separa la última palabra del título (sin la puntuación final) para marcarla. */
+export function splitMarkedTitle(title: string): [string, string, string] {
+  const match = /^(.*?)([^\s¿¡]+?)([?!.…]*)$/su.exec(title.trim());
+  return match ? [match[1], match[2], match[3]] : ["", title, ""];
+}
+
+/** Rotulador: fondo de color tras la última palabra, como un subrayado grueso. */
+function MarkedTitle({ title, color }: { title: string; color: string }) {
+  const [before, word, after] = splitMarkedTitle(title);
+  return (
+    <>
+      {before}
+      <Text style={{ backgroundColor: color }} variant="title1">
+        {word}
+      </Text>
+      {after}
+    </>
   );
 }
 

@@ -145,6 +145,9 @@ export function Button({
 
   const face = useMemo<ViewStyle>(
     () => ({
+      // La cara del botón nunca crece: con `flexGrow` (el de PressableScale), dentro de
+      // pantallas desplazables Android le daba miles de px de alto (estados vacíos).
+      flexGrow: 0,
       minHeight: spec.height,
       paddingHorizontal: resolvedVariant === "ghost" ? spec.paddingX * 0.6 : spec.paddingX,
       borderRadius: theme.primitives.radius.pill,
@@ -176,13 +179,15 @@ export function Button({
       style={[fullWidth ? styles.fullWidth : null, style]}
       testID={testID}
     >
-      <View style={[styles.row, { gap: spec.gap, opacity: loading ? 0 : 1 }]}>
+      {/* `collapsable={false}`: al cargar, la opacidad pasa a 0 y Fabric «desaplanaría» la
+          fila (recolgando sus hijos), lo que en Android cierra la app con «View already has a parent». */}
+      <View collapsable={false} style={[styles.row, { gap: spec.gap, opacity: loading ? 0 : 1 }]}>
         <IconSlot color={colors.text} icon={icon} size={spec.icon} />
         {typeof content === "string" || typeof content === "number" ? (
+          // Sin `adjustsFontSizeToFit`: en Android (Fabric) mide el texto con toda la altura
+          // disponible y el botón se estira hasta ocupar la pantalla.
           <Text
-            adjustsFontSizeToFit
             color={colors.text}
-            minimumFontScale={0.85}
             numberOfLines={1}
             style={resolvedVariant === "ghost" ? styles.ghostLabel : null}
             variant={spec.text}

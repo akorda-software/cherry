@@ -36,7 +36,7 @@ export function ComingSoonScreen({ title, back = true, close = false, tone, righ
       tone={tone}
     >
       <EmptyState
-        description="Mochi está recortando pegatinas y ordenando la libreta. Muy pronto estará lista."
+        description="Esta pantalla estará lista muy pronto."
         illustration={
           <View>
             <Mascot mood="thinking" size={148} />

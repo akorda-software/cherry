@@ -10,7 +10,6 @@ export const ONBOARDING_STEP_KEYS = [
   "intent",
   "photos",
   "tags",
-  "blocked-tags",
   "bio",
   "location",
   "done"
@@ -26,11 +25,23 @@ export interface OnboardingStepDefinition {
   optional: boolean;
 }
 
+/** Pasos opcionales (hoy ninguno: bloquear etiquetas va dentro de «tags»). */
+const OPTIONAL_STEP_KEYS: ReadonlyArray<OnboardingStepKey> = [];
+
+/**
+ * Rutas que ya no son un paso propio y a qué paso equivalen. `blocked-tags` se
+ * fusionó con `tags` (una sola página con «+» y «−»): una ruta antigua en el
+ * historial o un enlace viejo cae en la página de etiquetas.
+ */
+export const LEGACY_STEP_ALIASES: Readonly<Record<string, OnboardingStepKey>> = {
+  "blocked-tags": "tags"
+};
+
 export const ONBOARDING_STEPS: ReadonlyArray<OnboardingStepDefinition> = ONBOARDING_STEP_KEYS.map(
   (key) => ({
     key,
     route: `/(onboarding)/${key}` as const,
-    optional: key === "blocked-tags"
+    optional: OPTIONAL_STEP_KEYS.includes(key)
   })
 );
 
@@ -71,6 +82,7 @@ export function stepProgress(key: OnboardingStepKey): number {
 /**
  * Paso a partir del pathname de expo-router. Los grupos no aparecen en el
  * pathname (`/(onboarding)/photos` → `/photos`), así que se mira el último segmento.
+ * Las rutas antiguas (`/blocked-tags`) se traducen a su paso actual.
  */
 export function stepFromPathname(pathname: string | null | undefined): OnboardingStepKey | null {
   if (!pathname) {
@@ -78,5 +90,9 @@ export function stepFromPathname(pathname: string | null | undefined): Onboardin
   }
 
   const segment = pathname.split("?")[0].split("/").filter(Boolean).pop() ?? "";
-  return isOnboardingStepKey(segment) ? segment : null;
+  if (isOnboardingStepKey(segment)) {
+    return segment;
+  }
+
+  return Object.prototype.hasOwnProperty.call(LEGACY_STEP_ALIASES, segment) ? LEGACY_STEP_ALIASES[segment] : null;
 }

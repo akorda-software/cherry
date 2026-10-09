@@ -6,6 +6,7 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSprin
 import { haptics } from "../motion/haptics";
 import { springs } from "../motion/springs";
 import { Badge } from "../primitives/badge";
+import { HardShadow } from "../primitives/hard-shadow";
 import { useTheme } from "../providers/theme-provider";
 
 /** Alto de la pastilla. */
@@ -56,8 +57,9 @@ export function KawaiiTabBar({ state, descriptors, navigation, insets }: BottomT
         { bottom: Math.max(insets.bottom, 12), left: 16 + insets.left, right: 16 + insets.right }
       ]}
     >
-      <View
+      <HardShadow
         accessibilityRole="tablist"
+        elevation="md"
         style={[
           styles.bar,
           {
@@ -66,8 +68,7 @@ export function KawaiiTabBar({ state, descriptors, navigation, insets }: BottomT
             borderWidth: theme.primitives.border.bold,
             borderColor: c.ink,
             backgroundColor: c.white
-          },
-          theme.primitives.elevation.md
+          }
         ]}
       >
         {state.routes.map((route, index) => {
@@ -108,7 +109,7 @@ export function KawaiiTabBar({ state, descriptors, navigation, insets }: BottomT
             />
           );
         })}
-      </View>
+      </HardShadow>
     </View>
   );
 }
@@ -174,7 +175,9 @@ function KawaiiTab({ label, icon, focused, color, badge, index, accessibilityLab
       style={styles.slot}
       testID={testID}
     >
-      <Animated.View
+      <HardShadow
+        animatedStyle={stickerStyle}
+        elevation="sm"
         style={[
           styles.sticker,
           {
@@ -182,9 +185,7 @@ function KawaiiTab({ label, icon, focused, color, badge, index, accessibilityLab
             borderColor: c.ink,
             borderWidth: theme.primitives.border.regular,
             borderRadius: theme.primitives.radius.md + 2
-          },
-          theme.primitives.elevation.sm,
-          stickerStyle
+          }
         ]}
       />
       <Animated.View style={[styles.icon, iconStyle]}>
@@ -193,10 +194,8 @@ function KawaiiTab({ label, icon, focused, color, badge, index, accessibilityLab
       </Animated.View>
       {/* Rótulo siempre visible (reconocer > recordar); la activa lo remarca en tinta plena. */}
       <Animated.Text
-        adjustsFontSizeToFit
         allowFontScaling
         maxFontSizeMultiplier={1.1}
-        minimumFontScale={0.85}
         numberOfLines={1}
         style={[
           styles.label,

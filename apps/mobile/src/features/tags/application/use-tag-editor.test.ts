@@ -49,6 +49,60 @@ describe("useTagEditor", () => {
     expect(result.current.selection.blocked).toEqual([]);
   });
 
+  it("press switches a liked tag to blocked (and back) without ever holding it in both lists", () => {
+    const { result } = renderHook(() => useTagEditor({ initial: { positive: ["a"], blocked: [] } }));
+    const press = result.current.press;
+    let outcome: unknown;
+
+    act(() => {
+      outcome = result.current.press("blocked", "a");
+    });
+    expect(outcome).toEqual({ type: "moved" });
+    expect(result.current.selection).toEqual({ positive: [], blocked: ["a"] });
+    expect(result.current.stateOf("a")).toBe("blocked");
+
+    act(() => {
+      result.current.press("blocked", "a");
+    });
+    expect(result.current.stateOf("a")).toBe("neutral");
+    expect(result.current.dirty).toBe(true);
+    // Referencia estable: las filas memorizadas no se repintan por ella.
+    expect(result.current.press).toBe(press);
+  });
+
+  it("press reports the limit and leaves the selection untouched", () => {
+    const { result } = renderHook(() =>
+      useTagEditor({ initial: { positive: ["p1"], blocked: ["b1", "b2", "b3", "b4", "b5"] } })
+    );
+    let outcome: unknown;
+    act(() => {
+      outcome = result.current.press("blocked", "p1");
+    });
+    expect(outcome).toEqual({ type: "limit_reached", limit: 5 });
+    expect(result.current.stateOf("p1")).toBe("liked");
+    expect(result.current.dirty).toBe(false);
+  });
+
+  it("saves a liked↔blocked swap made on the one-page board without conflicts", async () => {
+    const api = fakeApi();
+    const { result } = renderHook(() => useTagEditor());
+    act(() => result.current.reset({ positive: ["a", "b"], blocked: ["x"] }));
+    act(() => {
+      result.current.press("blocked", "b");
+      result.current.press("positive", "x");
+    });
+    expect(result.current.selection).toEqual({ positive: ["a", "x"], blocked: ["b"] });
+
+    await act(async () => {
+      await result.current.save(api);
+    });
+
+    expect(vi.mocked(api.setPositiveTags).mock.calls).toEqual([[["a"]], [["a", "x"]]]);
+    expect(api.setBlockedTags).toHaveBeenCalledWith(["b"]);
+    expect(result.current.server).toEqual({ positive: ["a", "x"], blocked: ["b"] });
+    expect(result.current.dirty).toBe(false);
+  });
+
   it("saves with a conflict-free plan and marks the editor clean", async () => {
     const api = fakeApi();
     const { result } = renderHook(() => useTagEditor());

@@ -8,7 +8,7 @@ import { useProfileDraft } from "../use-profile-draft";
 import { useStepSave } from "../use-step-save";
 import { EditScaffold, toastSaved, useLeaveEdit } from "./edit-scaffold";
 
-/** Editar la bio: la misma nota adhesiva del onboarding. */
+/** Editar la descripción («Sobre mí»): el mismo campo del onboarding. */
 export function EditBioScreen() {
   const { profile, ready, failed, retry, callApi } = useProfileDraft();
   const leave = useLeaveEdit();
@@ -43,7 +43,7 @@ export function EditBioScreen() {
       onSave={save}
       saving={busy}
       testID="edit-bio-screen"
-      title="Tu bio"
+      title="Sobre mí"
       tone="cielo"
     >
       <BioNote

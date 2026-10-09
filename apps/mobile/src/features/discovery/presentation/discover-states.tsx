@@ -2,9 +2,10 @@ import { StyleSheet, View } from "react-native";
 
 import {
   Button,
-  EmptyState,
   Deco,
+  EmptyState,
   ErrorState,
+  HardShadow,
   Mascot,
   Skeleton,
   SkeletonGroup,
@@ -21,9 +22,10 @@ export function DeckSkeleton({ width, height, testID = "discover-loading" }: { w
   const photoHeight = Math.round(Math.max(height - 170, height * 0.64));
 
   return (
-    <View
+    <HardShadow
       accessibilityLabel="Buscando gente para ti"
       accessibilityRole="progressbar"
+      elevation="lg"
       style={[
         styles.skeletonCard,
         {
@@ -33,8 +35,7 @@ export function DeckSkeleton({ width, height, testID = "discover-loading" }: { w
           borderColor: c.ink,
           borderWidth: theme.primitives.border.bold,
           borderRadius: theme.primitives.radius.md
-        },
-        theme.primitives.elevation.lg
+        }
       ]}
       testID={testID}
     >
@@ -49,7 +50,7 @@ export function DeckSkeleton({ width, height, testID = "discover-loading" }: { w
           <SkeletonText color="lavanda" lastLineWidth="40%" lineHeight={12} lines={1} />
         </View>
       </SkeletonGroup>
-    </View>
+    </HardShadow>
   );
 }
 
@@ -60,9 +61,10 @@ export function FeedPostSkeleton({ width }: { width: number }) {
   const inner = width - 20;
 
   return (
-    <View
+    <HardShadow
       accessibilityLabel="Cargando más perfiles"
       accessibilityRole="progressbar"
+      elevation="md"
       style={[
         styles.post,
         {
@@ -71,8 +73,7 @@ export function FeedPostSkeleton({ width }: { width: number }) {
           borderColor: c.ink,
           borderWidth: theme.primitives.border.bold,
           borderRadius: theme.primitives.radius.md
-        },
-        theme.primitives.elevation.md
+        }
       ]}
       testID="feed-post-skeleton"
     >
@@ -83,7 +84,7 @@ export function FeedPostSkeleton({ width }: { width: number }) {
           <SkeletonText color="lavanda" lineHeight={12} lines={2} />
         </Stack>
       </SkeletonGroup>
-    </View>
+    </HardShadow>
   );
 }
 

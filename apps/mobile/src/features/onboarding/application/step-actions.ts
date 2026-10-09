@@ -7,7 +7,7 @@ import {
   buildInterestedPreferences,
   type InterestedIn
 } from "../domain/preferences";
-import { validateBio, validateDisplayName } from "../domain/profile-fields";
+import { MIN_INTENTS, normalizeIntents, validateBio, validateDisplayName } from "../domain/profile-fields";
 import { firstIncompleteStep, stepForBackendStep, stepForMissingFields } from "../domain/resume";
 import type { OnboardingStepKey } from "../domain/steps";
 
@@ -32,7 +32,8 @@ const FIELD_MESSAGES: Record<string, string> = {
   display_name: "Ese nombre no nos vale: tiene que tener entre 1 y 50 caracteres.",
   birth_date: "Esa fecha no nos cuadra. Revísala, porfa.",
   gender: "Elige una de las opciones.",
-  what_i_am_looking_for: "Elige una de las opciones.",
+  looking_for: "Elige al menos una de las opciones.",
+  what_i_am_looking_for: "Elige al menos una de las opciones.",
   bio: "Tu bio tiene que tener entre 20 y 240 caracteres.",
   age_min: "Revisa el rango de edad.",
   age_max: "Revisa el rango de edad.",
@@ -84,8 +85,15 @@ export async function saveGender(api: StepApi, gender: Gender): Promise<Profile>
   return profile;
 }
 
-export async function saveIntent(api: StepApi, intent: RelationshipIntent): Promise<Profile> {
-  const { profile } = await api.updateProfile({ whatIAmLookingFor: intent });
+/** Guarda «¿Qué buscas?» (1–4 intenciones, sin repetir). */
+export async function saveIntents(api: StepApi, intents: ReadonlyArray<RelationshipIntent>): Promise<Profile> {
+  const lookingFor = normalizeIntents(intents);
+
+  if (lookingFor.length < MIN_INTENTS) {
+    throw new StepValidationError("Elige al menos una opción.");
+  }
+
+  const { profile } = await api.updateProfile({ lookingFor });
   return profile;
 }
 

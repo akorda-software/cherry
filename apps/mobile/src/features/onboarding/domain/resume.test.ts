@@ -42,8 +42,8 @@ describe("firstIncompleteStep", () => {
       { discoveryPreferences: makePreferences({ showMen: false, showWomen: false, showNonBinary: false }) },
       "interested"
     ],
-    ["missing intent", { whatIAmLookingFor: null }, "intent"],
-    ["unknown intent", { whatIAmLookingFor: "friends" as never }, "intent"],
+    ["missing intent", { lookingFor: [], whatIAmLookingFor: null }, "intent"],
+    ["unknown intent", { lookingFor: ["friends"] as never, whatIAmLookingFor: "friends" as never }, "intent"],
     ["no photos", { photos: [] }, "photos"],
     ["one photo", { photos: [makePhoto(1)] }, "photos"],
     ["two photos but one deleted", { photos: [makePhoto(1), makePhoto(2, { isActive: false })] }, "photos"],
@@ -71,10 +71,10 @@ describe("firstIncompleteStep", () => {
 
     expect(firstIncompleteStep(makeProfile({ bio: null, tags: [] }), NOW)).toBe("tags");
     expect(firstIncompleteStep(makeProfile({ hasLocation: false, bio: null }), NOW)).toBe("bio");
-    expect(firstIncompleteStep(makeProfile({ photos: [], whatIAmLookingFor: null }), NOW)).toBe("intent");
+    expect(firstIncompleteStep(makeProfile({ photos: [], lookingFor: [], whatIAmLookingFor: null }), NOW)).toBe("intent");
   });
 
-  it("never stops at the optional blocked-tags step", () => {
+  it("never sends anyone back just for having no blocked tags", () => {
     const profile = makeProfile({ blockedTags: [] });
     expect(firstIncompleteStep(profile, NOW)).toBe("done");
   });
@@ -84,6 +84,7 @@ describe("firstIncompleteStep", () => {
       birthDate: null,
       age: null,
       gender: null,
+      lookingFor: [],
       whatIAmLookingFor: null,
       bio: null,
       hasLocation: false,
@@ -100,6 +101,7 @@ describe("firstIncompleteStep", () => {
       birthDate: null,
       gender: null,
       discoveryPreferences: null,
+      lookingFor: [],
       whatIAmLookingFor: null,
       photos: [],
       tags: [],
@@ -111,7 +113,7 @@ describe("firstIncompleteStep", () => {
       ["birthday", { birthDate: "1996-05-14" }],
       ["gender", { gender: "woman" }],
       ["interested", { discoveryPreferences: makePreferences() }],
-      ["intent", { whatIAmLookingFor: "go_with_the_flow" }],
+      ["intent", { lookingFor: ["go_with_the_flow"], whatIAmLookingFor: "go_with_the_flow" }],
       ["photos", { photos: [makePhoto(1), makePhoto(3)] }],
       ["tags", { tags: [makeTag(1)] }],
       ["bio", { bio: "Una bio de más de veinte caracteres." }],
@@ -230,7 +232,7 @@ describe("resolveResumeStep", () => {
     expect(resolveResumeStep({ source: "bootstrap", nextOnboardingStep: "whatever" })).toBe("name");
   });
 
-  it("never resolves to the optional blocked-tags step", () => {
+  it("never resolves to the removed blocked-tags step (merged into tags)", () => {
     const steps = new Set<string>();
     const variants = [
       makeProfile(),
@@ -241,6 +243,9 @@ describe("resolveResumeStep", () => {
     ];
     variants.forEach((profile) => steps.add(resolveResumeStep({ source: "profile", profile, now: NOW })));
     expect(steps.has("blocked-tags")).toBe(false);
-    expect(stepIndex("blocked-tags")).toBeGreaterThan(stepIndex("tags"));
+    expect(ONBOARDING_STEP_KEYS).not.toContain("blocked-tags");
+    // Quien tiene etiquetas y le falta la bio reanuda en bio, justo después de tags.
+    expect(resolveResumeStep({ source: "profile", profile: makeProfile({ bio: null }), now: NOW })).toBe("bio");
+    expect(stepIndex("bio")).toBe(stepIndex("tags") + 1);
   });
 });

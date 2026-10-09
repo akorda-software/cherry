@@ -47,6 +47,7 @@ export function makeProfile(overrides: Partial<Profile> = {}): Profile {
     birthDate: "1996-05-14",
     age: 30,
     gender: "woman",
+    lookingFor: ["relationship"],
     whatIAmLookingFor: "relationship",
     bio: "Me encantan los domingos de mercadillo y café.",
     isComplete: false,

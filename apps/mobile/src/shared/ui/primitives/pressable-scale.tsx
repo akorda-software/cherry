@@ -12,8 +12,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, w
 
 import { type HapticKind, triggerHaptic } from "../motion/haptics";
 import { type SpringName, springs } from "../motion/springs";
-import { useTheme } from "../providers/theme-provider";
 import { type ElevationLevel, elevationOffsets } from "../tokens/primitives/elevation";
+import { HardShadowLayer, splitShadowStyle } from "./hard-shadow";
 
 export interface PressableScaleProps extends Omit<PressableProps, "style" | "children"> {
   children?: ReactNode;
@@ -67,7 +67,6 @@ export const PressableScale = forwardRef<View, PressableScaleProps>(function Pre
   },
   ref
 ) {
-  const theme = useTheme();
   const offset = elevationOffsets[elevation];
   const rest0 = disabled && sinkWhenDisabled ? 1 : 0;
   const press = useSharedValue(rest0);
@@ -102,6 +101,11 @@ export const PressableScale = forwardRef<View, PressableScaleProps>(function Pre
     onPressOut?.(event);
   }
 
+  // La cara solo rellena la caja cuando esta tiene tamaño propio (alto, flex…). Un `flexGrow`
+  // por defecto, en Android (Fabric) y dentro de pantallas con scroll, estiraba botones y
+  // pegatinas hasta miles de px y los montaba sobre lo de abajo.
+  const faceFills = splitShadowStyle(style).sized;
+
   return (
     <Pressable
       ref={ref}
@@ -112,32 +116,14 @@ export const PressableScale = forwardRef<View, PressableScaleProps>(function Pre
       style={[rotate ? { transform: [{ rotate: `${rotate}deg` }] } : null, style]}
       {...rest}
     >
-      {offset > 0 ? (
-        <View
-          style={[
-            styles.shadow,
-            {
-              top: offset,
-              left: offset,
-              right: -offset,
-              bottom: -offset,
-              borderRadius: shadowRadius,
-              backgroundColor: shadowColor ?? theme.primitives.color.ink
-            }
-          ]}
-        />
-      ) : null}
-      <Animated.View style={[styles.face, faceStyle, faceAnimated]}>{children}</Animated.View>
+      <HardShadowLayer color={shadowColor} elevation={elevation} radius={shadowRadius} />
+      <Animated.View style={[faceFills ? styles.fill : null, faceStyle, faceAnimated]}>{children}</Animated.View>
     </Pressable>
   );
 });
 
 const styles = StyleSheet.create({
-  shadow: {
-    position: "absolute",
-    pointerEvents: "none"
-  },
-  face: {
+  fill: {
     flexGrow: 1
   }
 });

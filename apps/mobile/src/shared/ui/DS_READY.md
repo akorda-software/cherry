@@ -16,8 +16,10 @@ import { Screen, TopBar, Text, Button, TagSticker, useTheme } from "../../../sha
 - Grosores: superficies grandes (tarjetas, hojas, barra, botones lg, botones redondos lg/xl) `border.bold` (3);
   controles (botones md/sm, campos, pegatinas md/lg, conmutador, interruptor) `border.regular` (2.5);
   detalles pequeños (insignias, contadores, pegatinas sm, círculos de icono) `border.thin` (2).
-- Una sola elevación por elemento: sombra dura de tinta (`elevation.*`) y, al pulsar, se hunde hacia ella
+- Una sola elevación por elemento: sombra dura de tinta y, al pulsar, se hunde hacia ella
   (usa `PressableScale` o los componentes, no reinventes). Radios: tarjetas 16–22, pastillas solo chips/botones.
+- La sombra es SIEMPRE una vista hermana (`HardShadow`), nunca `boxShadow` ni `theme.primitives.elevation.*`
+  esparcido en estilos: en Android `boxShadow` es caro y hace ir a tirones el mazo de Descubrir.
 - Tipografía: SIEMPRE `<Text variant=…>`; nunca `fontWeight` (en Android cada peso es otra familia).
 - Iconos: solo `<Icon name=… />` (o `icon="heart"` en los componentes). Emoji solo como contenido de etiquetas.
 - Objetivos táctiles ≥ 48 (los componentes ya ponen `hitSlop`). Todo lo pulsable sin texto lleva `accessibilityLabel`.
@@ -126,6 +128,23 @@ no cambia tamaño, no pulsa); `disabled?` (queda pegado al papel; al habilitarse
 Base neobrutal para tus propios pulsables: `faceStyle` (relleno/contorno/radio/padding de la cara), `style`
 (caja exterior), `elevation?` (def. `md`), `radius?` (def. el de `faceStyle`), `pressedScale?` (def. 1),
 `releaseSpring?` (`snappy` | `pop`…), `haptic?`, `rotate?`, `shadowColor?`, `sinkWhenDisabled?` + props de Pressable.
+
+### `HardShadow` (sombra dura sin `boxShadow`)
+Para cualquier pieza propia con sombra que no sea pulsable. Pásale el estilo completo como si fuera una sola vista:
+lo reparte solo entre la caja exterior (márgenes, posición, tamaño, flex, `alignSelf`, `transform`, opacidad) y la
+cara (relleno, contorno, radio, padding, `overflow`, maquetación de los hijos); la sombra copia los radios de la cara
+(también por esquina). Props: `elevation?` (`none|xs|sm|md|lg|xl` = 0/1/2/4/6/8 px, def. `md`), `shadowColor?`,
+`radius?`, `style?`, `faceStyle?` (solo cara), `animatedStyle?` (Reanimated, caja exterior: giros, escalas, opacidad),
+`animatedFaceStyle?`, `animatedShadowStyle?`, `animated?` (caja exterior animada para `entering`/`exiting`),
+`fill?` + props de View (testID y accesibilidad van a la caja exterior). La cara llena el alto de la caja solo si el
+estilo lo fija (`height`, `minHeight`, `flex`, `aspectRatio`, `top`+`bottom`); si lo da el padre (fila estirada), pasa
+`fill`. `HardShadowLayer` es solo la vista de sombra, para piezas que ya tienen su caja.
+
+```tsx
+<HardShadow elevation="sm" style={[styles.bubble, { backgroundColor: c.white, borderRadius: 18, borderWidth: 2.5 }]}>
+  <Text>¡Hola!</Text>
+</HardShadow>
+```
 
 ### `TagSticker` (el componente estrella)
 `label`, `emoji?`, `state?: "neutral" | "selected" | "blocked" | "shared" | "muted"`, `size?: "sm" (32) | "md" (40) |

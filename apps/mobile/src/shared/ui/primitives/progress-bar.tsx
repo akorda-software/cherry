@@ -16,6 +16,7 @@ import { usePop } from "../motion/pop";
 import { springs } from "../motion/springs";
 import { useTheme } from "../providers/theme-provider";
 import type { PastelName } from "../tokens/primitives/color";
+import { HardShadow } from "./hard-shadow";
 
 export interface ProgressBarProps {
   /** 0–1 en modo continuo; nº de segmentos completados (o en curso) si hay `segments`. */
@@ -75,10 +76,11 @@ export function ProgressBar({
   const clamped = Math.max(0, Math.min(1, value));
 
   return (
-    <View
+    <HardShadow
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
+      elevation="sm"
       style={[
         styles.track,
         {
@@ -88,13 +90,12 @@ export function ProgressBar({
           borderColor: theme.primitives.color.ink,
           backgroundColor: theme.primitives.color.white
         },
-        theme.primitives.elevation.sm,
         style
       ]}
       testID={testID}
     >
       <Fill color={color} striped={striped} value={clamped} />
-    </View>
+    </HardShadow>
   );
 }
 
@@ -122,7 +123,7 @@ function Fill({ value, color, striped }: { value: number; color: PastelName; str
         fillStyle
       ]}
     >
-      {striped ? <MovingStripes /> : null}
+      {striped ? <MovingStripes trigger={value} /> : null}
     </Animated.View>
   );
 }
@@ -150,7 +151,9 @@ function Segment({
   }, [filled, pop]);
 
   return (
-    <Animated.View
+    <HardShadow
+      animatedStyle={popStyle}
+      elevation={filled ? "sm" : "none"}
       style={[
         styles.segment,
         {
@@ -159,18 +162,20 @@ function Segment({
           borderWidth: theme.primitives.border.regular,
           borderColor: theme.primitives.color.ink,
           backgroundColor: filled ? theme.primitives.pastel[color].fill : theme.primitives.color.white
-        },
-        filled ? theme.primitives.elevation.sm : null,
-        popStyle
+        }
       ]}
     >
       {filled && current && striped ? <MovingStripes /> : null}
-    </Animated.View>
+    </HardShadow>
   );
 }
 
-/** Rayas blancas diagonales que avanzan en bucle (quietas con «reducir movimiento»). */
-function MovingStripes() {
+/**
+ * Rayas blancas diagonales que avanzan dos pasos cada vez que cambia `trigger` y se
+ * quedan quietas (nunca en bucle: una animación infinita repinta a 60 fps sin parar).
+ * Quietas con «reducir movimiento».
+ */
+function MovingStripes({ trigger }: { trigger?: unknown }) {
   const theme = useTheme();
   const reduced = useReducedMotion();
   const shift = useSharedValue(0);
@@ -180,10 +185,11 @@ function MovingStripes() {
       return;
     }
 
-    shift.value = withRepeat(withTiming(1, { duration: 900, easing: Easing.linear }), -1, false);
+    shift.value = 0;
+    shift.value = withRepeat(withTiming(1, { duration: 900, easing: Easing.linear }), 2, false);
 
     return () => cancelAnimation(shift);
-  }, [reduced, shift]);
+  }, [reduced, shift, trigger]);
 
   const d = useMemo(() => {
     let path = "";

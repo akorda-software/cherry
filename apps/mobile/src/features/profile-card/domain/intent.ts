@@ -67,3 +67,35 @@ export function describeIntent(value: string | null | undefined): IntentDescript
     }
   );
 }
+
+const INTENT_ORDER: ReadonlyArray<IntentKey> = ["relationship", "casual", "meet_people", "go_with_the_flow"];
+
+function intentRank(key: string): number {
+  const index = (INTENT_ORDER as readonly string[]).indexOf(key);
+  return index === -1 ? INTENT_ORDER.length : index;
+}
+
+/**
+ * Todas las intenciones de una persona (`lookingFor`, 1–4), sin repetir y en el orden
+ * canónico (las desconocidas al final). Acepta también una sola cadena (dato antiguo).
+ */
+export function describeIntents(values: ReadonlyArray<string> | string | null | undefined): IntentDescriptor[] {
+  const list = typeof values === "string" ? [values] : (values ?? []);
+  const unique = [...new Set(list)].sort((a, b) => intentRank(a) - intentRank(b));
+
+  return unique.map(describeIntent).filter((descriptor): descriptor is IntentDescriptor => descriptor !== null);
+}
+
+/** «Busca pareja · Conocer gente» (o las frases completas con `sentence`). `null` si no hay ninguna. */
+export function intentsText(descriptors: ReadonlyArray<IntentDescriptor>, sentence = false): string | null {
+  if (descriptors.length === 0) {
+    return null;
+  }
+
+  return descriptors.map((descriptor) => (sentence ? descriptor.sentence : descriptor.label)).join(" · ");
+}
+
+/** Para lectores de pantalla: las frases completas, una tras otra. */
+export function intentsSpokenText(descriptors: ReadonlyArray<IntentDescriptor>): string | null {
+  return descriptors.length === 0 ? null : descriptors.map((descriptor) => descriptor.sentence).join(". ");
+}

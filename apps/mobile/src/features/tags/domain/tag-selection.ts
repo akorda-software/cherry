@@ -117,6 +117,24 @@ export function toggleTag(
   };
 }
 
+/**
+ * Página única de etiquetas: cada una lleva «+» (me gusta, `positive`) y «−»
+ * (bloquear, `blocked`).
+ * - Neutral + control → pasa a esa lista (si no está llena).
+ * - Tocar el control que ya está activo → vuelve a neutral.
+ * - Tocar el otro control → cambia de lista (si la de destino no está llena;
+ *   si lo está, no se toca nada).
+ * Por construcción una etiqueta nunca queda en las dos listas.
+ */
+export function pressTagControl(
+  selection: TagSelection,
+  kind: TagKind,
+  tagId: string,
+  limits: TagLimits = DEFAULT_TAG_LIMITS
+): ToggleResult {
+  return toggleTag(selection, kind, tagId, { limits, onConflict: "move" });
+}
+
 /** Quita de la selección ids que ya no existen en el catálogo (o que backend rechazó). */
 export function withoutTagIds(selection: TagSelection, ids: ReadonlyArray<string>): TagSelection {
   if (ids.length === 0) {

@@ -1,19 +1,11 @@
 # Fuentes
 
-Subconjuntos (latín + Latin-1 + algunos símbolos: ★ ♥ ♪ ✕ … € ¡ ¿) generados con
-`pyftsubset` a partir de Google Fonts, para no empaquetar varios MB de glifos CJK.
+Rubik (SIL OFL 1.1) en cinco pesos estáticos, uno por familia porque en Android cada
+peso es una familia distinta: `Rubik-{Regular,Medium,Bold,ExtraBold,Black}.ttf`.
 
-| Fichero | Familia | Uso | Licencia |
-|---|---|---|---|
-| `MochiyPopOne-Regular.ttf` | Mochiy Pop One | Titulares, sellos, números grandes | SIL OFL 1.1 |
-| `MPLUSRounded1c-{Regular,Medium,Bold,ExtraBold,Black}.ttf` | M PLUS Rounded 1c | Interfaz y texto | SIL OFL 1.1 |
-| `Yomogi-Regular.ttf` | Yomogi | Anotaciones manuscritas puntuales (≥ 18 pt) | SIL OFL 1.1 |
-
-Se regeneran con `python3 build_fonts.py <dir-con-los-ttf-originales>` (requiere fonttools),
-que además sustituye la elipsis «…» (centrada y a ancho completo en estas fuentes japonesas,
-estilo «⋯») por tres puntos sobre la línea base: es el glifo que usan iOS/Android al truncar.
-
-Rango usado:
+Se generan a partir de la fuente variable de Google Fonts (`ofl/rubik/Rubik[wght].ttf`):
+se instancia cada peso (400, 500, 700, 800, 900) con `fontTools.varLib.instancer`, se le
+pone como nombre de familia `Rubik-<Peso>` y se reduce al subconjunto latino:
 
 ```
 pyftsubset <fuente>.ttf --layout-features='*' \

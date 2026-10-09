@@ -16,7 +16,7 @@ function card(id: string, overrides: Partial<DiscoveryProfileCard> = {}): Discov
     age: 30,
     bio: "Hola",
     gender: "woman",
-    whatIAmLookingFor: "relationship",
+    lookingFor: ["relationship"],
     distanceLabel: "Cerca de ti",
     distanceKmApprox: 1,
     score: 10,

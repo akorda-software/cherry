@@ -21,6 +21,29 @@ export function isRelationshipIntent(value: unknown): value is RelationshipInten
   return typeof value === "string" && (RELATIONSHIP_INTENTS as readonly string[]).includes(value);
 }
 
+/** «¿Qué buscas?» admite hasta todas las intenciones (el backend exige 1–4, sin repetir). */
+export const MIN_INTENTS = 1;
+
+/**
+ * Intenciones válidas de un valor cualquiera (`lookingFor`, o una sola cadena antigua),
+ * sin repetir y en el orden canónico, que es como las guarda el backend.
+ */
+export function normalizeIntents(value: unknown): RelationshipIntent[] {
+  const list: unknown[] = Array.isArray(value) ? value : value === null || value === undefined ? [] : [value];
+  return RELATIONSHIP_INTENTS.filter((intent) => list.includes(intent));
+}
+
+/** Marca o desmarca una intención; el resultado queda en orden canónico. */
+export function toggleIntent(current: ReadonlyArray<RelationshipIntent>, intent: RelationshipIntent): RelationshipIntent[] {
+  const next = current.includes(intent) ? current.filter((value) => value !== intent) : [...current, intent];
+  return normalizeIntents(next);
+}
+
+/** Misma selección, sin importar el orden. */
+export function sameIntents(a: ReadonlyArray<RelationshipIntent>, b: ReadonlyArray<RelationshipIntent>): boolean {
+  return a.length === b.length && a.every((intent) => b.includes(intent));
+}
+
 interface GraphemeSegmenter {
   segment(input: string): Iterable<unknown>;
 }

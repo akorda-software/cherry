@@ -16,6 +16,7 @@ const baseProfile = {
   displayName: "Lucía",
   age: 30,
   gender: "woman",
+  lookingFor: ["go_with_the_flow"],
   whatIAmLookingFor: "go_with_the_flow",
   bio: "Me encanta el cine de terror.",
   photos: [
@@ -43,7 +44,10 @@ describe("toSelfPerson", () => {
 describe("profile summaries", () => {
   it("describes the basics in your own voice", () => {
     expect(describeBasics(baseProfile)).toBe("30 años · Mujer · A ver qué pasa");
-    expect(describeBasics({ age: null, gender: null, whatIAmLookingFor: null })).toBe("Por completar");
+    expect(describeBasics({ age: null, gender: null, lookingFor: [] })).toBe("Por completar");
+    expect(describeBasics({ age: 30, gender: "man", lookingFor: ["relationship", "meet_people"] })).toBe(
+      "30 años · Hombre · Una relación · Conocer gente"
+    );
   });
 
   it("counts photos and tags against their limits", () => {

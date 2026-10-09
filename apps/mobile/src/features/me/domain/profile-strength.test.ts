@@ -19,6 +19,7 @@ function profile(overrides: Partial<Profile> = {}): Profile {
     birthDate: "1996-03-02",
     age: 30,
     gender: "woman",
+    lookingFor: ["relationship"],
     whatIAmLookingFor: "relationship",
     bio: "Me encanta el cine de terror y los domingos de vermut.",
     isComplete: true,

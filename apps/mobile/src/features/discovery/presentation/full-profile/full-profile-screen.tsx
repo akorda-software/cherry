@@ -16,6 +16,7 @@ import {
   ErrorState,
   FormMessage,
   haptics,
+  HardShadow,
   Icon,
   IconButton,
   PaperBackground,
@@ -201,7 +202,8 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
         showsVerticalScrollIndicator={false}
         testID="profile-scroll"
       >
-        <View
+        <HardShadow
+          elevation="lg"
           style={[
             styles.frame,
             {
@@ -211,8 +213,7 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
               borderColor: theme.primitives.color.ink,
               borderWidth: theme.primitives.border.bold,
               borderRadius: theme.primitives.radius.md
-            },
-            theme.primitives.elevation.lg
+            }
           ]}
         >
           <PhotoCarousel
@@ -239,7 +240,7 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
               />
             </View>
           ) : null}
-        </View>
+        </HardShadow>
 
         <ProfileSummary profile={person} style={styles.summary} testID="profile-summary" variant="full" />
 
@@ -284,7 +285,8 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
               Enviar mensaje
             </Button>
           ) : youLiked ? (
-            <View
+            <HardShadow
+              elevation="sm"
               style={[
                 styles.sent,
                 {
@@ -292,20 +294,20 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
                   borderColor: theme.primitives.color.ink,
                   borderWidth: theme.primitives.border.regular,
                   borderRadius: theme.primitives.radius.pill
-                },
-                theme.primitives.elevation.sm
+                }
               ]}
               testID="profile-like-sent"
             >
               <Text variant="label">{`Le has dado like. Si te lo devuelve, haréis match.`}</Text>
-            </View>
+            </HardShadow>
           ) : (
             <Stack align="center" gap="xs">
               {profile.actionError ? (
                 <FormMessage tone="error">{profile.actionError}</FormMessage>
               ) : likedYou ? (
                 // Pegatina con fondo propio: se lee aunque debajo pase la bio.
-                <View
+                <HardShadow
+                  elevation="xs"
                   style={[
                     styles.hint,
                     {
@@ -313,14 +315,13 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
                       borderColor: theme.primitives.color.ink,
                       borderWidth: theme.primitives.border.thin,
                       borderRadius: theme.primitives.radius.pill
-                    },
-                    theme.primitives.elevation.xs
+                    }
                   ]}
                   testID="profile-liked-you-hint"
                 >
                   <Icon color={theme.primitives.color.fresaDeep} name="heart-filled" size={14} />
                   <Text variant="caption">{`A ${name} le gustas: si le das like, es match`}</Text>
-                </View>
+                </HardShadow>
               ) : null}
               <View style={styles.buttons}>
                 <IconButton
@@ -371,7 +372,8 @@ function ProfileSkeleton({ frameWidth, photoHeight }: { frameWidth: number; phot
   return (
     <View accessibilityLabel="Cargando perfil" accessibilityRole="progressbar" style={styles.scroll} testID="profile-loading">
       <SkeletonGroup>
-        <View
+        <HardShadow
+          elevation="lg"
           style={[
             styles.frame,
             {
@@ -381,15 +383,14 @@ function ProfileSkeleton({ frameWidth, photoHeight }: { frameWidth: number; phot
               borderColor: theme.primitives.color.ink,
               borderWidth: theme.primitives.border.bold,
               borderRadius: theme.primitives.radius.md
-            },
-            theme.primitives.elevation.lg
+            }
           ]}
         >
           <Skeleton color="fresa" height={photoHeight} radius={theme.primitives.radius.sm} />
           <View style={styles.skeletonInfo}>
             <Skeleton color="limonada" height={40} radius={20} width="60%" />
           </View>
-        </View>
+        </HardShadow>
         <View style={[styles.summary, styles.skeletonInfo]}>
           <SkeletonText color="lavanda" lines={3} />
         </View>

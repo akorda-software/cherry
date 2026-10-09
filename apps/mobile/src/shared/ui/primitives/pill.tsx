@@ -1,8 +1,9 @@
-import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
+import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 
 import type { IconName } from "../art";
 import { useTheme } from "../providers/theme-provider";
 import type { PastelName } from "../tokens/primitives/color";
+import { HardShadow } from "./hard-shadow";
 import { IconSlot } from "./icon-slot";
 import { Text } from "./text";
 
@@ -32,10 +33,11 @@ export function Pill({ label, icon, color = "white", size = "md", rotate, access
   const ink = color === "ink" ? c.white : c.ink;
 
   return (
-    <View
+    <HardShadow
       accessibilityLabel={accessibilityLabel ?? label}
       accessible
       accessibilityRole="text"
+      elevation="xs"
       style={[
         styles.pill,
         {
@@ -47,7 +49,6 @@ export function Pill({ label, icon, color = "white", size = "md", rotate, access
           borderColor: c.ink,
           backgroundColor: fill
         },
-        theme.primitives.elevation.xs,
         rotate ? { transform: [{ rotate: `${rotate}deg` }] } : null,
         style
       ]}
@@ -66,7 +67,7 @@ export function Pill({ label, icon, color = "white", size = "md", rotate, access
       >
         {label}
       </Text>
-    </View>
+    </HardShadow>
   );
 }
 

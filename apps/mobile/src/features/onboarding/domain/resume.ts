@@ -3,7 +3,7 @@ import { MAX_PROFILE_PHOTOS, MIN_PROFILE_PHOTOS, type OnboardingStep, type Profi
 import { BACKEND_MIN_POSITIVE_TAGS } from "../../tags/domain/tag-selection";
 import { isAdultBirthDate } from "./birthday";
 import { interestedFromPreferences } from "./preferences";
-import { isGender, isRelationshipIntent, validateBio, validateDisplayName } from "./profile-fields";
+import { isGender, normalizeIntents, validateBio, validateDisplayName } from "./profile-fields";
 import { ONBOARDING_STEP_KEYS, stepIndex, type OnboardingStepKey } from "./steps";
 
 /**
@@ -11,7 +11,7 @@ import { ONBOARDING_STEP_KEYS, stepIndex, type OnboardingStepKey } from "./steps
  * del backend, que pone bio y fotos antes que las preferencias): así una
  * persona que vuelve cae justo en la primera pregunta que dejó sin contestar.
  */
-export type RequiredStepKey = Exclude<OnboardingStepKey, "blocked-tags" | "done">;
+export type RequiredStepKey = Exclude<OnboardingStepKey, "done">;
 
 export type StepCompletion = Record<RequiredStepKey, boolean>;
 
@@ -42,7 +42,7 @@ export function profileStepCompletion(profile: Profile | null | undefined, now: 
     birthday: isAdultBirthDate(profile.birthDate, now),
     gender: isGender(profile.gender),
     interested: interestedFromPreferences(profile.discoveryPreferences).length > 0,
-    intent: isRelationshipIntent(profile.whatIAmLookingFor),
+    intent: normalizeIntents(profile.lookingFor).length > 0,
     photos: photos >= MIN_PROFILE_PHOTOS && photos <= MAX_PROFILE_PHOTOS,
     // Mismo criterio que el backend (≥1): no se rebota a nadie al paso de etiquetas.
     tags: (profile.tags ?? []).length >= BACKEND_MIN_POSITIVE_TAGS,
@@ -56,7 +56,7 @@ export function firstIncompleteStep(profile: Profile | null | undefined, now: Da
   const completion = profileStepCompletion(profile, now);
 
   for (const key of ONBOARDING_STEP_KEYS) {
-    if (key === "blocked-tags" || key === "done") {
+    if (key === "done") {
       continue;
     }
 
@@ -100,6 +100,8 @@ const MISSING_FIELD_TO_STEP: Record<string, OnboardingStepKey> = {
   birth_date: "birthday",
   birthDate: "birthday",
   gender: "gender",
+  looking_for: "intent",
+  lookingFor: "intent",
   what_i_am_looking_for: "intent",
   whatIAmLookingFor: "intent",
   bio: "bio",

@@ -17,8 +17,9 @@ import { NameSticker, PhotoCarousel, ProfileBadges, ProfileSummary, TagStickerRo
   `groupOtherTagsByCategory(tags)` (`{ category, label, tags }[]` en el orden del catálogo), `tagCategoryLabel(cat)`.
 - `profileBadges(person, { includeShared?, includeFarther? })` → `ProfileBadge[]` (`kind`, `label`,
   `accessibilityLabel`, `tone`, `icon`) en orden fijo: Nuevo · Te dio like · N en común · Un poco más lejos.
-- `describeIntent(whatIAmLookingFor)` → `{ label, sentence, icon, tone }` («Busca pareja», «Algo casual»,
-  «Conocer gente», «A ver qué pasa»); `null` si no hay intención.
+- `describeIntent(intent)` → `{ label, sentence, icon, tone }` («Busca pareja», «Algo casual»,
+  «Conocer gente», «A ver qué pasa»); `null` si no hay intención. `describeIntents(lookingFor)` → todas
+  (sin repetir, orden canónico); `intentsText(descriptors, sentence?)` las une con « · ».
 
 ## Componentes
 
@@ -45,8 +46,9 @@ Fila de `Pill` con el sistema de insignias. `person` (card, perfil o `ProfilePer
 (`-newcomer`, `-likedYou`, `-shared`, `-farther`).
 
 ### `IntentBadge`
-Qué busca: chapita pastel con icono + texto. `intent` (`whatIAmLookingFor`), `size?: "sm" | "md"`, `sentence?`
-(frase completa «Busca una relación»), `style?`, `testID?`.
+Qué busca: una chapita pastel con icono por intención (solapadas si hay varias) + el texto de todas unidas
+con « · ». `intents` (`lookingFor`, 1–4), `size?: "sm" | "md"`, `sentence?` (frases completas «Busca una
+relación»), `style?`, `testID?`. Sin intenciones no pinta nada.
 
 ### `TagStickerRow` / `TagCloud`
 - `TagStickerRow`: una sola fila de `TagSticker` (compartidas primero, en limonada con destello) y un «+N».

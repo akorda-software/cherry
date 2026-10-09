@@ -1,154 +1,189 @@
-import { memo, type ReactNode, useMemo, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { memo, useMemo } from "react";
+import { StyleSheet, View } from "react-native";
 
 import type { Tag } from "@snack/contracts";
 
-import { EmptyState, Icon, Inline, Stack, TagSticker, type TagStickerState, Text, TextField, useTheme, WashiTape } from "../../../shared/ui";
-import { groupTagsByCategory, searchTags } from "../domain/tag-catalog";
-import type { TagKind, TagSelectionState } from "../domain/tag-selection";
+import { Icon, Skeleton, SkeletonGroup, Stack, Text, useTheme } from "../../../shared/ui";
+import { groupTagsByCategory } from "../domain/tag-catalog";
+import type { TagKind, TagSelection, TagSelectionState } from "../domain/tag-selection";
 import { categoryPastel } from "./category-color";
+import { CHIP_COLUMN_GAP, CHIP_HEIGHT, CHIP_ROW_GAP, TagChip } from "./tag-chip";
 
 export interface TagBoardProps {
-  kind: TagKind;
   catalog: ReadonlyArray<Tag>;
-  stateOf(tagId: string): TagSelectionState;
-  onToggle(tag: Tag): void;
-  /** Buscador (opcional, por defecto sí). */
-  searchable?: boolean;
+  selection: TagSelection;
+  /** «+» (`positive`) o «−» (`blocked`) sobre una etiqueta. Mejor si es estable. */
+  onPress(tag: Tag, kind: TagKind): void;
   testID?: string;
 }
 
+/** Estado de cada etiqueta codificado en un carácter: una sección compara un string y no se repinta si no cambia. */
+const STATE_CODE: Record<TagSelectionState, string> = { neutral: "n", liked: "l", blocked: "b" };
+const CODE_STATE: Record<string, TagSelectionState> = { n: "neutral", l: "liked", b: "blocked" };
+
+function stateMarks(tags: ReadonlyArray<Tag>, states: ReadonlyMap<string, TagSelectionState>): string {
+  let marks = "";
+  for (const tag of tags) marks += STATE_CODE[states.get(tag.id) ?? "neutral"];
+  return marks;
+}
+
 /**
- * Catálogo de pegatinas por categorías (cada una con su color) y buscador
- * opcional. En modo `blocked`, las etiquetas tuyas salen recortadas a trazos
- * (no se pueden bloquear) y las bloqueadas, con rayas y ✕.
+ * Página única de etiquetas: el catálogo por categorías, como una hoja de pegatinas
+ * de tres columnas. En cada pegatina, «+» la marca como tuya y «−» la bloquea. Sin
+ * buscador: el catálogo es corto. Cada sección y cada pegatina están memorizadas:
+ * un toque solo repinta la que cambia (y su sección, que compara un string).
  */
-export function TagBoard({ kind, catalog, stateOf, onToggle, searchable = true, testID = "tag-board" }: TagBoardProps) {
-  const theme = useTheme();
-  const [query, setQuery] = useState("");
+export function TagBoard({ catalog, selection, onPress, testID = "tag-board" }: TagBoardProps) {
   const sections = useMemo(() => groupTagsByCategory(catalog), [catalog]);
-  const results = useMemo(() => (query.trim() ? searchTags(catalog, query) : null), [catalog, query]);
-
-  const stickerState = (tag: Tag): TagStickerState => {
-    const state = stateOf(tag.id);
-
-    if (kind === "positive") {
-      return state === "liked" ? "selected" : state === "blocked" ? "blocked" : "neutral";
-    }
-
-    return state === "blocked" ? "blocked" : state === "liked" ? "muted" : "neutral";
-  };
-
-  const hintFor = (state: TagStickerState) => {
-    if (kind === "blocked" && state === "muted") return "Es una de las tuyas: no se puede bloquear";
-    if (kind === "positive" && state === "blocked") return "La tienes bloqueada: tócala para que pase a ser tuya";
-    return undefined;
-  };
-
-  const renderSticker = (tag: Tag) => {
-    const state = stickerState(tag);
-
-    return (
-      <TagSticker
-        accessibilityHint={hintFor(state)}
-        emoji={tag.emoji}
-        key={tag.id}
-        label={tag.label}
-        onPress={() => onToggle(tag)}
-        state={state}
-        testID={`${testID}-${tag.slug}`}
-        tint={categoryPastel(theme, tag.category)}
-      />
-    );
-  };
+  const states = useMemo(() => {
+    const map = new Map<string, TagSelectionState>();
+    for (const id of selection.positive) map.set(id, "liked");
+    for (const id of selection.blocked) map.set(id, "blocked");
+    return map;
+  }, [selection.blocked, selection.positive]);
 
   return (
-    <Stack gap="lg" testID={testID}>
-      {searchable ? (
-        <TextField
-          accessibilityLabel="Buscar etiqueta"
-          autoCapitalize="none"
-          autoCorrect={false}
-          icon="search"
-          onChangeText={setQuery}
-          placeholder="Busca una etiqueta"
-          returnKeyType="search"
-          right={
-            query ? (
-              <Pressable
-                accessibilityLabel="Borrar búsqueda"
-                accessibilityRole="button"
-                hitSlop={12}
-                onPress={() => setQuery("")}
-                style={styles.clear}
-              >
-                <Icon color={theme.semantic.icon.muted} name="close" size={20} />
-              </Pressable>
-            ) : undefined
-          }
-          testID={`${testID}-search`}
-          value={query}
+    <Stack gap={28} testID={testID}>
+      {sections.map((section) => (
+        <CategorySection
+          category={section.category}
+          key={section.category}
+          label={section.label}
+          marks={stateMarks(section.tags, states)}
+          onPress={onPress}
+          tags={section.tags}
+          testID={testID}
         />
-      ) : null}
-
-      {results ? (
-        results.length > 0 ? (
-          <Inline gap="sm">{results.map(renderSticker)}</Inline>
-        ) : (
-          <EmptyState
-            compact
-            description="Prueba con otra palabra. El catálogo es cerrado para que las etiquetas signifiquen lo mismo para todo el mundo."
-            mood="thinking"
-            testID={`${testID}-no-results`}
-            title="No encontramos esa etiqueta"
-          />
-        )
-      ) : (
-        sections.map((section) => (
-          <CategorySection category={section.category} key={section.category} label={section.label}>
-            <Inline gap="sm">{section.tags.map(renderSticker)}</Inline>
-          </CategorySection>
-        ))
-      )}
+      ))}
     </Stack>
   );
 }
+
+interface TagChipsProps {
+  tags: ReadonlyArray<Tag>;
+  /** Un carácter por etiqueta (`n`/`l`/`b`), en el mismo orden que `tags`. */
+  marks: string;
+  onPress(tag: Tag, kind: TagKind): void;
+  testID: string;
+}
+
+const TagChips = memo(function TagChips({ tags, marks, onPress, testID }: TagChipsProps) {
+  return (
+    <View style={styles.chips}>
+      {tags.map((tag, index) => (
+        <View key={tag.id} style={styles.cell}>
+          <TagChip onPress={onPress} state={CODE_STATE[marks[index]] ?? "neutral"} tag={tag} testID={`${testID}-${tag.slug}`} />
+        </View>
+      ))}
+    </View>
+  );
+});
 
 const CategorySection = memo(function CategorySection({
   category,
   label,
-  children
-}: {
-  category: string;
-  label: string;
-  children: ReactNode;
-}) {
+  ...chips
+}: TagChipsProps & { category: string; label: string }) {
   const theme = useTheme();
-  const color = categoryPastel(theme, category) ?? "lavanda";
+  const c = theme.primitives.color;
+  const color = theme.primitives.pastel[categoryPastel(theme, category) ?? "lavanda"].fill;
+  const liked = chips.marks.split("l").length - 1;
+  const blocked = chips.marks.split("b").length - 1;
 
   return (
-    <Stack gap="sm">
+    <Stack gap={14}>
       <View style={styles.sectionHeader}>
-        <WashiTape color={color} height={18} pattern="stripes" rotation={-4} width={34} />
-        <Text accessibilityRole="header" variant="title3">
+        <View
+          style={[
+            styles.marker,
+            { backgroundColor: color, borderColor: c.ink, borderWidth: theme.primitives.border.thin }
+          ]}
+        />
+        <Text accessibilityRole="header" style={styles.sectionTitle} variant="title3">
           {label}
         </Text>
+        {liked > 0 ? <SectionCount color={theme.semantic.tag.likedBackground} icon="heart" value={liked} /> : null}
+        {blocked > 0 ? <SectionCount color={theme.semantic.tag.blockedBackground} icon="x" value={blocked} /> : null}
       </View>
-      {children}
+      <TagChips {...chips} />
     </Stack>
   );
 });
 
+/** Contador pequeño de la cabecera: cuántas de la categoría llevas marcadas. */
+function SectionCount({ icon, value, color }: { icon: "heart" | "x"; value: number; color: string }) {
+  const theme = useTheme();
+  return (
+    <View
+      accessibilityLabel={icon === "heart" ? `${value} te gustan` : `${value} bloqueadas`}
+      accessible
+      style={[styles.count, { backgroundColor: color, borderColor: theme.primitives.color.ink, borderWidth: theme.primitives.border.thin }]}
+    >
+      <Icon name={icon} size={12} strokeWidth={3} />
+      <Text maxFontSizeMultiplier={1.2} variant="caption">
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+const SKELETON_CELLS = 9;
+
+/** Esqueleto del catálogo mientras carga (misma forma que los chips). */
+export function TagCatalogSkeleton() {
+  return (
+    <SkeletonGroup>
+      <Stack gap={20}>
+        {[0, 1].map((section) => (
+          <Stack gap={12} key={section}>
+            <Skeleton height={22} radius={8} width={140} />
+            <View style={styles.chips}>
+              {Array.from({ length: SKELETON_CELLS }, (_, index) => (
+                <View key={index} style={styles.cell}>
+                  <Skeleton height={CHIP_HEIGHT} radius={14} width="100%" />
+                </View>
+              ))}
+            </View>
+          </Stack>
+        ))}
+      </Stack>
+    </SkeletonGroup>
+  );
+}
+
 const styles = StyleSheet.create({
-  clear: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center"
-  },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10
+    gap: 8
+  },
+  sectionTitle: {
+    flexShrink: 1
+  },
+  marker: {
+    width: 14,
+    height: 14,
+    borderRadius: 4
+  },
+  count: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    height: 24,
+    paddingHorizontal: 8,
+    borderRadius: 999
+  },
+  /** Hoja de tres columnas iguales: cada celda es un tercio de fila menos medio hueco a cada lado. */
+  chips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -CHIP_COLUMN_GAP / 2,
+    rowGap: CHIP_ROW_GAP
+  },
+  cell: {
+    width: "33.3333%",
+    paddingHorizontal: CHIP_COLUMN_GAP / 2,
+    // Las pegatinas de una fila miden lo mismo aunque un nombre ocupe dos líneas.
+    alignSelf: "stretch"
   }
 });

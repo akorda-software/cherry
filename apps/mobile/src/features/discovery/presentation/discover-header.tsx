@@ -38,7 +38,7 @@ export const DiscoverHeader = memo(function DiscoverHeader({ mode, onModeChange,
         value={mode}
       />
       <IconButton
-        accessibilityHint="Edad, distancia y a quién quieres conocer. Todo gratis."
+        accessibilityHint="Edad, distancia y a quién quieres conocer."
         accessibilityLabel="Filtros"
         icon="sliders"
         onPress={onOpenFilters}

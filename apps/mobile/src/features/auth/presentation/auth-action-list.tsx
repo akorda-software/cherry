@@ -81,8 +81,10 @@ export function AuthActionList({
           testID="login-apple"
         />
       ) : null}
-      {/* `__DEV__` literal: el empaquetador lo sustituye y elimina este bloque en producción. */}
-      {__DEV__ && onTest ? (
+      {/* `__DEV__` y `EXPO_PUBLIC_*` son literales: el empaquetador los sustituye y elimina
+          este bloque en producción salvo en builds internas con EXPO_PUBLIC_TEST_LOGIN=true
+          (el backend solo acepta el acceso de prueba si tiene DEV_AUTH_MOCK). */}
+      {(__DEV__ || process.env.EXPO_PUBLIC_TEST_LOGIN === "true") && onTest ? (
         <DevSignIn busy={busyProvider === "test"} disabled={locked} onTest={onTest} />
       ) : null}
     </View>
@@ -131,7 +133,7 @@ function ProviderButton({ provider, logo, colors, busy, disabled, onPress, testI
     >
       <View style={[styles.providerRow, { opacity: busy ? 0 : 1 }]}>
         {logo}
-        <Text adjustsFontSizeToFit color={colors.text} minimumFontScale={0.85} numberOfLines={1} variant="button">
+        <Text color={colors.text} numberOfLines={1} variant="button">
           {label}
         </Text>
       </View>

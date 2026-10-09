@@ -9,7 +9,6 @@ import {
   Mascot,
   type PastelName,
   Screen,
-  Stamp,
   StickyNote,
   Surface,
   Text,
@@ -18,14 +17,7 @@ import {
 } from "../../../shared/ui";
 import { readAppInfo } from "../infrastructure/app-info";
 
-const weDont: readonly string[] = [
-  "No vendemos tus datos ni tu atención.",
-  "Sin anuncios, suscripciones, boosts ni super likes.",
-  "Sin muros de pago ni límites diarios de likes.",
-  "Sin trucos para retenerte: ni cuentas atrás ni escasez inventada."
-];
-
-const weDo: readonly string[] = [
+const howItWorks: readonly string[] = [
   "Las etiquetas mandan: nunca verás a alguien con una etiqueta que bloqueas, ni esa persona a ti.",
   "Redondeamos tu ubicación a 500 m. Nunca compartimos la exacta.",
   "Guardamos tus mensajes cifrados en el servidor.",
@@ -33,8 +25,8 @@ const weDo: readonly string[] = [
 ];
 
 /**
- * El manifiesto de Snack como página de libreta: por qué es gratis, qué no hacemos, qué sí,
- * el código abierto y los créditos. Nada de cifras ni promesas que no estén en el producto.
+ * Acerca de: qué hace Snack con tus datos, la licencia y los créditos. Información, no
+ * eslóganes: nada de promesas comerciales (eso vive fuera de la app).
  */
 export function AboutScreen() {
   const appInfo = useMemo(() => readAppInfo(), []);
@@ -47,50 +39,18 @@ export function AboutScreen() {
       testID="about-screen"
     >
       <View style={styles.hero}>
-        <View style={styles.heroArt}>
-          <Mascot animated mood="love" size={116} />
-          <Stamp label="Gratis" rotation={-12} size="md" slam style={styles.stamp} testID="about-stamp" tone="fresa" />
-        </View>
+        <Mascot animated mood="happy" size={116} />
         <Text align="center" aria-level={1} role="heading" variant="title1">
-          {"Una app de citas\nde tu parte."}
-        </Text>
-        <Text align="center" color="muted">
-          Snack es gratis, de código abierto y está hecha para que conozcas gente a gusto, no para tenerte enganchado.
+          Snack
         </Text>
       </View>
 
-      <StickyNote color="limonada" tape={{ color: "cielo", pattern: "dots" }} testID="about-free" tilt={-1.5}>
+      <StickyNote color="menta" tape={{ color: "fresa", pattern: "dots" }} testID="about-how" tilt={1.2}>
         <View style={styles.noteBody}>
           <Text role="heading" variant="title3">
-            ¿Por qué es gratis?
+            Cómo funciona
           </Text>
-          <Text>
-            Snack existe para demostrar que una app de citas puede servir a las personas en vez de exprimirlas. Todo lo
-            que otras apps cobran (ver quién te ha dado like, los filtros, deshacer un «no») aquí es gratis. Para
-            siempre.
-          </Text>
-        </View>
-      </StickyNote>
-
-      <Surface padding="lg" radius="lg" rotate={0.8} testID="about-dont">
-        <View style={styles.noteBody}>
-          <Text role="heading" variant="title3">
-            Lo que no hacemos
-          </Text>
-          {weDont.map((item) => (
-            <Point color="tomate" icon="x" key={item}>
-              {item}
-            </Point>
-          ))}
-        </View>
-      </Surface>
-
-      <StickyNote color="menta" tape={{ color: "fresa", pattern: "hearts" }} testID="about-do" tilt={1.2}>
-        <View style={styles.noteBody}>
-          <Text role="heading" variant="title3">
-            Lo que sí hacemos
-          </Text>
-          {weDo.map((item) => (
+          {howItWorks.map((item) => (
             <Point color="white" icon="check" key={item}>
               {item}
             </Point>
@@ -98,18 +58,12 @@ export function AboutScreen() {
         </View>
       </StickyNote>
 
-      <Surface color="cielo" padding="lg" radius="lg" soft testID="about-open-source">
+      <Surface padding="lg" radius="lg" testID="about-license">
         <View style={styles.noteBody}>
-          <View style={styles.titleRow}>
-            <Icon name="code" size={24} />
-            <Text role="heading" variant="title3">
-              Código abierto
-            </Text>
-          </View>
-          <Text>
-            El código de Snack es libre bajo licencia AGPL-3.0: cualquiera puede leerlo, auditarlo o montar su propia
-            instancia en su servidor.
+          <Text role="heading" variant="title3">
+            Licencia
           </Text>
+          <Text>El código fuente de Snack se distribuye bajo licencia AGPL-3.0.</Text>
           {sourceUrl ? (
             <Button
               accessibilityHint="Abre el repositorio en el navegador"
@@ -129,7 +83,7 @@ export function AboutScreen() {
 
       <View style={styles.credits}>
         <Text align="center" color="muted" variant="caption">
-          Tipografías: Mochiy Pop One, M PLUS Rounded 1c y Yomogi, con licencia SIL Open Font License.
+          Tipografía: Rubik, con licencia SIL Open Font License.
         </Text>
         {appInfo.version ? (
           <Text align="center" color="faint" variant="caption">
@@ -169,26 +123,11 @@ function Point({ icon, color, children }: { icon: IconName; color: PastelName | 
 const styles = StyleSheet.create({
   hero: {
     alignItems: "center",
-    gap: 10,
+    gap: 6,
     paddingTop: 4
-  },
-  heroArt: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2
-  },
-  stamp: {
-    alignSelf: "center",
-    marginTop: 36
   },
   noteBody: {
     gap: 10
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8
   },
   point: {
     flexDirection: "row",

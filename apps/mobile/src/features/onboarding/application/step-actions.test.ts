@@ -7,6 +7,7 @@ import {
   completeOnboarding,
   saveBio,
   saveDisplayName,
+  saveIntents,
   saveInterested,
   StepValidationError,
   stepSaveErrorMessage,
@@ -105,6 +106,18 @@ describe("step savers", () => {
     expect(invalid).toHaveBeenCalledTimes(2);
   });
 
+  it("saves several intents as lookingFor, deduplicated and in canonical order", async () => {
+    const api = fakeApi();
+    await saveIntents(api, ["go_with_the_flow", "relationship", "relationship"]);
+    expect(api.updateProfile).toHaveBeenCalledWith({ lookingFor: ["relationship", "go_with_the_flow"] });
+  });
+
+  it("requires at least one intent without calling the API", async () => {
+    const api = fakeApi();
+    await expect(saveIntents(api, [])).rejects.toBeInstanceOf(StepValidationError);
+    expect(api.updateProfile).not.toHaveBeenCalled();
+  });
+
   it("requires at least one interested option", async () => {
     await expect(saveInterested(fakeApi(), { existing: null, interested: [], age: 30 })).rejects.toBeInstanceOf(
       StepValidationError
@@ -118,6 +131,9 @@ describe("stepSaveErrorMessage", () => {
       /entre 20 y 240/
     );
     expect(stepSaveErrorMessage(apiError(422, { errors: { birth_date: ["is invalid"] } }))).toMatch(/fecha/);
+    expect(stepSaveErrorMessage(apiError(422, { errors: { looking_for: ["has duplicate values"] } }))).toMatch(
+      /al menos una/
+    );
   });
 
   it("falls back to friendly network/server messages", () => {

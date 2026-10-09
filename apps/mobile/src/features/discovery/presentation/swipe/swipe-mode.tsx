@@ -3,15 +3,14 @@ import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 
 import type { DiscoveryActionType, DiscoveryProfileCard } from "@snack/contracts";
 
-import { IconButton, useTheme } from "../../../../shared/ui";
 import type { DiscoveryQueueRemoval, DiscoveryQueueReturn } from "../../application/discovery-queue";
 import { describePerson } from "../describe-person";
 import { DeckSkeleton, DiscoverEmpty } from "../discover-states";
-import { POLAROID_MARGIN, SwipeCardFace, swipePhotoHeight } from "./swipe-card-face";
+import { POLAROID_MARGIN, SwipeCardFace, swipeFooterHit, swipePhotoHeight } from "./swipe-card-face";
 import { SwipeDeck, type SwipeDeckHandle } from "./swipe-deck";
 
 /** Hueco bajo la card de arriba para que asomen las de detrás. */
-const PEEK = 34;
+const PEEK = 26;
 const MAX_CARD_WIDTH = 460;
 
 interface SwipeModeProps {
@@ -54,7 +53,6 @@ export function SwipeMode({
   onWidenFilters,
   onRetry
 }: SwipeModeProps) {
-  const theme = useTheme();
   const deckRef = useRef<SwipeDeckHandle>(null);
   const [box, setBox] = useState<{ width: number; height: number } | null>(null);
 
@@ -69,10 +67,20 @@ export function SwipeMode({
   const cardHeight = box ? Math.max(box.height - PEEK, 320) : 0;
   const photoArea = POLAROID_MARGIN + swipePhotoHeight(cardHeight);
   const empty = profiles.length === 0;
+  const undoAvailable = canUndo && !undoing;
+
+  const hitTest = useCallback(
+    (x: number, y: number) => swipeFooterHit(x, y, cardWidth, cardHeight),
+    [cardHeight, cardWidth]
+  );
+  const undo = useCallback(() => {
+    if (undoAvailable) onUndo();
+  }, [onUndo, undoAvailable]);
 
   const renderCard = useCallback(
     (card: DiscoveryProfileCard, info: { photoIndex: number; isTop: boolean; flying: boolean }) => (
       <SwipeCardFace
+        canUndo={undoAvailable}
         card={card}
         flying={info.flying}
         height={cardHeight}
@@ -81,15 +89,11 @@ export function SwipeMode({
         width={cardWidth}
       />
     ),
-    [cardHeight, cardWidth]
+    [cardHeight, cardWidth, undoAvailable]
   );
 
-  const swipe = (action: DiscoveryActionType) => {
-    deckRef.current?.swipe(action);
-  };
-
   return (
-    <View style={[styles.root, { paddingBottom: bottomSpace }]} testID="discover-swipe">
+    <View style={[styles.root, { paddingBottom: bottomSpace + 12 }]} testID="discover-swipe">
       <View onLayout={onLayout} style={styles.deckArea}>
         {box ? (
           empty ? (
@@ -111,8 +115,10 @@ export function SwipeMode({
               height={cardHeight}
               lastRemoval={lastRemoval}
               lastReturn={lastReturn}
+              hitTest={hitTest}
               onDecide={onDecide}
               onOpen={onOpen}
+              onUndo={undo}
               photoAreaHeight={photoArea}
               reducedMotion={reducedMotion}
               renderCard={renderCard}
@@ -122,39 +128,6 @@ export function SwipeMode({
         ) : null}
       </View>
 
-      <View style={[styles.actions, { gap: theme.primitives.spacing.lg }]}>
-        <IconButton
-          accessibilityHint="Pasa a la siguiente persona"
-          accessibilityLabel="Paso"
-          color="lavanda"
-          disabled={empty}
-          icon="x"
-          onPress={() => swipe("dislike")}
-          size="lg"
-          testID="discover-pass"
-        />
-        <IconButton
-          accessibilityHint="Recupera a la última persona a la que dijiste que no"
-          accessibilityLabel="Deshacer el último no"
-          color="limonada"
-          disabled={undoing || !canUndo}
-          icon="undo"
-          onPress={onUndo}
-          size="md"
-          testID="discover-undo"
-        />
-        <IconButton
-          accessibilityHint="Si también le gustas, es match"
-          accessibilityLabel="Me gusta"
-          color="fresa"
-          disabled={empty}
-          icon="heart"
-          iconFill={theme.primitives.color.white}
-          onPress={() => swipe("like")}
-          size="lg"
-          testID="discover-like"
-        />
-      </View>
     </View>
   );
 }
@@ -166,17 +139,11 @@ const styles = StyleSheet.create({
   deckArea: {
     flex: 1,
     marginHorizontal: 20,
-    marginTop: 8,
+    // Aire bajo la cabecera: las cintas de washi de la card suben ~10 pt.
+    marginTop: 22,
     alignItems: "center"
   },
   emptyWrap: {
     justifyContent: "center"
-  },
-  actions: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 10,
-    paddingBottom: 12
   }
 });

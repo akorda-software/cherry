@@ -73,6 +73,10 @@ interface SwipeCardProps {
   onCommit(card: DiscoveryProfileCard, action: DiscoveryActionType, mode: SwipeExitMode): void;
   onExited(profileId: string): void;
   onOpen(card: DiscoveryProfileCard): void;
+  /** Botón del pie que hay en (x, y) (solo pintan: los toques se resuelven aquí). */
+  hitTest?(x: number, y: number): "like" | "dislike" | "undo" | "open" | null;
+  /** «↺» del pie: recupera el último «no». */
+  onUndo?(): void;
   children(info: SwipeCardRenderInfo): ReactNode;
 }
 
@@ -96,6 +100,8 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(function Sw
     onCommit,
     onExited,
     onOpen,
+    hitTest,
+    onUndo,
     children
   },
   ref
@@ -286,14 +292,29 @@ export const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(function Sw
 
   const handleTap = useCallback(
     (x: number, y: number) => {
-      if (y > photoAreaHeight) {
+      const target = hitTest?.(x, y) ?? null;
+      if (target === "like" || target === "dislike") {
+        if (leaving.current) return;
+        leaving.current = true;
+        if (target === "like") haptics.medium();
+        else haptics.light();
+        runOnUI(throwCard)(target, "button", 0, 0);
+        onCommit(card, target, "button");
+        return;
+      }
+      if (target === "undo") {
+        onUndo?.();
+        return;
+      }
+
+      if (target === "open" || y > photoAreaHeight) {
         onOpen(card);
         return;
       }
 
       stepPhoto(x < width / 2 ? -1 : 1);
     },
-    [card, onOpen, photoAreaHeight, stepPhoto, width]
+    [card, hitTest, onCommit, onOpen, onUndo, photoAreaHeight, stepPhoto, throwCard, width]
   );
 
   const gesture = useMemo(() => {

@@ -10,7 +10,8 @@ import { useOnChange, usePop } from "../motion/pop";
 import { useTheme } from "../providers/theme-provider";
 import type { AppTheme } from "../themes/theme-types";
 import type { PastelName } from "../tokens/primitives/color";
-import { type ElevationLevel, elevationOffsets } from "../tokens/primitives/elevation";
+import type { ElevationLevel } from "../tokens/primitives/elevation";
+import { HardShadowLayer } from "./hard-shadow";
 import { IconSlot } from "./icon-slot";
 import { PressableScale } from "./pressable-scale";
 import { Text } from "./text";
@@ -214,7 +215,6 @@ export const TagSticker = memo(function TagSticker({
     borderColor: look.border,
     backgroundColor: c.white
   };
-  const shadowOffset = flat ? 0 : elevationOffsets[spec.elevation];
 
   const sticker = interactive ? (
     <PressableScale
@@ -237,18 +237,7 @@ export const TagSticker = memo(function TagSticker({
     </PressableScale>
   ) : (
     <View accessibilityLabel={accessibilityLabel} accessibilityRole="text" accessible testID={testID}>
-      {shadowOffset > 0 ? (
-        <View
-          style={[
-            styles.shadow,
-            {
-              borderRadius: outerRadius,
-              backgroundColor: c.ink,
-              transform: [{ translateX: shadowOffset }, { translateY: shadowOffset }]
-            }
-          ]}
-        />
-      ) : null}
+      <HardShadowLayer elevation={flat ? "none" : spec.elevation} radius={outerRadius} />
       {cut ? (
         <View style={ring}>
           <View style={face}>{body}</View>
@@ -288,13 +277,6 @@ function Stripes({ color }: { color: string }) {
 const styles = StyleSheet.create({
   wrap: {
     alignSelf: "flex-start"
-  },
-  shadow: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0
   },
   stripes: {
     position: "absolute",

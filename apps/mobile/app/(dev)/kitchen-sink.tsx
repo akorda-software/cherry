@@ -137,7 +137,7 @@ function KitchenSink() {
       <Section title="Tipografía">
         {VARIANTS.map((variant) => (
           <Text key={variant} variant={variant}>
-            {variant} · Gratis. Para siempre.
+            {variant} · Conoce gente cerca
           </Text>
         ))}
         <Inline>

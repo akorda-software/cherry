@@ -13,6 +13,7 @@ Huecos conocidos entre producto, contratos, documentación y código a 2026-09-2
 7. **Sin tests de renderizado de las pantallas de producto** (onboarding, Descubrir, Likes, Chats, Yo): se prueban dominio, stores y componentes del sistema de diseño.
 8. **Acerca de no menciona la licencia del software (AGPL-3.0)**, solo la de las fuentes; el enlace «Ver el código» depende de compilar con `EXPO_PUBLIC_SOURCE_URL`.
 9. El selector de edad de Filtros llega a 99; el backend admite hasta 100.
+10. **Lectura NFC del DNI sin probar en hardware** (`modules/document-nfc`, rama `feat/dni-nfc`). Android compila; iOS no se ha compilado nunca. Pendientes y guía: `compliance/02-mayoria-de-edad.md` («Estado del prototipo») y `compliance/02-nfc-pruebas-manana.md`.
 
 ## Backend
 
@@ -26,6 +27,7 @@ Huecos conocidos entre producto, contratos, documentación y código a 2026-09-2
 8. **`compatible_only` simétrico, pendiente de validar con el propietario.** Hoy, si cualquiera de los dos lo activa, se exige una etiqueta en común en ambos sentidos (D-2026-09-29, ranking v2).
 9. **Una sola réplica.** Sin clúster de Erlang (libcluster) el PubSub del chat no cruza nodos: no se puede escalar horizontalmente el backend.
 10. **Fotos sin moderación.** Se verifican existencia, tamaño, MIME y cabecera binaria; no hay decodificación completa ni moderación de contenido.
+11. **Verificación de edad sin hacer obligatoria del todo.** `AGE_VERIFICATION_REQUIRED` bloquea la API REST social, pero no excluye de los feeds a los perfiles sin verificar ni se comprueba en el WebSocket del chat; tampoco se consulta la CRL de la Policía. Detalle en `compliance/02-mayoria-de-edad.md`.
 
 ## Documentación e infraestructura
 

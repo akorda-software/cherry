@@ -53,6 +53,18 @@ config :snack, Snack.Storage.R2,
 # the host of each request is used (runtime env PUBLIC_BASE_URL).
 config :snack, :public_base_url, nil
 
+# Age verification (D-2026-10-09, docs/compliance/02-mayoria-de-edad.md).
+# fingerprint_key: DOCUMENT_FINGERPRINT_KEY (runtime). Without it the NFC
+# verification endpoint answers 503. Attempt limits: {max, window in seconds}.
+config :snack, :age_verification,
+  fingerprint_key: nil,
+  minimum_age: 18,
+  attempt_limits: [{5, 3600}, {10, 86_400}]
+
+# Trusted CSCA certificates for passive authentication. `paths` defaults to the
+# release's priv/csca (Spanish CSCAs); CSCA_PATHS replaces it at runtime.
+config :snack, Snack.Identity.Document.TrustStore, certificates: []
+
 # A match without messages expires after this many days (D-2026-09-29).
 config :snack, :match_expiry_days, 30
 
@@ -84,6 +96,10 @@ config :snack, SnackWeb.Endpoint,
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
+
+# Never log identity documents (age verification) nor credentials. Keys that
+# contain any of these strings are replaced by [FILTERED] in request logs.
+config :phoenix, :filter_parameters, ["password", "dg1", "dg2", "sod", "can", "mrz"]
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason

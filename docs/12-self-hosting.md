@@ -121,6 +121,9 @@ Un proveedor sin audiencias rechaza todos sus logins; el backend lo avisa en el 
 | `EXPO_PUSH_ACCESS_TOKEN` | vacío | Token de la Expo Push API. El backend acepta dispositivos en `/api/me/push-token`; el móvil aún no registra tokens (ver `11-deuda-tecnica-pendiente.md`) |
 | `EXPO_PUSH_BASE_URL` / `EXPO_PUSH_RECEIVE_TIMEOUT_MS` | `https://exp.host` / `5000` | Proveedor de push y timeout de respuesta (1–15000 ms); para carga, usar el simulador de `infra/load` |
 | `APP_VERSION` | `dev` | Versión que devuelve `/healthz` (la imagen la hornea en el build) |
+| `DOCUMENT_FINGERPRINT_KEY` | vacío | Clave HMAC (≥ 32 caracteres) de la huella del documento en la verificación de edad («una persona, una cuenta»). Sin ella, `POST /api/me/verification/nfc` responde 503. **No se puede cambiar después**: las huellas guardadas dejarían de casar. Guárdala con tus backups, fuera de la base de datos |
+| `AGE_VERIFICATION_REQUIRED` | `false` | `true` exige verificarse para usar la parte social (necesita `DOCUMENT_FINGERPRINT_KEY`). Ver `docs/compliance/02-mayoria-de-edad.md` |
+| `CSCA_PATHS` | `priv/csca` del release | Ficheros o carpetas (separados por comas) con los certificados CSCA de confianza para la autenticación pasiva. Por defecto, los CSCA españoles incluidos en el código (`apps/backend/priv/csca/README.md`) |
 
 ## 5. Fotos
 
@@ -246,7 +249,8 @@ El repositorio no trae `eas.json`. Con una cuenta de Expo: `npx eas-cli build:co
 
 ## 9. Operación
 
-- **Backups**: PostgreSQL y, con `local`, `UPLOADS_DIR`. Guarda `MESSAGE_ENCRYPTION_KEY` y el resto de secretos aparte.
+- **Backups**: PostgreSQL y, con `local`, `UPLOADS_DIR`. Guarda `MESSAGE_ENCRYPTION_KEY`, `DOCUMENT_FINGERPRINT_KEY` y el resto de secretos aparte.
+- **Certificados CSCA**: revisa cada pocos meses si hay CSCA nuevos (España publicará previsiblemente un CSCA 5 hacia 2027). Procedimiento en `apps/backend/priv/csca/README.md`.
 - **Actualizar**: construye la imagen nueva y reemplaza el contenedor; las migraciones se aplican al arrancar. Las migraciones del proyecto siguen expand/contract y no deben revertirse en producción (despliega la versión anterior en su lugar). Algunas crean índices sin `CONCURRENTLY` sobre `swipe_actions`, que bloquean escrituras en esa tabla mientras se construyen (ver `11-deuda-tecnica-pendiente.md`).
 - **Una sola réplica** mientras no se configure un clúster de Erlang: el PubSub del chat no cruza nodos.
 - **Moderación**: los reportes se guardan en la tabla `reports`, pero todavía no hay panel de administración (ver `11-deuda-tecnica-pendiente.md`).

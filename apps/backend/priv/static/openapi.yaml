@@ -17,6 +17,7 @@ tags:
   - name: Safety
   - name: Settings
   - name: Push Notifications
+  - name: Verification
 paths:
   /api/auth/{provider}/callback:
     post:
@@ -616,6 +617,96 @@ paths:
                 $ref: '#/components/schemas/ActivitySummary'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/me/verification:
+    get:
+      tags: [Verification]
+      summary: Age verification status of the current user.
+      description: |
+        `required` mirrors the `age_verification_required` feature flag
+        (`AGE_VERIFICATION_REQUIRED`, off by default). When it is on, the social
+        API (discovery, profiles, likes, matches, conversations) answers 403
+        `age_verification_required` until the user is verified.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Verification status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgeVerificationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/me/verification/nfc:
+    post:
+      tags: [Verification]
+      summary: Verify age with an identity document read by NFC (DNI, TIE or passport).
+      description: |
+        The app reads DG1, DG2 and EF.SOD from the chip (PACE with the CAN, or
+        BAC/PACE with the MRZ for passports) and sends them in base64. The server
+        performs passive authentication against the trusted CSCA certificates,
+        checks the holder is 18 or older and stores only status, method, date and
+        a keyed fingerprint of the document (one document, one account). The data
+        groups are never stored nor logged. Limit: 5 attempts per hour and 10 per
+        day per user.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NfcVerificationRequest'
+      responses:
+        '200':
+          description: Verified (also when repeating with the same document).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgeVerificationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`verification_revoked`: a previous verification was revoked.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`document_already_used` (another account) or `already_verified` (with another document).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            `invalid_payload`; `underage`; or `document_not_verified` with `reason`:
+            `malformed_sod`, `unsupported_algorithm`, `missing_document_signer`,
+            `invalid_signature`, `untrusted_certificate`, `certificate_expired`,
+            `data_group_mismatch`, `malformed_dg1`, `invalid_check_digit`,
+            `unsupported_document`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`too_many_attempts`; `retryAfter` (seconds) and the `Retry-After` header.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: '`verification_error` (unexpected server error; the document is not logged).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: '`age_verification_unavailable` (no DOCUMENT_FINGERPRINT_KEY configured).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/discovery/feed:
     get:
       tags: [Discovery]
@@ -1057,6 +1148,47 @@ components:
                 items:
                   type: string
   schemas:
+    AgeVerification:
+      type: object
+      required: [status, method, verifiedAt]
+      properties:
+        status:
+          type: string
+          enum: [unverified, verified, revoked]
+        method:
+          type: string
+          nullable: true
+          enum: [nfc_dni, nfc_passport, provider, eu_wallet, null]
+          description: '`nfc_dni` covers identity cards (DNI, and TIE/NIE).'
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+    AgeVerificationResponse:
+      type: object
+      required: [verification, required]
+      properties:
+        verification:
+          $ref: '#/components/schemas/AgeVerification'
+        required:
+          type: boolean
+          description: Whether verification is mandatory on this instance.
+    NfcVerificationRequest:
+      type: object
+      required: [dg1, dg2, sod]
+      properties:
+        dg1:
+          type: string
+          format: byte
+          description: DG1 (MRZ) as read from the chip, base64. Max 1 KB decoded.
+        dg2:
+          type: string
+          format: byte
+          description: DG2 (facial image) as read from the chip, base64. Max 256 KB decoded.
+        sod:
+          type: string
+          format: byte
+          description: EF.SOD (Document Security Object), base64. Max 32 KB decoded.
     OkResponse:
       type: object
       required: [ok]
@@ -1073,6 +1205,9 @@ components:
           example: profile_not_found
         reason:
           type: string
+        retryAfter:
+          type: integer
+          description: Seconds to wait (only with `too_many_attempts`).
     ValidationErrorResponse:
       type: object
       required: [errors]

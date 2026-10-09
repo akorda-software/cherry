@@ -239,6 +239,17 @@ Push (sin cambios de mecanismo): `new_match` → título «¡Match con Lucía! �
 
 `POST /api/me/push-token` con `{expoPushToken, platform, installationId}` → `{ok, pushToken{id, platform, installationId, status, lastSeenAt}}`. Token válido `ExponentPushToken[...]`/`ExpoPushToken[...]`; ligado a la sesión autenticada; re-registro actualiza y desactiva duplicados. La app móvil todavía no llama a este endpoint (no registra tokens ni gestiona notificaciones).
 
+## Verificación de edad (D-2026-10-09)
+
+Diseño y estado: `docs/compliance/02-mayoria-de-edad.md`. Contrato en `packages/contracts/src/verification.ts`; cliente `createVerificationApi` en `mobile-shared`.
+
+- `GET /api/me/verification` → `{verification: {status, method, verifiedAt}, required}`. `status`: `unverified` | `verified` | `revoked`; `method`: `nfc_dni` (tarjetas de identidad: DNI y TIE/NIE) | `nfc_passport` | `provider` | `eu_wallet` (hoy solo existen los NFC); `required` refleja `AGE_VERIFICATION_REQUIRED`.
+- `POST /api/me/verification/nfc` con `{dg1, dg2, sod}`: los ficheros del chip tal cual, en base64 (máx. 1 KB, 256 KB y 32 KB decodificados). El CAN o la MRZ nunca salen del móvil. El servidor hace la autenticación pasiva (firma del SOD → certificado del firmante → CSCA de confianza, hashes de DG1 y DG2, dígitos de control de la MRZ), exige 18 años cumplidos (fecha UTC) y guarda solo estado, método, fecha y la huella HMAC del documento. Respuesta 200 igual que el GET; repetir con el mismo documento es idempotente.
+- Errores: 422 `invalid_payload` | `underage` | `document_not_verified` con `reason` (`malformed_sod`, `unsupported_algorithm`, `missing_document_signer`, `invalid_signature`, `untrusted_certificate`, `certificate_expired`, `data_group_mismatch`, `malformed_dg1`, `invalid_check_digit`, `unsupported_document`); 409 `document_already_used` (otra cuenta) | `already_verified` (con otro documento); 403 `verification_revoked`; 429 `too_many_attempts` con `retryAfter` y cabecera `Retry-After` (5 intentos por hora y 10 por día por usuario, cuenten o no); 503 `age_verification_unavailable` (sin `DOCUMENT_FINGERPRINT_KEY`); 500 `verification_error`.
+- Huella: «una persona, una cuenta». En DNI y TIE españoles se calcula con el número de DNI/NIE (sobrevive a las renovaciones); en el resto, con el número del documento (los pasaportes cambian de número al renovarse; su campo de número personal no se usa porque en pasaportes de menores puede llevar el DNI de un progenitor).
+- Obligatoriedad (desactivada): con `AGE_VERIFICATION_REQUIRED=true`, discovery, perfiles públicos, likes, matches y conversaciones responden 403 `age_verification_required` hasta verificarse. Perfil propio, bootstrap, configuración, la propia verificación, bloquear y reportar siguen abiertos. El WebSocket del chat aún no lo comprueba.
+- Privacidad: `dg1`, `dg2`, `sod`, `can` y `mrz` están en `:filter_parameters` (los logs de petición muestran `[FILTERED]`); los fallos internos se registran sin argumentos ni mensaje; el log de resultado no incluye el usuario.
+
 ## Feature flags
 
-El móvil no hardcodea flags: los lee de `GET /api/config` (el bootstrap no incluye flags). Flag off ⇒ sin entrada de navegación y pantalla autogateada del módulo opcional. Hoy el backend no define ningún flag (`{"features": {}}`) y el registro de módulos opcionales del móvil está vacío.
+El móvil no hardcodea flags: los lee de `GET /api/config` (el bootstrap no incluye flags). Flag off ⇒ sin entrada de navegación y pantalla autogateada del módulo opcional. Fuera de los tests, el backend publica `age_verification_required` (`AGE_VERIFICATION_REQUIRED`, `false` por defecto); el registro de módulos opcionales del móvil está vacío.

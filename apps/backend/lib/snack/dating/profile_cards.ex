@@ -49,7 +49,7 @@ defmodule Snack.Dating.ProfileCards do
   Filas base (mapa `id => fila`) para perfiles arbitrarios vistos por `viewer_id`.
 
   Claves: las del feed (`id`, `display_name`, `birth_date`, `gender`,
-  `what_i_am_looking_for`, `bio`, `distance_m`, `score`) más `profile`
+  `looking_for`, `bio`, `distance_m`, `score`) más `profile`
   (struct completo), `user_deleted_at`, `liked_viewer`, `viewer_liked`,
   `blocked`, `is_newcomer` y `beyond_preferred_distance`.
   `distance_m` es `nil` si falta alguna de las dos ubicaciones.
@@ -185,7 +185,7 @@ defmodule Snack.Dating.ProfileCards do
       display_name: profile.display_name,
       birth_date: profile.birth_date,
       gender: profile.gender,
-      what_i_am_looking_for: profile.what_i_am_looking_for,
+      looking_for: profile.looking_for,
       bio: profile.bio,
       distance_m: row.distance_m,
       score: 0,

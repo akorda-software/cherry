@@ -16,7 +16,7 @@ defmodule Snack.DatingTest do
                  display_name: "Test User",
                  birth_date: ~D[1995-01-15],
                  gender: "man",
-                 what_i_am_looking_for: "relationship",
+                 looking_for: ["relationship"],
                  bio: "This is a test bio that is long enough."
                })
 
@@ -32,6 +32,53 @@ defmodule Snack.DatingTest do
 
       assert {:ok, updated} = Dating.update_profile(profile, %{display_name: "Updated"})
       assert updated.display_name == "Updated"
+    end
+  end
+
+  describe "looking_for" do
+    setup do
+      user = user_fixture()
+      %{profile: profile_fixture(user)}
+    end
+
+    test "accepts several intents and stores them in canonical order", %{profile: profile} do
+      assert {:ok, updated} =
+               Dating.update_profile(profile, %{
+                 "looking_for" => ["go_with_the_flow", "meet_people", "relationship"]
+               })
+
+      assert updated.looking_for == ["relationship", "meet_people", "go_with_the_flow"]
+    end
+
+    test "accepts the old single string as a one-element list", %{profile: profile} do
+      assert {:ok, updated} =
+               Dating.update_profile(profile, %{"what_i_am_looking_for" => "casual"})
+
+      assert updated.looking_for == ["casual"]
+
+      assert {:ok, updated} = Dating.update_profile(updated, %{"looking_for" => "meet_people"})
+      assert updated.looking_for == ["meet_people"]
+
+      assert {:ok, updated} = Dating.update_profile(updated, %{whatIAmLookingFor: "relationship"})
+      assert updated.looking_for == ["relationship"]
+    end
+
+    test "rejects empty lists, unknown values and duplicates", %{profile: profile} do
+      for value <- [[], ["friends"], ["casual", "casual"], ["relationship", "friends"]] do
+        assert {:error, changeset} = Dating.update_profile(profile, %{"looking_for" => value})
+        assert Map.has_key?(errors_on(changeset), :looking_for), inspect(value)
+      end
+    end
+
+    test "a draft may leave it unanswered, but then it is missing", %{profile: profile} do
+      assert {:ok, draft} = Dating.update_profile(profile, %{"looking_for" => nil})
+      assert draft.looking_for == nil
+      assert :looking_for in Dating.profile_completion_missing(draft)
+
+      assert {:error, %{missing: missing, next_onboarding_step: "intent"}} =
+               Dating.complete_profile(draft)
+
+      assert :looking_for in missing
     end
   end
 
@@ -790,7 +837,7 @@ defmodule Snack.DatingTest do
             display_name: "Test User",
             birth_date: ~D[1995-01-15],
             gender: "man",
-            what_i_am_looking_for: "relationship",
+            looking_for: ["relationship"],
             bio: "This is a test bio that is long enough to pass validation rules.",
             is_complete: false,
             is_discoverable: true

@@ -99,11 +99,25 @@ defmodule SnackWeb.Controllers.Api.SocialVisibilityTest do
 
   describe "intent, gender, age and compatible_only" do
     test "relationship and casual never see each other", ctx do
-      %{profile: casual} = person(%{what_i_am_looking_for: "casual"})
+      %{profile: casual} = person(%{looking_for: ["casual"]})
       assert_hidden(ctx, casual.id)
 
-      %{profile: flow} = person(%{what_i_am_looking_for: "go_with_the_flow"})
+      %{profile: flow} = person(%{looking_for: ["go_with_the_flow"]})
       assert_visible(ctx, flow.id)
+    end
+
+    test "with several intents, any compatible pair is enough", ctx do
+      # The viewer looks for a relationship (fixture default).
+      %{profile: mixed} = person(%{looking_for: ["relationship", "casual"]})
+      assert_visible(ctx, mixed.id)
+
+      %{profile: casual_friends} = person(%{looking_for: ["casual", "meet_people"]})
+      assert_hidden(ctx, casual_friends.id)
+
+      {:ok, _} =
+        Dating.update_profile(ctx.viewer, %{"looking_for" => ["relationship", "meet_people"]})
+
+      assert_visible(ctx, casual_friends.id)
     end
 
     test "my gender and age preferences apply", ctx do

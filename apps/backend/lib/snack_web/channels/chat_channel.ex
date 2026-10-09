@@ -35,23 +35,20 @@ defmodule SnackWeb.ChatChannel do
     conversation_id = socket.assigns.conversation_id
     profile_id = socket.assigns.profile_id
 
-    if Dating.conversation_allows_messaging?(conversation_id, profile_id) do
-      case Dating.send_message(%{
-             conversation_id: conversation_id,
-             sender_profile_id: profile_id,
-             body: body
-           }) do
-        {:ok, message} ->
-          # Replying implies having read everything up to this message.
-          # `Dating.send_message/1` already broadcast `new_message`.
-          Dating.Inbox.mark_read(conversation_id, profile_id, message.inserted_at)
-          {:reply, {:ok, %{message: SnackWeb.ChatJSON.message(message)}}, socket}
+    # The send transaction rechecks authorization after taking the match lock.
+    case Dating.send_message(%{
+           conversation_id: conversation_id,
+           sender_profile_id: profile_id,
+           body: body
+         }) do
+      {:ok, message} ->
+        # Replying implies having read everything up to this message.
+        # `Dating.send_message/1` already broadcast `new_message`.
+        Dating.Inbox.mark_read(conversation_id, profile_id, message.inserted_at)
+        {:reply, {:ok, %{message: SnackWeb.ChatJSON.message(message)}}, socket}
 
-        {:error, changeset} ->
-          {:reply, {:error, format_send_error(changeset)}, socket}
-      end
-    else
-      {:reply, {:error, %{reason: "conversation_not_active"}}, socket}
+      {:error, reason} ->
+        {:reply, {:error, format_send_error(reason)}, socket}
     end
   end
 
@@ -61,17 +58,26 @@ defmodule SnackWeb.ChatChannel do
 
   @impl true
   def handle_in("typing", _payload, socket) do
-    if Dating.conversation_allows_messaging?(
-         socket.assigns.conversation_id,
-         socket.assigns.profile_id
-       ) do
-      broadcast_from!(socket, "typing", %{
-        conversationId: socket.assigns.conversation_id,
-        profileId: socket.assigns.profile_id
-      })
-    end
+    at = System.monotonic_time(:millisecond)
+    last_typing_at = socket.assigns[:last_typing_at]
 
-    {:noreply, socket}
+    if is_nil(last_typing_at) or at - last_typing_at >= 1000 do
+      socket = assign(socket, :last_typing_at, at)
+
+      if Dating.conversation_allows_messaging?(
+           socket.assigns.conversation_id,
+           socket.assigns.profile_id
+         ) do
+        broadcast_from!(socket, "typing", %{
+          conversationId: socket.assigns.conversation_id,
+          profileId: socket.assigns.profile_id
+        })
+      end
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
   end
 
   defp join_status(_conversation_id, nil), do: {:error, :profile_required}
@@ -82,11 +88,5 @@ defmodule SnackWeb.ChatChannel do
   defp format_send_error(reason) when is_atom(reason), do: %{reason: Atom.to_string(reason)}
   defp format_send_error(changeset), do: %{errors: format_errors(changeset)}
 
-  defp format_errors(changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Regex.replace(~r/%{(\w+)}/, msg, fn _, key ->
-        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
-      end)
-    end)
-  end
+  defp format_errors(changeset), do: SnackWeb.ChangesetJSON.errors(changeset)
 end

@@ -12,7 +12,7 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
       Accounts.create_user(%{email: "viewer@example.com", display_name: "Viewer"})
 
     viewer =
-      create_complete_profile(viewer_user, %{gender: "man", what_i_am_looking_for: "relationship"})
+      create_complete_profile(viewer_user, %{gender: "man", looking_for: ["relationship"]})
 
     # Create candidate
     {:ok, candidate_user} =
@@ -21,7 +21,7 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
     candidate =
       create_complete_profile(candidate_user, %{
         gender: "woman",
-        what_i_am_looking_for: "relationship"
+        looking_for: ["relationship"]
       })
 
     {:ok, issued} =
@@ -64,7 +64,7 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
           display_name: "Incomplete",
           birth_date: ~D[1995-01-15],
           gender: "man",
-          what_i_am_looking_for: "relationship",
+          looking_for: ["relationship"],
           bio: "This is a test bio that is long enough to pass validation rules.",
           is_complete: false,
           is_discoverable: false
@@ -135,7 +135,7 @@ defmodule SnackWeb.Controllers.Api.DiscoveryControllerTest do
             display_name: "Test",
             birth_date: ~D[1995-01-15],
             gender: "woman",
-            what_i_am_looking_for: "relationship",
+            looking_for: ["relationship"],
             bio: "This is a test bio that is long enough to pass validation rules.",
             is_discoverable: true
           },

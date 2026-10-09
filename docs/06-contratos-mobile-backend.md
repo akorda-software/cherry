@@ -44,6 +44,13 @@ Reglas de routing móvil:
 2. Cada paso valida solo sus campos.
 3. La completitud se valida solo en `POST /api/me/profile/complete`.
 
+### ¿Qué buscas? (`looking_for`)
+
+- Varias respuestas: 1–4 intenciones de `relationship` / `casual` / `meet_people` / `go_with_the_flow`, sin repetir. `PUT /api/me/profile` con `{ "looking_for": ["relationship", "meet_people"] }`; el backend las guarda en ese orden canónico. Una lista vacía, un valor desconocido o un duplicado → 422 `{ "errors": { "looking_for": [...] } }`. `null` deja el borrador sin contestar (falta `looking_for` al completar → paso `intent`).
+- Compatibilidad: se acepta también una sola cadena (lista de un elemento) y las claves antiguas `what_i_am_looking_for` / `whatIAmLookingFor`.
+- Lectura: `lookingFor` (lista, `[]` si está sin contestar) en el perfil propio, las cards y el perfil público. `whatIAmLookingFor` sigue saliendo con la primera intención (o `null`) solo para versiones antiguas de la app: **obsoleto**, no usarlo.
+- Emparejamiento: dos personas encajan si algún par (mía, suya) encaja con la regla de una intención (cada una ve la suya y «a ver qué pasa», que encaja con todas; relación y casual nunca se cruzan). Es simétrico. En el ranking, compartir al menos una intención suma lo mismo que antes «la misma intención» (+10); encajar solo a través de «a ver qué pasa», +4.
+
 Error estructurado de completion:
 
 ```json
@@ -121,7 +128,8 @@ Card (`DiscoveryProfileCard`, también en likes y deshacer):
 ```json
 {
   "id": "…", "displayName": "Lucía", "age": 30, "bio": "…", "gender": "woman",
-  "whatIAmLookingFor": "relationship", "distanceLabel": "A unos 2 km", "distanceKmApprox": 2,
+  "lookingFor": ["relationship", "meet_people"], "whatIAmLookingFor": "relationship",
+  "distanceLabel": "A unos 2 km", "distanceKmApprox": 2,
   "sharedTagsCount": 1, "photoUrl": "https://…/1.png", "photoCount": 2,
   "photos": [{ "id": "…", "url": "https://…/1.png", "position": 1 }],
   "tags": [{ "id": "…", "slug": "music", "label": "Música", "category": "interests",
@@ -140,7 +148,7 @@ Card (`DiscoveryProfileCard`, también en likes y deshacer):
 
 ## Matches y chat REST
 
-- `GET /api/matches` → `{ "matches": [MatchSummary] }`, por actividad reciente:
+- `GET /api/matches?cursor&limit` → `{ "matches": [MatchSummary], "nextCursor": "…" | null }`, por actividad reciente:
 
 ```json
 {
@@ -151,7 +159,9 @@ Card (`DiscoveryProfileCard`, también en likes y deshacer):
 }
 ```
 
-- `GET /api/conversations` → `{ "conversations": [ConversationSummary] }` (`id` = conversación, `matchId`, mismos `otherProfile`/`lastMessage`/`unreadCount`/`expiresAt`, `insertedAt`).
+- `GET /api/conversations?cursor&limit` → `{ "conversations": [ConversationSummary], "nextCursor": "…" | null }` (`id` = conversación, `matchId`, mismos `otherProfile`/`lastMessage`/`unreadCount`/`expiresAt`, `insertedAt`).
+- Ambas listas usan `limit` 1–100 (50 por defecto), cursor firmado para el viewer (1 h) y actividad referida al instante de la primera página. Mensajes nuevos posteriores a ese instante aparecen al refrescar; bloqueos, borrados y caducidad se comprueban en cada página. Cursor o límite inválido → 422 `invalid_cursor` / `invalid_limit`. El móvil carga páginas sucesivas sin repetir matches y conserva mensajes más recientes recibidos durante la carga.
+- `GET /api/conversations/:id/match` → `{ "match": MatchSummary }` para abrir directamente un chat desde una notificación, aunque no esté en la primera página. 403 si la conversación no es visible.
 - `GET /api/conversations/:id/messages?cursor&limit` → `{ "messages": [ChatMessage] (nuevos primero), "nextCursor": "…" | null }`. 403 `conversation_not_active` si el match se deshizo, caducó, hay bloqueo o una cuenta se borró.
 - `POST /api/conversations/:id/messages` `{ "body" }` → `{ "message": ChatMessage }`; `POST /api/conversations/:id/read` → `{ "ok": true }` (llamarlo al abrir el chat y al recibir mensajes con el chat abierto).
 - `POST /api/matches/:id/unmatch`, `POST /api/users/:id/block` → `{ "ok": true }`; `POST /api/users/:id/report` `{ "reason": ReportReason, "details"? }` → `{ "report": { "id", "reason", "details", "status", "insertedAt" } }`. Reportar de nuevo con un reporte abierto devuelve el mismo reporte. Perfil o cuenta borrados → 404 `profile_not_found`, como un id inexistente.

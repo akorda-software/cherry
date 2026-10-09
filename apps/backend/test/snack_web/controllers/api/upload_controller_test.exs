@@ -39,7 +39,7 @@ defmodule SnackWeb.Controllers.Api.UploadControllerTest do
         display_name: "Uploader",
         birth_date: ~D[1994-03-02],
         gender: "woman",
-        what_i_am_looking_for: "relationship",
+        looking_for: ["relationship"],
         bio: "Subo fotos de mi gata como si fuera mi agente de prensa."
       })
 

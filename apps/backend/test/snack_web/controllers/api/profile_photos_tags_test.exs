@@ -15,7 +15,7 @@ defmodule SnackWeb.Controllers.Api.ProfilePhotosTagsTest do
         display_name: "Marta",
         birth_date: ~D[1992-06-10],
         gender: "woman",
-        what_i_am_looking_for: "go_with_the_flow",
+        looking_for: ["go_with_the_flow"],
         bio: "Colecciono plantas que sobreviven de milagro y planes improvisados."
       })
 

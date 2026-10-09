@@ -27,6 +27,10 @@ defmodule SnackWeb.Router do
   end
 
   scope "/", SnackWeb do
+    get("/metrics", MetricsController, :show)
+  end
+
+  scope "/", SnackWeb do
     pipe_through(:api)
 
     get("/healthz", HealthController, :healthz)
@@ -63,22 +67,22 @@ defmodule SnackWeb.Router do
     put("/profile", ProfileController, :update)
     post("/profile/complete", ProfileController, :complete)
 
-    get("/discovery-preferences", ProfileController, :show_discovery_preferences)
-    put("/discovery-preferences", ProfileController, :update_discovery_preferences)
+    get("/discovery-preferences", DiscoveryPreferenceController, :show)
+    put("/discovery-preferences", DiscoveryPreferenceController, :update)
 
-    get("/photos", ProfileController, :list_photos)
-    post("/photos/upload-intent", ProfileController, :create_photo_upload_intent)
-    post("/photos/complete", ProfileController, :complete_photo_upload)
-    put("/photos/order", ProfileController, :reorder_photos)
-    delete("/photos/:id", ProfileController, :delete_photo)
+    get("/photos", ProfilePhotoController, :index)
+    post("/photos/upload-intent", ProfilePhotoController, :create_upload_intent)
+    post("/photos/complete", ProfilePhotoController, :complete_upload)
+    put("/photos/order", ProfilePhotoController, :reorder)
+    delete("/photos/:id", ProfilePhotoController, :delete)
 
-    get("/tags", ProfileController, :get_tags)
-    put("/tags", ProfileController, :set_tags)
+    get("/tags", ProfileTagController, :get_tags)
+    put("/tags", ProfileTagController, :set_tags)
 
-    get("/blocked-tags", ProfileController, :get_blocked_tags)
-    put("/blocked-tags", ProfileController, :set_blocked_tags)
+    get("/blocked-tags", ProfileTagController, :get_blocked_tags)
+    put("/blocked-tags", ProfileTagController, :set_blocked_tags)
 
-    post("/location", ProfileController, :update_location)
+    post("/location", ProfileLocationController, :update)
     post("/push-token", PushTokenController, :create)
 
     post("/pause", SettingsController, :pause)
@@ -125,6 +129,7 @@ defmodule SnackWeb.Router do
     pipe_through(:authenticated_api)
 
     get("/", ChatController, :index)
+    get("/:id/match", MatchController, :for_conversation)
     get("/:id/messages", ChatController, :messages)
     post("/:id/messages", ChatController, :create_message)
     post("/:id/read", ChatController, :read)

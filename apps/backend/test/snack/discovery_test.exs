@@ -40,7 +40,7 @@ defmodule Snack.Dating.DiscoveryTest do
         display_name: Keyword.get(opts, :name, "Person"),
         birth_date: Date.add(Date.utc_today(), -(age * 365 + 30)),
         gender: Keyword.get(opts, :gender, "man"),
-        what_i_am_looking_for: Keyword.get(opts, :intent, "relationship"),
+        looking_for: List.wrap(Keyword.get(opts, :intent, "relationship")),
         bio: "Una bio suficientemente larga para pasar la validación."
       })
 
@@ -152,6 +152,15 @@ defmodule Snack.Dating.DiscoveryTest do
     if page.next_cursor, do: collect_pages(viewer, limit, page.next_cursor, acc), else: acc
   end
 
+  # Every non-empty subset of the four intents, in canonical order.
+  defp intent_sets do
+    for mask <- 1..15 do
+      for {intent, bit} <- Enum.with_index(@intents),
+          Bitwise.band(mask, Bitwise.bsl(1, bit)) != 0,
+          do: intent
+    end
+  end
+
   # ── Intent ────────────────────────────────────────────────────────────
 
   describe "intent compatibility" do
@@ -196,6 +205,69 @@ defmodule Snack.Dating.DiscoveryTest do
       flow = person(intent: "go_with_the_flow")
 
       assert base_units(viewer, row(viewer, same)) - base_units(viewer, row(viewer, flow)) == 600
+    end
+  end
+
+  describe "several intents" do
+    test "compatible_intents/1 of a list is the union of each intent's set" do
+      assert Discovery.compatible_intents(["relationship", "meet_people"]) ==
+               ["relationship", "meet_people", "go_with_the_flow"]
+
+      assert Discovery.compatible_intents(["casual", "go_with_the_flow"]) == @intents
+      assert Discovery.compatible_intents([]) == []
+    end
+
+    test "compatible when some pair is compatible, symmetric for every pair of sets" do
+      for mine <- intent_sets(), theirs <- intent_sets() do
+        some_pair? =
+          Enum.any?(for a <- mine, b <- theirs, do: b in Discovery.compatible_intents(a))
+
+        assert Discovery.intents_compatible?(mine, theirs) == some_pair?,
+               "#{inspect(mine)} vs #{inspect(theirs)}"
+
+        assert Discovery.intents_compatible?(mine, theirs) ==
+                 Discovery.intents_compatible?(theirs, mine)
+      end
+
+      refute Discovery.intents_compatible?(["relationship"], ["casual"])
+
+      assert Discovery.intents_compatible?(["relationship", "meet_people"], [
+               "casual",
+               "meet_people"
+             ])
+
+      refute Discovery.intents_compatible?(["relationship", "meet_people"], ["casual"])
+      assert Discovery.intents_compatible?(["relationship"], ["casual", "go_with_the_flow"])
+      refute Discovery.intents_compatible?([], ["go_with_the_flow"])
+    end
+
+    test "the feed applies the set rule in both directions" do
+      cases = [
+        {["relationship", "meet_people"], ["casual", "meet_people"], true},
+        {["relationship", "meet_people"], ["casual"], false},
+        {["relationship"], ["casual", "go_with_the_flow"], true},
+        {["relationship", "casual"], ["meet_people"], false},
+        {["relationship", "casual"], ["casual"], true}
+      ]
+
+      for {{a, b, expected}, i} <- Enum.with_index(cases) do
+        # Each case in its own age band so cases never see each other.
+        band = [age: 20 + i * 3, age_min: 20 + i * 3, age_max: 21 + i * 3]
+        woman = viewer([intent: a] ++ band)
+        man = person([intent: b] ++ band)
+
+        assert man.id in feed_ids(woman) == expected, "#{inspect(a)} -> #{inspect(b)}"
+        assert woman.id in feed_ids(man) == expected, "#{inspect(b)} -> #{inspect(a)}"
+      end
+    end
+
+    test "sharing any intent earns the same-intent bonus; flow-only compatibility the smaller one" do
+      viewer = viewer(intent: ["relationship", "meet_people"])
+      shared = person(intent: ["casual", "meet_people"])
+      flow_only = person(intent: ["casual", "go_with_the_flow"])
+
+      assert base_units(viewer, row(viewer, shared)) - base_units(viewer, row(viewer, flow_only)) ==
+               600
     end
   end
 
@@ -765,7 +837,7 @@ defmodule Snack.Dating.DiscoveryTest do
                display_name: "Person",
                birth_date: %Date{},
                gender: "man",
-               what_i_am_looking_for: "relationship",
+               looking_for: ["relationship"],
                bio: _,
                is_complete: true,
                updated_at: %DateTime{},
@@ -814,6 +886,72 @@ defmodule Snack.Dating.DiscoveryTest do
       assert {:ok, %{interval: 1_000}, {:continue, :refresh}} =
                TagWeights.init(enabled: true, refresh_interval_ms: 1_000)
     end
+  end
+
+  test "fairness pruning agrees with exhaustive ranking across pages, penalties and tiers" do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    shared = tag("Common")
+    rare = tag("Rare")
+    other = tag("Other")
+    viewer = viewer(tags: [shared, rare], distance_km: 25)
+
+    candidates =
+      for i <- 1..48 do
+        person(
+          tags:
+            case rem(i, 4) do
+              0 -> [shared, rare]
+              1 -> [shared]
+              2 -> [rare, other]
+              3 -> [other]
+            end,
+          intent: if(rem(i, 3) == 0, do: "go_with_the_flow", else: "relationship"),
+          km_east: rem(i * 7, 48),
+          last_active_at: DateTime.add(now, -rem(i, 8) * 86_400, :second),
+          completed_at: DateTime.add(now, -rem(i, 12) * 86_400, :second)
+        )
+      end
+
+    likers = for _ <- 1..32, do: person(discoverable: false)
+
+    for {candidate, i} <- Enum.with_index(candidates),
+        liker <- Enum.take(likers, rem(i * 11, 33)) do
+      {:ok, _} =
+        Dating.record_swipe(%{
+          actor_profile_id: liker.id,
+          target_profile_id: candidate.id,
+          action_type: "like"
+        })
+    end
+
+    for candidate <- Enum.take(candidates, 8) do
+      {:ok, _} =
+        Dating.record_swipe(%{
+          actor_profile_id: candidate.id,
+          target_profile_id: viewer.id,
+          action_type: "like"
+        })
+    end
+
+    {:ok, _} = TagWeights.refresh()
+    # Fairness uses <= now; include the newly created swipes in both calculations.
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    {:ok, exhaustive} = Discovery.feed(viewer.id, limit: 100, now: now, prune_fairness?: false)
+    expected = Enum.map(exhaustive.profiles, &{&1.id, &1.score})
+
+    for limit <- [1, 7, 20, 100] do
+      actual = collect_ranked_pages(viewer.id, [limit: limit, now: now], nil, [])
+      assert actual == expected
+    end
+  end
+
+  defp collect_ranked_pages(viewer_id, opts, cursor, acc) do
+    {:ok, page} = Discovery.feed(viewer_id, Keyword.put(opts, :cursor, cursor))
+    acc = acc ++ Enum.map(page.profiles, &{&1.id, &1.score})
+
+    if page.next_cursor,
+      do: collect_ranked_pages(viewer_id, opts, page.next_cursor, acc),
+      else: acc
   end
 
   # ── Profile lifecycle and preferences ─────────────────────────────────

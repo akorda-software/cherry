@@ -9,12 +9,30 @@ defmodule SnackWeb.Controllers.Api.MatchController do
   Matches visibles (activos, sin caducar, sin bloqueos, cuentas vivas) con foto,
   último mensaje y no leídos, por actividad reciente.
   """
-  def index(conn, _params) do
+  def index(conn, params) do
     profile = conn.assigns.current_profile
 
     if profile do
-      matches = Inbox.list(profile.id)
-      json(conn, %{matches: Enum.map(matches, &ChatJSON.match_summary(conn, &1))})
+      with {:ok, limit} <- SnackWeb.Pagination.limit(params, 50),
+           {:ok, page} <- Inbox.list_page(profile.id, limit: limit, cursor: params["cursor"]) do
+        json(conn, %{
+          matches: Enum.map(page.entries, &ChatJSON.match_summary(conn, &1)),
+          nextCursor: page.next_cursor
+        })
+      else
+        {:error, reason} -> conn |> put_status(:unprocessable_entity) |> json(%{error: reason})
+      end
+    else
+      profile_not_found(conn)
+    end
+  end
+
+  def for_conversation(conn, %{"id" => conversation_id}) do
+    if profile = conn.assigns.current_profile do
+      case Inbox.get_entry(conversation_id, profile.id) do
+        {:ok, entry} -> json(conn, %{match: ChatJSON.match_summary(conn, entry)})
+        {:error, reason} -> conn |> put_status(:forbidden) |> json(%{error: reason})
+      end
     else
       profile_not_found(conn)
     end
@@ -45,11 +63,5 @@ defmodule SnackWeb.Controllers.Api.MatchController do
     conn |> put_status(:not_found) |> json(%{error: "profile_not_found"})
   end
 
-  defp format_errors(changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Regex.replace(~r/%{(\w+)}/, msg, fn _, key ->
-        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
-      end)
-    end)
-  end
+  defp format_errors(changeset), do: SnackWeb.ChangesetJSON.errors(changeset)
 end

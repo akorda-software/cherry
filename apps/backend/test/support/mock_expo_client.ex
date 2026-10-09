@@ -11,7 +11,7 @@ defmodule Snack.Notifications.MockExpoClient do
       send(test_pid, {:expo_push_messages, messages})
     end
 
-    {:ok, Enum.map(messages, &ticket_for/1)}
+    Process.get(:expo_push_test_result, {:ok, Enum.map(messages, &ticket_for/1)})
   end
 
   defp ticket_for(%{"to" => token}) do

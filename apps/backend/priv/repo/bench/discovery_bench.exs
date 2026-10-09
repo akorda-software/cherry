@@ -41,6 +41,8 @@ Supervisor.terminate_child(Snack.Supervisor, TagWeights)
 
 profiles_target = String.to_integer(System.get_env("BENCH_PROFILES", "5000"))
 runs = String.to_integer(System.get_env("BENCH_RUNS", "15"))
+prune_fairness? = System.get_env("BENCH_PRUNE", "1") != "0"
+feed_opts = [limit: 20, prune_fairness?: prune_fairness?]
 :rand.seed(:exsss, {20_260_929, 42, 7})
 
 defmodule Bench do
@@ -300,13 +302,17 @@ if System.get_env("BENCH_SKIP_SEED") != "1" do
             Bench.pick_weighted([{10, 0.15}, {25, 0.35}, {50, 0.3}, {100, 0.15}, {999_999, 0.05}]),
         expand: if(probe, do: probe.expand, else: :rand.uniform() < 0.8),
         compatible_only: if(probe, do: probe.compatible_only, else: :rand.uniform() < 0.1),
+        # «¿Qué buscas?» admite varias intenciones (1–4).
         intent:
           probe[:intent] ||
             Bench.pick_weighted([
-              {"relationship", 0.35},
-              {"casual", 0.2},
-              {"meet_people", 0.15},
-              {"go_with_the_flow", 0.3}
+              {["relationship"], 0.30},
+              {["relationship", "meet_people"], 0.05},
+              {["casual"], 0.17},
+              {["casual", "meet_people"], 0.03},
+              {["meet_people"], 0.12},
+              {["meet_people", "go_with_the_flow"], 0.08},
+              {["go_with_the_flow"], 0.25}
             ])
       }
     end
@@ -357,7 +363,7 @@ if System.get_env("BENCH_SKIP_SEED") != "1" do
         display_name: "Bench #{person.index}",
         birth_date: birth_date,
         gender: person.gender,
-        what_i_am_looking_for: person.intent,
+        looking_for: List.wrap(person.intent),
         bio: "Perfil sintético para el benchmark de discovery.",
         is_complete: complete,
         is_paused: person.status == :paused,
@@ -558,22 +564,24 @@ IO.puts(
 
 results =
   for {spec, viewer_id} <- probes do
-    plans = for _ <- 1..runs, do: Discovery.explain_feed(viewer_id, limit: 20)
+    plans = for _ <- 1..runs, do: Discovery.explain_feed(viewer_id, feed_opts)
     exec = Enum.map(plans, execution_ms)
 
     feed_ms =
       for _ <- 1..runs do
-        {us, {:ok, _page}} = :timer.tc(fn -> Discovery.feed(viewer_id, limit: 20) end)
+        {us, {:ok, _page}} = :timer.tc(fn -> Discovery.feed(viewer_id, feed_opts) end)
         us / 1000
       end
 
-    {:ok, first} = Discovery.feed(viewer_id, limit: 20)
+    {:ok, first} = Discovery.feed(viewer_id, feed_opts)
 
     page2 =
       if first.next_cursor do
         for _ <- 1..runs do
           {us, {:ok, _}} =
-            :timer.tc(fn -> Discovery.feed(viewer_id, limit: 20, cursor: first.next_cursor) end)
+            :timer.tc(fn ->
+              Discovery.feed(viewer_id, Keyword.put(feed_opts, :cursor, first.next_cursor))
+            end)
 
           us / 1000
         end

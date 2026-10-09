@@ -26,7 +26,7 @@ Reglas concretas:
 
 - `gender` y `interested_in` son conceptos separados; `interested_in` admite múltiples selecciones.
 - Géneros: man / woman / non_binary.
-- `what_i_am_looking_for`: un único valor requerido — relationship / casual / meet_people / go_with_the_flow.
+- `looking_for`: 1–4 valores sin repetir (requerido) — relationship / casual / meet_people / go_with_the_flow.
 - El perfil pasa por ciclo draft → complete; los drafts nunca aparecen en discovery.
 
 ## Preferencias de discovery
@@ -58,14 +58,14 @@ Reglas concretas:
   - Intención compatible (ver abajo).
   - **Etiquetas bloqueadas en ambas direcciones.** Se excluye al candidato que tiene una etiqueta que yo bloqueo y al que bloquea una de mis etiquetas positivas: si A no puede ver a B, B tampoco ve a A.
   - «Solo compatibles» de cualquiera de los dos exige al menos una etiqueta compartida (simétrico por la misma razón).
-- Intención, matriz simétrica: cada intención ve la suya y «a ver qué pasa»; «a ver qué pasa» ve todas; relación y casual nunca se cruzan. Si A ve a B, B ve a A (con preferencias recíprocas).
+- Intención, matriz simétrica: cada intención ve la suya y «a ver qué pasa»; «a ver qué pasa» ve todas; relación y casual nunca se cruzan. Con varias intenciones basta con que un par (mía, suya) encaje. Si A ve a B, B ve a A (con preferencias recíprocas).
 - Distancia: primero siempre todo el radio preferido. Con «ampliar distancia» y un radio acotado, se añade un segundo tramo hasta min(2 × radio, radio + 100 km), que va siempre después de todo el primero. Nunca se relajan otras reglas para rellenar el feed.
 - Ranking de 0 a 97 puntos. La compatibilidad por etiquetas pesa más que la proximidad pura:
 
   | Componente | Puntos |
   |---|---|
   | Afinidad de etiquetas: coseno ponderado por rareza (IDF), compartir una etiqueta rara vale más que una común | 0–45 |
-  | Intención: misma intención / compatible vía «a ver qué pasa» | +10 / +4 |
+  | Intención: comparten alguna intención / compatible solo vía «a ver qué pasa» | +10 / +4 |
   | Reciprocidad: el candidato ya te ha dado like | +12 |
   | Recién llegado: decrece linealmente en los 7 días posteriores a completar el perfil | hasta +8 |
   | Actividad real: última actividad hace menos de 24 h / 72 h / 7 días | +8 / +5 / +2 |

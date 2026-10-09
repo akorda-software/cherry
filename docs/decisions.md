@@ -6,6 +6,33 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-10-09 — Verificación de edad obligatoria: DNI por NFC primero
+
+- **Contexto:** Pedir solo la fecha de nacimiento ya no se considera verificación válida (directrices del art. 28 de la DSA) y la ley española de menores en entornos digitales apunta a exigir la edad real. Verificar a todos con un proveedor externo costaría ~20.000–25.000 $ por cada 100.000 usuarios, inasumible sin monetización.
+- **Decisión:** Nadie usa la app sin verificarse. Vía principal: lectura NFC del DNI, NIE o pasaporte, con autenticación pasiva en el servidor y comparación con un selfie. Respaldo: proveedor externo para quien no pueda leer el chip. Más adelante, la app europea de verificación de edad como opción adicional. Solo se guarda «mayor de edad: sí» y una huella del número de documento (una persona, una cuenta).
+- **Motivación:** Coste por usuario casi nulo, fecha de nacimiento firmada por el Estado y freno fuerte a bots y a cuentas duplicadas. La fricción se asume como rasgo de marca.
+- **Referencias:** `docs/compliance/02-mayoria-de-edad.md`, `docs/compliance/08-financiacion-y-proveedores.md`.
+
+---
+
+## D-2026-10-09 — Instancia oficial solo en España
+
+- **Contexto:** Publicar en App Store y Google Play implica cumplir la ley de cada país donde se distribuye (Ofcom en Reino Unido, leyes de app stores en EE. UU., bloqueos 18+ de Apple en Australia, Brasil y Singapur…).
+- **Decisión:** La instancia oficial se distribuye solo en el storefront español de ambas tiendas y su cumplimiento se diseña solo para España (RGPD/LOPDGDD, LSSI, DSA, ley española de menores). Quien monte su instancia en otro país la adapta a su ley.
+- **Motivación:** Reduce el cumplimiento a un único marco legal asumible por un proyecto sin ingresos.
+- **Referencias:** `PRODUCT.md`, `docs/compliance/`.
+
+---
+
+## D-2026-09-30 — «¿Qué buscas?» con varias respuestas
+
+- **Contexto:** Mucha gente no busca una sola cosa («relación o conocer gente»). Con un único valor tenían que elegir y quedaban fuera de parte de la gente con la que sí encajan.
+- **Decisión:** `profiles.looking_for text[]` (antes `what_i_am_looking_for`), 1–4 intenciones sin repetir, en orden canónico. Dos personas encajan si algún par (mía, suya) encaja con la regla de siempre (cada intención ve la suya y «a ver qué pasa»; relación y casual nunca se cruzan); sigue siendo simétrico. Compartir alguna intención da el bonus de «misma intención». La API expone `lookingFor` y acepta aún la cadena única antigua; `whatIAmLookingFor` queda como campo obsoleto de solo lectura.
+- **Sustituye:** «`what_i_am_looking_for` único valor requerido» (decisiones heredadas 2026-04-28).
+- **Referencias:** `docs/06-contratos-mobile-backend.md`, migración `20260930090000_profiles_looking_for_array.exs`.
+
+---
+
 ## D-2026-09-29 — Licencia AGPL-3.0
 
 - **Contexto:** Snack es open source, gratuita y self-hosteable (`PRODUCT.md`). Con una licencia permisiva (MIT, Apache) cualquiera podría coger el código, modificarlo, montar una instancia cerrada y cobrar por lo que aquí es gratis (likes, filtros, deshacer), sin devolver nada. Al ser un servicio en red, ni siquiera la GPL obligaría a publicar esos cambios, porque la app no se «distribuye» al usar el servidor.
@@ -260,7 +287,7 @@ Fijadas en el foundation de producto dating (2026-04-28, recuperable del histori
 - Auth solo Google/Apple; sin email/password en v1.
 - Bio obligatoria 20–240 caracteres; 2–4 fotos activas; máx. 8 tags positivos y 5 bloqueados de catálogo cerrado (~47 tags seedeados).
 - `gender` e `interested_in` son conceptos separados; `interested_in` multi-selección.
-- `what_i_am_looking_for` único valor requerido (relationship/casual/meet_people/go_with_the_flow).
+- `what_i_am_looking_for` único valor requerido (relationship/casual/meet_people/go_with_the_flow) (sustituido: D-2026-09-30, varias intenciones).
 - Match solo por like mutuo; sin undo (sustituido: D-2026-09-29, deshacer el último «no»); match expira a los 7 días sin primer mensaje (sustituido: D-2026-09-29, 30 días); chat solo texto.
 - Likes ilimitados (sin caps de monetización) con protección anti-abuso técnica.
 - Compatibilidad pesa más que distancia; la distancia se expande gradualmente si hay poca oferta; jamás se ignoran blocked tags ni compatibilidad de género.

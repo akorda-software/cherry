@@ -10,7 +10,9 @@ App nativa iOS + Android con Expo (SDK 54, React Native 0.81, nueva arquitectura
 
 ## Users
 
-Adultos (18+) que quieren conocer gente para pareja, algo casual, amistad o "a ver qué pasa", cansados de apps de citas caras y predatorias. Usan la app en el móvil, en ratos sueltos (sofá, transporte, antes de dormir), con sesiones cortas de descubrir perfiles y chatear. *(Inferido del brief: público hispanohablante de España; idioma de producto español de España con tuteo.)*
+Adultos (18+) que quieren conocer gente para pareja, algo casual, amistad o "a ver qué pasa", cansados de apps de citas caras y predatorias. Usan la app en el móvil, en ratos sueltos (sofá, transporte, antes de dormir), con sesiones cortas de descubrir perfiles y chatear. Idioma de producto: español de España con tuteo.
+
+**Mercado: solo España.** La instancia oficial (la que se publica en App Store y Google Play) se distribuye únicamente en el storefront español de ambas tiendas, y su cumplimiento legal se diseña solo para España (RGPD/LOPDGDD, LSSI, DSA, ley española de menores en entornos digitales cuando se apruebe). Quien despliegue su propia instancia del código abierto en otro país es responsable de adaptarla a su legislación. *(Decisión del propietario, 2026-10-09.)*
 
 ## Product Purpose
 
@@ -36,7 +38,7 @@ Snack es una app de citas **open source, 100 % gratuita y self-hosteable**. Exis
 - Backend Phoenix + PostgreSQL/PostGIS; auth solo con Google y Apple (sesiones propias de Phoenix); fotos subidas a almacenamiento S3-compatible (R2, MinIO…) o al disco del propio servidor (self-hosting), siempre con verificación en servidor.
 - Perfil: nombre, fecha de nacimiento (18+), género (hombre / mujer / no binario), a quién quiere conocer (multiselección), qué busca (relación / casual / conocer gente / a ver qué pasa), bio de 20–240 caracteres, 2–4 fotos, ubicación aproximada (rejilla de 500 m, nunca coordenadas exactas).
 - Etiquetas: catálogo cerrado de 52 en 7 categorías (intereses, vida activa, estilo de vida, valores, personalidad, mascotas, relación y familia); máx. 8 positivas y máx. 5 bloqueadas. El bloqueo de etiquetas se aplica en ambas direcciones.
-- Intención: cada intención ve la suya más "a ver qué pasa", que es compatible con todas; la misma intención puntúa más; relación y casual nunca se cruzan. Simétrico.
+- Intención: «¿Qué buscas?» admite varias respuestas (1–4). Cada intención ve la suya más "a ver qué pasa", que es compatible con todas; relación y casual nunca se cruzan. Dos personas encajan si algún par de sus intenciones encaja; compartir alguna intención puntúa más. Simétrico.
 - Match por like mutuo; el match caduca a los **30 días** si nadie escribe (decisión 2026-09-29, sustituye a los 7 días del v1). Chat solo texto.
 - Likes ilimitados, sin cuotas diarias; protecciones anti-abuso técnicas, nunca límites de monetización.
 - Sin monetización de ningún tipo (sin super likes, boosts de pago, suscripciones ni anuncios).

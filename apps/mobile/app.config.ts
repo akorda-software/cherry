@@ -1,6 +1,10 @@
 import type { ExpoConfig } from "expo/config";
 import { type ConfigPlugin, withAndroidManifest } from "expo/config-plugins";
 
+// Plugin del módulo local de lectura NFC de documentos (CommonJS para que lo cargue el prebuild).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const withDocumentNfc: ConfigPlugin<{ nfcUsageDescription?: string }> = require("./modules/document-nfc/plugin/with-document-nfc.cjs");
+
 function readOptionalEnv(name: string): string | undefined {
   const value = process.env[name];
 
@@ -100,5 +104,10 @@ export default (): ExpoConfig => {
     }
   };
 
-  return withCleartextForHttpBackend(config, readOptionalEnv("EXPO_PUBLIC_API_BASE_URL_ANDROID"));
+  const withNfc = withDocumentNfc(config, {
+    nfcUsageDescription:
+      "Snack lee el chip de tu DNI o pasaporte para comprobar que eres mayor de edad. Solo se guarda que lo eres."
+  });
+
+  return withCleartextForHttpBackend(withNfc, readOptionalEnv("EXPO_PUBLIC_API_BASE_URL_ANDROID"));
 };

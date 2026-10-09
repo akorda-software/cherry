@@ -26,6 +26,7 @@
   "include": [
     "app",
     "app.config.ts",
+    "modules",
     "src",
     "test",
     "vitest.config.ts"

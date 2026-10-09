@@ -85,6 +85,7 @@ defmodule Snack.MixProject do
       Snack.Application,
       Snack.DataCase,
       Snack.Repo,
+      Snack.TestSupport.DocumentPKI,
       Snack.TestSupport.FutureProvider,
       Snack.TestSupport.ProviderTokenFactory,
       SnackWeb,

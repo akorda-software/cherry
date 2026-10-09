@@ -11,3 +11,4 @@ export * from "./safety";
 export * from "./session";
 export * from "./social";
 export * from "./tags";
+export * from "./verification";

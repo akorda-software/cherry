@@ -20,6 +20,12 @@ defmodule SnackWeb.Router do
     plug(SnackWeb.Plugs.TrackActivity)
   end
 
+  # Social surfaces: with AGE_VERIFICATION_REQUIRED=true (off by default) they
+  # need a verified age. Blocking and reporting stay outside on purpose.
+  pipeline :age_verified do
+    plug(SnackWeb.Plugs.RequireAgeVerification)
+  end
+
   scope "/", SnackWeb do
     pipe_through(:browser)
 
@@ -90,10 +96,13 @@ defmodule SnackWeb.Router do
     delete("/account", SettingsController, :delete_account)
 
     get("/summary", ActivityController, :summary)
+
+    get("/verification", AgeVerificationController, :show)
+    post("/verification/nfc", AgeVerificationController, :create_nfc)
   end
 
   scope "/api/discovery", SnackWeb.Controllers.Api do
-    pipe_through(:authenticated_api)
+    pipe_through([:authenticated_api, :age_verified])
 
     get("/feed", DiscoveryController, :feed)
     post("/actions", DiscoveryController, :create_action)
@@ -101,13 +110,13 @@ defmodule SnackWeb.Router do
   end
 
   scope "/api/profiles", SnackWeb.Controllers.Api do
-    pipe_through(:authenticated_api)
+    pipe_through([:authenticated_api, :age_verified])
 
     get("/:id", PublicProfileController, :show)
   end
 
   scope "/api/likes", SnackWeb.Controllers.Api do
-    pipe_through(:authenticated_api)
+    pipe_through([:authenticated_api, :age_verified])
 
     get("/received", LikesController, :received)
   end
@@ -119,14 +128,14 @@ defmodule SnackWeb.Router do
   end
 
   scope "/api/matches", SnackWeb.Controllers.Api do
-    pipe_through(:authenticated_api)
+    pipe_through([:authenticated_api, :age_verified])
 
     get("/", MatchController, :index)
     post("/:id/unmatch", MatchController, :unmatch)
   end
 
   scope "/api/conversations", SnackWeb.Controllers.Api do
-    pipe_through(:authenticated_api)
+    pipe_through([:authenticated_api, :age_verified])
 
     get("/", ChatController, :index)
     get("/:id/match", MatchController, :for_conversation)

@@ -92,3 +92,9 @@ config :snack, Snack.Storage, adapter: Snack.Storage.R2
 
 config :snack, Snack.Storage.Local,
   uploads_dir: Path.expand("../tmp/test_uploads#{System.get_env("MIX_TEST_PARTITION")}", __DIR__)
+
+# Age verification: a fixed key; tests pass their own synthetic CSCAs.
+config :snack, :age_verification,
+  fingerprint_key: "test-document-fingerprint-key-0123456789",
+  minimum_age: 18,
+  attempt_limits: [{5, 3600}, {10, 86_400}]

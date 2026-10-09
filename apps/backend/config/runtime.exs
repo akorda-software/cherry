@@ -319,6 +319,60 @@ message_cipher_key =
 
 config :snack, :message_cipher, key: message_cipher_key
 
+# ── Verificación de edad (D-2026-10-09) ────────────────────────────────
+# DOCUMENT_FINGERPRINT_KEY: clave HMAC de la huella del documento (una persona,
+# una cuenta). Sin ella, POST /api/me/verification/nfc responde 503. No se puede
+# rotar: cambiarla deja huérfanas todas las huellas guardadas.
+# AGE_VERIFICATION_REQUIRED=true hace obligatoria la verificación (desactivada
+# por defecto). CSCA_PATHS: rutas separadas por comas con los CSCA de confianza.
+fingerprint_key = System.get_env("DOCUMENT_FINGERPRINT_KEY", "") |> String.trim()
+
+age_verification_required =
+  case System.get_env("AGE_VERIFICATION_REQUIRED", "false") |> String.trim() do
+    "true" -> true
+    "false" -> false
+    "" -> false
+    other -> raise "AGE_VERIFICATION_REQUIRED must be true or false, got #{inspect(other)}"
+  end
+
+fingerprint_key =
+  cond do
+    fingerprint_key != "" -> fingerprint_key
+    config_env() == :dev -> "__DEV_DOCUMENT_FINGERPRINT_KEY__"
+    true -> nil
+  end
+
+if config_env() == :prod do
+  cond do
+    fingerprint_key != nil and
+        (String.length(fingerprint_key) < 32 or
+           String.downcase(fingerprint_key) in ["cambiar", "change", "changeme", "change_me"]) ->
+      raise """
+      environment variable DOCUMENT_FINGERPRINT_KEY is too weak (placeholder or
+      shorter than 32 characters). Generate one with: mix phx.gen.secret
+      """
+
+    age_verification_required and fingerprint_key == nil ->
+      raise """
+      AGE_VERIFICATION_REQUIRED=true needs DOCUMENT_FINGERPRINT_KEY.
+      Generate one with: mix phx.gen.secret (and never change it afterwards).
+      """
+
+    true ->
+      :ok
+  end
+end
+
+if config_env() != :test do
+  config :snack, :age_verification, fingerprint_key: fingerprint_key
+  config :snack, :features, age_verification_required: age_verification_required
+
+  case split_csv_env.("CSCA_PATHS", nil) do
+    [] -> :ok
+    paths -> config :snack, Snack.Identity.Document.TrustStore, paths: paths
+  end
+end
+
 if config_env() == :prod do
   access_token_salt =
     System.get_env("AUTH_ACCESS_TOKEN_SALT") ||

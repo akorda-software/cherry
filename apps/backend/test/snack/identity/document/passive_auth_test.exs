@@ -47,9 +47,9 @@ defmodule Snack.Identity.Document.PassiveAuthTest do
       assert mrz.personal_number == nil
     end
 
-    test "Spanish passport exposes the DNI number from the personal number field" do
+    test "passports never expose a personal number (it may be a parent's DNI)" do
       doc = PKI.document(format: :td3, personal_number: PKI.dni(87_654_321))
-      assert {:ok, %{mrz: %{personal_number: "87654321X"}}} = verify(doc)
+      assert {:ok, %{mrz: %{personal_number: nil, document_number: "ZZ0000001"}}} = verify(doc)
     end
 
     test "RSASSA-PSS SignerInfo and PSS-signed Document Signer certificate" do

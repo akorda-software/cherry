@@ -8,10 +8,11 @@ defmodule Snack.Identity.Document.Mrz do
   3 × 30) and TD3 (passports, 2 × 44). Every check digit is verified, including
   the composite one.
 
-  For the Spanish DNI the document number is the card's own number (it changes
-  with each renewal) and the DNI number goes in the optional data of line 1;
-  Spanish passports carry it in the personal number field. `personal_number`
-  exposes it so the fingerprint can follow the person, not the card.
+  For the Spanish DNI (and the TIE of foreign residents) the document number is
+  the card's own number, which changes with each renewal, and the DNI/NIE
+  number goes in the optional data of line 1. `personal_number` exposes it so
+  the fingerprint can follow the person, not the card. Passports never set it:
+  the passport of a minor without DNI may carry a parent's DNI in that field.
   """
 
   @enforce_keys [:format, :document_code, :issuing_state, :document_number, :birth_date]
@@ -147,7 +148,8 @@ defmodule Snack.Identity.Document.Mrz do
          birth_date: birth_date,
          expiry_date: expiry_date(expiry),
          nationality: strip(nationality),
-         personal_number: personal_number(strip(state), personal, "")
+         # Not the holder's number in every case (see the moduledoc).
+         personal_number: nil
        }}
     end
   end
@@ -157,8 +159,8 @@ defmodule Snack.Identity.Document.Mrz do
     if strip(personal) == "" and check in ["<", "0"], do: :ok, else: check(personal, check)
   end
 
-  # Spanish documents carry the DNI/NIE number in the optional data. It is only
-  # used when it is a well-formed DNI or NIE with a valid control letter.
+  # Spanish identity cards carry the DNI/NIE number in the optional data. It is
+  # only used when it is a well-formed DNI or NIE with a valid control letter.
   defp personal_number("ESP", optional1, optional2) do
     [optional1, optional2]
     |> Enum.flat_map(&String.split(&1, "<", trim: true))

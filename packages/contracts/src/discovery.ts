@@ -30,7 +30,8 @@ export interface DiscoveryProfileCard {
   age: number;
   bio: string | null;
   gender: string;
-  whatIAmLookingFor: string;
+  /** «¿Qué busca?»: 1–4 intenciones en orden canónico (el backend envía también `whatIAmLookingFor`, obsoleto). */
+  lookingFor: string[];
   /** Etiqueta aproximada generada por backend ("Cerca de ti", "A unos 15 km", "A más de 100 km"). `null` si falta alguna ubicación (solo fuera del feed). */
   distanceLabel: string | null;
   distanceKmApprox: number | null;

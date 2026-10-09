@@ -57,7 +57,8 @@ export interface ProfileApi {
 export type ProfileUpdateFields = Partial<
   Pick<Profile, ProfileField> & {
     gender: Gender | null;
-    whatIAmLookingFor: RelationshipIntent | null;
+    /** Se envía como `looking_for` (1–4 intenciones). */
+    lookingFor: RelationshipIntent[];
   }
 >;
 
@@ -65,7 +66,7 @@ const FIELD_TO_SNAKE: Record<ProfileField, string> = {
   displayName: "display_name",
   birthDate: "birth_date",
   gender: "gender",
-  whatIAmLookingFor: "what_i_am_looking_for",
+  lookingFor: "looking_for",
   bio: "bio"
 };
 

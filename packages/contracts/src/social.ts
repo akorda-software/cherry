@@ -15,7 +15,8 @@ export interface PublicProfile {
   age: number;
   bio: string | null;
   gender: string;
-  whatIAmLookingFor: string;
+  /** «¿Qué busca?»: 1–4 intenciones en orden canónico. */
+  lookingFor: string[];
   distanceLabel: string | null;
   distanceKmApprox: number | null;
   photos: PhotoSummary[];

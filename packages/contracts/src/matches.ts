@@ -36,6 +36,13 @@ export interface MatchSummary {
 
 export interface MatchesResponse {
   matches: MatchSummary[];
+  nextCursor: string | null;
+}
+
+export type InboxPageQuery = CursorPageQuery;
+
+export interface ConversationMatchResponse {
+  match: MatchSummary;
 }
 
 /** Conversación activa (`GET /api/conversations`), coherente con `MatchSummary`. */
@@ -52,6 +59,7 @@ export interface ConversationSummary {
 
 export interface ConversationsResponse {
   conversations: ConversationSummary[];
+  nextCursor: string | null;
 }
 
 export type ConversationMessagesQuery = CursorPageQuery;

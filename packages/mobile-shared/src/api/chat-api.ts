@@ -2,8 +2,8 @@ import type {
   ChatMessage,
   ConversationMessagesPage,
   ConversationMessagesQuery,
-  ConversationSummary,
   ConversationsResponse,
+  InboxPageQuery,
   OkResponse,
   SendMessageResponse
 } from "@snack/contracts";
@@ -13,7 +13,7 @@ import { buildCursorPath, pathSegment } from "./http-utils";
 
 export interface ChatApi {
   /** Conversaciones activas con último mensaje y no leídos (misma regla que los matches). */
-  listConversations(): Promise<ConversationSummary[]>;
+  listConversations(query?: InboxPageQuery): Promise<ConversationsResponse>;
   /** Historial: más nuevos primero; pasa `nextCursor` para cargar mensajes más antiguos. */
   listMessages(
     conversationId: string,
@@ -30,9 +30,8 @@ function conversationPath(conversationId: string): string {
 
 export function createChatApi(httpClient: HttpClient): ChatApi {
   return {
-    async listConversations() {
-      const response = await httpClient.get<ConversationsResponse>("/api/conversations");
-      return response.conversations;
+    listConversations(query) {
+      return httpClient.get<ConversationsResponse>(buildCursorPath("/api/conversations", query));
     },
     listMessages(conversationId, query) {
       return httpClient.get<ConversationMessagesPage>(

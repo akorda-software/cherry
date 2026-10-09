@@ -160,6 +160,24 @@ defmodule Snack.Identity.Document.Certificate do
     end
   end
 
+  @doc "Readable form of a name (`C=es, O=…, CN=…`), normalised."
+  def describe_name(%{normalized: attrs}) when is_list(attrs) do
+    labels = %{
+      "2.5.4.6" => "C",
+      "2.5.4.10" => "O",
+      "2.5.4.11" => "OU",
+      "2.5.4.3" => "CN",
+      "2.5.4.5" => "serialNumber"
+    }
+
+    Enum.map_join(attrs, ", ", fn
+      {oid, value} -> "#{Map.get(labels, oid, oid)}=#{value}"
+      :invalid -> "?"
+    end)
+  end
+
+  def describe_name(_name), do: "(unreadable)"
+
   @doc "True when `issuer` (a name of a certificate) designates `subject`."
   def same_name?(%{raw: raw}, %{raw: raw}) when is_binary(raw), do: true
 

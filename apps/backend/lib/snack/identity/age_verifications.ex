@@ -82,9 +82,44 @@ defmodule Snack.Identity.AgeVerifications do
 
       {:error, reason} = error ->
         log_outcome(reason, nil)
+        maybe_diagnose(reason, document)
         error
     end
   end
+
+  @passive_auth_errors [
+    :malformed_sod,
+    :unsupported_algorithm,
+    :missing_document_signer,
+    :invalid_signature,
+    :untrusted_certificate,
+    :certificate_expired,
+    :data_group_mismatch
+  ]
+
+  # Development only (`diagnostics: true` in config/dev.exs): public metadata
+  # of the Document Signer certificate to understand a rejection of a real
+  # document. Never DG1/DG2, hashes or document numbers (PassiveAuth.diagnose/1).
+  defp maybe_diagnose(reason, %{sod: sod})
+       when reason in @passive_auth_errors and is_binary(sod) do
+    if Application.get_env(:snack, :age_verification, [])[:diagnostics] do
+      Logger.warning(
+        "age verification diagnostics (#{reason}): " <>
+          inspect(PassiveAuth.diagnose(sod), limit: :infinity, printable_limit: 200) <>
+          "\ntrusted CSCA: " <>
+          inspect(
+            Enum.map(
+              Snack.Identity.Document.TrustStore.anchors(),
+              &Snack.Identity.Document.Certificate.describe_name(&1.subject)
+            )
+          )
+      )
+    end
+  rescue
+    _ -> :ok
+  end
+
+  defp maybe_diagnose(_reason, _document), do: :ok
 
   defp check_available do
     if available?(), do: :ok, else: {:error, :unavailable}

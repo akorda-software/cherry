@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'app.snack'
+version = '0.1.0'
+
+android {
+  namespace "app.snack.documentnfc"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+    consumerProguardFiles "consumer-rules.pro"
+  }
+}
+
+dependencies {
+  // JMRTD (LGPL-2.1+): ICAO 9303 eMRTD protocols (PACE, BAC, secure messaging).
+  // Brings BouncyCastle 1.86 (MIT-style licence) and scuba-smartcards (LGPL-2.1+).
+  implementation('org.jmrtd:jmrtd:0.8.9') {
+    exclude group: 'junit', module: 'junit'
+  }
+  // SCUBA for Android (LGPL-2.1+): IsoDepCardService on top of android.nfc.
+  implementation 'net.sf.scuba:scuba-sc-android:0.0.27'
+}

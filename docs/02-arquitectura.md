@@ -22,7 +22,7 @@ Phoenix single app (sin umbrella) con contextos por dominio:
 | Contexto | Responsabilidad |
 |---|---|
 | `Snack.Accounts` | Usuarios canónicos |
-| `Snack.Identity` | Validación de credenciales Google/Apple y linking de providers |
+| `Snack.Identity` | Validación de credenciales Google/Apple y linking de providers; verificación de edad (`AgeVerifications`) con autenticación pasiva de documentos eMRTD (`Identity.Document.*`, CSCA en `priv/csca`) |
 | `Snack.Sessions` | Emisión, rotación, revocación de sesiones y refresh tokens |
 | `Snack.Dating` | Dominio dating completo: perfiles, discovery, matching, chat, safety |
 | `Snack.Features` | Feature flags leídas de config por entorno |
@@ -51,11 +51,11 @@ app/                        # Rutas (grupos por estado de producto; mapa complet
 │   (onboarding)/           # 11 pasos; index reanuda en el primer paso pendiente
 │   (app)/(tabs)/           # Descubrir · Likes · Chats · Yo
 │   (app)/…                 # profile/[id], chat/[id], filters, edit/*, settings, about
-│   (dev)/                  # kitchen-sink y art (solo __DEV__)
+│   (dev)/                  # kitchen-sink, art y verify-document (solo __DEV__)
 src/
 ├── features/<dominio>/     # presentation / application / domain / infrastructure
 │   auth, app-bootstrap, app-overlays, onboarding, discovery, likes, match, matches,
-│   chat, profile-card, photos, location, tags, safety, me, settings, activity
+│   chat, profile-card, photos, location, tags, safety, me, settings, activity, verification
 └── shared/
     ├── api/                # Cliente HTTP JSON autenticado (refresh-on-401)
     ├── config/             # Runtime config + flags desde /api/config
@@ -72,6 +72,7 @@ Reglas estructurales:
 - `shared/ui` no contiene lógica de producto; `shared/ui/app-shell/routes.ts` define las pestañas y las rutas canónicas.
 - Tokens de sesión solo en secure storage (Keychain/Keystore).
 - Sistema de diseño «Libreta kawaii»: `08-identidad-visual.md`.
+- Módulos nativos propios en `apps/mobile/modules/` (Expo Modules API, autolinking local): `document-nfc` lee DG1/DG2/SOD del chip de DNI y pasaportes (JMRTD en Android, NFCPassportReader incorporado en iOS); ver su `README.md`.
 
 ## Paquetes
 

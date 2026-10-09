@@ -37,18 +37,21 @@ Cobertura: umbral 90 % configurado en `mix.exs` (`mix test --cover`).
 - Canal de chat: reglas de join, envío, lectura y broadcasts.
 - Auth: validación/expiración de tokens REST y WS, rotación y revocación por reuso; proveedores Google/Apple.
 - Almacenamiento (local y R2 con respuestas simuladas), cifrado de mensajes, configuración de runtime y `Snack.Release.seed/0`.
+- Verificación de edad: autenticación pasiva con una PKI sintética generada en los tests (`test/support/document_pki.ex`: CSCA → firmante → SOD, DG1/DG2 falsos) y con SOD firmados por `openssl cms` (`test/fixtures/document/`, regenerables con `generate.sh`): RSA PKCS#1 v1.5, RSASSA-PSS, ECDSA con curva nombrada y brainpool con parámetros explícitos, firma inválida, DG manipulado, cadena rota, certificados caducados, extensiones críticas, MRZ TD1/TD3 con dígitos de control (especímenes de ICAO 9303), menores, huella, límite de intentos, API y que los DG no salen en los logs. Los CSCA españoles de `priv/csca` se parsean y autoverifican. Nunca datos de documentos reales.
 
 ### Móvil
 - Routing: navegación raíz, zona privada, cierre de sesión y runtime config (`test/router/*`).
 - Features (`src/features/**/*.test.ts`): sesión (refresh/retry), proveedores y callbacks de auth, onboarding (pasos, reanudación, preferencias, fecha de nacimiento), cola de discovery (optimismo, rollback, deshacer), likes, matches, chat (sesión de socket, mensajes), fotos, ubicación, seguridad, ajustes y pestaña Yo.
 - UI (`test/ui/*`): contrato de tokens/tema y componentes (botones, pegatinas, conmutador, campos, hojas, avisos, barra de pestañas).
 
+- Verificación (`src/features/verification`, `modules/document-nfc`): API JS del módulo NFC con el nativo simulado, máquina de estados del flujo y la pantalla de prueba con backend falso. La lectura real por NFC no se puede probar sin documento y móvil (`docs/compliance/02-nfc-pruebas-manana.md`).
+
 ### Contracts
 - Forma de los DTOs compartidos (session, auth, config, discovery y social).
 
 ## Mocks nativos
 
-`apps/mobile/test/mocks/` simula los módulos nativos usados para jsdom (22 mocks): expo-apple-authentication, expo-application, expo-constants, expo-crypto, expo-device, expo-font, expo-haptics, expo-image, expo-linear-gradient, expo-router (+drawer), expo-secure-store, expo-splash-screen, expo-status-bar, expo-system-ui, flash-list, google-signin, react-native, react-native-gesture-handler, react-native-reanimated, react-native-safe-area-context y react-native-svg. Setup central en `test/setup.ts`.
+`apps/mobile/test/mocks/` simula los módulos nativos usados para jsdom (23 mocks): expo (sin módulos nativos: `requireOptionalNativeModule` devuelve `null`, como en web), expo-apple-authentication, expo-application, expo-constants, expo-crypto, expo-device, expo-font, expo-haptics, expo-image, expo-linear-gradient, expo-router (+drawer), expo-secure-store, expo-splash-screen, expo-status-bar, expo-system-ui, flash-list, google-signin, react-native, react-native-gesture-handler, react-native-reanimated, react-native-safe-area-context y react-native-svg. Setup central en `test/setup.ts`.
 
 ## Verificación manual
 

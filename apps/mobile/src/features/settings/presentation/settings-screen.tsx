@@ -139,6 +139,19 @@ export function SettingsScreen() {
         />
       </ListSection>
 
+      {__DEV__ ? (
+        <ListSection footnote="Solo en desarrollo. Todavía no forma parte del registro." title="Pruebas">
+          <ListRow
+            description="Lectura NFC del DNI o pasaporte"
+            icon="shield-check"
+            iconColor="menta"
+            label="Comprobar mi edad"
+            onPress={() => router.push("/verify-document")}
+            testID="settings-dev-verify-document"
+          />
+        </ListSection>
+      ) : null}
+
       <ListSection title="Zona de peligro">
         <ListRow
           danger

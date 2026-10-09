@@ -147,6 +147,7 @@ En desarrollo, la pantalla de error muestra «Detalle técnico: …» con el có
 | Ídem | `data_group_mismatch` | El móvil no envió los bytes exactos del chip | ¿Pasa en las dos plataformas o solo en una? Anótalo |
 | Ídem | `malformed_sod` / `missing_document_signer` | Variante de codificación del SOD o firmante sin certificado dentro | El diagnóstico dice qué parte se lee |
 | Ídem | `malformed_dg1` / `invalid_check_digit` | Variante de la MRZ | Revisa el formato de la MRZ (sin compartir los datos) |
+| «El documento está caducado» | `document_expired` | La fecha de caducidad de la MRZ ya ha pasado (o un DNI permanente codificado de forma inesperada) | Si el documento está en vigor, anota el caso |
 | «Snack es para mayores de edad» siendo mayor | `underage` | Fecha mal interpretada (siglo) | Muy improbable. Anótalo |
 | «Demasiados intentos» | `too_many_attempts` | Más de 5 intentos en una hora | `DELETE FROM age_verification_attempts;` |
 | «Algo se ha torcido» | `network` / `HTTP 401` | El móvil no llega al backend o la sesión caducó | Revisa `EXPO_PUBLIC_API_BASE_URL_*` y vuelve a entrar |

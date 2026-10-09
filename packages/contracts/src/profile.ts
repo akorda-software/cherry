@@ -12,6 +12,12 @@ export interface Profile {
   birthDate: string | null;
   age: number | null;
   gender: Gender | null;
+  /** «¿Qué buscas?»: 1–4 intenciones sin repetir, en orden canónico. `[]` si está sin contestar. */
+  lookingFor: RelationshipIntent[];
+  /**
+   * @deprecated Primera intención de `lookingFor` (o `null`), solo para versiones antiguas
+   * de la app. Usa `lookingFor`.
+   */
   whatIAmLookingFor: RelationshipIntent | null;
   bio: string | null;
   isComplete: boolean;
@@ -61,7 +67,7 @@ export type ProfileField =
   | "displayName"
   | "birthDate"
   | "gender"
-  | "whatIAmLookingFor"
+  | "lookingFor"
   | "bio";
 
 /** Body de `POST /api/me/location`. El backend lo redondea a una rejilla de 500 m. Respuesta: `OkResponse`. */

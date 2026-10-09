@@ -16,7 +16,7 @@ const card: DiscoveryProfileCard = {
   age: 30,
   bio: "Hello world",
   gender: "woman",
-  whatIAmLookingFor: "relationship",
+  lookingFor: ["relationship"],
   distanceLabel: "Cerca de ti",
   distanceKmApprox: 2,
   sharedTagsCount: 3,

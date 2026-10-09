@@ -71,6 +71,23 @@ describe("createProfileApi", () => {
     });
   });
 
+  describe("updateProfile", () => {
+    it("PUTs the intents as a snake_case looking_for list", async () => {
+      const http = createMockHttpClient();
+      vi.mocked(http.put).mockResolvedValueOnce({ profile: {} });
+
+      await createProfileApi(http).updateProfile({
+        displayName: "Lucía",
+        lookingFor: ["relationship", "meet_people"]
+      });
+
+      expect(http.put).toHaveBeenCalledWith("/api/me/profile", {
+        display_name: "Lucía",
+        looking_for: ["relationship", "meet_people"]
+      });
+    });
+  });
+
   describe("updateLocation", () => {
     it("POSTs the latitude/longitude contract instead of lat/lng", async () => {
       const http = createMockHttpClient();

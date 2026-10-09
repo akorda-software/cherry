@@ -69,6 +69,20 @@ describe("createLikesApi", () => {
 });
 
 describe("createMatchesApi", () => {
+  it("passes the signed inbox cursor without draining further pages", async () => {
+    const http = createMockHttpClient();
+    vi.mocked(http.get).mockResolvedValueOnce({ matches: [], nextCursor: "more" });
+    expect(await createMatchesApi(http).list({ limit: 20, cursor: "abc+/=" })).toEqual({ matches: [], nextCursor: "more" });
+    expect(http.get).toHaveBeenCalledOnce();
+    expect(http.get).toHaveBeenCalledWith("/api/matches?limit=20&cursor=abc%2B%2F%3D");
+  });
+
+  it("resolves a direct conversation link independently of the first page", async () => {
+    const http = createMockHttpClient();
+    vi.mocked(http.get).mockResolvedValueOnce({ match: { id: "old-match" } });
+    expect(await createMatchesApi(http).getForConversation("a/b")).toEqual({ id: "old-match" });
+    expect(http.get).toHaveBeenCalledWith("/api/conversations/a%2Fb/match");
+  });
   it("lists matches unwrapping the matches array", async () => {
     const http = createMockHttpClient();
     const match: MatchSummary = {
@@ -81,12 +95,12 @@ describe("createMatchesApi", () => {
       lastMessage: null,
       unreadCount: 0
     };
-    vi.mocked(http.get).mockResolvedValueOnce({ matches: [match] });
+    vi.mocked(http.get).mockResolvedValueOnce({ matches: [match], nextCursor: null });
 
     const result = await createMatchesApi(http).list();
 
     expect(http.get).toHaveBeenCalledWith("/api/matches");
-    expect(result).toEqual([match]);
+    expect(result).toEqual({ matches: [match], nextCursor: null });
   });
 
   it("unmatches through the unmatch action", async () => {
@@ -102,12 +116,12 @@ describe("createMatchesApi", () => {
 describe("createChatApi", () => {
   it("lists conversations unwrapping the array", async () => {
     const http = createMockHttpClient();
-    vi.mocked(http.get).mockResolvedValueOnce({ conversations: [] });
+    vi.mocked(http.get).mockResolvedValueOnce({ conversations: [], nextCursor: null });
 
     const result = await createChatApi(http).listConversations();
 
     expect(http.get).toHaveBeenCalledWith("/api/conversations");
-    expect(result).toEqual([]);
+    expect(result).toEqual({ conversations: [], nextCursor: null });
   });
 
   it("lists messages with pagination", async () => {
@@ -223,7 +237,7 @@ describe("createPublicProfileApi", () => {
       age: 29,
       bio: null,
       gender: "woman",
-      whatIAmLookingFor: "relationship",
+      lookingFor: ["relationship"],
       distanceLabel: "A unos 5 km",
       distanceKmApprox: 5,
       photos: [],

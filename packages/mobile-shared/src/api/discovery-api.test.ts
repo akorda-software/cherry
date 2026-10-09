@@ -101,7 +101,7 @@ describe("createDiscoveryApi", () => {
           age: 30,
           bio: null,
           gender: "woman",
-          whatIAmLookingFor: "go_with_the_flow",
+          lookingFor: ["go_with_the_flow"],
           distanceLabel: "Cerca de ti",
           distanceKmApprox: 1,
           sharedTagsCount: 0,

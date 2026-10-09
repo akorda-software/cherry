@@ -52,11 +52,13 @@ defmodule Snack.MixProject do
       {:phoenix_live_view, "~> 1.1.0"},
       {:lazy_html, ">= 0.1.0", only: :test},
       {:telemetry_metrics, "~> 1.0"},
+      {:peep, "~> 5.0"},
       {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:req, "~> 0.5"},
+      {:oban, "~> 2.23.0"},
       {:geo_postgis, "~> 3.4"}
     ]
   end

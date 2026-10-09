@@ -10,7 +10,8 @@ defmodule Snack.Dating.Safety do
   import Ecto.Query
 
   alias Snack.Accounts.User
-  alias Snack.Dating
+  alias Snack.Dating.Match
+  alias Snack.Dating.PairLock
   alias Snack.Dating.Profile
   alias Snack.Dating.Report
   alias Snack.Dating.UserBlock
@@ -32,7 +33,7 @@ defmodule Snack.Dating.Safety do
       if blocked?(actor_id, target_id) do
         {:ok, :already_blocked}
       else
-        case Dating.block_profile(%{actor_profile_id: actor_id, target_profile_id: target_id}) do
+        case block_profile(%{actor_profile_id: actor_id, target_profile_id: target_id}) do
           {:ok, block} ->
             {:ok, block}
 
@@ -66,7 +67,7 @@ defmodule Snack.Dating.Safety do
             report
 
           nil ->
-            case Dating.report_profile(%{
+            case report_profile(%{
                    reporter_profile_id: reporter_id,
                    target_profile_id: target_id,
                    reason: reason,
@@ -151,4 +152,76 @@ defmodule Snack.Dating.Safety do
     do: Enum.any?(errors, fn {_field, {_msg, opts}} -> opts[:constraint] == :unique end)
 
   defp unique_violation?(_error), do: false
+
+  # ── Safety ────────────────────────────────────────────────────────────
+
+  @doc """
+  Creates a block from one profile to another. Takes the same pair lock as
+  `record_swipe/1`, so a like racing with the block either commits first (and
+  the block then hides any match) or sees the block and fails.
+  """
+  def block_profile(attrs \\ %{}) do
+    changeset = UserBlock.changeset(%UserBlock{}, attrs)
+
+    if changeset.valid? do
+      a = Ecto.Changeset.get_field(changeset, :actor_profile_id)
+      b = Ecto.Changeset.get_field(changeset, :target_profile_id)
+
+      Repo.transaction(fn ->
+        with {:error, reason} <- PairLock.lock(Repo, a, b), do: Repo.rollback(reason)
+
+        from(m in Match,
+          where:
+            (m.profile_a_id == ^a and m.profile_b_id == ^b) or
+              (m.profile_a_id == ^b and m.profile_b_id == ^a),
+          lock: "FOR UPDATE"
+        )
+        |> Repo.all()
+
+        case Repo.insert(changeset) do
+          {:ok, block} -> block
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    else
+      {:error, changeset}
+    end
+  end
+
+  @doc """
+  Creates a report against a profile.
+  """
+  def report_profile(attrs \\ %{}) do
+    %Report{}
+    |> Report.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  # ── Admin ─────────────────────────────────────────────────────────────
+
+  @doc """
+  Lists reports filtered by status, paginated.
+
+  `opts` may include `:limit` and `:offset`.
+  """
+  def list_reports(status, opts \\ []) do
+    limit = Keyword.get(opts, :limit, 50)
+    offset = Keyword.get(opts, :offset, 0)
+
+    Report
+    |> where([r], r.status == ^status)
+    |> order_by([r], desc: r.inserted_at)
+    |> limit(^limit)
+    |> offset(^offset)
+    |> Repo.all()
+  end
+
+  @doc """
+  Updates a report (e.g., reviewing it).
+  """
+  def update_report(%Report{} = report, attrs) do
+    report
+    |> Report.changeset(attrs)
+    |> Repo.update()
+  end
 end

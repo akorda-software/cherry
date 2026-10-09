@@ -58,7 +58,7 @@ defmodule SnackWeb.Controllers.Api.ProfileControllerTest do
         display_name: "Test User",
         birth_date: ~D[1995-01-15],
         gender: "man",
-        what_i_am_looking_for: "relationship",
+        looking_for: ["relationship"],
         bio: "This is a test bio that is long enough to pass validation rules."
       })
 
@@ -117,6 +117,32 @@ defmodule SnackWeb.Controllers.Api.ProfileControllerTest do
     test "rejects invalid fields", %{authed_conn: conn} do
       conn = put(conn, "/api/me/profile", %{"bio" => "short"})
       assert conn.status == 422
+    end
+
+    test "accepts several intents and returns them as lookingFor", %{authed_conn: conn} do
+      conn =
+        put(conn, "/api/me/profile", %{"looking_for" => ["meet_people", "relationship"]})
+
+      assert %{
+               "profile" => %{
+                 "lookingFor" => ["relationship", "meet_people"],
+                 "whatIAmLookingFor" => "relationship"
+               }
+             } = json_response(conn, 200)
+    end
+
+    test "accepts the old single what_i_am_looking_for string", %{authed_conn: conn} do
+      conn = put(conn, "/api/me/profile", %{"what_i_am_looking_for" => "casual"})
+
+      assert %{"profile" => %{"lookingFor" => ["casual"], "whatIAmLookingFor" => "casual"}} =
+               json_response(conn, 200)
+    end
+
+    test "rejects an empty or duplicated intent list", %{authed_conn: conn} do
+      for value <- [[], ["casual", "casual"], ["friends"]] do
+        response = conn |> put("/api/me/profile", %{"looking_for" => value}) |> json_response(422)
+        assert %{"errors" => %{"looking_for" => [_ | _]}} = response
+      end
     end
   end
 

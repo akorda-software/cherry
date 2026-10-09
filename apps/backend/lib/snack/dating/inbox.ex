@@ -14,15 +14,12 @@ defmodule Snack.Dating.Inbox do
   alias Snack.Accounts.User
   alias Snack.Dating.Conversation
   alias Snack.Dating.ConversationRead
+  alias Snack.Dating.InboxCursor
   alias Snack.Dating.Match
   alias Snack.Dating.Message
   alias Snack.Dating.Profile
   alias Snack.Dating.UserBlock
   alias Snack.Repo
-
-  # m2: instante en microsegundos. m1 (segundos) se sigue aceptando por compatibilidad.
-  @cursor_prefix "m2:"
-  @legacy_cursor_prefix "m1:"
 
   @type entry :: %{
           match: %Match{},
@@ -40,19 +37,122 @@ defmodule Snack.Dating.Inbox do
   """
   @spec list(Ecto.UUID.t(), DateTime.t()) :: [entry()]
   def list(profile_id, now \\ now()) do
+    visible_query(profile_id, now)
+    |> enrich(profile_id)
+    |> order_by([match: m, last_message: lm],
+      desc: coalesce(lm.inserted_at, m.matched_at),
+      desc: m.id
+    )
+    |> Repo.all()
+    |> Enum.map(&normalize_last_message/1)
+  end
+
+  @doc """
+  Bounded API page by activity and match ID. The signed cursor pins the reference
+  instant: new messages and matches don't move entries between these pages.
+  Visibility and unread counts are checked afresh. Bodies, photos and unread
+  counts are fetched only for the selected page, never the entire inbox.
+  """
+  def list_page(profile_id, opts \\ []) do
+    limit = Keyword.get(opts, :limit, 50)
+
+    with true <- is_integer(limit) and limit in 1..100,
+         {:ok, cursor} <- InboxCursor.decode(Keyword.get(opts, :cursor), profile_id) do
+      at = if cursor, do: cursor.at, else: Keyword.get(opts, :now, DateTime.utc_now())
+      visible = visible_query(profile_id, now())
+
+      last_activity =
+        from(msg in Message,
+          where: msg.conversation_id == parent_as(:conversation).id and msg.inserted_at <= ^at,
+          order_by: [desc: msg.inserted_at, desc: msg.id],
+          limit: 1,
+          select: %{inserted_at: msg.inserted_at}
+        )
+
+      page =
+        from([match: m] in visible,
+          left_lateral_join: lm in subquery(last_activity),
+          as: :last_activity,
+          on: true,
+          where: m.matched_at <= ^at,
+          order_by: [desc: coalesce(lm.inserted_at, m.matched_at), desc: m.id],
+          select: %{
+            match_id: m.id,
+            activity_at: type(coalesce(lm.inserted_at, m.matched_at), :utc_datetime_usec)
+          },
+          limit: ^(limit + 1)
+        )
+        |> before_activity(cursor)
+
+      entries =
+        from([match: m] in visible,
+          join: selected in subquery(page),
+          as: :selected_page,
+          on: selected.match_id == m.id,
+          order_by: [desc: selected.activity_at, desc: m.id]
+        )
+        |> enrich(profile_id, at)
+        |> select_merge([selected_page: selected], %{activity_at: selected.activity_at})
+        |> Repo.all()
+        |> Enum.map(&normalize_last_message/1)
+
+      rows = Enum.take(entries, limit)
+
+      next_cursor =
+        if length(entries) > limit, do: InboxCursor.encode(List.last(rows), profile_id, at)
+
+      {:ok, %{entries: rows, next_cursor: next_cursor}}
+    else
+      false -> {:error, :invalid_limit}
+      error -> error
+    end
+  end
+
+  def get_entry(conversation_id, profile_id) do
+    with {:ok, id} <- Ecto.UUID.cast(conversation_id) do
+      from([conversation: c] in visible_query(profile_id, now()), where: c.id == ^id)
+      |> enrich(profile_id)
+      |> Repo.one()
+      |> case do
+        nil -> {:error, :conversation_not_active}
+        entry -> {:ok, normalize_last_message(entry)}
+      end
+    else
+      :error -> {:error, :not_participant}
+    end
+  end
+
+  defp before_activity(query, nil), do: query
+
+  defp before_activity(query, cursor) do
+    from([match: m, last_activity: lm] in query,
+      where:
+        fragment(
+          "(COALESCE(?, ?), ?) < (?, ?)",
+          lm.inserted_at,
+          m.matched_at,
+          m.id,
+          type(^cursor.activity, :utc_datetime_usec),
+          type(^cursor.id, :binary_id)
+        )
+    )
+  end
+
+  defp enrich(query, profile_id, at \\ nil) do
     last_message =
       from(msg in Message,
         where: msg.conversation_id == parent_as(:conversation).id,
         order_by: [desc: msg.inserted_at, desc: msg.id],
         limit: 1
       )
+      |> then(fn q -> if at, do: where(q, [msg], msg.inserted_at <= ^at), else: q end)
 
-    from([match: m, conversation: c, other: other] in visible_query(profile_id, now),
+    from([match: m, conversation: c, other: other] in query,
       left_lateral_join: lm in subquery(last_message),
+      as: :last_message,
       on: true,
       left_join: r in ConversationRead,
       on: r.conversation_id == c.id and r.profile_id == ^profile_id,
-      order_by: [desc: coalesce(lm.inserted_at, m.matched_at), desc: m.id],
       select: %{
         match: m,
         conversation_id: c.id,
@@ -73,8 +173,6 @@ defmodule Snack.Dating.Inbox do
           )
       }
     )
-    |> Repo.all()
-    |> Enum.map(&normalize_last_message/1)
   end
 
   @doc """
@@ -104,43 +202,11 @@ defmodule Snack.Dating.Inbox do
     |> Repo.one()
   end
 
-  @doc """
-  Marca la conversación como leída por `profile_id` hasta `now` (nunca retrocede).
-  Solo participantes; funciona aunque el match ya no esté activo.
-  """
-  def mark_read(conversation_id, profile_id, now \\ DateTime.utc_now()) do
-    with {:ok, conversation_id} <- Ecto.UUID.cast(conversation_id),
-         %Match{} = match <- match_for_conversation(conversation_id),
-         true <- participant?(match, profile_id) do
-      upsert_read(conversation_id, profile_id, now)
-    else
-      _not_participant -> {:error, :not_participant}
-    end
-  end
+  defdelegate mark_read(conversation_id, profile_id, at \\ DateTime.utc_now()),
+    to: Snack.Dating.ConversationReads
 
-  @doc """
-  Página de mensajes, más nuevos primero. `cursor` es el `next_cursor` opaco de
-  una página anterior (o, por compatibilidad, un instante ISO 8601).
-  """
-  def list_messages_page(conversation_id, opts \\ []) do
-    limit = Keyword.get(opts, :limit, 50)
-
-    with {:ok, cursor} <- decode_cursor(Keyword.get(opts, :cursor)) do
-      rows =
-        from(m in Message,
-          where: m.conversation_id == ^conversation_id,
-          order_by: [desc: m.inserted_at, desc: m.id],
-          limit: ^(limit + 1)
-        )
-        |> apply_cursor(cursor)
-        |> Repo.all()
-
-      page = Enum.take(rows, limit)
-      next_cursor = if length(rows) > limit, do: encode_cursor(List.last(page))
-
-      {:ok, %{messages: page, next_cursor: next_cursor}}
-    end
-  end
+  defdelegate list_messages_page(conversation_id, opts \\ []),
+    to: Snack.Dating.MessagePages
 
   # ── Visibility ─────────────────────────────────────────────────────────
 
@@ -180,99 +246,6 @@ defmodule Snack.Dating.Inbox do
     do: %{entry | last_message: nil}
 
   defp normalize_last_message(entry), do: entry
-
-  # ── Reads ──────────────────────────────────────────────────────────────
-
-  defp match_for_conversation(conversation_id) do
-    Repo.one(
-      from(m in Match,
-        join: c in Conversation,
-        on: c.match_id == m.id,
-        where: c.id == ^conversation_id
-      )
-    )
-  end
-
-  defp participant?(%Match{profile_a_id: a, profile_b_id: b}, profile_id),
-    do: profile_id in [a, b]
-
-  defp upsert_read(conversation_id, profile_id, now) do
-    now = to_usec(now)
-
-    %ConversationRead{}
-    |> ConversationRead.changeset(%{
-      conversation_id: conversation_id,
-      profile_id: profile_id,
-      last_read_at: now
-    })
-    |> Repo.insert(
-      on_conflict:
-        from(r in ConversationRead,
-          update: [
-            set: [
-              last_read_at: fragment("GREATEST(?, EXCLUDED.last_read_at)", r.last_read_at),
-              updated_at: fragment("EXCLUDED.updated_at")
-            ]
-          ]
-        ),
-      conflict_target: [:conversation_id, :profile_id],
-      returning: true
-    )
-  end
-
-  # ── Message cursor ─────────────────────────────────────────────────────
-
-  defp apply_cursor(query, nil), do: query
-
-  defp apply_cursor(query, {:before, %DateTime{} = at, id}) do
-    from(m in query,
-      where: m.inserted_at < ^at or (m.inserted_at == ^at and m.id < ^id)
-    )
-  end
-
-  defp apply_cursor(query, {:before_time, %DateTime{} = at}) do
-    from(m in query, where: m.inserted_at < ^at)
-  end
-
-  defp encode_cursor(%Message{inserted_at: at, id: id}) do
-    Base.url_encode64(
-      @cursor_prefix <> Integer.to_string(DateTime.to_unix(at, :microsecond)) <> ":" <> id,
-      padding: false
-    )
-  end
-
-  defp decode_cursor(nil), do: {:ok, nil}
-  defp decode_cursor(""), do: {:ok, nil}
-
-  defp decode_cursor(cursor) when is_binary(cursor) and byte_size(cursor) <= 256 do
-    with {:ok, decoded} <- Base.url_decode64(cursor, padding: false),
-         {:ok, unit, payload} <- cursor_unit(decoded),
-         [unix, id] <- String.split(payload, ":", parts: 2),
-         {unix, ""} <- Integer.parse(unix),
-         {:ok, at} <- DateTime.from_unix(unix, unit),
-         {:ok, id} <- Ecto.UUID.cast(id) do
-      {:ok, {:before, to_usec(at), id}}
-    else
-      _opaque_cursor_invalid -> decode_legacy_cursor(cursor)
-    end
-  end
-
-  defp decode_cursor(_cursor), do: {:error, :invalid_cursor}
-
-  defp decode_legacy_cursor(cursor) do
-    case DateTime.from_iso8601(cursor) do
-      {:ok, at, _offset} -> {:ok, {:before_time, to_usec(at)}}
-      _error -> {:error, :invalid_cursor}
-    end
-  end
-
-  defp cursor_unit(@cursor_prefix <> payload), do: {:ok, :microsecond, payload}
-  defp cursor_unit(@legacy_cursor_prefix <> payload), do: {:ok, :second, payload}
-  defp cursor_unit(_decoded), do: :error
-
-  # Los campos :utc_datetime_usec exigen precisión 6 al volcarse a la BD.
-  defp to_usec(%DateTime{microsecond: {value, _precision}} = at),
-    do: %{at | microsecond: {value, 6}}
 
   defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
 end

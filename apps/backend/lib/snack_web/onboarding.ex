@@ -12,7 +12,7 @@ defmodule SnackWeb.Onboarding do
     display_name: "name",
     birth_date: "birth_date",
     gender: "gender",
-    what_i_am_looking_for: "intent",
+    looking_for: "intent",
     bio: "bio",
     photos: "photos",
     interested_in: "interested_in",

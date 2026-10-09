@@ -110,7 +110,14 @@ Un proveedor sin audiencias rechaza todos sus logins; el backend lo avisa en el 
 | `UPLOAD_MAX_BYTES` | `2000000` | Tamaño máximo por foto |
 | `UPLOAD_URL_TTL_SECONDS` | `600` | Validez de una URL de subida |
 | `GOOGLE_JWKS_CACHE_TTL_MS` / `APPLE_JWKS_CACHE_TTL_MS` | `600000` | Caché de las claves públicas de los proveedores |
-| `EXPO_PUSH_ACCESS_TOKEN` | vacío | Token de la Expo Push API. Hoy la app móvil no registra tokens push (ver `11-deuda-tecnica-pendiente.md`), así que no se envían notificaciones |
+| `POOL_SIZE` | `10` | Conexiones de la API y workers por nodo; dimensionar contra el presupuesto total de PostgreSQL |
+| `DB_JIT` | `false` | JIT en las conexiones de Snack; desactivado para evitar compilación costosa en consultas cortas |
+| `DB_QUEUE_TARGET_MS` / `DB_QUEUE_INTERVAL_MS` | `50` / `1000` | Objetivo de espera y ventana del pool antes de rechazar sobrecarga |
+| `DB_QUERY_TIMEOUT_MS` | `15000` | Timeout por operación del repositorio |
+| `METRICS_TOKEN` | vacío | Habilita `GET /metrics` con `Authorization: Bearer <token>` para Prometheus |
+| `PUSH_CONCURRENCY` | `4` | Workers Oban de push por nodo (1–32), con jobs persistentes y reintentos |
+| `EXPO_PUSH_ACCESS_TOKEN` | vacío | Token de la Expo Push API. El backend acepta dispositivos en `/api/me/push-token`; el móvil aún no registra tokens (ver `11-deuda-tecnica-pendiente.md`) |
+| `EXPO_PUSH_BASE_URL` / `EXPO_PUSH_RECEIVE_TIMEOUT_MS` | `https://exp.host` / `5000` | Proveedor de push y timeout de respuesta (1–15000 ms); para carga, usar el simulador de `infra/load` |
 | `APP_VERSION` | `dev` | Versión que devuelve `/healthz` (la imagen la hornea en el build) |
 
 ## 5. Fotos
@@ -191,6 +198,8 @@ api.tu-dominio.example {
 ```
 
 Comprobaciones: `GET /healthz` (vivo, sin BD, devuelve la versión) y `GET /readyz` (hace ping a la BD). `GET /openapi.yaml` sirve el contrato REST.
+
+Las métricas incluyen latencia HTTP/chat, consultas y espera del pool, memoria/procesos BEAM y entrega/espera/fallos de push. Las latencias se exportan en **microsegundos**. `/metrics` devuelve 404 sin `METRICS_TOKEN` y 401 sin su Bearer. El procedimiento de carga sostenida está en [infra/load/README.md](../infra/load/README.md); usa una base independiente terminada en `_load`, sesiones sintéticas reales y un simulador de Expo.
 
 ## 8. Compilar la app contra tu instancia
 

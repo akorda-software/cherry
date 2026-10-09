@@ -48,6 +48,30 @@ end
 
 config :snack, :app_version, System.get_env("APP_VERSION", "dev")
 
+config :snack, :metrics_token, System.get_env("METRICS_TOKEN")
+
+positive_env = fn name, default, maximum ->
+  case Integer.parse(System.get_env(name, to_string(default))) do
+    {value, ""} when value > 0 and value <= maximum -> value
+    _ -> raise "#{name} must be an integer between 1 and #{maximum}"
+  end
+end
+
+# Concurrency is per node. Keep HTTP and database capacity available when Expo
+# slows down; increasing this requires measuring both its queue and the DB pool.
+config :snack, Oban, queues: [push: positive_env.("PUSH_CONCURRENCY", 4, 32)]
+
+# The feed is an OLTP query. Its estimates can trigger tens of milliseconds of
+# JIT compilation for a shorter execution; keep this scoped to our connections.
+database_jit =
+  case System.get_env("DB_JIT", "false") do
+    "false" -> "off"
+    "true" -> "on"
+    _ -> raise "DB_JIT must be true or false"
+  end
+
+config :snack, Snack.Repo, parameters: [jit: database_jit]
+
 # En dev, DATABASE_URL (shell o .env) tiene prioridad sobre config/dev.exs para
 # poder apuntar al PostGIS del compose (localhost:5510) sin tocar código.
 if config_env() == :dev do
@@ -268,7 +292,7 @@ config :snack, Snack.Storage.R2,
 config :snack, :expo_push,
   base_url: System.get_env("EXPO_PUSH_BASE_URL", "https://exp.host"),
   access_token: System.get_env("EXPO_PUSH_ACCESS_TOKEN"),
-  receive_timeout_ms: String.to_integer(System.get_env("EXPO_PUSH_RECEIVE_TIMEOUT_MS", "5000"))
+  receive_timeout_ms: positive_env.("EXPO_PUSH_RECEIVE_TIMEOUT_MS", 5000, 15_000)
 
 # Cifrado en reposo de mensajes (D-2026-08-21).
 #
@@ -328,7 +352,10 @@ if config_env() == :prod do
   config :snack, Snack.Repo,
     ssl: System.get_env("DATABASE_SSL", "true") == "true",
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+    pool_size: positive_env.("POOL_SIZE", 10, 1000),
+    queue_target: positive_env.("DB_QUEUE_TARGET_MS", 50, 60_000),
+    queue_interval: positive_env.("DB_QUEUE_INTERVAL_MS", 1000, 60_000),
+    timeout: positive_env.("DB_QUERY_TIMEOUT_MS", 15_000, 120_000),
     # For machines with several cores, consider starting multiple pools of `pool_size`
     # pool_count: 4,
     socket_options: maybe_ipv6

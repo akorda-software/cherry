@@ -83,6 +83,9 @@ config :snack, Snack.Auth,
 
 config :snack, :expo_push_client, Snack.Notifications.MockExpoClient
 
+# Persist jobs in the sandbox; tests decide when to execute them.
+config :snack, Oban, testing: :manual
+
 # Photo storage: R2 by default (its tests stub the HTTP layer); local-storage
 # tests switch the adapter and use their own temporary directories.
 config :snack, Snack.Storage, adapter: Snack.Storage.R2

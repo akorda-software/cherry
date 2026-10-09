@@ -28,7 +28,9 @@ defmodule SnackWeb.ProfileCardJSON do
       age: Profile.age(%{birth_date: row.birth_date}),
       bio: row.bio,
       gender: row.gender,
-      whatIAmLookingFor: row.what_i_am_looking_for,
+      lookingFor: row.looking_for || [],
+      # Deprecated: first intent, for app builds before multi-intent.
+      whatIAmLookingFor: legacy_intent(row.looking_for),
       distanceLabel: distance_label(distance_m),
       distanceKmApprox: approximate_distance_km(distance_m),
       sharedTagsCount: Map.get(row, :shared_tags_count) || Enum.count(tags, &elem(&1, 1)),
@@ -54,7 +56,9 @@ defmodule SnackWeb.ProfileCardJSON do
       age: Profile.age(%{birth_date: row.birth_date}),
       bio: row.bio,
       gender: row.gender,
-      whatIAmLookingFor: row.what_i_am_looking_for,
+      lookingFor: row.looking_for || [],
+      # Deprecated: first intent, for app builds before multi-intent.
+      whatIAmLookingFor: legacy_intent(row.looking_for),
       distanceLabel: distance_label(distance_m),
       distanceKmApprox: approximate_distance_km(distance_m),
       photos: Enum.map(photos, &DatingJSON.photo_summary(conn, &1)),
@@ -66,6 +70,14 @@ defmodule SnackWeb.ProfileCardJSON do
       isNewcomer: row.is_newcomer == true
     }
   end
+
+  @doc """
+  Valor del campo obsoleto `whatIAmLookingFor`: la primera intención (en orden
+  canónico) de `looking_for`, o `nil`. Solo para versiones de la app anteriores
+  a la elección múltiple.
+  """
+  def legacy_intent([first | _rest]), do: first
+  def legacy_intent(_looking_for), do: nil
 
   @doc """
   Etiqueta de distancia aproximada: `<2 km` «Cerca de ti»; 2–10 km redondeo a

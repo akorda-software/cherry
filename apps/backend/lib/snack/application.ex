@@ -10,6 +10,15 @@ defmodule Snack.Application do
     children = [
       SnackWeb.Telemetry,
       Snack.Repo,
+      {Oban, Application.fetch_env!(:snack, Oban)},
+      {Snack.Identity.JwksCache,
+       name: Snack.Identity.Providers.GoogleJwksCache,
+       jwks_url: "https://www.googleapis.com/oauth2/v3/certs",
+       unavailable_error: :google_jwks_unavailable},
+      {Snack.Identity.JwksCache,
+       name: Snack.Identity.Providers.AppleJwksCache,
+       jwks_url: "https://appleid.apple.com/auth/keys",
+       unavailable_error: :apple_jwks_unavailable},
       {DNSCluster, query: Application.get_env(:snack, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Snack.PubSub},
       # Periodic IDF tag-weight refresh for discovery (no-op under the test sandbox).

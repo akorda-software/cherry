@@ -36,23 +36,39 @@ defmodule Snack.Notifications.ExpoClient.ReqImpl do
     |> Enum.chunk_every(100)
     |> Enum.reduce_while({:ok, []}, fn chunk, {:ok, tickets} ->
       case send_chunk(chunk, opts) do
-        {:ok, chunk_tickets} -> {:cont, {:ok, tickets ++ chunk_tickets}}
+        {:ok, chunk_tickets} -> {:cont, {:ok, [chunk_tickets | tickets]}}
         {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
+    |> case do
+      {:ok, chunks} -> {:ok, chunks |> Enum.reverse() |> List.flatten()}
+      error -> error
+    end
   end
 
-  defp send_chunk(messages, _opts) do
+  defp send_chunk(messages, opts) do
     config = expo_config()
+
+    request_opts =
+      [
+        json: messages,
+        headers: request_headers(config),
+        receive_timeout: config.receive_timeout_ms,
+        finch: [pool_timeout: 5_000, conn_opts: [transport_opts: [timeout: 5_000]]],
+        # Oban owns retries; a failing provider must not hold a worker indefinitely.
+        retry: false
+      ]
+      |> Keyword.merge(opts)
 
     case Req.post(
            "#{String.trim_trailing(config.base_url, "/")}/--/api/v2/push/send",
-           json: messages,
-           headers: request_headers(config),
-           receive_timeout: config.receive_timeout_ms
+           request_opts
          ) do
       {:ok, %{status: 200, body: body}} ->
-        normalize_tickets(body)
+        with {:ok, tickets} <- normalize_tickets(body),
+             :ok <- validate_tickets(tickets, length(messages)) do
+          {:ok, tickets}
+        end
 
       {:ok, %{status: status, body: body}} ->
         {:error, %{status: status, body: body}}
@@ -66,6 +82,14 @@ defmodule Snack.Notifications.ExpoClient.ReqImpl do
   defp normalize_tickets(%{"data" => data}) when is_map(data), do: {:ok, [data]}
   defp normalize_tickets(%{"errors" => errors}), do: {:error, %{errors: errors}}
   defp normalize_tickets(body), do: {:error, {:unexpected_response, body}}
+
+  defp validate_tickets(tickets, expected) do
+    cond do
+      length(tickets) != expected -> {:error, :invalid_ticket_count}
+      Enum.all?(tickets, &match?(%{"status" => status} when status in ["ok", "error"], &1)) -> :ok
+      true -> {:error, :invalid_ticket}
+    end
+  end
 
   defp maybe_put_authorization(headers, nil), do: headers
 

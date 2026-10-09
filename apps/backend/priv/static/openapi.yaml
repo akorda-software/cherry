@@ -761,6 +761,9 @@ paths:
       summary: List visible matches (active, not expired, no blocks, live accounts) by recent activity.
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InboxLimit'
+        - $ref: '#/components/parameters/InboxCursor'
       responses:
         '200':
           description: Visible matches with last message and unread count.
@@ -768,11 +771,17 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [matches, nextCursor]
                 properties:
                   matches:
                     type: array
                     items:
                       $ref: '#/components/schemas/MatchSummary'
+                  nextCursor:
+                    type: string
+                    nullable: true
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/matches/{id}/unmatch:
     post:
       tags: [Matches]
@@ -794,6 +803,9 @@ paths:
       summary: List conversations of visible matches (same rules and data as /api/matches).
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InboxLimit'
+        - $ref: '#/components/parameters/InboxCursor'
       responses:
         '200':
           description: Conversations.
@@ -801,11 +813,38 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [conversations, nextCursor]
                 properties:
                   conversations:
                     type: array
                     items:
                       $ref: '#/components/schemas/ConversationSummary'
+                  nextCursor:
+                    type: string
+                    nullable: true
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/conversations/{id}/match:
+    get:
+      tags: [Matches, Chat]
+      summary: Get a visible match directly when opening its conversation from a notification.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Match and conversation header, with the same current visibility rules as the inbox.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [match]
+                properties:
+                  match:
+                    $ref: '#/components/schemas/MatchSummary'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/conversations/{id}/messages:
     get:
       tags: [Chat]
@@ -946,6 +985,20 @@ components:
       scheme: bearer
       bearerFormat: Phoenix.Token
   parameters:
+    InboxLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 100
+    InboxCursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+        description: Signed nextCursor scoped to the viewer, valid for one hour. Activity ordering uses the first page's reference instant; visibility is rechecked on every page.
     Id:
       name: id
       in: path
@@ -1139,6 +1192,22 @@ components:
             - discovery_preferences
             - tags
             - location
+    RelationshipIntent:
+      type: string
+      enum: [relationship, casual, meet_people, go_with_the_flow]
+    LookingFor:
+      type: array
+      description: >-
+        «¿Qué buscas?»: intenciones elegidas, sin repetir y en orden canónico
+        (relationship, casual, meet_people, go_with_the_flow). Vacía solo en un
+        borrador sin contestar. Compatibilidad: dos personas encajan si algún
+        par (mía, suya) es compatible (cada intención con ella misma y con
+        go_with_the_flow, que encaja con todas; relationship y casual nunca se
+        cruzan). Simétrico.
+      maxItems: 4
+      uniqueItems: true
+      items:
+        $ref: '#/components/schemas/RelationshipIntent'
     Profile:
       type: object
       properties:
@@ -1158,10 +1227,16 @@ components:
           type: string
           nullable: true
           enum: [man, woman, non_binary]
+        lookingFor:
+          $ref: '#/components/schemas/LookingFor'
         whatIAmLookingFor:
+          deprecated: true
           type: string
           nullable: true
           enum: [relationship, casual, meet_people, go_with_the_flow]
+          description: >-
+            Obsoleto: primera intención de `lookingFor` (orden canónico) o null.
+            Solo para versiones de la app anteriores a la elección múltiple.
         bio:
           type: string
           nullable: true
@@ -1206,9 +1281,25 @@ components:
         gender:
           type: string
           enum: [man, woman, non_binary]
+        looking_for:
+          description: >-
+            «¿Qué buscas?»: 1–4 intenciones sin repetir (se guardan en orden
+            canónico). Por compatibilidad se acepta también una sola cadena
+            (lista de un elemento) y las claves antiguas `what_i_am_looking_for`
+            / `whatIAmLookingFor`. `null` deja el borrador sin contestar.
+          oneOf:
+            - type: array
+              minItems: 1
+              maxItems: 4
+              uniqueItems: true
+              items:
+                $ref: '#/components/schemas/RelationshipIntent'
+            - $ref: '#/components/schemas/RelationshipIntent'
+          nullable: true
         what_i_am_looking_for:
-          type: string
-          enum: [relationship, casual, meet_people, go_with_the_flow]
+          deprecated: true
+          description: Alias antiguo de `looking_for` (una sola intención).
+          $ref: '#/components/schemas/RelationshipIntent'
         bio:
           type: string
           minLength: 20
@@ -1462,8 +1553,13 @@ components:
           type: string
         gender:
           type: string
+        lookingFor:
+          $ref: '#/components/schemas/LookingFor'
         whatIAmLookingFor:
+          deprecated: true
           type: string
+          nullable: true
+          description: Obsoleto, primera intención de `lookingFor`.
         distanceLabel:
           type: string
           nullable: true
@@ -1554,8 +1650,13 @@ components:
           nullable: true
         gender:
           type: string
+        lookingFor:
+          $ref: '#/components/schemas/LookingFor'
         whatIAmLookingFor:
+          deprecated: true
           type: string
+          nullable: true
+          description: Obsoleto, primera intención de `lookingFor`.
         distanceLabel:
           type: string
           nullable: true

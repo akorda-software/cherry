@@ -11,6 +11,12 @@ config :snack,
   ecto_repos: [Snack.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+# Serialize index migrations across release replicas without wrapping concurrent
+# index creation in a transaction or taking an exclusive table lock.
+config :snack, Snack.Repo,
+  migration_lock: :pg_advisory_lock,
+  types: Snack.PostgresTypes
+
 config :snack, Snack.Auth,
   access_token_ttl_seconds: 900,
   refresh_token_ttl_days: 30,
@@ -54,6 +60,14 @@ config :snack, :expo_push,
   base_url: "https://exp.host",
   access_token: nil,
   receive_timeout_ms: 5_000
+
+config :snack, Oban,
+  repo: Snack.Repo,
+  queues: [push: 4],
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 86_400},
+    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(5)}
+  ]
 
 # Configure the endpoint
 config :snack, SnackWeb.Endpoint,

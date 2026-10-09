@@ -208,27 +208,42 @@ defmodule Snack.Identity.Document.Mrz do
   defp check(_data, _check), do: {:error, :invalid_check_digit}
 
   # Unknown day or month ("<<") is resolved to the latest possible date, so an
-  # incomplete birth date can only make someone look younger, never older.
+  # incomplete birth date can only make someone look younger, never older. The
+  # century is chosen with the earliest possible date (a latest date in the
+  # future must not roll a child back a hundred years); if the latest possible
+  # date is still in the future, the holder counts as born today.
   defp birth_date(<<yy::binary-2, mm::binary-2, dd::binary-2>>, today) do
-    with {year, ""} <- Integer.parse(yy) do
-      century = if 2000 + year > today.year, do: 1900, else: 2000
-      year = century + year
-      month = if mm == "<<", do: 12, else: parse_int(mm)
-      day = if dd == "<<", do: :last, else: parse_int(dd)
+    with {two_digits, ""} <- Integer.parse(yy),
+         {:ok, month_range} <- component(mm, 1..12),
+         {:ok, day_range} <- component(dd, 1..31) do
+      year = if 2000 + two_digits > today.year, do: 1900 + two_digits, else: 2000 + two_digits
 
-      case date(year, month, day) do
-        {:ok, date} ->
-          # Same two digits but later this year: the previous century.
-          if Date.compare(date, today) == :gt,
-            do: date(year - 100, month, day),
-            else: {:ok, date}
+      with {:ok, earliest} <- date(year, month_range.first, day_range.first) do
+        year = if Date.compare(earliest, today) == :gt, do: year - 100, else: year
+        day = if dd == "<<", do: :last, else: day_range.first
 
-        error ->
-          error
+        with {:ok, latest} <- date(year, month_range.last, day),
+             :ok <- plausible(latest, today) do
+          {:ok, if(Date.compare(latest, today) == :gt, do: today, else: latest)}
+        end
       end
     else
       _ -> {:error, :malformed_dg1}
     end
+  end
+
+  defp component("<<", range), do: {:ok, range}
+
+  defp component(value, range) do
+    case Integer.parse(value) do
+      {int, ""} -> if int in range, do: {:ok, int..int}, else: :error
+      _ -> :error
+    end
+  end
+
+  # Nobody holding a valid document is 120 or older.
+  defp plausible(date, today) do
+    if age(date, today) < 120, do: :ok, else: {:error, :malformed_dg1}
   end
 
   defp date(year, month, :last) when is_integer(month) and month in 1..12,
@@ -243,8 +258,8 @@ defmodule Snack.Identity.Document.Mrz do
 
   defp date(_year, _month, _day), do: {:error, :malformed_dg1}
 
-  # Expiry is informative only; two-digit years are always 20YY. Spanish DNIs
-  # for people over 70 have no expiry and are not a parsing error.
+  # Two-digit expiry years are always 20YY. An expiry that is not a date (e.g.
+  # documents without expiry) is `nil`, not a parsing error.
   defp expiry_date(<<yy::binary-2, mm::binary-2, dd::binary-2>>) do
     with {year, ""} <- Integer.parse(yy),
          {month, ""} <- Integer.parse(mm),
@@ -253,13 +268,6 @@ defmodule Snack.Identity.Document.Mrz do
       date
     else
       _ -> nil
-    end
-  end
-
-  defp parse_int(value) do
-    case Integer.parse(value) do
-      {int, ""} -> int
-      _ -> :invalid
     end
   end
 

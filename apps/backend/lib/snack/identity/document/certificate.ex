@@ -79,6 +79,14 @@ defmodule Snack.Identity.Document.Certificate do
   @doc "Parses a DER certificate."
   @spec parse(binary()) :: {:ok, t()} | {:error, :malformed_certificate}
   def parse(der) when is_binary(der) do
+    do_parse(der)
+  rescue
+    _ -> {:error, :malformed_certificate}
+  end
+
+  def parse(_der), do: {:error, :malformed_certificate}
+
+  defp do_parse(der) do
     with {:ok, cert} <- Der.decode(der),
          {:ok, [tbs, sig_alg, {{:universal, false, 3}, <<0, signature::binary>>, _}]} <-
            Der.children(cert),
@@ -98,8 +106,6 @@ defmodule Snack.Identity.Document.Certificate do
       _ -> {:error, :malformed_certificate}
     end
   end
-
-  def parse(_der), do: {:error, :malformed_certificate}
 
   # TBSCertificate ::= SEQUENCE { version [0] EXPLICIT DEFAULT v1, serialNumber,
   #   signature, issuer, validity, subject, subjectPublicKeyInfo,
@@ -146,7 +152,11 @@ defmodule Snack.Identity.Document.Certificate do
   defp attribute(atv) do
     with {:ok, [type, {_tag, value, _raw}]} <- Der.children(atv),
          {:ok, oid} <- Der.oid(type) do
-      {oid, value |> String.trim() |> String.replace(~r/\s+/u, " ") |> String.downcase()}
+      # Only UTF-8 values are normalised; other encodings (T61String, BMPString…)
+      # are compared byte for byte.
+      if String.valid?(value),
+        do: {oid, value |> String.trim() |> String.replace(~r/\s+/u, " ") |> String.downcase()},
+        else: {oid, {:raw, value}}
     else
       _ -> :invalid
     end
@@ -171,7 +181,8 @@ defmodule Snack.Identity.Document.Certificate do
     }
 
     Enum.map_join(attrs, ", ", fn
-      {oid, value} -> "#{Map.get(labels, oid, oid)}=#{value}"
+      {oid, value} when is_binary(value) -> "#{Map.get(labels, oid, oid)}=#{value}"
+      {oid, {:raw, value}} -> "#{Map.get(labels, oid, oid)}=0x#{Base.encode16(value)}"
       :invalid -> "?"
     end)
   end

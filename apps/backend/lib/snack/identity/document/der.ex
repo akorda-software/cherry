@@ -52,7 +52,8 @@ defmodule Snack.Identity.Document.Der do
 
   @doc "Decodes an OBJECT IDENTIFIER element into dotted notation."
   @spec oid(element()) :: {:ok, String.t()} | {:error, :malformed}
-  def oid({{:universal, false, 6}, value, _raw}) when byte_size(value) > 0 do
+  # Real OIDs are a few dozen bytes; the bound keeps decoding linear.
+  def oid({{:universal, false, 6}, value, _raw}) when byte_size(value) in 1..64 do
     with {:ok, [first | rest]} <- base128(value, 0, []) do
       {a, b} =
         cond do
@@ -70,8 +71,10 @@ defmodule Snack.Identity.Document.Der do
   defp base128(<<>>, 0, acc), do: {:ok, Enum.reverse(acc)}
   defp base128(<<>>, _partial, _acc), do: {:error, :malformed}
 
-  defp base128(<<1::1, bits::7, rest::binary>>, partial, acc),
+  defp base128(<<1::1, bits::7, rest::binary>>, partial, acc) when partial < 0xFFFFFFFFFFFF,
     do: base128(rest, partial <<< 7 ||| bits, acc)
+
+  defp base128(<<1::1, _bits::7, _rest::binary>>, _partial, _acc), do: {:error, :malformed}
 
   defp base128(<<0::1, bits::7, rest::binary>>, partial, acc),
     do: base128(rest, 0, [partial <<< 7 ||| bits | acc])

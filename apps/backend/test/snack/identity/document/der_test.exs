@@ -48,6 +48,16 @@ defmodule Snack.Identity.Document.DerTest do
     assert {:error, :malformed} = Der.decode(nested)
   end
 
+  test "oversized OIDs are rejected" do
+    assert {:error, :malformed} =
+             Der.oid({{:universal, false, 6}, :binary.copy(<<0x81>>, 70) <> <<1>>, <<>>})
+
+    assert {:error, :malformed} =
+             Der.oid(
+               {{:universal, false, 6}, <<0x2A>> <> :binary.copy(<<0xFF>>, 10) <> <<1>>, <<>>}
+             )
+  end
+
   test "OIDs and integers" do
     {:ok, oid} = Der.decode(PKI.oid("2.23.136.1.1.1"))
     assert {:ok, "2.23.136.1.1.1"} = Der.oid(oid)

@@ -305,6 +305,41 @@ defmodule Snack.Identity.Document.PassiveAuthTest do
       end
     end
 
+    test "SODs with many signers or certificates are refused before any signature check" do
+      doc = PKI.document()
+      {:ok, {_, ci_value, _}} = Snack.Identity.Document.Der.decode(doc.sod)
+      {:ok, content_info} = Snack.Identity.Document.Der.decode(ci_value)
+      {:ok, [type, {_, explicit, _}]} = Snack.Identity.Document.Der.children(content_info)
+      {:ok, signed_data} = Snack.Identity.Document.Der.decode(explicit)
+
+      {:ok, [v, d, e, {_, certs, _}, {_, signers, _}]} =
+        Snack.Identity.Document.Der.children(signed_data)
+
+      raws = fn list -> Enum.map(list, &elem(&1, 2)) end
+      {:ok, [cert]} = Snack.Identity.Document.Der.children(certs)
+      {:ok, [signer]} = Snack.Identity.Document.Der.children(signers)
+
+      rebuild = fn certificates, signer_infos ->
+        sd =
+          PKI.seq(
+            raws.([v, d, e]) ++
+              [PKI.implicit(0, Enum.join(certificates)), PKI.tlv(0x31, Enum.join(signer_infos))]
+          )
+
+        PKI.tlv(0x77, PKI.seq([elem(type, 2), PKI.explicit(0, sd)]))
+      end
+
+      cert = elem(cert, 2)
+      signer = elem(signer, 2)
+      assert {:ok, _} = verify(%{doc | sod: rebuild.([cert], [signer, signer])})
+
+      assert {:error, :malformed_sod} =
+               verify(%{doc | sod: rebuild.([cert], [signer, signer, signer])})
+
+      assert {:error, :malformed_sod} =
+               verify(%{doc | sod: rebuild.(List.duplicate(cert, 5), [signer])})
+    end
+
     test "a SOD whose content is not an LDSSecurityObject" do
       assert {:error, :malformed_sod} = verify(PKI.document(content_type: "1.2.840.113549.1.7.1"))
     end

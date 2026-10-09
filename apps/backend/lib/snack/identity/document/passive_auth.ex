@@ -144,12 +144,14 @@ defmodule Snack.Identity.Document.PassiveAuth do
   end
 
   defp verify_signer(sod, signer, anchors, now) do
+    # The chain is checked first: the Document Signer's key (chosen by whoever
+    # built the SOD) is only used once a trusted CSCA has vouched for it.
     with {:ok, cert} <- signer_certificate(sod, signer),
-         :ok <- signer_info_signature(sod, signer, cert),
          :ok <- document_signer_profile(cert),
          {:ok, csca} <- trusted_issuer(cert, anchors),
          :ok <- valid_at(cert, now),
-         :ok <- valid_at(csca, now) do
+         :ok <- valid_at(csca, now),
+         :ok <- signer_info_signature(sod, signer, cert) do
       {:ok, cert, csca}
     end
   end

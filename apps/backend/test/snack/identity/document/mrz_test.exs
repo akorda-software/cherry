@@ -149,6 +149,19 @@ defmodule Snack.Identity.Document.MrzTest do
       assert {:ok, %{birth_date: ~D[1990-12-31]}} = Mrz.parse(PKI.td1(birth: "90<<<<"), @today)
     end
 
+    test "unknown parts in the current year never roll back a century" do
+      # A child born this year with an unknown day or month is not 99.
+      assert {:ok, %{birth_date: ~D[2026-10-09]}} = Mrz.parse(PKI.td1(birth: "26<<<<"), @today)
+      assert {:ok, %{birth_date: ~D[2026-10-09]}} = Mrz.parse(PKI.td1(birth: "2610<<"), @today)
+      assert {:ok, %{birth_date: ~D[2026-09-30]}} = Mrz.parse(PKI.td1(birth: "2609<<"), @today)
+      assert {:ok, %{birth_date: ~D[2026-10-09]}} = Mrz.parse(PKI.td1(birth: "26<<05"), @today)
+      assert {:ok, %{birth_date: ~D[1927-12-31]}} = Mrz.parse(PKI.td1(birth: "27<<<<"), @today)
+    end
+
+    test "implausible ages are malformed" do
+      assert {:error, :malformed_dg1} = Mrz.parse(PKI.td1(birth: "261011"), ~D[2146-10-12])
+    end
+
     test "an impossible date is malformed" do
       assert {:error, :malformed_dg1} = Mrz.parse(PKI.td1(birth: "900230"), @today)
     end

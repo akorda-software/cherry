@@ -74,6 +74,12 @@ defmodule SnackWeb.Endpoint do
   """
   def read_body_cache(conn, opts) do
     {:ok, body, conn} = Plug.Conn.read_body(conn, opts)
-    {:ok, body, Plug.Conn.put_private(conn, :raw_body, body)}
+
+    # Identity documents (age verification) are never kept as a raw copy.
+    if String.starts_with?(conn.request_path, "/api/me/verification") do
+      {:ok, body, conn}
+    else
+      {:ok, body, Plug.Conn.put_private(conn, :raw_body, body)}
+    end
   end
 end

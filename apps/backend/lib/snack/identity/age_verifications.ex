@@ -28,6 +28,7 @@ defmodule Snack.Identity.AgeVerifications do
           | {:too_many_attempts, retry_after_seconds :: pos_integer()}
           | PassiveAuth.error()
           | :underage
+          | :document_expired
           | :document_already_used
           | :already_verified
           | :verification_revoked
@@ -66,6 +67,7 @@ defmodule Snack.Identity.AgeVerifications do
       with :ok <- check_available(),
            :ok <- register_attempt(user_id, now),
            {:ok, %{mrz: mrz} = auth} <- passive_auth(document, Keyword.put(opts, :now, now)),
+           :ok <- check_in_force(mrz, now),
            :ok <- check_adult(mrz, now),
            {:ok, fingerprint} <- Fingerprint.compute(mrz),
            {:ok, verification} <- store(user_id, method(mrz), fingerprint, now) do
@@ -209,6 +211,17 @@ defmodule Snack.Identity.AgeVerifications do
     end)
     |> Exception.format_stacktrace()
   end
+
+  # Expired documents are refused: otherwise every old passport would be a new
+  # fingerprint (one more account). A document without a readable expiry date
+  # (e.g. without expiry) is accepted.
+  defp check_in_force(%Mrz{expiry_date: %Date{} = expiry}, now) do
+    if Date.compare(expiry, DateTime.to_date(now)) == :lt,
+      do: {:error, :document_expired},
+      else: :ok
+  end
+
+  defp check_in_force(%Mrz{}, _now), do: :ok
 
   defp check_adult(%Mrz{birth_date: birth}, now) do
     if Mrz.age(birth, DateTime.to_date(now)) >= minimum_age(),

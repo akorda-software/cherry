@@ -77,6 +77,19 @@ defmodule Snack.Identity.AgeVerificationsTest do
       refute log =~ "underage"
     end
 
+    test "expired documents are refused; documents without expiry are not", ctx do
+      expired = document(ctx, format: :td3, expiry: ~D[2020-01-01])
+      assert {:error, :document_expired} = verify(user_fixture(), expired)
+
+      assert {:ok, _} = verify(user_fixture(), document(ctx, expiry: "<<<<<<"))
+
+      assert {:ok, _} =
+               verify(
+                 user_fixture(),
+                 document(ctx, expiry: ~D[2026-10-09], personal_number: PKI.dni(7))
+               )
+    end
+
     test "the 18th birthday counts from that day (UTC)", ctx do
       doc = document(ctx, birth: ~D[2008-10-09])
 

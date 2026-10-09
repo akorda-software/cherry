@@ -55,6 +55,18 @@ defmodule Snack.Identity.Document.CertificateTest do
   end
 
   describe "names" do
+    test "values that are not UTF-8 are compared byte for byte instead of crashing" do
+      latin1 =
+        PKI.seq([
+          PKI.set([PKI.seq([PKI.oid("2.5.4.3"), PKI.tlv(0x14, <<"DIRECCI", 0xD3, "N">>)])])
+        ])
+
+      {:ok, a} = Certificate.parse_name(latin1)
+      {:ok, b} = Certificate.parse_name(latin1)
+      assert Certificate.same_name?(a, %{b | raw: nil})
+      assert Certificate.describe_name(a) =~ "CN=0x"
+    end
+
     test "match by value regardless of string type, case and spacing" do
       printable =
         PKI.seq([

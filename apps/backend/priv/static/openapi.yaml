@@ -680,7 +680,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: |
-            `invalid_payload`; `underage`; or `document_not_verified` with `reason`:
+            `invalid_payload`; `underage`; `document_expired`; or `document_not_verified` with `reason`:
             `malformed_sod`, `unsupported_algorithm`, `missing_document_signer`,
             `invalid_signature`, `untrusted_certificate`, `certificate_expired`,
             `data_group_mismatch`, `malformed_dg1`, `invalid_check_digit`,

@@ -77,7 +77,7 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 
 1. [~] Prototipo NFC: leer DG1/DG2/SOD de un DNI real en Android y iPhone desde un módulo Expo. *Módulo escrito (`apps/mobile/modules/document-nfc`); Android compila; iOS sin compilar; sin probar con un DNI real.*
 2. [x] Autenticación pasiva en el backend con los certificados CSCA españoles. *Probada con PKI sintética y fixtures de OpenSSL; falta un SOD español real.*
-3. [ ] Comparación de caras selfie ↔ DG2 con modelo de código abierto en el servidor. *Investigación hecha (abajo); sin construir.*
+3. [ ] Comparación de caras selfie ↔ DG2 con modelo de código abierto en el servidor. *Investigación hecha ([resumen](#investigación-selfie--dg2-y-prueba-de-vida-sin-construir)); sin construir.*
 4. [x] Modelo de datos: estado de verificación del perfil + huella del documento; borrado inmediato del resto.
 5. [~] Pantallas de verificación en el onboarding (antes de que el perfil sea visible). *Hay una pantalla de prueba en la ruta de desarrollo; no está en el onboarding.*
 6. [ ] Integración del proveedor de respaldo.
@@ -147,13 +147,39 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
    - En pasaportes y documentos extranjeros se calcula con el número del documento.
    - **No se usa el «número personal» del pasaporte**: en pasaportes de menores sin DNI puede llevar el DNI de un progenitor (sin verificar del todo; ver fuentes del informe), y eso bloquearía a una persona por otra.
    - Consecuencia: un DNI y un pasaporte de la misma persona dan huellas distintas, así que podría haber dos cuentas.
-3. **Validez de los certificados a fecha de hoy**, tanto del firmante como del CSCA. Un DNI cuyo certificado de firmante haya caducado se rechaza (`certificate_expired`). Es lo prudente; ver «DNI permanente» abajo.
-4. **Edad con la fecha UTC.** Es más estricta que la hora de Madrid: el día del cumpleaños se acepta desde la 01:00 o las 02:00 de España (según el horario). Las fechas con día o mes desconocidos (`<<`) se toman como la más tardía posible. Si nace un 29 de febrero, cumple el 1 de marzo en años no bisiestos.
+3. **Validez a fecha de hoy.**
+   - Del certificado del firmante y del CSCA: si alguno ha caducado, `certificate_expired`.
+   - Del propio documento según la MRZ: si ha caducado, `document_expired`. Si no, cada pasaporte antiguo sería una huella nueva y, por tanto, una cuenta más. Se acepta un documento sin fecha de caducidad legible.
+   - Es lo prudente; ver «DNI permanente» abajo.
+4. **Edad con la fecha UTC.** Con día o mes desconocidos, el siglo se elige con la fecha más temprana posible y la edad con la más tardía (nunca hace a nadie mayor). Una edad de 120 años o más se trata como MRZ malformada. La fecha UTC es más estricta que la hora de Madrid: el día del cumpleaños se acepta desde la 01:00 o las 02:00 de España (según el horario). Las fechas con día o mes desconocidos (`<<`) se toman como la más tardía posible. Si nace un 29 de febrero, cumple el 1 de marzo en años no bisiestos.
 5. **Ya verificado con otro documento → 409 `already_verified`**; el mismo documento → idempotente. Una verificación `revoked` no se sustituye sola.
 6. **Intentos: solo se guarda la fecha** (ni el resultado ni nada del documento), y se purgan a las 24 h. Así no queda en la BD qué cuentas intentaron verificarse siendo menores.
 7. **El certificado del firmante debe venir dentro del SOD.** ICAO lo exige y no se mantiene un almacén aparte de certificados de firmante.
 8. **Endpoint activo si hay clave.** Sin `DOCUMENT_FINGERPRINT_KEY`, responde 503. En dev se usa una clave de relleno; en prod no hay valor por defecto y la clave tiene que tener al menos 32 caracteres.
 9. **Android no toca el proveedor criptográfico global** (sin `Security.insertProviderAt`): JMRTD 0.8.9 usa su propia instancia de BouncyCastle. Si en el móvil falla con `NoSuchAlgorithmException`, este es el primer sitio que hay que mirar.
+
+### Revisión de seguridad (2026-10-09)
+
+Una revisión adversarial independiente no encontró forma de falsificar ni alterar datos firmados: un menor no puede cambiar su fecha de nacimiento.
+
+**Corregido esta noche:**
+- el error de siglo con día o mes desconocidos;
+- los documentos caducados;
+- la comprobación de la cadena antes de usar la clave del firmante;
+- los límites de firmantes, certificados y OID;
+- los nombres de certificado que no son UTF-8 (antes, un CSCA así tumbaba la verificación con un 500);
+- la copia cruda del cuerpo de la petición en la conexión.
+
+**Sigue abierto (decisiones tuyas):**
+- **Suplantación con el documento de otro.** Un menor puede usar el DNI de su madre o de un hermano mayor, porque el CAN está impreso en la tarjeta. Quien lo haga primero «ocupa» la huella y el titular real recibe luego `document_already_used`. Además, ese 409 frente al 200 revela si esa persona ya tiene cuenta en una app de citas.
+  - **No hay que activar `AGE_VERIFICATION_REQUIRED` ni presentar el NFC como suficiente** hasta tener la comparación selfie ↔ DG2.
+  - Habría que añadir una vía de reclamación para el titular y valorar una respuesta menos reveladora.
+- **Un DNI y un pasaporte en vigor de la misma persona** dan dos huellas, así que caben dos cuentas. Alternativas:
+  - guardar varias huellas por verificación;
+  - derivar la del DNI desde el pasaporte cuando el titular ya tenía 14 años al expedirlo.
+- **Intento con resultado `underage`:** hoy no se guarda nada. Se podría marcar la cuenta, sin datos del documento, para frenar el «pruebo con el de mi madre» justo después.
+- **Límite de cuerpo:** el JSON se parsea con el límite general de Phoenix (8 MB) antes de los límites del controlador. El límite de 5 intentos por hora acota el abuso; un límite por ruta sería mejor.
+- **SHA-1 y SOD sin atributos firmados** se aceptan por compatibilidad con documentos antiguos. No es explotable, pero se pueden restringir a SHA-2 si los DNI españoles reales lo usan siempre.
 
 ### Problemas abiertos
 
@@ -175,6 +201,44 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
   - el paso de verificación en el onboarding.
 - **Pasaportes extranjeros:** solo se aceptan documentos cuyo CSCA esté en `priv/csca` (hoy, España). Para aceptar otros países habría que importar sus CSCA (master list del BSI) y revisar la MRZ de cada uno.
 - **Cobertura del backend:** `mix test --cover` ya estaba por debajo del umbral del 90 % antes de esta rama (86,9 % en `feat/kawaii-overhaul`). No es una regresión; se deja anotado.
+
+## Investigación: selfie ↔ DG2 y prueba de vida (sin construir)
+
+*2026-10-09. Informe completo de la investigación nocturna, resumido. Las licencias de los pesos son el punto crítico.*
+
+**Conclusión:** no existe un modelo abierto de reconocimiento facial que tenga a la vez pesos con licencia permisiva explícita, datos de entrenamiento limpios para uso comercial y precisión de primera línea. Los precisos (InsightFace `buffalo_l`/`antelopev2`, AdaFace, EdgeFace, GhostFaceNets…) están entrenados con MS1M, WebFace, Glint360K o VGGFace2, que son «solo investigación». Los pesos de InsightFace son explícitamente no comerciales; venden una licencia comercial, sin precio público.
+
+**Propuesta, con poca integración y licencias permisivas declaradas:**
+- **Detección:** YuNet (OpenCV Zoo, MIT).
+- **Reconocimiento:** SFace (OpenCV Zoo, Apache-2.0, unos 5–18 ms por cara en CPU). **Sus datos de entrenamiento no están documentados** (issues #124, #313 y #318 sin respuesta).
+- **Prueba de vida pasiva:** MiniFASNet de Silent-Face (Apache-2.0, datos tampoco declarados), sobre 2–3 fotogramas.
+- Todo dentro del propio Phoenix con [`evision`](https://github.com/cocoa-xu/evision) (Apache-2.0): trae `FaceDetectorYN`, `FaceRecognizerSF` y DNN para ONNX, y debería decodificar el JPEG 2000 del DG2 con OpenJPEG (falta confirmarlo en el binario precompilado).
+- Coste: menos de 100 ms por verificación con un hilo; despreciable para unos miles al día.
+- **Los pesos no van en el repo:** script de descarga con sha256 y un fichero de procedencia y licencias. El reconocedor debe ser intercambiable, para pasar a `buffalo_l` con licencia si SFace no da la talla.
+
+**Precisión:** las cifras de LFW no sirven. Comparar la foto de un documento (unos 240×320 px, JPEG 2000 comprimido, hasta 10 años de diferencia) con un selfie es mucho más difícil: un reconocedor genérico bajó al 59 % de aciertos a FAR 0,1 % en DocFace+. Hay que calibrar con datos propios antes de producción:
+- unas 55–60 personas voluntarias con consentimiento;
+- medir el FNMR a un FMR fijo;
+- tres franjas: aceptar, revisión humana y rechazar.
+
+**Amenazas:** la prueba de vida pasiva detecta papel y pantallas, pero no las imágenes inyectadas (cámara virtual, emulador, APK modificada). Contra eso:
+- Play Integrity (`MEETS_DEVICE_INTEGRITY`) y App Attest, con el hash del selfie y un nonce del servidor dentro del veredicto;
+- nonce de un solo uso;
+- límite de intentos.
+
+**Legal:** la AEPD considera que la verificación 1:1 también trata datos del art. 9 RGPD. Eso exige:
+- consentimiento explícito, con una alternativa sin biometría;
+- EIPD previa;
+- procesar en memoria sin guardar plantillas;
+- revisión humana de los rechazos.
+
+**Validar primero:**
+1. Que evision decodifica el JPEG 2000 de un DG2 real.
+2. La procedencia de SFace por escrito, y una revisión legal.
+3. Un conjunto de calibración con consentimiento.
+4. Ataques propios contra MiniFASNet.
+5. Que la atestación queda ligada al selfie.
+6. La EIPD.
 
 ## Fuentes
 

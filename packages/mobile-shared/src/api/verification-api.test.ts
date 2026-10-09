@@ -1,0 +1,38 @@
+import { describe, expect, it, vi } from "vitest";
+
+import type { AgeVerificationResponse } from "@snack/contracts";
+
+import type { HttpClient } from "./auth-api";
+import { createVerificationApi } from "./verification-api";
+
+function createMockHttpClient() {
+  return { get: vi.fn(), post: vi.fn(), put: vi.fn() } as unknown as HttpClient;
+}
+
+const verified: AgeVerificationResponse = {
+  verification: { status: "verified", method: "nfc_dni", verifiedAt: "2026-10-09T12:00:00Z" },
+  required: false
+};
+
+describe("createVerificationApi", () => {
+  it("GETs the verification status", async () => {
+    const http = createMockHttpClient();
+    vi.mocked(http.get).mockResolvedValueOnce(verified);
+
+    await expect(createVerificationApi(http).get()).resolves.toEqual(verified);
+    expect(http.get).toHaveBeenCalledWith("/api/me/verification");
+  });
+
+  it("POSTs only the three chip files", async () => {
+    const http = createMockHttpClient();
+    vi.mocked(http.post).mockResolvedValueOnce(verified);
+    const request = { dg1: "ZGcx", dg2: "ZGcy", sod: "c29k", can: "123456" } as never;
+
+    await expect(createVerificationApi(http).verifyNfc(request)).resolves.toEqual(verified);
+    expect(http.post).toHaveBeenCalledWith("/api/me/verification/nfc", {
+      dg1: "ZGcx",
+      dg2: "ZGcy",
+      sod: "c29k"
+    });
+  });
+});

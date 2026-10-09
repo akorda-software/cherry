@@ -12,6 +12,7 @@ export * from "./api/profile-api";
 export * from "./api/public-profile-api";
 export * from "./api/safety-api";
 export * from "./api/settings-api";
+export * from "./api/verification-api";
 export * from "./config/auth-config";
 export * from "./config/feature-flags";
 export * from "./storage/secure-session-storage";

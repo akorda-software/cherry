@@ -21,6 +21,7 @@ Documentación de referencia del proyecto. Organizada por temas; cada documento 
 | 10 | [Plan de fases](./10-plan-fases.md) | Fases de entrega con estado real de cada una |
 | 11 | [Deuda técnica pendiente](./11-deuda-tecnica-pendiente.md) | Gaps conocidos entre producto, contrato, docs y código |
 | 12 | [Monta tu instancia](./12-self-hosting.md) | Self-hosting: imagen, variables obligatorias, BD, fotos, proxy TLS, Google/Apple y compilar la app contra tu servidor |
+| — | [Cumplimiento](./compliance/README.md) | Dossier de trabajo legal y de tiendas (edad, fotos, bots, moderación, RGPD, textos legales, costes): investigación, decisiones, plan y estado |
 | — | [Decisiones](./decisions.md) | Registro cronológico de decisiones significativas (contexto, decisión, motivación) |
 | — | [Progress](./progress.md) | Avance por fases y registro de cambios |
 | — | [starter-guide](./starter-guide.md) | Cómo usar el repo como starter para una nueva app (en inglés) |

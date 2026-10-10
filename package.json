@@ -1,5 +1,5 @@
 {
-  "name": "snack",
+  "name": "cherry",
   "private": true,
   "license": "AGPL-3.0-only",
   "packageManager": "pnpm@10.33.0",
@@ -7,7 +7,7 @@
     "test": "bash ./scripts/test-mobile.sh && bash ./scripts/test-backend.sh",
     "test:mobile": "bash ./scripts/test-mobile.sh",
     "test:backend": "bash ./scripts/test-backend.sh",
-    "test:contracts": "pnpm --filter @snack/contracts test",
+    "test:contracts": "pnpm --filter @cherry/contracts test",
     "bootstrap:mobile": "pnpm install"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 # Fotos
 
-**Estado:** pendiente. Lo que ya existe: las fotos se suben a una **zona de espera no pública** (`pending/`), el servidor verifica el binario y luego las publica (`Snack.Storage.verify_upload/1` y `publish_upload/1`, llamadas desde `Snack.Dating.PhotoUploads`). Hay límites de 4 subidas vivas y 20 por hora por perfil. **No hay análisis de contenido.**
+**Estado:** pendiente. Lo que ya existe: las fotos se suben a una **zona de espera no pública** (`pending/`), el servidor verifica el binario y luego las publica (`Cherry.Storage.verify_upload/1` y `publish_upload/1`, llamadas desde `Cherry.Dating.PhotoUploads`). Hay límites de 4 subidas vivas y 20 por hora por perfil. **No hay análisis de contenido.**
 
 ## Por qué
 

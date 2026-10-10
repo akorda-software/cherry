@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
-import type { DiscoveryMode } from "@snack/contracts";
+import type { DiscoveryMode } from "@cherry/contracts";
 
 import { IconButton, Logo, SegmentedControl } from "../../../shared/ui";
 
@@ -21,7 +21,7 @@ const COMPACT_WIDTH = 380;
 
 const MODE_OPTIONS_COMPACT = MODE_OPTIONS.map(({ icon: _icon, ...option }) => option);
 
-/** Logo pegatina «snack» + conmutador Swipe | Feed + filtros. */
+/** Logo pegatina «cherry» + conmutador Swipe | Feed + filtros. */
 export const DiscoverHeader = memo(function DiscoverHeader({ mode, onModeChange, onOpenFilters }: DiscoverHeaderProps) {
   const { width } = useWindowDimensions();
   const compact = width < COMPACT_WIDTH;

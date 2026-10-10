@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
   resolve: {
     alias: {
-      "@snack/contracts": path.resolve(__dirname, "../../packages/contracts/src/index.ts")
+      "@cherry/contracts": path.resolve(__dirname, "../../packages/contracts/src/index.ts")
     }
   },
   test: {

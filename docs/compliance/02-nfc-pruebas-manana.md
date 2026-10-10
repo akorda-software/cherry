@@ -20,8 +20,8 @@ no sale del móvil. Nada de esto se registra en logs.
 git checkout feat/dni-nfc
 cd apps/backend
 mix deps.get
-mix ecto.migrate            # crea age_verifications y age_verification_attempts en snack_dev
-mix snack.csca              # debe listar CSCA SPAIN 2, 3 y 4 (anchor: true)
+mix ecto.migrate            # crea age_verifications y age_verification_attempts en cherry_dev
+mix cherry.csca              # debe listar CSCA SPAIN 2, 3 y 4 (anchor: true)
 mix phx.server              # puerto 4000
 ```
 
@@ -41,7 +41,7 @@ SELECT user_id, status, method, verified_at, encode(document_fingerprint, 'hex')
 
 **Repetir pruebas:**
 
-- Hay un límite de 5 intentos por hora y 10 al día por cuenta. Para reiniciarlo, en `snack_dev`:
+- Hay un límite de 5 intentos por hora y 10 al día por cuenta. Para reiniciarlo, en `cherry_dev`:
   `DELETE FROM age_verification_attempts;`.
 - Para volver a verificar con otra cuenta el mismo DNI: `DELETE FROM age_verifications;`.
 
@@ -61,13 +61,13 @@ expedido desde 2015, con el símbolo de chip sin contactos. El DNIe anterior (20
      Con `JAVA_HOME` en el JDK 21 y `ANDROID_HOME=~/.local/share/android-sdk`.
    - Para instalarlo, con el túnel USB de siempre: `adb install -r app-debug.apk`, o el
      `mobile-dev.sh install` de la skill.
-2. **Metro.** `systemctl --user restart metro@snack` (puerto 8086), para que sirva la rama nueva. Abre
+2. **Metro.** `systemctl --user restart metro@cherry` (puerto 8086), para que sirva la rama nueva. Abre
    la app con:
-   `adb shell am start -a android.intent.action.VIEW -d "exp+snack://expo-development-client/?url=http%3A%2F%2F192.168.0.139%3A8086"`.
+   `adb shell am start -a android.intent.action.VIEW -d "exp+cherry://expo-development-client/?url=http%3A%2F%2F192.168.0.139%3A8086"`.
 3. **Entra.** Usa «Entrar como usuario nuevo» (caja «Solo en desarrollo»). La verificación necesita una
    sesión real contra el backend.
 4. **Abre la pantalla.** Yo → Ajustes → **Pruebas → Comprobar mi edad**. También con
-   `adb shell am start -a android.intent.action.VIEW -d "snack://verify-document"`.
+   `adb shell am start -a android.intent.action.VIEW -d "cherry://verify-document"`.
 5. **Haz la prueba.**
    - Pulsa **Empezar**.
    - Escribe el **CAN**: las 6 cifras de la cara de la foto, abajo a la derecha.
@@ -95,7 +95,7 @@ expedido desde 2015, con el símbolo de chip sin contactos. El DNIe anterior (20
 
 **Requisitos:**
 - iPhone 7 o posterior con iOS 15.1 o superior, y un Mac con Xcode.
-- El App ID `app.snack.mobile` (o el que uses en `EXPO_IOS_BUNDLE_IDENTIFIER`) con la capability
+- El App ID `app.cherry.mobile` (o el que uses en `EXPO_IOS_BUNDLE_IDENTIFIER`) con la capability
   **NFC Tag Reading** activada en developer.apple.com, y un perfil de aprovisionamiento que la incluya.
   Probablemente hace falta la cuenta de pago del Apple Developer Program [sin comprobar].
 
@@ -141,14 +141,14 @@ En desarrollo, la pantalla de error muestra «Detalle técnico: …» con el có
 | «Se ha movido el documento» una y otra vez | `TAG_LOST` | Posición de la antena, funda gruesa o se mueve | Sin funda, prueba otras zonas; quieto 15 s |
 | «No podemos leer este documento» | `UNSUPPORTED_DOCUMENT` | DNI sin PACE en EF.CardAccess, DNIe antiguo u otra tarjeta | Comprueba que el DNI es de 2015 o posterior |
 | «No ha llegado ningún documento» | `TIMEOUT` | No se detectó el chip en 90 s (en iOS, ~60 s del sistema) | Busca la antena moviendo el DNI despacio |
-| «No hemos podido comprobar el documento» | `untrusted_certificate` | El emisor del firmante no casa con los CSCA (otro DN, CSCA nuevo) | Mira `issuer` y `authority_key_id` en el diagnóstico del servidor y compáralos con los de `mix snack.csca` |
+| «No hemos podido comprobar el documento» | `untrusted_certificate` | El emisor del firmante no casa con los CSCA (otro DN, CSCA nuevo) | Mira `issuer` y `authority_key_id` en el diagnóstico del servidor y compáralos con los de `mix cherry.csca` |
 | Ídem | `certificate_expired` | El certificado del firmante o el CSCA está caducado hoy (p. ej. un DNI caducado) | Mira `not_after` en el diagnóstico. Ver «DNI permanente» en problemas abiertos |
 | Ídem | `invalid_signature` | Algoritmo de firma no previsto (parámetros PSS, ECDSA…) | El diagnóstico trae `signature_algorithm` (OID) |
 | Ídem | `data_group_mismatch` | El móvil no envió los bytes exactos del chip | ¿Pasa en las dos plataformas o solo en una? Anótalo |
 | Ídem | `malformed_sod` / `missing_document_signer` | Variante de codificación del SOD o firmante sin certificado dentro | El diagnóstico dice qué parte se lee |
 | Ídem | `malformed_dg1` / `invalid_check_digit` | Variante de la MRZ | Revisa el formato de la MRZ (sin compartir los datos) |
 | «El documento está caducado» | `document_expired` | La fecha de caducidad de la MRZ ya ha pasado (o un DNI permanente codificado de forma inesperada) | Si el documento está en vigor, anota el caso |
-| «Snack es para mayores de edad» siendo mayor | `underage` | Fecha mal interpretada (siglo) | Muy improbable. Anótalo |
+| «Cherry es para mayores de edad» siendo mayor | `underage` | Fecha mal interpretada (siglo) | Muy improbable. Anótalo |
 | «Demasiados intentos» | `too_many_attempts` | Más de 5 intentos en una hora | `DELETE FROM age_verification_attempts;` |
 | «Algo se ha torcido» | `network` / `HTTP 401` | El móvil no llega al backend o la sesión caducó | Revisa `EXPO_PUBLIC_API_BASE_URL_*` y vuelve a entrar |
 | «La comprobación no está disponible» | `age_verification_unavailable` | Backend sin `DOCUMENT_FINGERPRINT_KEY` (solo pasa fuera de dev) | Define la variable |

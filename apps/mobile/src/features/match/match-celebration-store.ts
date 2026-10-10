@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { DiscoveryMatch } from "@snack/contracts";
+import type { DiscoveryMatch } from "@cherry/contracts";
 import { onSignOut } from "../auth/presentation/on-sign-out";
 
 interface MatchCelebrationState {

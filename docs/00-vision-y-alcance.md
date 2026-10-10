@@ -1,8 +1,8 @@
 # Visión y alcance
 
-## Qué es Snack
+## Qué es Cherry
 
-Snack es una **app de citas móvil open source, 100 % gratuita y self-hosteable** (licencia AGPL-3.0). Existe para demostrar que una app de citas puede servir a las personas en lugar de explotarlas: sin muros de pago, sin escasez simulada, sin anuncios y sin mecánicas para retenerte. Lo que otras apps cobran (ver quién te ha dado like, filtros, deshacer) aquí es gratis. Cualquiera puede auditar el código o montar su propia instancia (`12-self-hosting.md`). Brief de producto y compromisos de marca: `PRODUCT.md`.
+Cherry es una **app de citas móvil open source, 100 % gratuita y self-hosteable** (licencia AGPL-3.0). Existe para demostrar que una app de citas puede servir a las personas en lugar de explotarlas: sin muros de pago, sin escasez simulada, sin anuncios y sin mecánicas para retenerte. Lo que otras apps cobran (ver quién te ha dado like, filtros, deshacer) aquí es gratis. Cualquiera puede auditar el código o montar su propia instancia (`12-self-hosting.md`). Brief de producto y compromisos de marca: `PRODUCT.md`.
 
 Está construida sobre un **starter reusable** (Expo + Phoenix), y dos capas conviven en el repositorio:
 

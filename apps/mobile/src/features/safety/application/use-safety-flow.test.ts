@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { ProfileReport } from "@snack/contracts";
+import type { ProfileReport } from "@cherry/contracts";
 
 import type { SafetyActionDeps } from "./safety-actions";
 import { useSafetyFlow } from "./use-safety-flow";

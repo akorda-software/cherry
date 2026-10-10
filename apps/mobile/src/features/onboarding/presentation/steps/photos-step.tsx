@@ -1,7 +1,7 @@
 import { Linking, StyleSheet, View } from "react-native";
 
-import type { Profile } from "@snack/contracts";
-import type { ProfileApi } from "@snack/mobile-shared";
+import type { Profile } from "@cherry/contracts";
+import type { ProfileApi } from "@cherry/mobile-shared";
 
 import { Skeleton, SkeletonGroup } from "../../../../shared/ui";
 import { activePhotos, MAX_PROFILE_PHOTOS, MIN_PROFILE_PHOTOS } from "../../../photos/domain/photo-slots";

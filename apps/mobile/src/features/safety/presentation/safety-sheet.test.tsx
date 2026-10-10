@@ -1,7 +1,7 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { ProfileReport } from "@snack/contracts";
+import type { ProfileReport } from "@cherry/contracts";
 
 import { renderWithTheme } from "../../../../test/ui/render-with-theme";
 import type { SafetyActionDeps } from "../application/safety-actions";

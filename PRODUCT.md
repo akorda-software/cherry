@@ -16,7 +16,7 @@ Adultos (18+) que quieren conocer gente para pareja, algo casual, amistad o "a v
 
 ## Product Purpose
 
-Snack es una app de citas **open source, 100 % gratuita y self-hosteable**. Existe para demostrar que una app de citas puede servir a las personas en lugar de explotarlas: sin muros de pago, sin mecánicas para retenerte en el mercado, sin vender tu atención. El éxito es que la gente haga matches reales, se sienta cómoda y a gusto usándola, y que el proyecto gane reputación por lo bien hecho que está.
+Cherry es una app de citas **open source, 100 % gratuita y self-hosteable**. Existe para demostrar que una app de citas puede servir a las personas en lugar de explotarlas: sin muros de pago, sin mecánicas para retenerte en el mercado, sin vender tu atención. El éxito es que la gente haga matches reales, se sienta cómoda y a gusto usándola, y que el proyecto gane reputación por lo bien hecho que está.
 
 ## Positioning
 
@@ -45,13 +45,13 @@ Snack es una app de citas **open source, 100 % gratuita y self-hosteable**. Exis
 
 ## Brand Commitments
 
-- Nombre: **Snack**.
+- Nombre: **Cherry**.
 - Estética vinculante pedida por el propietario: **neobrutalismo kawaii a tope** con colores **pastel** muy vivos, animaciones y microinteracciones cuidadas; una app que "te abraza", cálida y optimista (referencia de tono: Ted Lasso).
 - Voz: español de España, cercana, con humor amable y cero sarcasmo; nunca culpabiliza ni presiona.
 
 ## Evidence on Hand
 
-- Catálogo real de 52 etiquetas con emoji en `apps/backend/lib/snack/dating/tag_catalog.ex` (lo sincronizan `priv/repo/seeds.exs` y `bin/migrate`).
+- Catálogo real de 52 etiquetas con emoji en `apps/backend/lib/cherry/dating/tag_catalog.ex` (lo sincronizan `priv/repo/seeds.exs` y `bin/migrate`).
 - Documentación de producto y contratos en `docs/`.
 - No hay testimonios, usuarios reales, métricas ni prensa: no se deben inventar cifras, reseñas ni número de usuarios.
 

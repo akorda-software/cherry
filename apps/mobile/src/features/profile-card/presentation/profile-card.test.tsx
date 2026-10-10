@@ -1,7 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { DiscoveryProfileCard, ProfileTag } from "@snack/contracts";
+import type { DiscoveryProfileCard, ProfileTag } from "@cherry/contracts";
 
 import { renderWithTheme } from "../../../../test/ui/render-with-theme";
 import { toProfilePerson } from "../domain/person";

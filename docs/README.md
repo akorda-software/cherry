@@ -1,4 +1,4 @@
-# Documentación de Snack
+# Documentación de Cherry
 
 Documentación de referencia del proyecto. Organizada por temas; cada documento es autocontenido pero remite a los demás cuando conviene.
 
@@ -8,7 +8,7 @@ Documentación de referencia del proyecto. Organizada por temas; cada documento 
 
 | # | Documento | Qué cubre |
 |---|-----------|-----------|
-| 00 | [Visión y alcance](./00-vision-y-alcance.md) | Qué es Snack (app de citas open source, gratuita y self-hosteable), principios, qué queda fuera |
+| 00 | [Visión y alcance](./00-vision-y-alcance.md) | Qué es Cherry (app de citas open source, gratuita y self-hosteable), principios, qué queda fuera |
 | 01 | [Requisitos de producto](./01-requisitos-producto.md) | Reglas de negocio v1: perfil, etiquetas, ranking, likes, matching, chat, safety, anti-abuso |
 | 02 | [Arquitectura](./02-arquitectura.md) | Monorepo, contextos Phoenix, estructura móvil, flujos de datos |
 | 03 | [Modelo de dominio](./03-modelo-dominio.md) | Entidades, ciclos de vida (perfil, match, sesión) e invariantes |

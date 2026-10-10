@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.AddDiscoveryModeToDiscoveryPreferences do
+defmodule Cherry.Repo.Migrations.AddDiscoveryModeToDiscoveryPreferences do
   use Ecto.Migration
 
   def change do

@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { createVerificationApi } from "@snack/mobile-shared";
+import { createVerificationApi } from "@cherry/mobile-shared";
 
 import * as DocumentNfc from "../../../../modules/document-nfc";
 import {

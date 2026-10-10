@@ -1,5 +1,5 @@
 ---
-name: Snack
+name: Cherry
 description: App de citas con forma de libreta: neobrutalismo kawaii para adultos sobre papel de puntos.
 colors:
   ink: "#1D1426"
@@ -292,13 +292,13 @@ components:
     padding: "12px 14px"
 ---
 
-# Design System: Snack
+# Design System: Cherry
 
 ## Overview
 
 **Creative North Star: "La libreta, en serio"**
 
-Snack es neobrutalismo sobrio con color, para adultos (hombres y mujeres, 18+): papel blanco roto con trama de puntos, tinta ciruela para contornos, texto y sombras duras sin desenfoque, y siete rotuladores de saturación igualada que siempre llevan tinta encima. El diseño es duro y ordenado; el color pone la alegría. Cada perfil sigue siendo una página de libreta (fotos en polaroid con washi, etiquetas, sellos), pero sin nada aniñado: ni letra manuscrita, ni coloretes, ni rosa por todas partes. La app tiene que sentirse física: las cosas se pegan, se sellan y se hunden en su sombra al pulsarlas.
+Cherry es neobrutalismo sobrio con color, para adultos (hombres y mujeres, 18+): papel blanco roto con trama de puntos, tinta ciruela para contornos, texto y sombras duras sin desenfoque, y siete rotuladores de saturación igualada que siempre llevan tinta encima. El diseño es duro y ordenado; el color pone la alegría. Cada perfil sigue siendo una página de libreta (fotos en polaroid con washi, etiquetas, sellos), pero sin nada aniñado: ni letra manuscrita, ni coloretes, ni rosa por todas partes. La app tiene que sentirse física: las cosas se pegan, se sellan y se hunden en su sombra al pulsarlas.
 
 La densidad es de app móvil tranquila: una columna, márgenes de 24, grupos separados por aire y por líneas discontinuas de libreta, nunca por cajas dentro de cajas. La decoración (washi, la mascota, pegatinas) vive en los bordes de las piezas y jamás tapa caras ni texto. Cada pantalla tiene como mucho un momento de autor (un sello, una celebración); el resto es movimiento de sistema.
 
@@ -483,7 +483,7 @@ Las pegatinas se despegan y se pegan (`spring.pop`: escala 1.12 → 1 con giro q
 - **Do** diseñar siempre carga, vacío (con la mascota), error (qué pasó + reintentar), deshabilitado y pulsado.
 
 ### Don't:
-- **Don't** usar foto a sangre con degradado oscuro encima ni interfaz blanca genérica: es el arquetipo del sector que Snack rechaza.
+- **Don't** usar foto a sangre con degradado oscuro encima ni interfaz blanca genérica: es el arquetipo del sector que Cherry rechaza.
 - **Don't** poner texto blanco sobre pastel.
 - **Don't** usar sombras difusas, glassmorphism decorativo, texto con degradado o una segunda elevación sobre una pieza.
 - **Don't** poner antetítulos en versalitas grises encima de los titulares.

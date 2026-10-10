@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import { HardShadowLayer, Icon, Text, useTheme } from "../../../shared/ui";
 import type { TagKind, TagSelectionState } from "../domain/tag-selection";

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { ProfileTag } from "@snack/contracts";
-import { createPublicProfileApi } from "@snack/mobile-shared";
+import type { ProfileTag } from "@cherry/contracts";
+import { createPublicProfileApi } from "@cherry/mobile-shared";
 
 import { useAuthedApi } from "../../auth/presentation";
 import { buildIcebreakers, type Icebreaker } from "../domain/icebreakers";

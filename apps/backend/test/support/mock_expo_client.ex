@@ -1,9 +1,9 @@
-defmodule Snack.Notifications.MockExpoClient do
+defmodule Cherry.Notifications.MockExpoClient do
   @moduledoc """
   Mock Expo client for tests. It sends payloads to the calling test process.
   """
 
-  @behaviour Snack.Notifications.ExpoClient
+  @behaviour Cherry.Notifications.ExpoClient
 
   @impl true
   def send_messages(messages, _opts) do

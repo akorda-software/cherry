@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { TAG_CATEGORIES } from "@snack/contracts";
+import { TAG_CATEGORIES } from "@cherry/contracts";
 
 import { lightTheme } from "../../../shared/ui/themes/light-theme";
 import { categoryPastel } from "./category-color";

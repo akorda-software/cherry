@@ -1,6 +1,6 @@
-import type { SessionBundle } from "@snack/contracts";
+import type { SessionBundle } from "@cherry/contracts";
 
-import type { HttpClient } from "@snack/mobile-shared";
+import type { HttpClient } from "@cherry/mobile-shared";
 import type { AuthSessionStorage } from "../domain/session-storage";
 
 const TEST_LOGIN_PATH = "/api/auth/dev/test-login";
@@ -8,7 +8,7 @@ const TEST_LOGIN_PATH = "/api/auth/dev/test-login";
 /**
  * Entrada de desarrollo (`POST /api/auth/dev/test-login`, solo con el flag del backend).
  * Sin `email` entra como el usuario de test compartido; con `email`, como esa persona
- * (la crea si no existe, p. ej. un usuario nuevo o la demo `demo@snack.dev`).
+ * (la crea si no existe, p. ej. un usuario nuevo o la demo `demo@cherry.dev`).
  */
 export function createTestSignInService({
   httpClient,

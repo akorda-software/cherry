@@ -2,7 +2,7 @@ import { FlashList, type FlashListRef, type ViewToken } from "@shopify/flash-lis
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type LayoutChangeEvent, LayoutAnimation, Platform, StyleSheet, View } from "react-native";
 
-import type { DiscoveryActionType, DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryActionType, DiscoveryProfileCard } from "@cherry/contracts";
 
 import { Deco, ErrorState, haptics, Mascot, Stack, Text } from "../../../../shared/ui";
 import type { DiscoveryQueueRemoval } from "../../application/discovery-queue";

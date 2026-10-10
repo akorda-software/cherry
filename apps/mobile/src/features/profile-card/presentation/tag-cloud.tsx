@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { type LayoutChangeEvent, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 
-import type { ProfileTag } from "@snack/contracts";
+import type { ProfileTag } from "@cherry/contracts";
 
 import {
   Inline,

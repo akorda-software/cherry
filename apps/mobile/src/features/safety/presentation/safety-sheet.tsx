@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import { createSafetyApi } from "@snack/mobile-shared";
+import { createSafetyApi } from "@cherry/mobile-shared";
 
 import {
   Button,

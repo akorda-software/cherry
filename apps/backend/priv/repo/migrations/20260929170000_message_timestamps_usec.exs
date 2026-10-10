@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.MessageTimestampsUsec do
+defmodule Cherry.Repo.Migrations.MessageTimestampsUsec do
   @moduledoc """
   Mensajes y marcas de lectura con precisión de microsegundos: con precisión de
   segundo, dos mensajes enviados en el mismo segundo («hola» + «¿qué tal?»)

@@ -24,7 +24,7 @@ app/
 │   ├── filters                 # modal «Filtros»
 │   ├── edit/{photos,tags,bio,basics}
 │   ├── settings                # «Ajustes»
-│   └── about                   # «Acerca de Snack»
+│   └── about                   # «Acerca de Cherry»
 └── (dev)/{kitchen-sink,art}    # escaparates del sistema de diseño; fuera de __DEV__ redirigen a /
 ```
 
@@ -43,7 +43,7 @@ Servicios de sesión según el entorno: build nativo → Google y Apple nativos;
 
 - Logo, Mochi saludando, titular «Ligar sin trucos.» y tres pegatinas: «Gratis. Para siempre.», «Sin muros de pago», «Código abierto».
 - **«Continuar con Google»** siempre; **«Continuar con Apple»** en todas las plataformas salvo Android.
-- Caja **«Solo en desarrollo»** (solo con `__DEV__`): «Entrar como usuario nuevo» (email desechable, onboarding desde cero) y «Entrar como Lucía (demo)» (`demo@snack.dev`, de `demo_seeds.exs`). Ambos usan `POST /api/auth/dev/test-login`; si el servidor lo tiene desactivado: «El acceso de pruebas está desactivado en este servidor.».
+- Caja **«Solo en desarrollo»** (solo con `__DEV__`): «Entrar como usuario nuevo» (email desechable, onboarding desde cero) y «Entrar como Lucía (demo)» (`demo@cherry.dev`, de `demo_seeds.exs`). Ambos usan `POST /api/auth/dev/test-login`; si el servidor lo tiene desactivado: «El acceso de pruebas está desactivado en este servidor.».
 - La credencial del proveedor viaja a `POST /api/auth/:provider/callback`; Phoenix emite la sesión, que se guarda en el almacenamiento seguro. Después se vuelve a `/` y el bootstrap decide.
 - Errores en una tarjeta con texto amable; cancelar la hoja del proveedor no muestra nada. Una cuenta borrada ve «Esta cuenta se borró y ya no se puede usar para entrar.».
 
@@ -130,7 +130,7 @@ La ubicación se refresca sola: con el perfil completo, al abrir la app y al vol
 - **Cuenta:** tu correo y «Cerrar sesión» (`DELETE /api/session`; la sesión local se borra aunque falle la llamada).
 - **Visibilidad:** «Pausar mi perfil».
 - **Privacidad y seguridad:** «Actualizar mi ubicación» (pide el permiso si hace falta; si está bloqueado, la fila pasa a «Activar la ubicación en Ajustes» y reintenta sola al volver; toast «Ubicación actualizada» y, si Descubrir ya tenía perfiles cargados, se recarga con la nueva zona) y filas informativas sobre la ubicación aproximada, el bloqueo y los reportes.
-- **Acerca de Snack:** por qué es gratis, qué no hace y qué sí, código abierto y la versión. El botón «Ver el código» solo aparece si la app se compiló con `EXPO_PUBLIC_SOURCE_URL`.
+- **Acerca de Cherry:** por qué es gratis, qué no hace y qué sí, código abierto y la versión. El botón «Ver el código» solo aparece si la app se compiló con `EXPO_PUBLIC_SOURCE_URL`.
 - **Borrar cuenta:** hoja «¿Borrar tu cuenta?» con las consecuencias y la sugerencia de pausar; hay que mantener pulsado el botón. `DELETE /api/me/account`, cierre de sesión y vuelta a la bienvenida («Nos da pena verte ir, pero lo entendemos 💜»).
 - No hay ajustes de notificaciones, tema ni idioma.
 

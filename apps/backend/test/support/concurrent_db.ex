@@ -1,4 +1,4 @@
-defmodule Snack.TestSupport.ConcurrentDB do
+defmodule Cherry.TestSupport.ConcurrentDB do
   @moduledoc """
   Runs database races over independent, committed connections. The caller must
   use a synchronous test and clean up its fixtures: a shared sandbox connection
@@ -8,7 +8,7 @@ defmodule Snack.TestSupport.ConcurrentDB do
   import ExUnit.Assertions
 
   alias Ecto.Adapters.SQL.Sandbox
-  alias Snack.Repo
+  alias Cherry.Repo
 
   def race(lock_query, operations) do
     {:ok, tasks} =

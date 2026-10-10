@@ -12,7 +12,7 @@ Sin `Resources/PrivacyInfo.xcprivacy` (vacío: no declara datos ni APIs).
 - Las versiones 2.3.2 y 2.3.3 no están en CocoaPods trunk (dependen de `OpenSSL-Universal`
   3.6.0001, que no existe allí) y trunk deja de aceptar podspecs en diciembre de 2026.
 
-## Parches de Snack (todos marcados con `Snack patch` en el código)
+## Parches de Cherry (todos marcados con `Cherry patch` en el código)
 
 1. `PACEHandler.swift`: tipo de contraseña `PACEPasswordType` (`.mrz` / `.can`). Con CAN, referencia
    de clave 0x02 y semilla = el propio CAN (ICAO 9303-11: f(CAN) = CAN; f(MRZ) = SHA-1(MRZ)).
@@ -34,12 +34,12 @@ Sin `Resources/PrivacyInfo.xcprivacy` (vacío: no declara datos ni APIs).
 ```diff
 diff -ru -x LICENSE -x Resources -x PATCHES.md upstream/PACEHandler.swift ./PACEHandler.swift
 --- upstream/PACEHandler.swift	2026-10-09 22:51:02.347170064 +0000
-+++ snack/PACEHandler.swift	2026-10-09 23:17:31.042966378 +0000
++++ cherry/PACEHandler.swift	2026-10-09 23:17:31.042966378 +0000
 @@ -35,6 +35,12 @@
      }
  }
  
-+/// Snack patch: PACE password type (MRZ or CAN). See PATCHES.md.
++/// Cherry patch: PACE password type (MRZ or CAN). See PATCHES.md.
 +public enum PACEPasswordType {
 +    case mrz
 +    case can
@@ -63,7 +63,7 @@ diff -ru -x LICENSE -x Resources -x PATCHES.md upstream/PACEHandler.swift ./PACE
  
 -        paceKeyType = PACEHandler.MRZ_PACE_KEY_REFERENCE
 -        paceKey = try createPaceKey( from: mrzKey )
-+        // Snack patch: CAN uses key reference 0x02 and the CAN itself as the key seed.
++        // Cherry patch: CAN uses key reference 0x02 and the CAN itself as the key seed.
 +        paceKeyType = passwordType == .can ? PACEHandler.CAN_PACE_KEY_REFERENCE : PACEHandler.MRZ_PACE_KEY_REFERENCE
 +        paceKey = try createPaceKey( from: mrzKey, passwordType: passwordType )
          
@@ -86,14 +86,14 @@ diff -ru -x LICENSE -x Resources -x PATCHES.md upstream/PACEHandler.swift ./PACE
 +    func createPaceKey( from mrzKey: String, passwordType: PACEPasswordType = .mrz ) throws -> [UInt8] {
          let buf: [UInt8] = Array(mrzKey.utf8)
 -        let hash = calcSHA1Hash(buf)
-+        // Snack patch: K_pi = KDF_pi(f(pi)); f(MRZ) = SHA-1(MRZ information), f(CAN) = CAN (ISO 8859-1).
++        // Cherry patch: K_pi = KDF_pi(f(pi)); f(MRZ) = SHA-1(MRZ information), f(CAN) = CAN (ISO 8859-1).
 +        let hash = passwordType == .can ? buf : calcSHA1Hash(buf)
          
          let smskg = SecureMessagingSessionKeyGenerator()
          let key = try smskg.deriveKey(keySeed: hash, cipherAlgName: cipherAlg, keyLength: keyLength, nonce: nil, mode: .PACE_MODE, paceKeyReference: paceKeyType)
 diff -ru -x LICENSE -x Resources -x PATCHES.md upstream/PassportReader.swift ./PassportReader.swift
 --- upstream/PassportReader.swift	2026-10-09 22:51:02.347170064 +0000
-+++ snack/PassportReader.swift	2026-10-09 23:18:30.691474871 +0000
++++ cherry/PassportReader.swift	2026-10-09 23:18:30.691474871 +0000
 @@ -61,6 +61,7 @@
      private var caHandler : ChipAuthenticationHandler?
      private var paceHandler : PACEHandler?
@@ -110,7 +110,7 @@ diff -ru -x LICENSE -x Resources -x PATCHES.md upstream/PassportReader.swift ./P
 +        return try await readPassport(accessKey: mrzKey, passwordType: .mrz, tags: tags, aaChallenge: aaChallenge, skipSecureElements: skipSecureElements, skipCA: skipCA, skipPACE: skipPACE, useExtendedMode: useExtendedMode, customDisplayMessage: customDisplayMessage)
 +    }
 +
-+    /// Snack patch: read with the CAN (PACE only) or the MRZ key (PACE, then BAC).
++    /// Cherry patch: read with the CAN (PACE only) or the MRZ key (PACE, then BAC).
 +    public func readPassport( can : String, tags : [DataGroupId] = [], skipSecureElements : Bool = true, useExtendedMode : Bool = false, customDisplayMessage : ((NFCViewDisplayMessage) -> String?)? = nil) async throws -> NFCPassportModel {
 +        return try await readPassport(accessKey: can, passwordType: .can, tags: tags, aaChallenge: nil, skipSecureElements: skipSecureElements, skipCA: true, skipPACE: false, useExtendedMode: useExtendedMode, customDisplayMessage: customDisplayMessage)
 +    }
@@ -137,7 +137,7 @@ diff -ru -x LICENSE -x Resources -x PATCHES.md upstream/PassportReader.swift ./P
                  trackingDelegate?.paceFailed()
  
                  passport.PACEStatus = .failed
-+                // Snack patch: a CAN only works with PACE; BAC cannot be derived from it.
++                // Cherry patch: a CAN only works with PACE; BAC cannot be derived from it.
 +                if passwordType == .can {
 +                    Logger.passportReader.error( "PACE with CAN failed" )
 +                    throw error
@@ -149,7 +149,7 @@ diff -ru -x LICENSE -x Resources -x PATCHES.md upstream/PassportReader.swift ./P
      func doBACAuthentication(tagReader : TagReader) async throws {
          self.currentlyReadingDataGroup = nil
  
-+        // Snack patch: with a CAN there is no BAC; re-establish PACE instead.
++        // Cherry patch: with a CAN there is no BAC; re-establish PACE instead.
 +        if passwordType == .can {
 +            guard let cardAccess = passport.cardAccess else {
 +                throw NFCPassportReaderError.NotYetSupported( "PACE not supported" )
@@ -171,7 +171,7 @@ diff -ru -x LICENSE -x Resources -x PATCHES.md upstream/PassportReader.swift ./P
          throw nfcPassportReaderError
      }
  
-+    /// Snack patch: cancel a read in progress. The session delegate then reports `UserCanceled`.
++    /// Cherry patch: cancel a read in progress. The session delegate then reports `UserCanceled`.
 +    public func cancel() {
 +        self.readerSession?.invalidate()
 +    }
@@ -181,13 +181,13 @@ diff -ru -x LICENSE -x Resources -x PATCHES.md upstream/PassportReader.swift ./P
          // session). The real error is reported back with the call to the completed handler
 diff -ru -x LICENSE -x Resources -x PATCHES.md upstream/TagReader.swift ./TagReader.swift
 --- upstream/TagReader.swift	2026-10-09 22:51:02.347898705 +0000
-+++ snack/TagReader.swift	2026-10-09 23:17:31.043378905 +0000
++++ cherry/TagReader.swift	2026-10-09 23:17:31.043378905 +0000
 @@ -285,7 +285,8 @@
              
          }
          
 -        if rep.sw1 != 0x90 && rep.sw2 != 0x00 {
-+        // Snack patch (upstream PR #272): `&&` let e.g. 63 00 (wrong key) pass as success.
++        // Cherry patch (upstream PR #272): `&&` let e.g. 63 00 (wrong key) pass as success.
 +        if rep.sw1 != 0x90 || rep.sw2 != 0x00 {
              Logger.tagReader.error( "Error reading tag: sw1 - 0x\(binToHexRep(sw1)), sw2 - 0x\(binToHexRep(sw2))" )
              let tagError: NFCPassportReaderError

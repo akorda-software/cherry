@@ -5,7 +5,7 @@ import type {
   DiscoveryFeedPage,
   DiscoveryProfileCard,
   DiscoveryUndoResponse
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import { createDiscoveryQueue, type DiscoveryQueueDeps } from "./discovery-queue";
 

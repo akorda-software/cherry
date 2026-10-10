@@ -11,7 +11,7 @@ import Animated, {
   useReducedMotion
 } from "react-native-reanimated";
 
-import type { ReceivedLike } from "@snack/contracts";
+import type { ReceivedLike } from "@cherry/contracts";
 
 import {
   IconButton,

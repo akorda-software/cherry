@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import { apiError } from "../../onboarding/testing/fixtures";
 import { executeTagSave, parseTagSaveError, planTagSave, type TagSaveApi } from "./tag-save-plan";

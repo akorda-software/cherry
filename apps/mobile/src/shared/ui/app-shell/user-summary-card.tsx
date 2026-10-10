@@ -1,4 +1,4 @@
-import type { SessionUser } from "@snack/contracts";
+import type { SessionUser } from "@cherry/contracts";
 import { StyleSheet, View } from "react-native";
 
 import { Card } from "../composites/card";

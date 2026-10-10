@@ -1,4 +1,4 @@
-import type { ProfileApi } from "@snack/mobile-shared";
+import type { ProfileApi } from "@cherry/mobile-shared";
 
 import type { PhotoManagerApi } from "./use-photo-manager";
 

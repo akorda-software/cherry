@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-09-29T14:44:09.883525+00:00",
-  "title": "Design System: Snack",
+  "title": "Design System: Cherry",
   "extensions": {
     "colorMeta": {
       "fresa": {
@@ -546,7 +546,7 @@
   ],
   "narrative": {
     "northStar": "La libreta kawaii",
-    "overview": "Snack es una libreta de papelería japonesa en la que cada perfil es una página de scrapbook: fotos pegadas con washi tape dentro de marcos polaroid, etiquetas convertidas en pegatinas troqueladas, notas adhesivas con la bio escrita a mano y un sello «¡ME GUSTA!» que cae de golpe. El mundo es neobrutalismo kawaii: papel de puntos rosado, tinta ciruela para contornos, texto y sombras duras sin desenfoque, y rellenos pastel muy vivos que siempre llevan tinta encima. La app tiene que sentirse física: las cosas se despegan, se pegan, se sellan y se hunden en su sombra al pulsarlas.\n\nLa densidad es de app móvil tranquila: una columna, márgenes de 24, grupos separados por aire y por líneas discontinuas de libreta, nunca por cajas dentro de cajas. La decoración (washi, destellos, Mochi, pegatinas) vive en los bordes de las piezas y jamás tapa caras ni texto. Cada pantalla tiene como mucho un momento de autor (un sello, una celebración, una nota girada); el resto es movimiento de sistema.\n\nSe rechaza de forma explícita el arquetipo del sector: foto a sangre con degradado oscuro encima e interfaz blanca genérica. La foto siempre va enmarcada (polaroid, recorte con contorno), nunca a sangre. El documento de marca en prosa, con la voz y los principios completos, está en [`docs/08-identidad-visual.md`](../../docs/08-identidad-visual.md); este fichero es el registro canónico de tokens y reglas visuales. La API de cada pieza vive en `src/shared/ui/DS_READY.md` y `src/shared/ui/art/README.md`.",
+    "overview": "Cherry es una libreta de papelería japonesa en la que cada perfil es una página de scrapbook: fotos pegadas con washi tape dentro de marcos polaroid, etiquetas convertidas en pegatinas troqueladas, notas adhesivas con la bio escrita a mano y un sello «¡ME GUSTA!» que cae de golpe. El mundo es neobrutalismo kawaii: papel de puntos rosado, tinta ciruela para contornos, texto y sombras duras sin desenfoque, y rellenos pastel muy vivos que siempre llevan tinta encima. La app tiene que sentirse física: las cosas se despegan, se pegan, se sellan y se hunden en su sombra al pulsarlas.\n\nLa densidad es de app móvil tranquila: una columna, márgenes de 24, grupos separados por aire y por líneas discontinuas de libreta, nunca por cajas dentro de cajas. La decoración (washi, destellos, Mochi, pegatinas) vive en los bordes de las piezas y jamás tapa caras ni texto. Cada pantalla tiene como mucho un momento de autor (un sello, una celebración, una nota girada); el resto es movimiento de sistema.\n\nSe rechaza de forma explícita el arquetipo del sector: foto a sangre con degradado oscuro encima e interfaz blanca genérica. La foto siempre va enmarcada (polaroid, recorte con contorno), nunca a sangre. El documento de marca en prosa, con la voz y los principios completos, está en [`docs/08-identidad-visual.md`](../../docs/08-identidad-visual.md); este fichero es el registro canónico de tokens y reglas visuales. La API de cada pieza vive en `src/shared/ui/DS_READY.md` y `src/shared/ui/art/README.md`.",
     "keyCharacteristics": [
       "Papel de puntos rosado a pantalla completa como fondo de todo (teñido con el `Soft` de un pastel en cada paso del onboarding).",
       "Contorno de tinta de 2–3 px en todo lo que es una pieza; sombra dura de tinta desplazada hacia abajo a la derecha.",
@@ -613,7 +613,7 @@
       "**Do** diseñar siempre carga, vacío (con Mochi), error (qué pasó + reintentar), deshabilitado y pulsado."
     ],
     "donts": [
-      "**Don't** usar foto a sangre con degradado oscuro encima ni interfaz blanca genérica: es el arquetipo del sector que Snack rechaza.",
+      "**Don't** usar foto a sangre con degradado oscuro encima ni interfaz blanca genérica: es el arquetipo del sector que Cherry rechaza.",
       "**Don't** poner texto blanco sobre pastel.",
       "**Don't** usar sombras difusas, glassmorphism decorativo, texto con degradado o una segunda elevación sobre una pieza.",
       "**Don't** poner antetítulos en versalitas grises encima de los titulares.",

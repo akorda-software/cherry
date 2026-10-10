@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
   resolve: {
     alias: {
-      "@snack/contracts": path.resolve(__dirname, "../../packages/contracts/src/index.ts"),
-      "@snack/mobile-shared": path.resolve(__dirname, "../../packages/mobile-shared/src/index.ts")
+      "@cherry/contracts": path.resolve(__dirname, "../../packages/contracts/src/index.ts"),
+      "@cherry/mobile-shared": path.resolve(__dirname, "../../packages/mobile-shared/src/index.ts")
     }
   },
   test: {

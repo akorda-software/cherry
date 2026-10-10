@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import { executeTagSave, parseTagSaveError, planTagSave, type TagSaveErrorCode } from "../domain/tag-save-plan";

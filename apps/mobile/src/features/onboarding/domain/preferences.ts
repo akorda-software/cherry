@@ -1,4 +1,4 @@
-import type { DiscoveryPreferences } from "@snack/contracts";
+import type { DiscoveryPreferences } from "@cherry/contracts";
 
 /** «A quién quieres conocer» (multiselección) ↔ flags `show*` de las preferencias. */
 export type InterestedIn = "men" | "women" | "non_binary";

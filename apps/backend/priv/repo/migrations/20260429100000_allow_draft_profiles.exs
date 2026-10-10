@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.AllowDraftProfiles do
+defmodule Cherry.Repo.Migrations.AllowDraftProfiles do
   use Ecto.Migration
 
   def up do

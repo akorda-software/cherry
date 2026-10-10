@@ -1,5 +1,5 @@
 {
-  "name": "@snack/mobile-shared",
+  "name": "@cherry/mobile-shared",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@snack/contracts": "workspace:*"
+    "@cherry/contracts": "workspace:*"
   },
   "devDependencies": {
     "typescript": "5.9.3",

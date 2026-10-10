@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { ActivitySummary } from "@snack/contracts";
+import type { ActivitySummary } from "@cherry/contracts";
 
 import { useTabBadgesStore } from "../../../shared/ui/app-shell/tab-badges-store";
 import { onSignOut } from "../../auth/presentation/on-sign-out";

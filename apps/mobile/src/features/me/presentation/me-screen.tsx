@@ -2,8 +2,8 @@ import { useCallback, useMemo } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 
-import type { Profile } from "@snack/contracts";
-import { createProfileApi } from "@snack/mobile-shared";
+import type { Profile } from "@cherry/contracts";
+import { createProfileApi } from "@cherry/mobile-shared";
 
 import {
   appShellRoutes,

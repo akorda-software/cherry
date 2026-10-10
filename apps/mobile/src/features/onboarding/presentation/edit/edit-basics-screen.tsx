@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import type { Gender, RelationshipIntent } from "@snack/contracts";
+import type { Gender, RelationshipIntent } from "@cherry/contracts";
 
 import { FormMessage, Icon, Stack, Surface, Text, TextField, useTheme } from "../../../../shared/ui";
 import { useProfileDraftStore } from "../../application/profile-draft-store";

@@ -1,11 +1,11 @@
-defmodule Snack.TestSupport.ProviderTokenFactory do
+defmodule Cherry.TestSupport.ProviderTokenFactory do
   @moduledoc false
 
-  alias Snack.Identity.Providers.Apple
-  alias Snack.Identity.Providers.Google
+  alias Cherry.Identity.Providers.Apple
+  alias Cherry.Identity.Providers.Google
 
   def configure!(extra_providers \\ %{}) do
-    previous_auth_config = Application.fetch_env!(:snack, Snack.Auth)
+    previous_auth_config = Application.fetch_env!(:cherry, Cherry.Auth)
     google_key = generate_signing_key("google-test-key")
     apple_key = generate_signing_key("apple-test-key")
 
@@ -13,13 +13,13 @@ defmodule Snack.TestSupport.ProviderTokenFactory do
       %{
         google:
           provider_entry(Google,
-            audiences: ["snack-google-client-id"],
+            audiences: ["cherry-google-client-id"],
             issuers: ["https://accounts.google.com", "accounts.google.com"],
             jwks: [google_key.jwk]
           ),
         apple:
           provider_entry(Apple,
-            audiences: ["snack-apple-service-id"],
+            audiences: ["cherry-apple-service-id"],
             issuers: ["https://appleid.apple.com"],
             jwks: [apple_key.jwk]
           )
@@ -27,8 +27,8 @@ defmodule Snack.TestSupport.ProviderTokenFactory do
       |> Map.merge(extra_providers)
 
     Application.put_env(
-      :snack,
-      Snack.Auth,
+      :cherry,
+      Cherry.Auth,
       Keyword.put(previous_auth_config, :providers, providers)
     )
 
@@ -40,7 +40,7 @@ defmodule Snack.TestSupport.ProviderTokenFactory do
   end
 
   def restore!(%{previous_auth_config: previous_auth_config}) do
-    Application.put_env(:snack, Snack.Auth, previous_auth_config)
+    Application.put_env(:cherry, Cherry.Auth, previous_auth_config)
   end
 
   def google_token!(signing_key, claims_overrides \\ %{}) do
@@ -50,7 +50,7 @@ defmodule Snack.TestSupport.ProviderTokenFactory do
       signing_key,
       %{
         "iss" => "https://accounts.google.com",
-        "aud" => "snack-google-client-id",
+        "aud" => "cherry-google-client-id",
         "sub" => "google-user-123",
         "email" => "google-user@example.com",
         "name" => "Google User",
@@ -68,7 +68,7 @@ defmodule Snack.TestSupport.ProviderTokenFactory do
       signing_key,
       %{
         "iss" => "https://appleid.apple.com",
-        "aud" => "snack-apple-service-id",
+        "aud" => "cherry-apple-service-id",
         "sub" => "apple-user-123",
         "email" => "apple-user@example.com",
         "nonce" => hash_nonce(nonce),

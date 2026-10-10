@@ -1,6 +1,6 @@
-# Snack
+# Cherry
 
-**Snack es una app de citas open source, 100 % gratuita y self-hosteable.** Existe para demostrar que una app de citas puede servir a las personas en lugar de explotarlas: sin muros de pago, sin escasez simulada, sin anuncios y sin trucos para retenerte. Lo que otras apps cobran (ver quién te ha dado like, filtros, deshacer) aquí es gratis y para siempre.
+**Cherry es una app de citas open source, 100 % gratuita y self-hosteable.** Existe para demostrar que una app de citas puede servir a las personas en lugar de explotarlas: sin muros de pago, sin escasez simulada, sin anuncios y sin trucos para retenerte. Lo que otras apps cobran (ver quién te ha dado like, filtros, deshacer) aquí es gratis y para siempre.
 
 - **Las etiquetas mandan.** Cada persona elige etiquetas que la definen y etiquetas que no van con ella. Nunca verás a nadie con una etiqueta que bloqueas (ni te verá a ti), y la compatibilidad pesa más que la proximidad.
 - **Anti-predatoria.** La app busca que estés a gusto y consigas lo que buscas, no que pases más tiempo en ella. Tono cálido, sin presión ni culpa.
@@ -24,7 +24,7 @@ Lo pendiente (notificaciones push, pruebas en dispositivo real, panel de moderac
 ## Estructura del monorepo
 
 ```
-snack/
+cherry/
 ├── apps/
 │   ├── mobile/            # App Expo (SDK 54, Expo Router)
 │   └── backend/           # Phoenix + PostgreSQL/PostGIS: API REST, chat WebSocket, fotos
@@ -61,10 +61,10 @@ pnpm --dir apps/mobile start         # pulsa «w» para abrirla en el navegador
 
 En desarrollo, la bienvenida muestra la caja «Solo en desarrollo»:
 
-- **«Entrar como Lucía (demo)»** (`demo@snack.dev`): feed con gente, likes recibidos sin responder, matches y conversaciones (requiere `demo_seeds.exs`).
+- **«Entrar como Lucía (demo)»** (`demo@cherry.dev`): feed con gente, likes recibidos sin responder, matches y conversaciones (requiere `demo_seeds.exs`).
 - **«Entrar como usuario nuevo»**: cuenta limpia para recorrer el onboarding.
 
-Otras cuentas demo (`demo2@snack.dev`, Hugo, o cualquier `<nombre>@demo.snack.dev`) se usan con `POST /api/auth/dev/test-login` y `{"email": "…"}`. Detalle en [`docs/09-estrategia-pruebas.md`](./docs/09-estrategia-pruebas.md).
+Otras cuentas demo (`demo2@cherry.dev`, Hugo, o cualquier `<nombre>@demo.cherry.dev`) se usan con `POST /api/auth/dev/test-login` y `{"email": "…"}`. Detalle en [`docs/09-estrategia-pruebas.md`](./docs/09-estrategia-pruebas.md).
 
 El login con Google y Apple necesita un build nativo y client IDs propios: ver [`apps/mobile/README.md`](./apps/mobile/README.md) (Android, iOS, dispositivo físico) y [`docs/12-self-hosting.md`](./docs/12-self-hosting.md) §6.
 
@@ -75,7 +75,7 @@ pnpm test:mobile       # typecheck + mobile-shared + mobile + contracts
 pnpm test:contracts    # solo contracts
 
 # Backend contra el PostGIS del compose (sin variables usa localhost:5432)
-cd apps/backend && TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_test mix test
+cd apps/backend && TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_test mix test
 ```
 
 Última ejecución (2026-09-29), todo en verde: **384** tests de backend, **678** de móvil, **43** de mobile-shared y **23** de contracts, con el typecheck limpio. Estrategia y huecos en [`docs/09-estrategia-pruebas.md`](./docs/09-estrategia-pruebas.md).
@@ -90,4 +90,4 @@ Todo vive en [`docs/`](./docs); empieza por [`docs/README.md`](./docs/README.md)
 
 ## Licencia
 
-[GNU Affero General Public License v3.0](./LICENSE) (AGPL-3.0). Puedes usar, estudiar, modificar y redistribuir Snack, también para montar tu propia instancia. Si ofreces una versión modificada a otras personas, también a través de la red, tienes que ofrecerles su código fuente. Motivo: nadie puede cerrar una instancia modificada y cobrar por lo que aquí es gratis (D-2026-09-29 en `docs/decisions.md`).
+[GNU Affero General Public License v3.0](./LICENSE) (AGPL-3.0). Puedes usar, estudiar, modificar y redistribuir Cherry, también para montar tu propia instancia. Si ofreces una versión modificada a otras personas, también a través de la red, tienes que ofrecerles su código fuente. Motivo: nadie puede cerrar una instancia modificada y cobrar por lo que aquí es gratis (D-2026-09-29 en `docs/decisions.md`).

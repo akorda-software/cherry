@@ -1,2 +1,2 @@
 set PHX_SERVER=true
-call "%~dp0\snack" start
+call "%~dp0\cherry" start

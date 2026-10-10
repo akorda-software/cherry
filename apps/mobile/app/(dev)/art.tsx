@@ -121,7 +121,7 @@ function MochiSection() {
   return (
     <Section title="Mascota">
       <View style={styles.center}>
-        <Mascot size={200} mood="happy" accessibilityLabel="Mochi, la mascota de Snack, sonriendo" testID="mochi-hero" />
+        <Mascot size={200} mood="happy" accessibilityLabel="Mochi, la mascota de Cherry, sonriendo" testID="mochi-hero" />
       </View>
       <View style={styles.grid2}>
         {mascotMoods.map((mood) => (

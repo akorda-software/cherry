@@ -38,7 +38,7 @@ export function profileBadges(
     badges.push({
       kind: "newcomer",
       label: "Nuevo",
-      accessibilityLabel: `${person.displayName} acaba de llegar a Snack`,
+      accessibilityLabel: `${person.displayName} acaba de llegar a Cherry`,
       tone: "menta",
       icon: "leaf"
     });

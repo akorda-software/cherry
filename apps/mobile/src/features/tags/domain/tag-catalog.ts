@@ -1,4 +1,4 @@
-import { TAG_CATEGORIES, type Tag } from "@snack/contracts";
+import { TAG_CATEGORIES, type Tag } from "@cherry/contracts";
 
 export const TAG_CATEGORY_LABELS: Record<string, string> = {
   interests: "Intereses",

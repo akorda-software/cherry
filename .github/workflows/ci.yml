@@ -31,15 +31,15 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: snack_test
+          POSTGRES_DB: cherry_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U postgres -d snack_test"
+          --health-cmd "pg_isready -U postgres -d cherry_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: ecto://postgres:postgres@localhost:5432/snack_test
+      DATABASE_URL: ecto://postgres:postgres@localhost:5432/cherry_test
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
@@ -107,7 +107,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # Conectividad privada al panel de Dokploy (VPN-only; nada de /api/* público).
-      # Requiere TAILSCALE_OAUTH_SECRET (ephemeral) hasta la VM snack-backend.
+      # Requiere TAILSCALE_OAUTH_SECRET (ephemeral) hasta la VM cherry-backend.
       - name: Conectar a Tailscale
         uses: tailscale/github-action@v3
         with:

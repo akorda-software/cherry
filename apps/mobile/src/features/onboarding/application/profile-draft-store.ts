@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
-import type { DiscoveryPreferences, Profile, ProfilePhoto, Tag } from "@snack/contracts";
-import type { ProfileApi } from "@snack/mobile-shared";
+import type { DiscoveryPreferences, Profile, ProfilePhoto, Tag } from "@cherry/contracts";
+import type { ProfileApi } from "@cherry/mobile-shared";
 import { onSignOut } from "../../auth/presentation/on-sign-out";
 
 /**

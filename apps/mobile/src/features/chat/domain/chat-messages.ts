@@ -1,4 +1,4 @@
-import { MAX_MESSAGE_LENGTH, type ChatMessage } from "@snack/contracts";
+import { MAX_MESSAGE_LENGTH, type ChatMessage } from "@cherry/contracts";
 
 /**
  * Lógica pura de la conversación: fusión y deduplicación de mensajes del servidor,

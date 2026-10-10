@@ -3,7 +3,7 @@ import type {
   PhotoSummary,
   ProfileTag,
   PublicProfile
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 /**
  * Lo mínimo para pintar a una persona, venga de donde venga: card del feed o de

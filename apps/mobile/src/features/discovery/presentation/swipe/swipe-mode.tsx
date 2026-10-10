@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 
-import type { DiscoveryActionType, DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryActionType, DiscoveryProfileCard } from "@cherry/contracts";
 
 import type { DiscoveryQueueRemoval, DiscoveryQueueReturn } from "../../application/discovery-queue";
 import { describePerson } from "../describe-person";

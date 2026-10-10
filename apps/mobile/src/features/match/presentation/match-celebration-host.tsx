@@ -12,8 +12,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { DiscoveryMatch } from "@snack/contracts";
-import { createProfileApi } from "@snack/mobile-shared";
+import type { DiscoveryMatch } from "@cherry/contracts";
+import { createProfileApi } from "@cherry/mobile-shared";
 
 import {
   Appear,

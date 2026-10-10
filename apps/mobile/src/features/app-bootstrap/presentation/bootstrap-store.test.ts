@@ -5,7 +5,7 @@ import { refreshBootstrap, useBootstrapStore } from "./bootstrap-store";
 
 function bootstrapFor(isPaused: boolean): AppBootstrap {
   return {
-    user: { id: "user-1", email: "demo@snack.dev", displayName: "Lucía" },
+    user: { id: "user-1", email: "demo@cherry.dev", displayName: "Lucía" },
     profile: {
       exists: true,
       isComplete: true,

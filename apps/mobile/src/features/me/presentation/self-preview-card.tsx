@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
-import type { Profile } from "@snack/contracts";
+import type { Profile } from "@cherry/contracts";
 
 import {
   type AppTheme,

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { REPORT_REASONS, type ProfileReport } from "@snack/contracts";
+import { REPORT_REASONS, type ProfileReport } from "@cherry/contracts";
 
 import { normalizeReportDetails, REPORT_REASON_OPTIONS } from "../domain/report-reasons";
 import { blockProfile, reportProfile, type SafetyActionDeps } from "./safety-actions";

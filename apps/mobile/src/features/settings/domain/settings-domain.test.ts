@@ -12,13 +12,13 @@ describe("deleteAccountConsequences", () => {
 
 describe("resolveSourceUrl", () => {
   it("prefers the Expo extra config", () => {
-    expect(resolveSourceUrl({ sourceUrl: "https://git.example.org/snack" }, "https://other.example")).toBe(
-      "https://git.example.org/snack"
+    expect(resolveSourceUrl({ sourceUrl: "https://git.example.org/cherry" }, "https://other.example")).toBe(
+      "https://git.example.org/cherry"
     );
   });
 
   it("falls back to EXPO_PUBLIC_SOURCE_URL", () => {
-    expect(resolveSourceUrl({}, " https://codeberg.org/snack/snack ")).toBe("https://codeberg.org/snack/snack");
+    expect(resolveSourceUrl({}, " https://codeberg.org/cherry/cherry ")).toBe("https://codeberg.org/cherry/cherry");
   });
 
   it("returns null when nothing valid is configured", () => {

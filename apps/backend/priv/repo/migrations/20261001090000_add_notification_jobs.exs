@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.AddNotificationJobs do
+defmodule Cherry.Repo.Migrations.AddNotificationJobs do
   use Ecto.Migration
 
   def up, do: Oban.Migration.up(version: 14)

@@ -26,12 +26,12 @@ describe("AboutScreen", () => {
   });
 
   it("links to the repository when the instance configures it", async () => {
-    extra.sourceUrl = "https://code.example.org/snack";
+    extra.sourceUrl = "https://code.example.org/cherry";
     const openURL = vi.spyOn(Linking, "openURL").mockResolvedValue(undefined);
 
     renderRoute(<AboutScreen />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Ver el código" }));
-    expect(openURL).toHaveBeenCalledWith("https://code.example.org/snack");
+    expect(openURL).toHaveBeenCalledWith("https://code.example.org/cherry");
   });
 });

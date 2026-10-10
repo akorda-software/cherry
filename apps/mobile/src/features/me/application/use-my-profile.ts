@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { Profile, ProfileResponse } from "@snack/contracts";
+import type { Profile, ProfileResponse } from "@cherry/contracts";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 

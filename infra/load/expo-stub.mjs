@@ -15,7 +15,7 @@ let tickets = 0;
 const server = http.createServer((req, res) => {
   res.setHeader("content-type", "application/json");
   if (req.url === "/healthz") {
-    res.end(JSON.stringify({ service: "snack-expo-stub", requests, tickets }));
+    res.end(JSON.stringify({ service: "cherry-expo-stub", requests, tickets }));
     return;
   }
   if (req.method !== "POST" || req.url !== "/--/api/v2/push/send") {

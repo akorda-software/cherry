@@ -7,7 +7,7 @@ export interface AuthConfig {
 
 export const defaultAuthConfig: AuthConfig = {
   apiBaseUrl: "/api",
-  secureStorageKey: "snack.auth.session",
+  secureStorageKey: "cherry.auth.session",
   googleWebClientId: ""
 };
 

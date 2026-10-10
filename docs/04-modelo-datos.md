@@ -30,7 +30,7 @@ Extensión PostGIS + uuid-ossp. Tablas:
 | `matches` | profile_a_id, profile_b_id, status (active/unmatched/expired), matched_at, expires_at, first_message_at, unmatched_at | un match por pareja (índice único `idx_matches_canonical_pair` sobre `LEAST/GREATEST` de los dos perfiles). expires_at = matched_at + 30 días (`:match_expiry_days`) hasta el primer mensaje, que lo pone a NULL. La caducidad se aplica lazy en todas las lecturas (`expires_at <= now` = caducado) y `MatchExpirySweeper` pasa el status a `expired` cada hora |
 | `conversations` | match_id (FK único) | sin columna status: el gate de mensajería vive en `matches.status`/`expires_at` |
 | `conversation_reads` | conversation_id, profile_id, last_read_at | único por (conversation_id, profile_id); no leídos = mensajes del otro con `inserted_at > last_read_at`. Upsert que nunca retrocede |
-| `messages` | conversation_id, sender_profile_id, body (1–2000) | paginado por `(inserted_at, id)`, marcas de tiempo con microsegundos desde 20260929170000; **body cifrado en reposo** (AES-256-GCM vía `Snack.Crypto`, clave en `MESSAGE_ENCRYPTION_KEY` — ver D-2026-08-21) |
+| `messages` | conversation_id, sender_profile_id, body (1–2000) | paginado por `(inserted_at, id)`, marcas de tiempo con microsegundos desde 20260929170000; **body cifrado en reposo** (AES-256-GCM vía `Cherry.Crypto`, clave en `MESSAGE_ENCRYPTION_KEY` — ver D-2026-08-21) |
 | `user_blocks` | actor_profile_id, target_profile_id, reason | únicos por par |
 | `reports` | reporter_profile_id, target_profile_id, reason, details, status, reviewed_at/by | revisión admin |
 | `analytics_events` | profile_id/user_id, event_name, payload jsonb | append-only |

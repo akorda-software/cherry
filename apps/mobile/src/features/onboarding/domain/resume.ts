@@ -1,4 +1,4 @@
-import { MAX_PROFILE_PHOTOS, MIN_PROFILE_PHOTOS, type OnboardingStep, type Profile } from "@snack/contracts";
+import { MAX_PROFILE_PHOTOS, MIN_PROFILE_PHOTOS, type OnboardingStep, type Profile } from "@cherry/contracts";
 
 import { BACKEND_MIN_POSITIVE_TAGS } from "../../tags/domain/tag-selection";
 import { isAdultBirthDate } from "./birthday";

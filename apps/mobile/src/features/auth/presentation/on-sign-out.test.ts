@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { DiscoveryMatch, DiscoveryProfileCard, Profile } from "@snack/contracts";
+import type { DiscoveryMatch, DiscoveryProfileCard, Profile } from "@cherry/contracts";
 
 import { discoveryPreferencesStore, discoveryQueueStore } from "../../discovery/application/discovery-runtime";
 import { useProfileTransitStore } from "../../discovery/application/profile-transit";
@@ -20,7 +20,7 @@ function signIn() {
       accessTokenExpiresAt: "2099-01-01T00:00:00Z",
       refreshToken: "r",
       refreshTokenExpiresAt: "2099-01-01T00:00:00Z",
-      user: { id: "u1", email: "ada@snack.dev", displayName: "Ada" }
+      user: { id: "u1", email: "ada@cherry.dev", displayName: "Ada" }
     }
   });
 }

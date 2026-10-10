@@ -3,7 +3,7 @@ import type {
   PhotoUploadIntent,
   PhotoUploadIntentRequest,
   ProfilePhoto
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import {
   COMPRESSION_LADDER,

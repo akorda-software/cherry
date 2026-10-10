@@ -94,7 +94,7 @@ export function photoErrorMessage(error: unknown): string {
 
   switch (photoError.code) {
     case "storage_not_configured":
-      return "Este servidor de Snack aún no puede guardar fotos. Quien lo administra tiene que activar el almacenamiento; lo que llevas ya está guardado.";
+      return "Este servidor de Cherry aún no puede guardar fotos. Quien lo administra tiene que activar el almacenamiento; lo que llevas ya está guardado.";
     case "storage_unavailable":
       return "El almacén de fotos no responde ahora mismo. Dale un momento y vuelve a intentarlo.";
     case "too_many_photos":

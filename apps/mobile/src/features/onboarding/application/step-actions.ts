@@ -1,5 +1,5 @@
-import type { DiscoveryPreferences, Gender, Profile, RelationshipIntent } from "@snack/contracts";
-import type { ProfileApi } from "@snack/mobile-shared";
+import type { DiscoveryPreferences, Gender, Profile, RelationshipIntent } from "@cherry/contracts";
+import type { ProfileApi } from "@cherry/mobile-shared";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import {

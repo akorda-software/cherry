@@ -1,4 +1,4 @@
-import { MAX_PROFILE_PHOTOS, MIN_PROFILE_PHOTOS, type ProfilePhoto } from "@snack/contracts";
+import { MAX_PROFILE_PHOTOS, MIN_PROFILE_PHOTOS, type ProfilePhoto } from "@cherry/contracts";
 
 export { MAX_PROFILE_PHOTOS, MIN_PROFILE_PHOTOS };
 

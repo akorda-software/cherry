@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ChatMessage } from "@snack/contracts";
+import type { ChatMessage } from "@cherry/contracts";
 
 import type { OutgoingMessage } from "./chat-messages";
 import { buildTimeline, type TimelineMessage } from "./timeline";

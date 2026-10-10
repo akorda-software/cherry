@@ -1,4 +1,4 @@
-import { MAX_REPORT_DETAILS_LENGTH, REPORT_REASONS, type ReportReason } from "@snack/contracts";
+import { MAX_REPORT_DETAILS_LENGTH, REPORT_REASONS, type ReportReason } from "@cherry/contracts";
 
 export interface ReportReasonOption {
   value: ReportReason;
@@ -25,7 +25,7 @@ const LABELS: Record<ReportReason, Omit<ReportReasonOption, "value">> = {
   },
   underage: {
     label: "Parece menor de edad",
-    hint: "Snack es solo para mayores de 18 años."
+    hint: "Cherry es solo para mayores de 18 años."
   },
   offensive_bio: {
     label: "Bio ofensiva",

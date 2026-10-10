@@ -1,4 +1,4 @@
-import type { OnboardingStep } from "@snack/contracts";
+import type { OnboardingStep } from "@cherry/contracts";
 
 import { apiErrorCode, friendlyErrorMessage, isApiError } from "../../../shared/api";
 

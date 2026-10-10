@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import type { MatchSummary } from "@snack/contracts";
-import { createMatchesApi } from "@snack/mobile-shared";
+import type { MatchSummary } from "@cherry/contracts";
+import { createMatchesApi } from "@cherry/mobile-shared";
 
 import { refreshActivitySummary } from "../../activity/application/activity-poller";
 import { useAuthedApi } from "../../auth/presentation";

@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: Snack API
+  title: Cherry API
   version: 0.1.0
   description: |
-    REST API for the Snack dating backend. Authenticated endpoints require a
+    REST API for the Cherry dating backend. Authenticated endpoints require a
     Phoenix-issued bearer access token from the social auth or refresh flow.
 servers:
   - url: /
@@ -22,7 +22,7 @@ paths:
   /api/auth/{provider}/callback:
     post:
       tags: [Auth]
-      summary: Exchange a Google or Apple credential for a Snack session.
+      summary: Exchange a Google or Apple credential for a Cherry session.
       parameters:
         - name: provider
           in: path
@@ -62,7 +62,7 @@ paths:
               properties:
                 email:
                   type: string
-                  example: demo@snack.dev
+                  example: demo@cherry.dev
                 displayName:
                   type: string
                   example: Lucía

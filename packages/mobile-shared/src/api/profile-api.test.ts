@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { PhotoUploadIntent, ProfilePhoto, Tag } from "@snack/contracts";
+import type { PhotoUploadIntent, ProfilePhoto, Tag } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { createProfileApi } from "./profile-api";

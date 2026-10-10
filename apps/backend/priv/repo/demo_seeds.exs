@@ -1,26 +1,26 @@
 # Datos de DEMO para desarrollo. NUNCA se ejecuta fuera de MIX_ENV=dev.
 #
-#     DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_dev mix run priv/repo/demo_seeds.exs
+#     DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_dev mix run priv/repo/demo_seeds.exs
 #
 # Qué crea (idempotente: re-ejecutarlo restaura el mismo escenario sin duplicar):
 #
 #   * El catálogo de etiquetas (evalúa `seeds.exs`).
 #   * 53 perfiles sintéticos completos y descubribles a 1–40 km de Madrid
-#     (`<nombre>@demo.snack.dev`), de 20 a 45 años, hombres, mujeres y personas
+#     (`<nombre>@demo.cherry.dev`), de 20 a 45 años, hombres, mujeres y personas
 #     no binarias, con intenciones, preferencias, etiquetas y bios variadas.
-#   * `demo@snack.dev` — Lucía, 29, busca relación; interesada en hombres y
+#   * `demo@cherry.dev` — Lucía, 29, busca relación; interesada en hombres y
 #     personas no binarias. Tiene 8 likes recibidos sin responder, 5 matches
 #     (2 sin mensajes y 3 conversaciones, dos con mensajes sin leer) y algunos
 #     swipes hechos.
-#   * `demo2@snack.dev` — Hugo, 33, «a ver qué pasa»; perfil sencillo y sin
+#   * `demo2@cherry.dev` — Hugo, 33, «a ver qué pasa»; perfil sencillo y sin
 #     interacciones, para probar matches en directo entre dos sesiones.
 #
-# Entrar: `POST /api/auth/dev/test-login` con `{"email": "demo@snack.dev"}` (vale
-# cualquier email de esta lista, p. ej. `pablo@demo.snack.dev`).
+# Entrar: `POST /api/auth/dev/test-login` con `{"email": "demo@cherry.dev"}` (vale
+# cualquier email de esta lista, p. ej. `pablo@demo.cherry.dev`).
 #
 # Al re-ejecutarlo se borran y recrean las fotos, etiquetas y TODAS las
 # interacciones (swipes, matches, mensajes, bloqueos, reportes) en las que
-# participa alguna cuenta demo. Los mensajes se crean con `Snack.Dating.send_message/1`
+# participa alguna cuenta demo. Los mensajes se crean con `Cherry.Dating.send_message/1`
 # para respetar el cifrado en reposo.
 #
 # DATOS SINTÉTICOS SOLO PARA DEV: personas, nombres, bios y conversaciones son
@@ -35,7 +35,7 @@ end
 
 # Segunda barrera: aunque MIX_ENV=dev, nunca contra una BD que no sea de dev
 # (un DATABASE_URL de prod exportado por error en la shell).
-demo_database = Snack.Repo.config()[:database] || ""
+demo_database = Cherry.Repo.config()[:database] || ""
 
 unless String.ends_with?(demo_database, "_dev") do
   Mix.raise(
@@ -48,7 +48,7 @@ Logger.configure(level: :warning)
 
 Code.eval_file(Path.join(__DIR__, "seeds.exs"))
 
-defmodule Snack.DemoSeeds.SilentPush do
+defmodule Cherry.DemoSeeds.SilentPush do
   @moduledoc false
   # El escenario genera matches y mensajes: que no lleguen pushes reales a
   # dispositivos de desarrollo registrados con estas cuentas.
@@ -56,16 +56,16 @@ defmodule Snack.DemoSeeds.SilentPush do
     do: {:ok, Enum.map(messages, fn _ -> %{"status" => "ok"} end)}
 end
 
-defmodule Snack.DemoSeeds do
+defmodule Cherry.DemoSeeds do
   @moduledoc false
 
   import Ecto.Query
 
-  alias Snack.Accounts
-  alias Snack.Accounts.User
-  alias Snack.Dating
-  alias Snack.Dating.{Match, Message, Profile, ProfilePhoto, Report, SwipeAction, Tag, UserBlock}
-  alias Snack.Repo
+  alias Cherry.Accounts
+  alias Cherry.Accounts.User
+  alias Cherry.Dating
+  alias Cherry.Dating.{Match, Message, Profile, ProfilePhoto, Report, SwipeAction, Tag, UserBlock}
+  alias Cherry.Repo
 
   @madrid {40.4168, -3.7038}
 
@@ -79,7 +79,7 @@ defmodule Snack.DemoSeeds do
     [
       %{
         key: "lucia",
-        email: "demo@snack.dev",
+        email: "demo@cherry.dev",
         name: "Lucía",
         gender: "woman",
         age: 29,
@@ -100,7 +100,7 @@ defmodule Snack.DemoSeeds do
       },
       %{
         key: "hugo",
-        email: "demo2@snack.dev",
+        email: "demo2@cherry.dev",
         name: "Hugo",
         gender: "man",
         age: 33,
@@ -1115,7 +1115,7 @@ defmodule Snack.DemoSeeds do
        ) do
     %{
       key: key,
-      email: "#{key}@demo.snack.dev",
+      email: "#{key}@demo.cherry.dev",
       name: name,
       gender: gender,
       age: age,
@@ -1135,7 +1135,7 @@ defmodule Snack.DemoSeeds do
     }
   end
 
-  # ── Scenario for demo@snack.dev (Lucía) ────────────────────────────────
+  # ── Scenario for demo@cherry.dev (Lucía) ────────────────────────────────
 
   # {persona, minutes ago}: they liked Lucía and she has not answered yet.
   @received_likes [
@@ -1211,7 +1211,7 @@ defmodule Snack.DemoSeeds do
   # ── Run ────────────────────────────────────────────────────────────────
 
   def run do
-    Application.put_env(:snack, :expo_push_client, Snack.DemoSeeds.SilentPush)
+    Application.put_env(:cherry, :expo_push_client, Cherry.DemoSeeds.SilentPush)
 
     now = DateTime.utc_now() |> DateTime.truncate(:second)
     tag_ids = Map.new(Repo.all(from t in Tag, where: t.is_active, select: {t.slug, t.id}))
@@ -1359,7 +1359,7 @@ defmodule Snack.DemoSeeds do
   def photo_urls(persona) do
     ["https://i.pravatar.cc/800?img=#{persona.portrait}"] ++
       for n <- 2..(persona.extra + 1)//1,
-          do: "https://picsum.photos/seed/snack-#{persona.key}-#{n}/800/1000"
+          do: "https://picsum.photos/seed/cherry-#{persona.key}-#{n}/800/1000"
   end
 
   # completed_at / last_active_at are optional (discovery ranking v2 migration).
@@ -1451,7 +1451,7 @@ defmodule Snack.DemoSeeds do
       from(m in Match, where: m.id == ^match.id)
       |> Repo.update_all(set: [first_message_at: first_at, expires_at: nil])
 
-      from(c in Snack.Dating.Conversation, where: c.id == ^conversation.id)
+      from(c in Cherry.Dating.Conversation, where: c.id == ^conversation.id)
       |> Repo.update_all(set: [inserted_at: matched_at, updated_at: last_at])
 
       mark_read(conversation.id, lucia.id, lucia_read_at)
@@ -1503,10 +1503,10 @@ defmodule Snack.DemoSeeds do
   end
 
   defp match_expires_at(matched_at) do
-    if Code.ensure_loaded?(Snack.Dating.MatchExpiry) and
-         function_exported?(Snack.Dating.MatchExpiry, :expires_at, 1),
-       do: Snack.Dating.MatchExpiry.expires_at(matched_at),
-       else: DateTime.add(matched_at, Application.get_env(:snack, :match_expiry_days, 30), :day)
+    if Code.ensure_loaded?(Cherry.Dating.MatchExpiry) and
+         function_exported?(Cherry.Dating.MatchExpiry, :expires_at, 1),
+       do: Cherry.Dating.MatchExpiry.expires_at(matched_at),
+       else: DateTime.add(matched_at, Application.get_env(:cherry, :match_expiry_days, 30), :day)
   end
 
   defp set_timestamps(SwipeAction, id, at) do
@@ -1528,9 +1528,9 @@ defmodule Snack.DemoSeeds do
   # conversation_reads is optional (added by the read-state migration).
   defp mark_read(conversation_id, profile_id, at) do
     cond do
-      Code.ensure_loaded?(Snack.Dating.Inbox) and
-          function_exported?(Snack.Dating.Inbox, :mark_read, 3) ->
-        Snack.Dating.Inbox.mark_read(conversation_id, profile_id, at)
+      Code.ensure_loaded?(Cherry.Dating.Inbox) and
+          function_exported?(Cherry.Dating.Inbox, :mark_read, 3) ->
+        Cherry.Dating.Inbox.mark_read(conversation_id, profile_id, at)
 
       conversation_reads_table?() ->
         Repo.query!(
@@ -1560,7 +1560,7 @@ defmodule Snack.DemoSeeds do
   end
 
   defp refresh_tag_weights do
-    module = Snack.Dating.Discovery.TagWeights
+    module = Cherry.Dating.Discovery.TagWeights
 
     if Code.ensure_loaded?(module) and function_exported?(module, :refresh, 1) do
       module.refresh(DateTime.utc_now())
@@ -1576,11 +1576,11 @@ defmodule Snack.DemoSeeds do
     IO.puts("""
 
     Demo lista: #{map_size(profiles)} perfiles completos #{inspect(counts)}.
-      demo@snack.dev  → Lucía (8 likes recibidos, 5 matches, 3 conversaciones)
-      demo2@snack.dev → Hugo (sin interacciones)
-    Entrar: POST /api/auth/dev/test-login {"email": "demo@snack.dev"}
+      demo@cherry.dev  → Lucía (8 likes recibidos, 5 matches, 3 conversaciones)
+      demo2@cherry.dev → Hugo (sin interacciones)
+    Entrar: POST /api/auth/dev/test-login {"email": "demo@cherry.dev"}
     """)
   end
 end
 
-Snack.DemoSeeds.run()
+Cherry.DemoSeeds.run()

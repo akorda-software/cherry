@@ -1,4 +1,4 @@
-import type { LocationUpdateRequest } from "@snack/contracts";
+import type { LocationUpdateRequest } from "@cherry/contracts";
 
 /**
  * Compartir la ubicación aproximada: permiso → posición actual → `POST /api/me/location`.

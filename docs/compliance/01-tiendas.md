@@ -8,7 +8,7 @@
 
 - [ ] Filtrar contenido inaceptable (fotos: `03`; chat: filtro de enlaces, teléfonos e insultos en `05`).
 - [ ] Reportar contenido con respuesta a tiempo. En la práctica App Review pide **actuar sobre los reportes en 24 h** (`05`).
-- [x] Bloquear a usuarios abusivos (existe: `Snack.Dating.Safety.block/2`).
+- [x] Bloquear a usuarios abusivos (existe: `Cherry.Dating.Safety.block/2`).
 - [ ] Contacto publicado (web y ficha de la tienda).
 - [ ] **EULA/términos aceptados por el usuario con tolerancia cero** hacia contenido inaceptable y usuarios abusivos (`07`).
 - Desde junio de 2026, los fallos graves o repetidos de moderación pueden suponer la retirada inmediata de la app y de la cuenta de desarrollador.

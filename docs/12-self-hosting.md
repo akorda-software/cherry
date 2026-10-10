@@ -1,10 +1,10 @@
 # Monta tu instancia
 
-Guía genérica para montar una instancia propia de Snack: backend Phoenix + PostgreSQL/PostGIS detrás de un proxy TLS, fotos en disco o en un bucket S3, y la app móvil compilada contra tu servidor. No depende de ningún proveedor concreto.
+Guía genérica para montar una instancia propia de Cherry: backend Phoenix + PostgreSQL/PostGIS detrás de un proxy TLS, fotos en disco o en un bucket S3, y la app móvil compilada contra tu servidor. No depende de ningún proveedor concreto.
 
 Como ejemplo real (servidor propio con Proxmox, Dokploy y Cloudflare) está el runbook del proyecto en [`infra/deploy/README.md`](../infra/deploy/README.md). Es específico de esa máquina: úsalo como referencia, no como receta.
 
-> Snack se distribuye con licencia **AGPL-3.0** (`LICENSE`). Si modificas el código y ofreces la app a otras personas, tienes que ofrecerles también el código de tu versión. La pantalla «Acerca de» de la app enseña un enlace «Ver el código» si compilas con `EXPO_PUBLIC_SOURCE_URL` (ver §8).
+> Cherry se distribuye con licencia **AGPL-3.0** (`LICENSE`). Si modificas el código y ofreces la app a otras personas, tienes que ofrecerles también el código de tu versión. La pantalla «Acerca de» de la app enseña un enlace «Ver el código» si compilas con `EXPO_PUBLIC_SOURCE_URL` (ver §8).
 
 ## 1. Qué necesitas
 
@@ -21,7 +21,7 @@ No hay imagen publicada para terceros: constrúyela tú desde el repositorio.
 
 ## 2. Base de datos
 
-1. Crea una base de datos y un usuario para Snack (p. ej. `snack_prod`).
+1. Crea una base de datos y un usuario para Cherry (p. ej. `cherry_prod`).
 2. PostGIS no es una extensión «de confianza» de PostgreSQL: si el usuario de la app no es superusuario, crea antes las extensiones con uno que lo sea:
 
    ```sql
@@ -30,7 +30,7 @@ No hay imagen publicada para terceros: constrúyela tú desde el repositorio.
    CREATE EXTENSION IF NOT EXISTS pgcrypto;
    ```
 
-3. `DATABASE_URL=ecto://USUARIO:CLAVE@HOST:5432/snack_prod`.
+3. `DATABASE_URL=ecto://USUARIO:CLAVE@HOST:5432/cherry_prod`.
 4. **`DATABASE_SSL`**: en producción vale `true` por defecto (el backend exige TLS hacia PostgreSQL). Si la base de datos está en la misma máquina o red privada sin TLS, pon `DATABASE_SSL=false`.
 5. Opcionales: `POOL_SIZE` (10 por defecto) y `ECTO_IPV6=true` si llegas a PostgreSQL por IPv6.
 
@@ -39,7 +39,7 @@ No hay imagen publicada para terceros: constrúyela tú desde el repositorio.
 ### Imagen Docker
 
 ```bash
-docker build -t snack-backend:$(git rev-parse --short HEAD) \
+docker build -t cherry-backend:$(git rev-parse --short HEAD) \
   --build-arg APP_VERSION=$(git rev-parse --short HEAD) \
   apps/backend
 ```
@@ -59,7 +59,7 @@ MIX_ENV=prod mix deps.get --only prod
 MIX_ENV=prod mix release
 ```
 
-Genera `_build/prod/rel/snack` y el tarball `_build/prod/snack-<versión>.tar.gz`. Se ejecuta con `bin/migrate` y después `bin/server` (el mismo orden que la imagen). Necesitas el mismo SO/arquitectura en la máquina de build y en la de destino.
+Genera `_build/prod/rel/cherry` y el tarball `_build/prod/cherry-<versión>.tar.gz`. Se ejecuta con `bin/migrate` y después `bin/server` (el mismo orden que la imagen). Necesitas el mismo SO/arquitectura en la máquina de build y en la de destino.
 
 ### Tareas de base de datos
 
@@ -99,7 +99,7 @@ Genera cada secreto con `mix phx.gen.secret` o `openssl rand -base64 48`. No reu
 |---|---|
 | `GOOGLE_WEB_CLIENT_ID` | Client ID de OAuth de tipo «Aplicación web» (§6). Es la audiencia de los tokens que emite Google Sign-In en Android |
 | `GOOGLE_IOS_CLIENT_ID` | Client ID de OAuth de tipo iOS (§6) |
-| `APPLE_AUDIENCES` | Bundle IDs aceptados para Sign in with Apple, separados por comas. Por defecto `EXPO_IOS_BUNDLE_IDENTIFIER` o `app.snack.mobile` |
+| `APPLE_AUDIENCES` | Bundle IDs aceptados para Sign in with Apple, separados por comas. Por defecto `EXPO_IOS_BUNDLE_IDENTIFIER` o `app.cherry.mobile` |
 
 Un proveedor sin audiencias rechaza todos sus logins; el backend lo avisa en el log al arrancar (error si no hay ninguno configurado).
 
@@ -113,7 +113,7 @@ Un proveedor sin audiencias rechaza todos sus logins; el backend lo avisa en el 
 | `UPLOAD_URL_TTL_SECONDS` | `600` | Validez de una URL de subida |
 | `GOOGLE_JWKS_CACHE_TTL_MS` / `APPLE_JWKS_CACHE_TTL_MS` | `600000` | Caché de las claves públicas de los proveedores |
 | `POOL_SIZE` | `10` | Conexiones de la API y workers por nodo; dimensionar contra el presupuesto total de PostgreSQL |
-| `DB_JIT` | `false` | JIT en las conexiones de Snack; desactivado para evitar compilación costosa en consultas cortas |
+| `DB_JIT` | `false` | JIT en las conexiones de Cherry; desactivado para evitar compilación costosa en consultas cortas |
 | `DB_QUEUE_TARGET_MS` / `DB_QUEUE_INTERVAL_MS` | `50` / `1000` | Objetivo de espera y ventana del pool antes de rechazar sobrecarga |
 | `DB_QUERY_TIMEOUT_MS` | `15000` | Timeout por operación del repositorio |
 | `METRICS_TOKEN` | vacío | Habilita `GET /metrics` con `Authorization: Bearer <token>` para Prometheus |
@@ -136,9 +136,9 @@ El contrato con la app es el mismo con cualquier adaptador (detalle en `06-contr
 - El contenedor corre como `nobody`: el directorio debe ser escribible por el uid 65534. Con un bind mount:
 
   ```bash
-  sudo mkdir -p /var/lib/snack/uploads
-  sudo chown 65534:65534 /var/lib/snack/uploads
-  # docker run … -v /var/lib/snack/uploads:/var/lib/snack/uploads -e UPLOADS_DIR=/var/lib/snack/uploads
+  sudo mkdir -p /var/lib/cherry/uploads
+  sudo chown 65534:65534 /var/lib/cherry/uploads
+  # docker run … -v /var/lib/cherry/uploads:/var/lib/cherry/uploads -e UPLOADS_DIR=/var/lib/cherry/uploads
   ```
 
 - Espacio: como mucho 4 fotos de 2 MB por perfil.
@@ -154,7 +154,7 @@ Cambiar de adaptador no migra fotos.
 
 ## 6. Login con Google y Apple
 
-Snack solo admite Google y Apple. La app obtiene un token de identidad del proveedor y el backend lo valida contra las audiencias configuradas; después Phoenix emite su propia sesión.
+Cherry solo admite Google y Apple. La app obtiene un token de identidad del proveedor y el backend lo valida contra las audiencias configuradas; después Phoenix emite su propia sesión.
 
 ### Google
 
@@ -171,7 +171,7 @@ En Google Cloud Console, dentro de un mismo proyecto:
 En Apple Developer:
 
 1. Activa la capacidad **Sign in with Apple** en el App ID de tu bundle ID.
-2. Pon ese bundle ID en `APPLE_AUDIENCES` (backend). Si no lo defines, el backend usa `EXPO_IOS_BUNDLE_IDENTIFIER` o `app.snack.mobile`.
+2. Pon ese bundle ID en `APPLE_AUDIENCES` (backend). Si no lo defines, el backend usa `EXPO_IOS_BUNDLE_IDENTIFIER` o `app.cherry.mobile`.
 
 Sign in with Apple se ofrece en iOS.
 
@@ -198,7 +198,7 @@ Ejemplo mínimo con Caddy:
 
 ```
 api.tu-dominio.example {
-    reverse_proxy snack-backend:4000
+    reverse_proxy cherry-backend:4000
 }
 ```
 
@@ -215,9 +215,9 @@ EXPO_PUBLIC_API_BASE_URL_ANDROID=https://api.tu-dominio.example
 EXPO_PUBLIC_API_BASE_URL_IOS=https://api.tu-dominio.example
 EXPO_PUBLIC_API_BASE_URL_WEB=https://api.tu-dominio.example
 
-EXPO_APP_NAME=Snack
-EXPO_ANDROID_PACKAGE=tu.dominio.snack
-EXPO_IOS_BUNDLE_IDENTIFIER=tu.dominio.snack
+EXPO_APP_NAME=Cherry
+EXPO_ANDROID_PACKAGE=tu.dominio.cherry
+EXPO_IOS_BUNDLE_IDENTIFIER=tu.dominio.cherry
 
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=…
 EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=…
@@ -227,7 +227,7 @@ GOOGLE_IOS_URL_SCHEME=com.googleusercontent.apps.…
 EXPO_PUBLIC_SOURCE_URL=https://…
 ```
 
-- Si vas a publicar en las tiendas, usa tu propio paquete y bundle ID: los de ejemplo (`app.snack.mobile`) no son tuyos.
+- Si vas a publicar en las tiendas, usa tu propio paquete y bundle ID: los de ejemplo (`app.cherry.mobile`) no son tuyos.
 - La URL de la API no se puede cambiar después sin recompilar.
 - El login con Google y Apple necesita un build nativo (no funciona en Expo Go).
 

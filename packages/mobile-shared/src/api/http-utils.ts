@@ -1,4 +1,4 @@
-import type { CursorPageQuery } from "@snack/contracts";
+import type { CursorPageQuery } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 

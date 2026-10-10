@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { AgeVerification, AgeVerificationResponse, NfcVerificationRequest } from "@snack/contracts";
+import type { AgeVerification, AgeVerificationResponse, NfcVerificationRequest } from "@cherry/contracts";
 
 import {
   type DocumentAccessKey,

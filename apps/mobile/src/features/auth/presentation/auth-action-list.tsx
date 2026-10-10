@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from "react";
-import type { AuthProvider } from "@snack/mobile-shared";
+import type { AuthProvider } from "@cherry/mobile-shared";
 import { Platform, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
@@ -7,17 +7,17 @@ import { Button, Icon, LoadingDots, PressableScale, Text, useTheme } from "../..
 import type { BusyProvider } from "./session-store";
 
 /** Persona de demo del seed del backend: perfil completo con likes, matches y chats. */
-export const DEMO_TEST_EMAIL = "demo@snack.dev";
+export const DEMO_TEST_EMAIL = "demo@cherry.dev";
 
 /** Segunda persona de demo (Hugo, sin interacciones): para probar matches en directo entre dos sesiones. */
-export const DEMO2_TEST_EMAIL = "demo2@snack.dev";
+export const DEMO2_TEST_EMAIL = "demo2@cherry.dev";
 
 /** Email desechable para estrenar un usuario de pruebas (entra al onboarding desde cero). */
 export function createFreshTestEmail(now: number = Date.now(), random: () => number = Math.random): string {
   const suffix = Math.floor(random() * 36 ** 4)
     .toString(36)
     .padStart(4, "0");
-  return `nuevo-${now.toString(36)}-${suffix}@snack.dev`;
+  return `nuevo-${now.toString(36)}-${suffix}@cherry.dev`;
 }
 
 /**

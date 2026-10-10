@@ -13,27 +13,27 @@ Internet → Cloudflare (proxied, Full strict)
         → UCG-Fiber (80/443 solo desde rangos IP de Cloudflare)
         → Caddy (DMZ 192.168.30.21)
         → Traefik (192.168.0.126:80, Swarm)
-        → contenedor snack (:4000, nunca publicado directo)
+        → contenedor cherry (:4000, nunca publicado directo)
 
 GitHub Actions → tests → imagen ghcr.io/<repo>-backend:<sha> → API Dokploy (solo VPN)
-snack-backend → PostgreSQL 192.168.0.142:5432 · fotos → volumen local (UPLOADS_DIR) o R2 (UE)
+cherry-backend → PostgreSQL 192.168.0.142:5432 · fotos → volumen local (UPLOADS_DIR) o R2 (UE)
 ```
 
 | VM | IP | Contenido |
 |---|---|---|
 | caddy (VM 100) | 192.168.30.21 | Debian 13 + Caddy (systemd) |
-| snack-backend (VM 101) | 192.168.0.126 | Debian 13 + Docker + Swarm 1 nodo + Dokploy + Traefik + snack |
-| snack-db (VM 102) | 192.168.0.142 | Debian 13 + PostgreSQL 17 + PostGIS, PGDATA en PM1735 (raw block scsi1, ext4 noatime) |
+| cherry-backend (VM 101) | 192.168.0.126 | Debian 13 + Docker + Swarm 1 nodo + Dokploy + Traefik + cherry |
+| cherry-db (VM 102) | 192.168.0.142 | Debian 13 + PostgreSQL 17 + PostGIS, PGDATA en PM1735 (raw block scsi1, ext4 noatime) |
 
-## 1. Base de datos (snack-db)
+## 1. Base de datos (cherry-db)
 
 Ya instalado: PG 17.11 + PostGIS 3.6.4 (PGDG), PGDATA en PM1735.
 
 ```bash
-sudo -u postgres createuser snack --pwprompt        # contraseña: openssl rand -hex 32 → Bitwarden
-sudo -u postgres createdb snack_prod --owner=snack
-sudo -u postgres psql snack_prod -c 'CREATE EXTENSION postgis; CREATE EXTENSION pg_stat_statements;'
-sudo -u postgres psql -c 'REVOKE ALL ON DATABASE snack_prod FROM PUBLIC;'
+sudo -u postgres createuser cherry --pwprompt        # contraseña: openssl rand -hex 32 → Bitwarden
+sudo -u postgres createdb cherry_prod --owner=cherry
+sudo -u postgres psql cherry_prod -c 'CREATE EXTENSION postgis; CREATE EXTENSION pg_stat_statements;'
+sudo -u postgres psql -c 'REVOKE ALL ON DATABASE cherry_prod FROM PUBLIC;'
 ```
 
 `postgresql.conf`:
@@ -43,11 +43,11 @@ sudo -u postgres psql -c 'REVOKE ALL ON DATABASE snack_prod FROM PUBLIC;'
 - Punto de partida: `shared_buffers = 4GB`, `effective_cache_size = 12GB`, `max_connections = 100`. `work_mem` al default hasta ver consultas reales.
 - Backups previstos con pgBackRest en el SATA local de ~1 TB y en R2; frecuencia externa orientativa de una o varias horas y unas diez copias recuperables recientes. Cadencia, esquema de copias/WAL y retención final por concretar al configurarlo (ver §8).
 
-`pg_hba.conf`: `host snack_prod snack 192.168.0.126/32 scram-sha-256`. Firewall VM: 5432 solo desde `.126`; SSH solo desde VPN.
+`pg_hba.conf`: `host cherry_prod cherry 192.168.0.126/32 scram-sha-256`. Firewall VM: 5432 solo desde `.126`; SSH solo desde VPN.
 
 **LUKS en PGDATA: decisión pendiente** (recomendado mientras la DB está vacía; GDPR art. 9). Coste: desbloqueo manual por SSH tras reboot.
 
-## 2. Dokploy en snack-backend (VM 101)
+## 2. Dokploy en cherry-backend (VM 101)
 
 ```bash
 curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nodo + Dokploy + Traefik
@@ -63,7 +63,7 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 
 - Aplicación tipo Docker, imagen `ghcr.io/<repo>-backend:<sha>` (nunca `latest`).
 - Env del servicio (variables obligatorias en prod; el release no arranca sin ellas):
-  `SECRET_KEY_BASE`, `AUTH_ACCESS_TOKEN_SALT`, `AUTH_REFRESH_TOKEN_SALT`, `MESSAGE_ENCRYPTION_KEY`, `DATABASE_URL` (`ecto://snack:…@192.168.0.142/snack_prod`), `PHX_HOST`, `STORAGE_ADAPTER` (+ `UPLOADS_DIR` si es `local`), y `DATABASE_SSL=false`, `POOL_SIZE=20`, `PUBLIC_BASE_URL=https://<dominio>`. Secretos generados con `openssl rand -base64 48` y guardados en Bitwarden. Plantilla: [`env.example`](env.example).
+  `SECRET_KEY_BASE`, `AUTH_ACCESS_TOKEN_SALT`, `AUTH_REFRESH_TOKEN_SALT`, `MESSAGE_ENCRYPTION_KEY`, `DATABASE_URL` (`ecto://cherry:…@192.168.0.142/cherry_prod`), `PHX_HOST`, `STORAGE_ADAPTER` (+ `UPLOADS_DIR` si es `local`), y `DATABASE_SSL=false`, `POOL_SIZE=20`, `PUBLIC_BASE_URL=https://<dominio>`. Secretos generados con `openssl rand -base64 48` y guardados en Bitwarden. Plantilla: [`env.example`](env.example).
 - **Swarm (Advanced → Swarm)**: health check `curl -fsS localhost:4000/healthz`; UpdateConfig `order: stop-first`, `Parallelism 1`, `FailureAction rollback`, `Monitor 30s`; RollbackConfig también `order: stop-first` y `Parallelism 1`; `RestartPolicy on-failure`. **1 réplica**, sin distribución Erlang. Se acepta downtime de segundos o minutos y reconexión de los clientes; no se solapan versiones atendiendo chats.
 - Comando por defecto de la imagen: `sh -c "/app/bin/migrate && exec /app/bin/server"` (migraciones + catálogo de etiquetas idempotente al arrancar, lock activo; `bin/seed` solo sincroniza el catálogo). No hace falta override en Dokploy; si había uno con solo `/app/bin/server`, quitarlo. Healthcheck en `${PORT:-4000}` con 60 s de arranque.
 - Dominio en Dokploy con HTTPS **desactivado** (TLS termina en Cloudflare/Caddy; Traefik escucha HTTP).
@@ -75,28 +75,28 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 **`local` (sin S3, recomendado para las primeras pruebas):**
 
 - La subida es un `PUT /api/uploads/<token>` firmado que escribe en `UPLOADS_DIR/pending/` (no público); al completarla la foto pasa a `UPLOADS_DIR/photos/<clave aleatoria>.<ext>` (sin id de perfil) y Phoenix la sirve en `https://<dominio>/uploads/...` con `Cache-Control: public, max-age=86400` (Cloudflare la cachea por extensión). Las fotos antiguas en `profiles/` se siguen sirviendo. No hace falta abrir nada más que el propio backend.
-- `UPLOADS_DIR` debe ser un **volumen persistente** (no el sistema de ficheros del contenedor: se perdería en cada despliegue). En Dokploy: *Advanced → Volumes* → bind mount del host `/var/lib/snack/uploads` en el contenedor en la misma ruta. El contenedor corre como `nobody`:
+- `UPLOADS_DIR` debe ser un **volumen persistente** (no el sistema de ficheros del contenedor: se perdería en cada despliegue). En Dokploy: *Advanced → Volumes* → bind mount del host `/var/lib/cherry/uploads` en el contenedor en la misma ruta. El contenedor corre como `nobody`:
   ```bash
-  sudo mkdir -p /var/lib/snack/uploads && sudo chown 65534:65534 /var/lib/snack/uploads
+  sudo mkdir -p /var/lib/cherry/uploads && sudo chown 65534:65534 /var/lib/cherry/uploads
   ```
 - Definir `PUBLIC_BASE_URL=https://<dominio>` para que las URLs absolutas no dependan de las cabeceras `Host` que lleguen tras Caddy/Traefik.
 - Tamaño: máx. 2 MB por foto (`UPLOAD_MAX_BYTES`) × 4 fotos por perfil; vigilar el disco de 40 GB de la VM o montar un disco/volumen dedicado. Ni Caddy ni Traefik limitan el cuerpo por defecto; Cloudflare (plan gratuito) admite hasta 100 MB.
 - Backups: `UPLOADS_DIR` forma parte del estado junto con PostgreSQL (ver §8). Borrar una foto o la cuenta borra el fichero; un barrido cada 10 min elimina subidas abandonadas. Como la caché es de un día, una foto borrada puede seguir en la CDN hasta 24 h (purgar en Cloudflare si urge).
 
-**`r2` (Cloudflare R2 o S3 compatible):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL_BASE` y `R2_ACCOUNT_ID` (R2) o `S3_ENDPOINT` + `S3_REGION` (MinIO, Garage…, direccionamiento path-style). El CORS del bucket debe permitir `PUT` con `Content-Type` e `If-None-Match`. Sin credenciales, `upload-intent` responde 503 `storage_not_configured`. Cambiar de `local` a `r2` no migra fotos: las antiguas siguen sirviéndose desde `/uploads` mientras exista el directorio. Las credenciales R2/S3 necesitan lectura, escritura **y borrado** de objetos: `complete` copia `pending/<key>` a `<key>` y borra el original, y el barrido (`Snack.Dating.PhotoStorageSweeper`, cada 10 min) borra fotos borradas y subidas abandonadas. Con bucket público, añade una regla de ciclo de vida que borre el prefijo `pending/` a 1 día (defensa en profundidad: esas claves son aleatorias y el barrido ya las borra). Con `local` en prod, `PUBLIC_BASE_URL` es obligatoria (las URLs de fotos no se construyen con la cabecera `Host`).
+**`r2` (Cloudflare R2 o S3 compatible):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL_BASE` y `R2_ACCOUNT_ID` (R2) o `S3_ENDPOINT` + `S3_REGION` (MinIO, Garage…, direccionamiento path-style). El CORS del bucket debe permitir `PUT` con `Content-Type` e `If-None-Match`. Sin credenciales, `upload-intent` responde 503 `storage_not_configured`. Cambiar de `local` a `r2` no migra fotos: las antiguas siguen sirviéndose desde `/uploads` mientras exista el directorio. Las credenciales R2/S3 necesitan lectura, escritura **y borrado** de objetos: `complete` copia `pending/<key>` a `<key>` y borra el original, y el barrido (`Cherry.Dating.PhotoStorageSweeper`, cada 10 min) borra fotos borradas y subidas abandonadas. Con bucket público, añade una regla de ciclo de vida que borre el prefijo `pending/` a 1 día (defensa en profundidad: esas claves son aleatorias y el barrido ya las borra). Con `local` en prod, `PUBLIC_BASE_URL` es obligatoria (las URLs de fotos no se construyen con la cabecera `Host`).
 
 ## 4. Publicación: cadena de confianza de IP real
 
 1. **UCG-Fiber**: 80/443 hacia Caddy solo desde los rangos IP publicados de Cloudflare.
 2. **Caddy**:
    ```
-   api.snack.example {
+   api.cherry.example {
        reverse_proxy 192.168.0.126:80
    }
    ```
    Con `trusted_proxies` estricto (solo rangos de Cloudflare) y preferencia por `CF-Connecting-IP`.
 3. **Traefik** (traefik.yml editable desde Dokploy): en el entrypoint web, `forwardedHeaders.trustedIPs: ["192.168.30.21/32"]`. Sin redirecciones a HTTPS.
-4. **Firewall snack-backend**: 80 solo desde `192.168.30.21`; 3000 solo VPN; SSH solo VPN.
+4. **Firewall cherry-backend**: 80 solo desde `192.168.30.21`; 3000 solo VPN; SSH solo VPN.
 5. **Phoenix** (pendiente en repo): plug `RemoteIp` con proxies explícitos (Caddy DMZ + subred Traefik); nunca confiar en redes privadas indiscriminadas.
 6. Cloudflare: CNAME → `home.akorda.es` proxificado, Full strict. Verificar desde red externa. Nota: `vpn.akorda.es` (DNS-only) revela la WAN; riesgo aceptado para WireGuard.
 
@@ -131,7 +131,7 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 Las primeras pruebas con datos ficticios regenerables pueden empezar con los backups y R2 todavía pendientes. Antes de conservar datos reales:
 
 - [ ] Configurar backup consistente de PostgreSQL al SATA de ~1 TB. **PGDATA tiene `backup=0` y no entra en vzdump**; copiar solo la VM es insuficiente.
-- [ ] Con `STORAGE_ADAPTER=local`, incluir `UPLOADS_DIR` (`/var/lib/snack/uploads`) en los mismos destinos de backup que PostgreSQL.
+- [ ] Con `STORAGE_ADAPTER=local`, incluir `UPLOADS_DIR` (`/var/lib/cherry/uploads`) en los mismos destinos de backup que PostgreSQL.
 - [ ] Configurar también destino R2 como copia externa. Objetivo: una copia/punto recuperable cada hora o cada varias horas, reteniendo unas diez recientes. Fijar intervalo y política final según volumen/duración; no hay un cron ni una retención implementados todavía.
 - [ ] Definir con pgBackRest la combinación de completas, diferenciales/incrementales y WAL. Mantener todas las dependencias de cada punto recuperable; diez puntos no equivalen a diez objetos S3. Diez copias horarias cubren aproximadamente diez horas.
 - [ ] Guardar claves de backups y `MESSAGE_ENCRYPTION_KEY` fuera del servidor; comprobar una restauración desde la copia local y otra desde R2.
@@ -143,6 +143,6 @@ No se configura ahora alta disponibilidad, réplica externa ni VPS de reserva. A
 
 ## 9. Alternativa local a Dokploy y evolución futura
 
-`deploy-backend.sh` + `snack-backend.service` quedan como referencia para operar el release directamente en el servidor propio si se decide abandonar Dokploy. No ofrecen failover ante una avería del hardware.
+`deploy-backend.sh` + `cherry-backend.service` quedan como referencia para operar el release directamente en el servidor propio si se decide abandonar Dokploy. No ofrecen failover ante una avería del hardware.
 
 Si la aplicación consigue usuarios y justifica el coste, se podrá estudiar una recuperación temporal en VPS u otro proveedor. No se requiere contratar ese servicio ni preparar un simulacro de evacuación externo para empezar las pruebas actuales.

@@ -1,4 +1,4 @@
-export const mobileSharedPackageName = "@snack/mobile-shared";
+export const mobileSharedPackageName = "@cherry/mobile-shared";
 
 export * from "./api/activity-api";
 export * from "./api/auth-api";

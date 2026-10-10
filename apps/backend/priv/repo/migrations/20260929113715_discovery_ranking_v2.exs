@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.DiscoveryRankingV2 do
+defmodule Cherry.Repo.Migrations.DiscoveryRankingV2 do
   @moduledoc """
   Discovery ranking v2 (D-2026-09-29).
 
@@ -10,7 +10,7 @@ defmodule Snack.Repo.Migrations.DiscoveryRankingV2 do
   * Partial index for likes received (reciprocity, attention fairness and the
     likes inbox).
   * `discovery_tag_weights`: versioned IDF weight cache refreshed periodically by
-    `Snack.Dating.Discovery.TagWeights`; a feed cursor pins one generation.
+    `Cherry.Dating.Discovery.TagWeights`; a feed cursor pins one generation.
   """
   use Ecto.Migration
 

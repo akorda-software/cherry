@@ -59,7 +59,7 @@ describe("SettingsScreen", () => {
     expect(screen.getByText(/Se actualiza sola al abrir la app, redondeada a 500 m/)).toBeInTheDocument();
     expect(screen.getByText(/Para bloquear o reportar a alguien, abre su perfil o vuestro chat/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Zona de peligro" })).toBeInTheDocument();
-    expect(screen.getByText("Snack · versión 1.2.3")).toBeInTheDocument();
+    expect(screen.getByText("Cherry · versión 1.2.3")).toBeInTheDocument();
     delete config.version;
   });
 
@@ -79,7 +79,7 @@ describe("SettingsScreen", () => {
     stubBackend(() => ({ status: 404, body: {} }));
     renderSettings();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Acerca de Snack" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Acerca de Cherry" }));
     expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/about");
   });
 

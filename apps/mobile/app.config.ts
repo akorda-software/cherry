@@ -35,16 +35,16 @@ export default (): ExpoConfig => {
   const googleIosUrlScheme = readOptionalEnv("GOOGLE_IOS_URL_SCHEME");
 
   const config: ExpoConfig = {
-    name: readOptionalEnv("EXPO_APP_NAME") ?? "Snack",
-    slug: readOptionalEnv("EXPO_APP_SLUG") ?? "snack",
-    scheme: readOptionalEnv("EXPO_APP_SCHEME") ?? "snack",
+    name: readOptionalEnv("EXPO_APP_NAME") ?? "Cherry",
+    slug: readOptionalEnv("EXPO_APP_SLUG") ?? "cherry",
+    scheme: readOptionalEnv("EXPO_APP_SCHEME") ?? "cherry",
     version: "0.0.0",
     platforms: ["android", "ios", "web"],
     userInterfaceStyle: "light",
     backgroundColor: "#FAF6F0",
     icon: "./assets/images/icon.png",
     android: {
-      package: readOptionalEnv("EXPO_ANDROID_PACKAGE") ?? "app.snack.mobile",
+      package: readOptionalEnv("EXPO_ANDROID_PACKAGE") ?? "app.cherry.mobile",
       softwareKeyboardLayoutMode: "resize",
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
@@ -57,7 +57,7 @@ export default (): ExpoConfig => {
       favicon: "./assets/images/favicon.png"
     },
     ios: {
-      bundleIdentifier: readOptionalEnv("EXPO_IOS_BUNDLE_IDENTIFIER") ?? "app.snack.mobile"
+      bundleIdentifier: readOptionalEnv("EXPO_IOS_BUNDLE_IDENTIFIER") ?? "app.cherry.mobile"
     },
     plugins: [
       ...(googleIosUrlScheme
@@ -69,8 +69,8 @@ export default (): ExpoConfig => {
       [
         "expo-image-picker",
         {
-          photosPermission: "Snack necesita acceso a tus fotos para que puedas añadirlas a tu perfil.",
-          cameraPermission: "Snack usa la cámara solo si quieres hacerte una foto para tu perfil.",
+          photosPermission: "Cherry necesita acceso a tus fotos para que puedas añadirlas a tu perfil.",
+          cameraPermission: "Cherry usa la cámara solo si quieres hacerte una foto para tu perfil.",
           // Solo imágenes (mediaTypes: ["images"]): sin NSMicrophoneUsageDescription ni RECORD_AUDIO.
           microphonePermission: false
         }
@@ -79,7 +79,7 @@ export default (): ExpoConfig => {
         "expo-location",
         {
           locationWhenInUsePermission:
-            "Snack usa tu ubicación aproximada (redondeada a 500 m) para enseñarte gente cerca. Nunca compartimos tu ubicación exacta.",
+            "Cherry usa tu ubicación aproximada (redondeada a 500 m) para enseñarte gente cerca. Nunca compartimos tu ubicación exacta.",
           // Solo primer plano (requestForegroundPermissionsAsync): sin claves "Always" con texto en inglés por defecto.
           locationAlwaysAndWhenInUsePermission: false,
           locationAlwaysPermission: false
@@ -106,7 +106,7 @@ export default (): ExpoConfig => {
 
   const withNfc = withDocumentNfc(config, {
     nfcUsageDescription:
-      "Snack lee el chip de tu DNI o pasaporte para comprobar que eres mayor de edad. Solo se guarda que lo eres."
+      "Cherry lee el chip de tu DNI o pasaporte para comprobar que eres mayor de edad. Solo se guarda que lo eres."
   });
 
   return withCleartextForHttpBackend(withNfc, readOptionalEnv("EXPO_PUBLIC_API_BASE_URL_ANDROID"));

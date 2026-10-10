@@ -5,8 +5,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { DiscoveryActionType } from "@snack/contracts";
-import { createDiscoveryApi, createPublicProfileApi } from "@snack/mobile-shared";
+import type { DiscoveryActionType } from "@cherry/contracts";
+import { createDiscoveryApi, createPublicProfileApi } from "@cherry/mobile-shared";
 
 import {
   appShellRoutes,
@@ -179,7 +179,7 @@ export function FullProfileScreen({ profileId }: { profileId: string }) {
         <EmptyState
           actionIcon="arrow-left"
           actionLabel="Volver"
-          description="Puede que haya pausado su perfil o que ya no esté en Snack. No es nada que hayas hecho tú."
+          description="Puede que haya pausado su perfil o que ya no esté en Cherry. No es nada que hayas hecho tú."
           mood="sad"
           onAction={goBack}
           testID="profile-not-found"

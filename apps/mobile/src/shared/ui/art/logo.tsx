@@ -16,7 +16,7 @@ export interface LogoProps {
   fill?: PastelName;
   /** Corazoncito pegado arriba a la derecha (def. sí). */
   heart?: boolean;
-  /** Def. «Snack». */
+  /** Def. «Cherry». */
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -34,13 +34,13 @@ const VIEWBOX = {
   plain: { x: -6, y: -34, w: 465, h: 140 }
 } as const;
 
-/** Logo «snack»: la palabra en Rubik Black como pegatina troquelada, con un corazón. */
+/** Logo «cherry»: la palabra en Rubik Black como pegatina troquelada, con un corazón. */
 export const Logo = memo(function Logo({
   height = 40,
   variant = "sticker",
   fill,
   heart = true,
-  accessibilityLabel = "Snack",
+  accessibilityLabel = "Cherry",
   style,
   testID
 }: LogoProps) {

@@ -1,6 +1,6 @@
-defmodule Snack.Repo.Migrations.PhotoStorageCleanup do
+defmodule Cherry.Repo.Migrations.PhotoStorageCleanup do
   @moduledoc """
-  Borrado físico de objetos de fotos (`Snack.Dating.PhotoStorage`):
+  Borrado físico de objetos de fotos (`Cherry.Dating.PhotoStorage`):
   `storage_deleted_at` marca fotos e intents cuyos objetos ya se borraron.
   Las fotos ya inactivas o de cuentas ya borradas quedan sin marcar, así que el
   primer barrido borra también sus objetos. Índices para el barrido y para el

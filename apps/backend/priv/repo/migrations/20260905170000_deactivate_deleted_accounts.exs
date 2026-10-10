@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.DeactivateDeletedAccounts do
+defmodule Cherry.Repo.Migrations.DeactivateDeletedAccounts do
   use Ecto.Migration
 
   def up do

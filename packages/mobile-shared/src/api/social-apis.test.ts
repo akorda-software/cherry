@@ -7,7 +7,7 @@ import type {
   MatchSummary,
   PublicProfile,
   ReceivedLikesPage
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import { createActivityApi } from "./activity-api";
 import type { HttpClient } from "./auth-api";

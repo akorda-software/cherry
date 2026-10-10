@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 
-import type { AuthCallbackPayload, SessionBundle } from "@snack/contracts";
-import type { AuthProvider } from "@snack/mobile-shared";
+import type { AuthCallbackPayload, SessionBundle } from "@cherry/contracts";
+import type { AuthProvider } from "@cherry/mobile-shared";
 
 import { describeAuthError } from "./auth-error-copy";
 

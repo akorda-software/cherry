@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { ChatMessage, DiscoveryMatch, MatchesResponse, MatchSummary } from "@snack/contracts";
+import type { ChatMessage, DiscoveryMatch, MatchesResponse, MatchSummary } from "@cherry/contracts";
 
 import { onSignOut } from "../../auth/presentation/on-sign-out";
 import { applyMessageToMatch, lastActivityAt, matchSummaryFromDiscoveryMatch } from "../domain/match-list";

@@ -2,9 +2,9 @@ import {
   createAuthCallbackPayload,
   type AuthCallbackPayload,
   type SessionBundle
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
-import { type AuthProvider, type AuthApi } from "@snack/mobile-shared";
+import { type AuthProvider, type AuthApi } from "@cherry/mobile-shared";
 import type { AuthSessionStorage } from "../domain/session-storage";
 
 interface CreateCompleteAuthCallbackOptions {

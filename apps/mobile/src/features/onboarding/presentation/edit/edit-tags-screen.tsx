@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import { ErrorState, FormMessage, Stack } from "../../../../shared/ui";
 import { bindTagEditorApi } from "../../../tags/application/tag-editor-api";

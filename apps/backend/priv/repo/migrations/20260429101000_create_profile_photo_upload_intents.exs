@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.CreateProfilePhotoUploadIntents do
+defmodule Cherry.Repo.Migrations.CreateProfilePhotoUploadIntents do
   use Ecto.Migration
 
   def change do

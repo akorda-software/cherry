@@ -1,6 +1,6 @@
 # Certificados CSCA de confianza
 
-Raíces de confianza de la autenticación pasiva de documentos (`Snack.Identity.Document.TrustStore`).
+Raíces de confianza de la autenticación pasiva de documentos (`Cherry.Identity.Document.TrustStore`).
 Se leen todos los `.pem`, `.crt`, `.cer` y `.der` de esta carpeta y sus subcarpetas.
 `CSCA_PATHS` sustituye esta carpeta por otras rutas.
 
@@ -47,8 +47,8 @@ España publicará previsiblemente un CSCA 5 hacia 2027 (el periodo de uso de la
 acaba el 2027-05-18). Revisar cada pocos meses:
 
 1. Descargar el certificado nuevo de la página de la Policía (o extraerlo de la master list del
-   BSI: `mix snack.csca GermanMasterList.ml --country ES --export /tmp/es`).
-2. Comprobar sus huellas: `mix snack.csca /ruta/al/certificado.pem` y comparar la SHA-1 con la
+   BSI: `mix cherry.csca GermanMasterList.ml --country ES --export /tmp/es`).
+2. Comprobar sus huellas: `mix cherry.csca /ruta/al/certificado.pem` y comparar la SHA-1 con la
    publicada por la Policía. Si viene de la master list del BSI, la tarea **no** verifica la firma
    de la lista: la huella publicada por la Policía es la comprobación.
 3. Copiarlo a `es/csca-spain-N.pem`, añadir la fila a la tabla de arriba y desplegar. Los

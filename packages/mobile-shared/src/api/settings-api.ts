@@ -1,4 +1,4 @@
-import type { OkResponse } from "@snack/contracts";
+import type { OkResponse } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { httpDelete } from "./http-utils";

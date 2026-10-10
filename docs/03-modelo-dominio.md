@@ -56,7 +56,7 @@ El perfil guarda además `completed_at` (primera vez que se completó; da el imp
 
 ### Métricas
 
-- **AnalyticsEvent** — tabla append-only de eventos de producto. Existe `Snack.Dating.track_event/1`, pero hoy nada lo llama (ver `11-deuda-tecnica-pendiente.md`).
+- **AnalyticsEvent** — tabla append-only de eventos de producto. Existe `Cherry.Dating.track_event/1`, pero hoy nada lo llama (ver `11-deuda-tecnica-pendiente.md`).
 
 ## Push
 

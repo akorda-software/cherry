@@ -1,4 +1,4 @@
-import type { ChatMessage, DiscoveryMatch, MatchSummary } from "@snack/contracts";
+import type { ChatMessage, DiscoveryMatch, MatchSummary } from "@cherry/contracts";
 
 /**
  * Reglas puras de la pestaña Chats: separar «Nuevos matches» (sin mensajes) de las

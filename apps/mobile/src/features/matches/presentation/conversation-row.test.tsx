@@ -1,7 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { MatchSummary } from "@snack/contracts";
+import type { MatchSummary } from "@cherry/contracts";
 
 import { renderWithTheme } from "../../../../test/ui/render-with-theme";
 import { ConversationRow } from "./conversation-row";

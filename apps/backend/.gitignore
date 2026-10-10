@@ -23,9 +23,9 @@ erl_crash.dump
 /tmp/
 
 # Ignore package tarball (built via "mix hex.build").
-snack-*.tar
+cherry-*.tar
 
 /_build_*/
 
-# Local photo storage (Snack.Storage.Local) in dev.
+# Local photo storage (Cherry.Storage.Local) in dev.
 /priv/uploads/

@@ -1,10 +1,10 @@
-defmodule Snack.Repo.Migrations.ProfileLocationsPointsOnly do
+defmodule Cherry.Repo.Migrations.ProfileLocationsPointsOnly do
   @moduledoc """
   `profile_locations.coordinates` only holds WGS 84 points.
 
   Until now `POST /api/me/location` stored a client-sent `coordinates` geometry
   as is (any type, no 500 m grid). Existing non-point rows are replaced by
-  their centroid snapped to the same grid as `Snack.Dating` (rows whose
+  their centroid snapped to the same grid as `Cherry.Dating` (rows whose
   centroid is empty are deleted: the client sends a new location on its next
   update) and a CHECK constraint keeps it that way.
   """

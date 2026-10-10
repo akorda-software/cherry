@@ -1,4 +1,4 @@
-import type { AgeVerificationResponse, NfcVerificationRequest } from "@snack/contracts";
+import type { AgeVerificationResponse, NfcVerificationRequest } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 

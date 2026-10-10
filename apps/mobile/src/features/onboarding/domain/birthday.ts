@@ -1,6 +1,6 @@
 /**
  * Fecha de nacimiento en tres campos (DD / MM / AAAA). La edad se calcula igual
- * que en backend (`Snack.Dating.Profile.age/1`): con la fecha de HOY en UTC y
+ * que en backend (`Cherry.Dating.Profile.age/1`): con la fecha de HOY en UTC y
  * restando un año si el cumpleaños de este año aún no ha llegado (un 29 de
  * febrero cumple el 1 de marzo en años no bisiestos).
  */

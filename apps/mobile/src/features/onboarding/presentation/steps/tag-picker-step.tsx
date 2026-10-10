@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import { ErrorState, FormMessage } from "../../../../shared/ui";
 import { bindTagEditorApi } from "../../../tags/application/tag-editor-api";

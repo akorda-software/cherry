@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ActivitySummary } from "@snack/contracts";
+import type { ActivitySummary } from "@cherry/contracts";
 
 import {
   ACTIVITY_POLL_INTERVAL_MS,

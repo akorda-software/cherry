@@ -1,4 +1,4 @@
-import type { RelationshipIntent } from "@snack/contracts";
+import type { RelationshipIntent } from "@cherry/contracts";
 
 import { useProfileDraftStore } from "../../application/profile-draft-store";
 import { saveIntents } from "../../application/step-actions";

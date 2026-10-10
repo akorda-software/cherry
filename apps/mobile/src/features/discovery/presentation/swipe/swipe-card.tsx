@@ -26,7 +26,7 @@ import Animated, {
   withTiming
 } from "react-native-reanimated";
 
-import type { DiscoveryActionType, DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryActionType, DiscoveryProfileCard } from "@cherry/contracts";
 
 import { haptics, springs } from "../../../../shared/ui/motion";
 import { decideSwipe, deckPosition, restingTilt, swipeProgress, swipeThreshold } from "../../domain/deck-order";

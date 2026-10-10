@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { PhotoUploadIntent } from "@snack/contracts";
+import type { PhotoUploadIntent } from "@cherry/contracts";
 
 import { apiError, makePhoto } from "../../onboarding/testing/fixtures";
 import { PhotoUploadError } from "../domain/photo-errors";

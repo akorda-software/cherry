@@ -2,7 +2,7 @@
 # Regenerates the OpenSSL interoperability fixtures for passive authentication.
 #
 # Everything is synthetic: a throwaway CSCA → Document Signer PKI, a fake MRZ
-# (PRUEBA SNACK TEST, DNI 12345678Z) and a DG2 made of random bytes. The SODs
+# (PRUEBA CHERRY TEST, DNI 12345678Z) and a DG2 made of random bytes. The SODs
 # are signed by `openssl cms`, an implementation independent from ours, so the
 # tests prove we read real-world CMS (signingTime and other extra attributes,
 # RSASSA-PSS, ECDSA over brainpoolP256r1 with explicit domain parameters).
@@ -35,7 +35,7 @@ num, opt, birth, exp = 'ZZZ000002', '12345678Z<<<<<<', '900517', '310517'
 l1 = 'IDESP' + num + cd(num) + opt
 l2h = birth + cd(birth) + 'F' + exp + cd(exp) + 'ESP' + '<' * 11
 comp = l1[5:30] + l2h[0:7] + l2h[8:15] + l2h[18:29]
-l3 = 'PRUEBA<<SNACK<TEST'.ljust(30, '<')
+l3 = 'PRUEBA<<CHERRY<TEST'.ljust(30, '<')
 mrz = (l1 + l2h + cd(comp) + l3).encode()
 assert len(mrz) == 90
 dg1 = tlv(b'\x61', tlv(b'\x5f\x1f', mrz))
@@ -67,10 +67,10 @@ authorityKeyIdentifier=keyid"
 
 # RSA: CSCA → DS (PKCS#1 v1.5); SignerInfo with RSASSA-PSS.
 openssl req -x509 -newkey rsa:2048 -nodes -keyout "$tmp/csca_rsa.key" -out csca_rsa.pem \
-  -subj "/C=XX/O=Snack Test PKI/CN=CSCA TEST OPENSSL RSA" -days $days \
+  -subj "/C=XX/O=Cherry Test PKI/CN=CSCA TEST OPENSSL RSA" -days $days \
   -addext "basicConstraints=critical,CA:TRUE,pathlen:0" -addext "keyUsage=critical,keyCertSign,cRLSign" 2>/dev/null
 openssl req -newkey rsa:2048 -nodes -keyout "$tmp/ds_rsa.key" -out "$tmp/ds_rsa.csr" \
-  -subj "/C=XX/O=Snack Test PKI/CN=DS TEST OPENSSL RSA" 2>/dev/null
+  -subj "/C=XX/O=Cherry Test PKI/CN=DS TEST OPENSSL RSA" 2>/dev/null
 openssl x509 -req -in "$tmp/ds_rsa.csr" -CA csca_rsa.pem -CAkey "$tmp/csca_rsa.key" -set_serial 4242 \
   -days $days -extfile <(echo "$ext_ds") -out "$tmp/ds_rsa.pem" 2>/dev/null
 openssl cms -sign -binary -nodetach -nosmimecap -in "$tmp/lds.der" -econtent_type 2.23.136.1.1.1 \
@@ -81,10 +81,10 @@ wrap "$tmp/ci_rsa.der" sod_rsa_pss.der
 # EC: brainpoolP256r1 with explicit domain parameters (ICAO recommendation).
 openssl ecparam -name brainpoolP256r1 -param_enc explicit -genkey -noout -out "$tmp/csca_ec.key"
 openssl req -x509 -key "$tmp/csca_ec.key" -out csca_ec.pem -days $days \
-  -subj "/C=XX/O=Snack Test PKI/CN=CSCA TEST OPENSSL EC" \
+  -subj "/C=XX/O=Cherry Test PKI/CN=CSCA TEST OPENSSL EC" \
   -addext "basicConstraints=critical,CA:TRUE,pathlen:0" -addext "keyUsage=critical,keyCertSign,cRLSign" 2>/dev/null
 openssl ecparam -name brainpoolP256r1 -param_enc explicit -genkey -noout -out "$tmp/ds_ec.key"
-openssl req -new -key "$tmp/ds_ec.key" -out "$tmp/ds_ec.csr" -subj "/C=XX/O=Snack Test PKI/CN=DS TEST OPENSSL EC" 2>/dev/null
+openssl req -new -key "$tmp/ds_ec.key" -out "$tmp/ds_ec.csr" -subj "/C=XX/O=Cherry Test PKI/CN=DS TEST OPENSSL EC" 2>/dev/null
 openssl x509 -req -in "$tmp/ds_ec.csr" -CA csca_ec.pem -CAkey "$tmp/csca_ec.key" -set_serial 4343 \
   -days $days -extfile <(echo "$ext_ds") -out "$tmp/ds_ec.pem" 2>/dev/null
 openssl cms -sign -binary -nodetach -in "$tmp/lds.der" -econtent_type 2.23.136.1.1.1 \

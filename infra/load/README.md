@@ -1,4 +1,4 @@
-# Carga sostenida de Snack
+# Carga sostenida de Cherry
 
 Prueba HTTP y Phoenix WebSocket con perfiles, sesiones y mensajes sintéticos. Recorre autenticación, permisos, ranking, bandeja paginada, historial, escrituras, cifrado, broadcasts y outbox de push. No usa el login de desarrollo ni desactiva comprobaciones de negocio. La capacidad se mide en el servidor de destino: las pruebas locales breves validan el recorrido.
 
@@ -17,7 +17,7 @@ Configurar la instancia y el proceso de generación con `EXPO_PUSH_BASE_URL=http
 En desarrollo, desde `apps/backend`:
 
 ```bash
-export DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_scale_load
+export DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_scale_load
 export EXPO_PUSH_BASE_URL=http://127.0.0.1:9320
 mix ecto.create
 mix ecto.migrate
@@ -31,7 +31,7 @@ En un release ya arrancado, el script equivalente es:
 
 ```bash
 LOAD_USERS=2000 LOAD_HISTORY=20 LOAD_SWIPES=100 LOAD_MATCHES_PER_USER=4 \
-  LOAD_PUSH_TOKENS=1 bin/snack eval 'Code.eval_file(Application.app_dir(:snack, "priv/repo/bench/load_fixture.exs"))'
+  LOAD_PUSH_TOKENS=1 bin/cherry eval 'Code.eval_file(Application.app_dir(:cherry, "priv/repo/bench/load_fixture.exs"))'
 ```
 
 La generación detiene los workers únicamente en su propio proceso temporal. La instancia que sirve tráfico mantiene sus workers. `LOAD_RESET=1` **borra los usuarios y jobs de esa base de carga** y reconstruye el escenario; sin él, una base poblada se rechaza.
@@ -42,18 +42,18 @@ Antes de cada ejecución, exportar sesiones nuevas sobre los mismos datos:
 LOAD_EXPORT_ONLY=1 LOAD_PUSH_TOKENS=1 mix run priv/repo/bench/load_fixture.exs
 ```
 
-Con release, usar los mismos flags y `bin/snack eval` anterior. Se revocan las sesiones de la exportación anterior. El manifiesto contiene credenciales reales de esas cuentas sintéticas, se escribe atómicamente con permisos `0600` y por defecto queda en `/tmp/snack-load-actors.json`; `LOAD_MANIFEST` permite cambiar la ruta. Exportar con los mismos secretos de autenticación que la API, copiarlo al generador si está en otra máquina y no compartirlo entre ejecuciones simultáneas. k6 rota sus tokens mediante `/api/session/refresh` antes de que caduquen.
+Con release, usar los mismos flags y `bin/cherry eval` anterior. Se revocan las sesiones de la exportación anterior. El manifiesto contiene credenciales reales de esas cuentas sintéticas, se escribe atómicamente con permisos `0600` y por defecto queda en `/tmp/cherry-load-actors.json`; `LOAD_MANIFEST` permite cambiar la ruta. Exportar con los mismos secretos de autenticación que la API, copiarlo al generador si está en otra máquina y no compartirlo entre ejecuciones simultáneas. k6 rota sus tokens mediante `/api/session/refresh` antes de que caduquen.
 
 ## Ejecutar HTTP y WebSocket
 
 Arrancar la API de carga, habilitar `METRICS_TOKEN` con un secreto propio y comprobar `/readyz`. Ejecutar k6 **desde otra máquina** al medir capacidad, para que el generador no compita por CPU, memoria o red con el servidor. El ejemplo utiliza la imagen de k6 con la que se verificó el escenario:
 
 ```bash
-mkdir -p /tmp/snack-load-results
+mkdir -p /tmp/cherry-load-results
 docker run --rm --network host --user "$(id -u):$(id -g)" \
   -v "$PWD/infra/load:/work:ro" \
-  -v /tmp/snack-load-actors.json:/fixtures/actors.json:ro \
-  -v /tmp/snack-load-results:/results \
+  -v /tmp/cherry-load-actors.json:/fixtures/actors.json:ro \
+  -v /tmp/cherry-load-results:/results \
   -e LOAD_MANIFEST=/fixtures/actors.json \
   -e BASE_URL=http://127.0.0.1:5511 \
   -e HTTP_VUS=100 -e WS_USERS=100 -e TARGET_RPS=50 \
@@ -104,12 +104,12 @@ Parar la instancia anterior del simulador antes de cambiar sus flags. `/healthz`
 Latencias en **microsegundos** (dividir por 1.000 para milisegundos). Consultas Prometheus:
 
 ```promql
-histogram_quantile(0.95, sum by (le, route) (rate(snack_http_duration_microseconds_bucket[5m]))) / 1000
-histogram_quantile(0.95, sum by (le) (rate(snack_db_queue_microseconds_bucket[5m]))) / 1000
-histogram_quantile(0.95, sum by (le) (rate(snack_db_query_microseconds_bucket[5m]))) / 1000
-histogram_quantile(0.95, sum by (le, event) (rate(snack_channel_event_microseconds_bucket[5m]))) / 1000
-histogram_quantile(0.95, sum by (le) (rate(snack_push_queue_microseconds_bucket[5m]))) / 1000
-sum(rate(snack_push_failures[5m]))
+histogram_quantile(0.95, sum by (le, route) (rate(cherry_http_duration_microseconds_bucket[5m]))) / 1000
+histogram_quantile(0.95, sum by (le) (rate(cherry_db_queue_microseconds_bucket[5m]))) / 1000
+histogram_quantile(0.95, sum by (le) (rate(cherry_db_query_microseconds_bucket[5m]))) / 1000
+histogram_quantile(0.95, sum by (le, event) (rate(cherry_channel_event_microseconds_bucket[5m]))) / 1000
+histogram_quantile(0.95, sum by (le) (rate(cherry_push_queue_microseconds_bucket[5m]))) / 1000
+sum(rate(cherry_push_failures[5m]))
 vm_memory_total
 vm_system_counts_process_count
 vm_total_run_queue_lengths_total

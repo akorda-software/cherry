@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { createProfileApi } from "@snack/mobile-shared";
+import { createProfileApi } from "@cherry/mobile-shared";
 
 import { useAppBootstrap } from "../../app-bootstrap";
 import { useAuthedApi } from "../../auth/presentation/use-authed-api";

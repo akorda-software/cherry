@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { OnboardingStep } from "@snack/contracts";
+import type { OnboardingStep } from "@cherry/contracts";
 
 import { makePhoto, makePreferences, makeProfile, makeTag } from "../testing/fixtures";
 import {

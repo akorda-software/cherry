@@ -1,4 +1,4 @@
-import type { ProfileReport, ReportReason, ReportRequest } from "@snack/contracts";
+import type { ProfileReport, ReportReason, ReportRequest } from "@cherry/contracts";
 
 import { apiErrorCode, friendlyErrorMessage } from "../../../shared/api";
 import { normalizeReportDetails } from "../domain/report-reasons";

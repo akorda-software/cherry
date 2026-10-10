@@ -12,7 +12,7 @@ import {
 import { StyleSheet, View } from "react-native";
 import { runOnUI, useSharedValue, withSpring } from "react-native-reanimated";
 
-import type { DiscoveryActionType, DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryActionType, DiscoveryProfileCard } from "@cherry/contracts";
 
 import { springs } from "../../../../shared/ui/motion";
 import type { DiscoveryQueueRemoval, DiscoveryQueueReturn } from "../../application/discovery-queue";

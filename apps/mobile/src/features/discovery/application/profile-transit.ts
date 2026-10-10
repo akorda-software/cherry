@@ -5,7 +5,7 @@ import type {
   DiscoveryActionType,
   DiscoveryProfileCard,
   PublicProfile
-} from "@snack/contracts";
+} from "@cherry/contracts";
 import { onSignOut } from "../../auth/presentation/on-sign-out";
 
 /** Desde dónde se abrió el perfil completo (decide cómo se registra la acción). */

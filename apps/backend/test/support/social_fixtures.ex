@@ -1,16 +1,16 @@
-defmodule Snack.TestSupport.SocialFixtures do
+defmodule Cherry.TestSupport.SocialFixtures do
   @moduledoc """
   Helpers para tests de la API social (matches, chat, likes, perfil público).
   """
 
   import Ecto.Query
 
-  alias Snack.Dating
-  alias Snack.Dating.Conversation
-  alias Snack.Dating.Match
-  alias Snack.Dating.Message
-  alias Snack.Dating.SwipeAction
-  alias Snack.Repo
+  alias Cherry.Dating
+  alias Cherry.Dating.Conversation
+  alias Cherry.Dating.Match
+  alias Cherry.Dating.Message
+  alias Cherry.Dating.SwipeAction
+  alias Cherry.Repo
 
   def like!(actor, target), do: swipe!(actor, target, "like")
   def dislike!(actor, target), do: swipe!(actor, target, "dislike")

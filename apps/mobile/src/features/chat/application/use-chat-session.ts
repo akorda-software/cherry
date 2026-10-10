@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AppState, Platform } from "react-native";
 
-import type { ChatMessage } from "@snack/contracts";
-import { createActivityApi, createChatApi } from "@snack/mobile-shared";
+import type { ChatMessage } from "@cherry/contracts";
+import { createActivityApi, createChatApi } from "@cherry/mobile-shared";
 
 import { createJsonHttpClient } from "../../../shared/api";
 import { useRuntimeConfig } from "../../../shared/config";

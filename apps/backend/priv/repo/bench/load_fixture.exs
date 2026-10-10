@@ -1,6 +1,6 @@
 # Synthetic HTTP/WebSocket workload, exclusively in a database ending `_load`.
-# See infra/load/README.md. This script also works through `bin/snack eval`.
-alias Snack.Repo
+# See infra/load/README.md. This script also works through `bin/cherry eval`.
+alias Cherry.Repo
 
 database = Repo.config()[:database] || ""
 unless String.ends_with?(database, "_load"), do: raise("load fixture requires a *_load database")
@@ -8,17 +8,17 @@ Logger.configure(level: :warning)
 
 for child <- [
       Oban,
-      Snack.Dating.Discovery.TagWeights,
-      Snack.Dating.PhotoStorageSweeper,
-      Snack.Dating.MatchExpirySweeper
+      Cherry.Dating.Discovery.TagWeights,
+      Cherry.Dating.PhotoStorageSweeper,
+      Cherry.Dating.MatchExpirySweeper
     ] do
-  Supervisor.terminate_child(Snack.Supervisor, child)
+  Supervisor.terminate_child(Cherry.Supervisor, child)
 end
 
-defmodule Snack.Bench.LoadFixture do
+defmodule Cherry.Bench.LoadFixture do
   import Ecto.Query
-  alias Snack.Repo
-  alias Snack.Dating.{Conversation, Profile}
+  alias Cherry.Repo
+  alias Cherry.Dating.{Conversation, Profile}
 
   def integer(name, default, range) do
     value = System.get_env(name, to_string(default)) |> String.to_integer()
@@ -47,7 +47,7 @@ defmodule Snack.Bench.LoadFixture do
       do: raise("LOAD_MATCHES_PER_USER must be even and < LOAD_USERS - 1")
 
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
-    Snack.Dating.TagCatalog.seed!()
+    Cherry.Dating.TagCatalog.seed!()
 
     tag_ids =
       Repo.query!("SELECT id FROM tags WHERE is_active ORDER BY sort_order, id").rows
@@ -230,7 +230,7 @@ defmodule Snack.Bench.LoadFixture do
       messages =
         Stream.flat_map(edges, fn e ->
           Stream.map(1..history, fn i ->
-            {:ok, body} = Snack.Crypto.encrypt("Mensaje sintético #{i}")
+            {:ok, body} = Cherry.Crypto.encrypt("Mensaje sintético #{i}")
             at = NaiveDateTime.add(first_at, i, :second)
 
             %{
@@ -248,7 +248,7 @@ defmodule Snack.Bench.LoadFixture do
     end
 
     Repo.query!("VACUUM ANALYZE")
-    {:ok, _} = Snack.Dating.Discovery.TagWeights.refresh()
+    {:ok, _} = Cherry.Dating.Discovery.TagWeights.refresh()
 
     IO.puts(
       "Seeded #{n} profiles, #{length(edges)} conversations, #{length(edges) * history} encrypted messages."
@@ -259,13 +259,13 @@ defmodule Snack.Bench.LoadFixture do
     push? = System.get_env("LOAD_PUSH_TOKENS") == "1"
 
     if push? do
-      url = Application.fetch_env!(:snack, :expo_push)[:base_url]
+      url = Application.fetch_env!(:cherry, :expo_push)[:base_url]
 
       case Req.get(String.trim_trailing(url, "/") <> "/healthz",
              retry: false,
              receive_timeout: 2000
            ) do
-        {:ok, %{status: 200, body: %{"service" => "snack-expo-stub"}}} -> :ok
+        {:ok, %{status: 200, body: %{"service" => "cherry-expo-stub"}}} -> :ok
         _ -> raise("LOAD_PUSH_TOKENS=1 requires EXPO_PUSH_BASE_URL pointing to the load stub")
       end
     end
@@ -273,7 +273,7 @@ defmodule Snack.Bench.LoadFixture do
     profiles =
       Repo.all(
         from(p in Profile,
-          join: u in Snack.Accounts.User,
+          join: u in Cherry.Accounts.User,
           on: u.id == p.user_id,
           where: like(u.email, "load-%@example.test"),
           order_by: p.display_name,
@@ -288,11 +288,11 @@ defmodule Snack.Bench.LoadFixture do
       |> Task.async_stream(
         fn profile ->
           # One independent session per actor. Fresh exports also revoke old manifests.
-          :ok = Snack.Sessions.revoke_user_sessions(profile.user_id)
+          :ok = Cherry.Sessions.revoke_user_sessions(profile.user_id)
           installation_id = "load-#{profile.id}"
 
           {:ok, issued} =
-            Snack.Sessions.issue_session(profile.user, %{
+            Cherry.Sessions.issue_session(profile.user, %{
               installation_id: installation_id,
               platform: "ios",
               device_name: "Load fixture"
@@ -300,7 +300,7 @@ defmodule Snack.Bench.LoadFixture do
 
           if push? do
             {:ok, _} =
-              Snack.Sessions.register_push_token(profile.user, issued.session_family.id, %{
+              Cherry.Sessions.register_push_token(profile.user, issued.session_family.id, %{
                 "installationId" => installation_id,
                 "platform" => "ios",
                 "expoPushToken" => "ExponentPushToken[load-#{profile.id}]"
@@ -310,7 +310,7 @@ defmodule Snack.Bench.LoadFixture do
           entry =
             Repo.one(
               from(c in Conversation,
-                join: m in Snack.Dating.Match,
+                join: m in Cherry.Dating.Match,
                 on: m.id == c.match_id,
                 where: m.profile_a_id == ^profile.id or m.profile_b_id == ^profile.id,
                 order_by: m.id,
@@ -334,7 +334,7 @@ defmodule Snack.Bench.LoadFixture do
       )
       |> Enum.map(fn {:ok, actor} -> actor end)
 
-    path = System.get_env("LOAD_MANIFEST", "/tmp/snack-load-actors.json") |> Path.expand()
+    path = System.get_env("LOAD_MANIFEST", "/tmp/cherry-load-actors.json") |> Path.expand()
     File.mkdir_p!(Path.dirname(path))
     temp = path <> ".tmp"
 
@@ -357,5 +357,5 @@ defmodule Snack.Bench.LoadFixture do
   end
 end
 
-unless System.get_env("LOAD_EXPORT_ONLY") == "1", do: Snack.Bench.LoadFixture.seed()
-Snack.Bench.LoadFixture.export()
+unless System.get_env("LOAD_EXPORT_ONLY") == "1", do: Cherry.Bench.LoadFixture.seed()
+Cherry.Bench.LoadFixture.export()

@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { StyleSheet, View } from "react-native";
 
-import type { MatchSummary } from "@snack/contracts";
+import type { MatchSummary } from "@cherry/contracts";
 
 import { Avatar, PopIn, PressableScale, Text, useTheme, type PastelName } from "../../../shared/ui";
 import { displayNameOf, matchExpiryHint } from "../domain/match-list";

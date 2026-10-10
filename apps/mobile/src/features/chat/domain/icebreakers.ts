@@ -1,4 +1,4 @@
-import type { ProfileTag } from "@snack/contracts";
+import type { ProfileTag } from "@cherry/contracts";
 
 /**
  * Rompehielos para una conversación vacía a partir de las etiquetas en común.
@@ -68,7 +68,7 @@ const PROMPTS_BY_SLUG: Readonly<Record<string, string>> = {
 
 const GENERIC_PROMPTS: readonly string[] = [
   "¿Qué plan te haría ilusión este finde?",
-  "Si solo pudieras comer un snack el resto de tu vida, ¿cuál sería?",
+  "Si solo pudieras comer un cherry el resto de tu vida, ¿cuál sería?",
   "¿Qué es lo mejor que te ha pasado esta semana?"
 ];
 

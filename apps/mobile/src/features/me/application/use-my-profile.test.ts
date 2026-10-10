@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Profile, ProfileResponse } from "@snack/contracts";
+import type { Profile, ProfileResponse } from "@cherry/contracts";
 
 import { useMyProfile } from "./use-my-profile";
 

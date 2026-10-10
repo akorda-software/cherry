@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { Profile } from "@snack/contracts";
+import type { Profile } from "@cherry/contracts";
 import { onSignOut } from "../../auth/presentation/on-sign-out";
 
 interface OwnPhotoState {

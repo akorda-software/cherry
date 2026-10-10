@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Profile } from "@snack/contracts";
+import type { Profile } from "@cherry/contracts";
 
 import { assessProfileStrength } from "./profile-strength";
 

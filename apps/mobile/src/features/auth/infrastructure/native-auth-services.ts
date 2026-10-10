@@ -4,8 +4,8 @@ import * as Application from "expo-application";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import * as AppleAuthentication from "expo-apple-authentication";
 
-import { createAuthApi, createSessionApi, type HttpClient } from "@snack/mobile-shared";
-import { createSecureSessionStorage } from "@snack/mobile-shared";
+import { createAuthApi, createSessionApi, type HttpClient } from "@cherry/mobile-shared";
+import { createSecureSessionStorage } from "@cherry/mobile-shared";
 import { resolveSecureStore } from "../../../shared/storage";
 import { createGoogleNativeAdapter } from "../infrastructure/google-native-adapter";
 import { createAppleNativeAdapter } from "../infrastructure/apple-native-adapter";
@@ -13,7 +13,7 @@ import { assembleAuthServices } from "../infrastructure/auth-assembly";
 import { createNativeDevice } from "../infrastructure/native-device";
 import type { SessionShellServices } from "../presentation";
 import { useSessionStore } from "../presentation/session-store";
-import type { DevicePlatform } from "@snack/contracts";
+import type { DevicePlatform } from "@cherry/contracts";
 
 interface CreateNativeAuthServicesOptions {
   httpClient: HttpClient;
@@ -27,7 +27,7 @@ function getInstallationId(): string {
   // On Android: getAndroidId() returns ANDROID_ID
   // On iOS: getIosIdForVendorAsync() returns IDFV (async)
   // For a synchronous fallback, use Constants.expoConfig?.extra or a UUID
-  const appId = Application.applicationId ?? "app.snack.mobile";
+  const appId = Application.applicationId ?? "app.cherry.mobile";
   const fallback = Constants.expoConfig?.extra?.installationId as string | undefined;
 
   if (fallback) {
@@ -35,7 +35,7 @@ function getInstallationId(): string {
   }
 
   // Simple stable ID from app config slug
-  return `snack-${appId}`;
+  return `cherry-${appId}`;
 }
 
 async function getInstallationIdAsync(): Promise<string> {

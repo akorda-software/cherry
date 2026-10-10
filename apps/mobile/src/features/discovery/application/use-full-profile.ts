@@ -7,7 +7,7 @@ import type {
   DiscoveryMatch,
   DiscoveryProfileCard,
   PublicProfile
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import { apiErrorCode, friendlyErrorMessage } from "../../../shared/api";
 import { type ProfilePerson, toProfilePerson } from "../../profile-card/domain/person";

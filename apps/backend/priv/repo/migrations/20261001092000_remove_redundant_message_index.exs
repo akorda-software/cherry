@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.RemoveRedundantMessageIndex do
+defmodule Cherry.Repo.Migrations.RemoveRedundantMessageIndex do
   use Ecto.Migration
 
   @disable_ddl_transaction true

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { SessionBundle } from "@snack/contracts";
-import type { HttpClient } from "@snack/mobile-shared";
+import type { SessionBundle } from "@cherry/contracts";
+import type { HttpClient } from "@cherry/mobile-shared";
 
 import { createTestSignInService } from "./test-sign-in-service";
 
@@ -10,7 +10,7 @@ const session: SessionBundle = {
   accessTokenExpiresAt: "2026-04-12T21:00:00Z",
   refreshToken: "refresh-token",
   refreshTokenExpiresAt: "2026-04-19T21:00:00Z",
-  user: { id: "user-1", email: "demo@snack.dev", displayName: "Lucía" }
+  user: { id: "user-1", email: "demo@cherry.dev", displayName: "Lucía" }
 };
 
 function setup() {
@@ -38,9 +38,9 @@ describe("createTestSignInService", () => {
   it("sends the email when signing in as a specific persona", async () => {
     const { service, post } = setup();
 
-    await service.execute("  demo@snack.dev ");
+    await service.execute("  demo@cherry.dev ");
 
-    expect(post).toHaveBeenCalledWith("/api/auth/dev/test-login", { email: "demo@snack.dev" });
+    expect(post).toHaveBeenCalledWith("/api/auth/dev/test-login", { email: "demo@cherry.dev" });
   });
 
   it("falls back to the shared test user when the email is blank", async () => {

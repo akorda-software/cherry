@@ -1,4 +1,4 @@
-import type { AgeVerificationErrorCode } from "@snack/contracts";
+import type { AgeVerificationErrorCode } from "@cherry/contracts";
 
 import type { DocumentNfcErrorCode, DocumentReadStep } from "../../../../modules/document-nfc";
 
@@ -117,7 +117,7 @@ export function serverErrorCopy(
   switch (code) {
     case "underage":
       return {
-        title: "Snack es para mayores de edad",
+        title: "Cherry es para mayores de edad",
         message: "Según el documento, aún no tienes 18 años. No hemos guardado nada.",
         action: "none"
       };

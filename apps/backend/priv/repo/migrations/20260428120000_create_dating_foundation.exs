@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.CreateDatingFoundation do
+defmodule Cherry.Repo.Migrations.CreateDatingFoundation do
   use Ecto.Migration
 
   def change do

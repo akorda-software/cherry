@@ -38,17 +38,17 @@ end
 # If you use `mix release`, you need to explicitly enable the server
 # by passing the PHX_SERVER=true when you start it:
 #
-#     PHX_SERVER=true bin/snack start
+#     PHX_SERVER=true bin/cherry start
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
 if System.get_env("PHX_SERVER") do
-  config :snack, SnackWeb.Endpoint, server: true
+  config :cherry, CherryWeb.Endpoint, server: true
 end
 
-config :snack, :app_version, System.get_env("APP_VERSION", "dev")
+config :cherry, :app_version, System.get_env("APP_VERSION", "dev")
 
-config :snack, SnackWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+config :cherry, CherryWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 split_csv_env = fn var, fallback ->
   System.get_env(var, fallback)
@@ -75,7 +75,7 @@ if config_env() != :test do
     |> Enum.reject(&(&1 == ""))
 
   google_provider_config = [
-    module: Snack.Identity.Providers.Google,
+    module: Cherry.Identity.Providers.Google,
     audiences: google_audiences,
     issuers: ["https://accounts.google.com", "accounts.google.com"]
   ]
@@ -83,29 +83,29 @@ if config_env() != :test do
   apple_audiences =
     split_csv_env.(
       "APPLE_AUDIENCES",
-      System.get_env("EXPO_IOS_BUNDLE_IDENTIFIER", "app.snack.mobile")
+      System.get_env("EXPO_IOS_BUNDLE_IDENTIFIER", "app.cherry.mobile")
     )
 
   apple_provider_config = [
-    module: Snack.Identity.Providers.Apple,
+    module: Cherry.Identity.Providers.Apple,
     audiences: apple_audiences,
     issuers: ["https://appleid.apple.com"]
   ]
 
-  config :snack, Snack.Auth,
+  config :cherry, Cherry.Auth,
     providers: %{
       google: google_provider_config,
       apple: apple_provider_config
     }
 end
 
-config :snack, Snack.Identity.Providers.GoogleJwksCache,
+config :cherry, Cherry.Identity.Providers.GoogleJwksCache,
   ttl_ms: String.to_integer(System.get_env("GOOGLE_JWKS_CACHE_TTL_MS", "600000"))
 
-config :snack, Snack.Identity.Providers.AppleJwksCache,
+config :cherry, Cherry.Identity.Providers.AppleJwksCache,
   ttl_ms: String.to_integer(System.get_env("APPLE_JWKS_CACHE_TTL_MS", "600000"))
 
-config :snack, Snack.Storage.R2,
+config :cherry, Cherry.Storage.R2,
   account_id: System.get_env("R2_ACCOUNT_ID"),
   access_key_id: System.get_env("R2_ACCESS_KEY_ID"),
   secret_access_key: System.get_env("R2_SECRET_ACCESS_KEY"),
@@ -115,7 +115,7 @@ config :snack, Snack.Storage.R2,
   max_upload_bytes: String.to_integer(System.get_env("R2_MAX_UPLOAD_BYTES", "2000000")),
   upload_url_ttl_seconds: String.to_integer(System.get_env("R2_UPLOAD_URL_TTL_SECONDS", "600"))
 
-config :snack, :expo_push,
+config :cherry, :expo_push,
   base_url: System.get_env("EXPO_PUSH_BASE_URL", "https://exp.host"),
   access_token: System.get_env("EXPO_PUSH_ACCESS_TOKEN"),
   receive_timeout_ms: String.to_integer(System.get_env("EXPO_PUSH_RECEIVE_TIMEOUT_MS", "5000"))
@@ -143,7 +143,7 @@ message_cipher_key =
       "__DEV_MESSAGE_CIPHER_KEY__"
   end
 
-config :snack, :message_cipher, key: message_cipher_key
+config :cherry, :message_cipher, key: message_cipher_key
 
 if config_env() == :prod do
   access_token_salt =
@@ -160,7 +160,7 @@ if config_env() == :prod do
       Generate one with: mix phx.gen.secret
       """
 
-  config :snack, Snack.Auth,
+  config :cherry, Cherry.Auth,
     access_token_salt: access_token_salt,
     refresh_token_salt: refresh_token_salt
 end
@@ -175,7 +175,7 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
-  config :snack, Snack.Repo,
+  config :cherry, Cherry.Repo,
     ssl: System.get_env("DATABASE_SSL", "true") == "true",
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
@@ -197,9 +197,9 @@ if config_env() == :prod do
 
   host = System.get_env("PHX_HOST") || "example.com"
 
-  config :snack, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+  config :cherry, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
-  config :snack, SnackWeb.Endpoint,
+  config :cherry, CherryWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
       # Enable IPv6 and bind on all interfaces.
@@ -215,7 +215,7 @@ if config_env() == :prod do
   # To get SSL working, you will need to add the `https` key
   # to your endpoint configuration:
   #
-  #     config :snack, SnackWeb.Endpoint,
+  #     config :cherry, CherryWeb.Endpoint,
   #       https: [
   #         ...,
   #         port: 443,
@@ -237,7 +237,7 @@ if config_env() == :prod do
   # We also recommend setting `force_ssl` in your config/prod.exs,
   # ensuring no data is ever sent via http, always redirecting to https:
   #
-  #     config :snack, SnackWeb.Endpoint,
+  #     config :cherry, CherryWeb.Endpoint,
   #       force_ssl: [hsts: true]
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.

@@ -1,4 +1,4 @@
-import type { HttpClient } from "@snack/mobile-shared";
+import type { HttpClient } from "@cherry/mobile-shared";
 
 interface JsonHttpClientOptions {
   apiBaseUrl: string;

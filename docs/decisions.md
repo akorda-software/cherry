@@ -50,7 +50,7 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 ## D-2026-04-28 — Dominio dating en backend con PostGIS y chat WebSocket
 
 - **Contexto:** El discovery necesita filtrado geográfico eficiente y el chat requiere entrega en vivo sobre las sesiones ya resueltas.
-- **Decisión:** Contexto `Snack.Dating` con PostgreSQL + PostGIS (`geography(Point,4326)` con índice GiST) para ubicaciones y cálculo de distancias. Chat en tiempo real vía Phoenix Channel (`chat:{conversationId}`) autenticado con el access token JWT validando expiración; REST sigue siendo la fuente de historia.
+- **Decisión:** Contexto `Cherry.Dating` con PostgreSQL + PostGIS (`geography(Point,4326)` con índice GiST) para ubicaciones y cálculo de distancias. Chat en tiempo real vía Phoenix Channel (`chat:{conversationId}`) autenticado con el access token JWT validando expiración; REST sigue siendo la fuente de historia.
 - **Motivación:** PostGIS da consultas de proximidad indexadas sin infraestructura adicional; el socket de Phoenix reutiliza el mismo token y reglas de sesión que REST.
 - **Referencias:** `docs/02-arquitectura.md`, `docs/04-modelo-datos.md`.
 

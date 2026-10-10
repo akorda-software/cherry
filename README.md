@@ -1,4 +1,4 @@
-# Snack
+# Cherry
 
 App de dating móvil construida sobre un starter reusable (Expo + Phoenix). Monorepo con app móvil Expo, backend Phoenix y paquetes compartidos.
 
@@ -24,7 +24,7 @@ Toda la documentación vive en [`docs/`](./docs). Empezar por [`docs/README.md`]
 ## Estructura del monorepo
 
 ```
-snack/
+cherry/
 ├── apps/
 │   ├── mobile/            # App Expo (Expo Router): starter + features de dating
 │   └── backend/           # Phoenix: auth, sesiones, config, dating

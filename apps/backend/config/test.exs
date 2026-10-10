@@ -9,25 +9,25 @@ import Config
 # Si DATABASE_URL está definido (p. ej. cuando localhost:5432 está ocupado por
 # otro proyecto), se usa tal cual.
 if System.get_env("DATABASE_URL") do
-  config :snack, Snack.Repo,
+  config :cherry, Cherry.Repo,
     url: System.get_env("DATABASE_URL"),
     pool: Ecto.Adapters.SQL.Sandbox,
     pool_size: System.schedulers_online() * 2,
-    types: Snack.PostgresTypes
+    types: Cherry.PostgresTypes
 else
-  config :snack, Snack.Repo,
+  config :cherry, Cherry.Repo,
     username: "postgres",
     password: "postgres",
     hostname: "localhost",
-    database: "snack_test#{System.get_env("MIX_TEST_PARTITION")}",
+    database: "cherry_test#{System.get_env("MIX_TEST_PARTITION")}",
     pool: Ecto.Adapters.SQL.Sandbox,
     pool_size: System.schedulers_online() * 2,
-    types: Snack.PostgresTypes
+    types: Cherry.PostgresTypes
 end
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
-config :snack, SnackWeb.Endpoint,
+config :cherry, CherryWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "iUXnk0MZ+AMaKjraKMrpODJyZGEP9Pr4ytmm5cIhq4uNKZ1PjHdtWUHbii8tfgwk",
   server: false
@@ -46,14 +46,14 @@ config :phoenix_live_view,
 config :phoenix,
   sort_verified_routes_query_params: true
 
-config :snack, Snack.Auth,
+config :cherry, Cherry.Auth,
   access_token_ttl_seconds: 900,
   refresh_token_ttl_days: 30,
-  access_token_salt: "snack-access-token-test",
-  refresh_token_salt: "snack-refresh-token-test",
+  access_token_salt: "cherry-access-token-test",
+  refresh_token_salt: "cherry-refresh-token-test",
   providers: %{
-    google: Snack.Identity.Providers.Google,
-    apple: Snack.Identity.Providers.Apple
+    google: Cherry.Identity.Providers.Google,
+    apple: Cherry.Identity.Providers.Apple
   }
 
-config :snack, :expo_push_client, Snack.Notifications.MockExpoClient
+config :cherry, :expo_push_client, Cherry.Notifications.MockExpoClient

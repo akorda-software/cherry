@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 
-import type { DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryProfileCard } from "@cherry/contracts";
 
 import { useTheme } from "../../../shared/ui";
 

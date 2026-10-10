@@ -6,7 +6,7 @@ import type {
   DiscoveryFeedPage,
   DiscoveryMatch,
   DiscoveryProfileCard
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 export interface DiscoveryFeedDeps {
   fetchPage: (cursor: string | null) => Promise<DiscoveryFeedPage>;

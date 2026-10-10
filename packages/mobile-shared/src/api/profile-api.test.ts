@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { createProfileApi } from "./profile-api";

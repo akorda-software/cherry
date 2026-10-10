@@ -5,8 +5,8 @@
 
 import Ecto.Query
 
-alias Snack.Repo
-alias Snack.Dating.Tag
+alias Cherry.Repo
+alias Cherry.Dating.Tag
 
 # The canonical dating tag catalog. Slugs are stable identifiers (English),
 # labels are Spanish for display. Re-running this seed reactivates every tag

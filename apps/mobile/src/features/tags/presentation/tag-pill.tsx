@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import { useTheme } from "../../../shared/ui";
 import type { TagSelectionState } from "../application/use-tag-selection";

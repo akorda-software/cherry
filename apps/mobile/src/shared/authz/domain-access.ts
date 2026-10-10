@@ -1,4 +1,4 @@
-import type { SessionBundle } from "@snack/contracts";
+import type { SessionBundle } from "@cherry/contracts";
 
 export interface DomainAccessRule {
   roles?: string[];

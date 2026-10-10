@@ -1,22 +1,22 @@
 import Config
 
 # Enable dev-only endpoints (test login, etc.)
-config :snack, :enable_dev_test_login, true
+config :cherry, :enable_dev_test_login, true
 
 # Relax profile completeness rules in dev so onboarding can finish without
 # uploading photos or setting a location (those features are not wired yet).
-config :snack, :strict_profile_completion, false
+config :cherry, :strict_profile_completion, false
 
 # Configure your database
-config :snack, Snack.Repo,
+config :cherry, Cherry.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "snack_dev",
+  database: "cherry_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10,
-  types: Snack.PostgresTypes
+  types: Cherry.PostgresTypes
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -24,7 +24,7 @@ config :snack, Snack.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it to
 # bundle .js and .css sources.
-config :snack, SnackWeb.Endpoint,
+config :cherry, CherryWeb.Endpoint,
   # Bind to all interfaces so mobile devices on the same LAN can reach the
   # dev server (e.g. physical device running the Expo app). Use 127.0.0.1 to
   # restrict access to the host machine only.
@@ -59,20 +59,20 @@ config :snack, SnackWeb.Endpoint,
 # different ports.
 
 # Reload browser tabs when matching files change.
-config :snack, SnackWeb.Endpoint,
+config :cherry, CherryWeb.Endpoint,
   live_reload: [
     web_console_logger: true,
     patterns: [
       # Static assets, except user uploads
       ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$",
       # Router, Controllers, LiveViews and LiveComponents
-      ~r"lib/snack_web/router\.ex$",
-      ~r"lib/snack_web/(controllers|live|components)/.*\.(ex|heex)$"
+      ~r"lib/cherry_web/router\.ex$",
+      ~r"lib/cherry_web/(controllers|live|components)/.*\.(ex|heex)$"
     ]
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :snack, dev_routes: true
+config :cherry, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"

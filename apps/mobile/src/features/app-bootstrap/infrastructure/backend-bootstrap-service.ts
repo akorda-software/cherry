@@ -37,7 +37,7 @@ export function createMockAppBootstrapService(
       return {
         user: {
           id: "dev-user",
-          email: "dev@snack.app",
+          email: "dev@cherry.app",
           displayName: "Dev User"
         },
         profile: {

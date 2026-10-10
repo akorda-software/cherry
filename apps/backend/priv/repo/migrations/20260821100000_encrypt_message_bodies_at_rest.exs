@@ -1,9 +1,9 @@
-defmodule Snack.Repo.Migrations.EncryptMessageBodiesAtRest do
+defmodule Cherry.Repo.Migrations.EncryptMessageBodiesAtRest do
   use Ecto.Migration
 
   import Ecto.Query, only: [from: 2]
 
-  alias Snack.Crypto
+  alias Cherry.Crypto
 
   @doc """
   Cifra los cuerpos de mensaje existentes que aún están en claro (D-2026-08-21).

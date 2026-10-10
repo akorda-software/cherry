@@ -28,7 +28,7 @@ export function LoginScreen() {
   return (
     <Screen
       description="Theme-driven auth presentation stays generic while the feature owns behavior."
-      title="Welcome to Snack"
+      title="Welcome to Cherry"
     >
       <Card
         description="Reusable auth access for the current app shell."

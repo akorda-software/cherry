@@ -21,20 +21,20 @@ Phoenix single app (sin umbrella) con contextos por dominio:
 
 | Contexto | Responsabilidad |
 |---|---|
-| `Snack.Accounts` | Usuarios canónicos |
-| `Snack.Identity` | Validación de credenciales Google/Apple y linking de providers |
-| `Snack.Sessions` | Emisión, rotación, revocación de sesiones y refresh tokens |
-| `Snack.Dating` | Dominio dating completo: perfiles, discovery, matching, chat, safety |
-| `Snack.Features` | Feature flags leídas de config por entorno |
-| `Snack.Notifications` / `Snack.Storage` | Envío de push vía Expo Push API y cliente R2 con URLs firmadas |
+| `Cherry.Accounts` | Usuarios canónicos |
+| `Cherry.Identity` | Validación de credenciales Google/Apple y linking de providers |
+| `Cherry.Sessions` | Emisión, rotación, revocación de sesiones y refresh tokens |
+| `Cherry.Dating` | Dominio dating completo: perfiles, discovery, matching, chat, safety |
+| `Cherry.Features` | Feature flags leídas de config por entorno |
+| `Cherry.Notifications` / `Cherry.Storage` | Envío de push vía Expo Push API y cliente R2 con URLs firmadas |
 
-Capa web: `SnackWeb` con controllers API versionados en `/api`, plugs de autenticación (`Authenticate` valida JWT y expiración), plug `RequireFeature` para módulos opcionales y `UserSocket` para WebSocket.
+Capa web: `CherryWeb` con controllers API versionados en `/api`, plugs de autenticación (`Authenticate` valida JWT y expiración), plug `RequireFeature` para módulos opcionales y `UserSocket` para WebSocket.
 
 Puntos clave:
 
 - **Sesiones propiedad de Phoenix:** access token JWT corto (`sub` + `session_id`) + refresh token opaco rotatorio; solo hashes salted en DB con linaje familiar; reuso ⇒ revoca la familia.
 - **PostGIS** para ubicaciones (`geography(Point,4326)` con índice GiST) y distancias.
-- **R2 directo:** el backend firma URLs de subida (AWS SigV4 presigned PUT) vía `Snack.Storage.R2`; nunca proxéa binarios.
+- **R2 directo:** el backend firma URLs de subida (AWS SigV4 presigned PUT) vía `Cherry.Storage.R2`; nunca proxéa binarios.
 - **OpenAPI** servido en `/openapi.yaml`.
 - **Chat en vivo:** Phoenix Channel `chat:{conversationId}` autenticado con el mismo access token que REST.
 

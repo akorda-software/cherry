@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { DiscoveryActionResponse, DiscoveryFeedPage } from "@snack/contracts";
+import type { DiscoveryActionResponse, DiscoveryFeedPage } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { createDiscoveryApi } from "./discovery-api";

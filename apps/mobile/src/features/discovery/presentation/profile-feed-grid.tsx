@@ -2,7 +2,7 @@ import { type ReactElement, useCallback, useMemo } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 
-import type { DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryProfileCard } from "@cherry/contracts";
 
 import { useTheme } from "../../../shared/ui";
 import { ProfileFeedCard } from "./profile-feed-card";

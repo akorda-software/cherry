@@ -1,4 +1,4 @@
-import type { AuthProvider } from "@snack/mobile-shared";
+import type { AuthProvider } from "@cherry/mobile-shared";
 import { Pressable, StyleSheet, Text as RNText, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 

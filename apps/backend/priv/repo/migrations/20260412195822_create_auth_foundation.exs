@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.CreateAuthFoundation do
+defmodule Cherry.Repo.Migrations.CreateAuthFoundation do
   use Ecto.Migration
 
   def change do

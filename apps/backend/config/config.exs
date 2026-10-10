@@ -7,21 +7,21 @@
 # General application configuration
 import Config
 
-config :snack,
-  ecto_repos: [Snack.Repo],
+config :cherry,
+  ecto_repos: [Cherry.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-config :snack, Snack.Auth,
+config :cherry, Cherry.Auth,
   access_token_ttl_seconds: 900,
   refresh_token_ttl_days: 30,
-  access_token_salt: "snack-access-token",
-  refresh_token_salt: "snack-refresh-token",
+  access_token_salt: "cherry-access-token",
+  refresh_token_salt: "cherry-refresh-token",
   providers: %{
-    google: Snack.Identity.Providers.Google,
-    apple: Snack.Identity.Providers.Apple
+    google: Cherry.Identity.Providers.Google,
+    apple: Cherry.Identity.Providers.Apple
   }
 
-config :snack, Snack.Storage.R2,
+config :cherry, Cherry.Storage.R2,
   account_id: nil,
   access_key_id: nil,
   secret_access_key: nil,
@@ -31,20 +31,20 @@ config :snack, Snack.Storage.R2,
   max_upload_bytes: 2_000_000,
   upload_url_ttl_seconds: 600
 
-config :snack, :expo_push,
+config :cherry, :expo_push,
   base_url: "https://exp.host",
   access_token: nil,
   receive_timeout_ms: 5_000
 
 # Configure the endpoint
-config :snack, SnackWeb.Endpoint,
+config :cherry, CherryWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: SnackWeb.ErrorHTML, json: SnackWeb.ErrorJSON],
+    formats: [html: CherryWeb.ErrorHTML, json: CherryWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: Snack.PubSub,
+  pubsub_server: Cherry.PubSub,
   live_view: [signing_salt: "/5NL+uU4"]
 
 # Configure Elixir's Logger

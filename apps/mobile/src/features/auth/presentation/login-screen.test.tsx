@@ -20,7 +20,7 @@ describe("LoginScreen", () => {
   it("renders shared screen, card, and auth actions for the login shell", async () => {
     renderRoute(<LoginScreen />);
 
-    expect(await screen.findByRole("heading", { name: "Welcome to Snack" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome to Cherry" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Sign in to continue" })).toBeInTheDocument();
     expect(screen.getByText("Reusable auth access for the current app shell.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeInTheDocument();

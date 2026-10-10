@@ -39,7 +39,7 @@ Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21)
 - Bloqueos aplicados al envío REST/WS y a broadcasts pendientes; envíos serializados con bloqueos por match.
 - Historial REST carga el match antes de comprobar participantes; valida límite y cursor.
 - Cuenta desactivada con revocación de todas las sesiones y push tokens, desconexión WS y denegación de nuevos logins; funciona antes del onboarding.
-- Discovery extraído a `Snack.Dating.Discovery`, scoring/límite en SQL y cursor opaco coherente con el orden. Corregidos el filtro de tags bloqueados y el conteo de tags compartidos con UUIDs.
+- Discovery extraído a `Cherry.Dating.Discovery`, scoring/límite en SQL y cursor opaco coherente con el orden. Corregidos el filtro de tags bloqueados y el conteo de tags compartidos con UUIDs.
 - Fotos verificadas contra R2 y subida condicional para impedir sobrescrituras posteriores. Retirado el endpoint de creación directa de metadatos.
 - Reanudar un perfil completo restaura la visibilidad.
 

@@ -1,4 +1,4 @@
-import type { SessionBundle } from "@snack/contracts";
+import type { SessionBundle } from "@cherry/contracts";
 
 import { canAccessDomain, createDomainViewer, type DomainAccessRule } from "../shared/authz/domain-access";
 

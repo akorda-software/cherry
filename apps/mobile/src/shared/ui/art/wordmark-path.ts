@@ -1,5 +1,5 @@
 /**
- * Palabra «snack» en Rubik Black convertida a trazados (SIL OFL 1.1), para que el
+ * Palabra «cherry» en Rubik Black convertida a trazados (SIL OFL 1.1), para que el
  * logo no dependa de la fuente cargada y se pueda contornear por capas.
  * Caja: x 0–394.6, y 0–100 (línea base en y 91).
  */

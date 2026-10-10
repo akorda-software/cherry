@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import type { HttpClient } from "@snack/mobile-shared";
+import type { HttpClient } from "@cherry/mobile-shared";
 
 import { createJsonHttpClient } from "../../../shared/api";
 import { useRuntimeConfig } from "../../../shared/config";

@@ -1,6 +1,6 @@
 # Contratos v2 (2026-09-29) — API social
 
-Tipos en `@snack/contracts`, clientes en `@snack/mobile-shared`. JSON de respuesta en camelCase.
+Tipos en `@cherry/contracts`, clientes en `@cherry/mobile-shared`. JSON de respuesta en camelCase.
 Errores: el `HttpClient` de la app lanza `Error(message = body.error)` con `.status`.
 
 ## Cambios en tipos existentes (rompen fixtures de tests)

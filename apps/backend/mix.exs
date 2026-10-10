@@ -1,9 +1,9 @@
-defmodule Snack.MixProject do
+defmodule Cherry.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :snack,
+      app: :cherry,
       version: "0.1.0",
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -14,7 +14,7 @@ defmodule Snack.MixProject do
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
       # `:tar` → _build/prod/cherry-<version>.tar.gz.
-      releases: [snack: [steps: [:assemble, :tar]]]
+      releases: [cherry: [steps: [:assemble, :tar]]]
     ]
   end
 
@@ -23,7 +23,7 @@ defmodule Snack.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {Snack.Application, []},
+      mod: {Cherry.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -81,23 +81,23 @@ defmodule Snack.MixProject do
 
   defp coverage_ignore_modules do
     [
-      Snack,
-      Snack.Application,
-      Snack.DataCase,
-      Snack.Repo,
-      Snack.TestSupport.DocumentPKI,
-      Snack.TestSupport.FutureProvider,
-      Snack.TestSupport.ProviderTokenFactory,
-      SnackWeb,
-      SnackWeb.ConnCase,
-      SnackWeb.CoreComponents,
-      SnackWeb.Endpoint,
-      SnackWeb.ErrorHTML,
-      SnackWeb.ErrorJSON,
-      SnackWeb.Layouts,
-      SnackWeb.PageController,
-      SnackWeb.PageHTML,
-      SnackWeb.Telemetry
+      Cherry,
+      Cherry.Application,
+      Cherry.DataCase,
+      Cherry.Repo,
+      Cherry.TestSupport.DocumentPKI,
+      Cherry.TestSupport.FutureProvider,
+      Cherry.TestSupport.ProviderTokenFactory,
+      CherryWeb,
+      CherryWeb.ConnCase,
+      CherryWeb.CoreComponents,
+      CherryWeb.Endpoint,
+      CherryWeb.ErrorHTML,
+      CherryWeb.ErrorJSON,
+      CherryWeb.Layouts,
+      CherryWeb.PageController,
+      CherryWeb.PageHTML,
+      CherryWeb.Telemetry
     ]
   end
 end

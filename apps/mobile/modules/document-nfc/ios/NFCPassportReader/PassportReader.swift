@@ -96,7 +96,7 @@ public class PassportReader : NSObject {
         return try await readPassport(accessKey: mrzKey, passwordType: .mrz, tags: tags, aaChallenge: aaChallenge, skipSecureElements: skipSecureElements, skipCA: skipCA, skipPACE: skipPACE, useExtendedMode: useExtendedMode, customDisplayMessage: customDisplayMessage)
     }
 
-    /// Snack patch: read with the CAN (PACE only) or the MRZ key (PACE, then BAC).
+    /// Cherry patch: read with the CAN (PACE only) or the MRZ key (PACE, then BAC).
     public func readPassport( can : String, tags : [DataGroupId] = [], skipSecureElements : Bool = true, useExtendedMode : Bool = false, customDisplayMessage : ((NFCViewDisplayMessage) -> String?)? = nil) async throws -> NFCPassportModel {
         return try await readPassport(accessKey: can, passwordType: .can, tags: tags, aaChallenge: nil, skipSecureElements: skipSecureElements, skipCA: true, skipPACE: false, useExtendedMode: useExtendedMode, customDisplayMessage: customDisplayMessage)
     }
@@ -294,7 +294,7 @@ extension PassportReader {
                 trackingDelegate?.paceFailed()
 
                 passport.PACEStatus = .failed
-                // Snack patch: a CAN only works with PACE; BAC cannot be derived from it.
+                // Cherry patch: a CAN only works with PACE; BAC cannot be derived from it.
                 if passwordType == .can {
                     Logger.passportReader.error( "PACE with CAN failed" )
                     throw error
@@ -351,7 +351,7 @@ extension PassportReader {
     func doBACAuthentication(tagReader : TagReader) async throws {
         self.currentlyReadingDataGroup = nil
 
-        // Snack patch: with a CAN there is no BAC; re-establish PACE instead.
+        // Cherry patch: with a CAN there is no BAC; re-establish PACE instead.
         if passwordType == .can {
             guard let cardAccess = passport.cardAccess else {
                 throw NFCPassportReaderError.NotYetSupported( "PACE not supported" )
@@ -496,7 +496,7 @@ extension PassportReader {
         throw nfcPassportReaderError
     }
 
-    /// Snack patch: cancel a read in progress. The session delegate then reports `UserCanceled`.
+    /// Cherry patch: cancel a read in progress. The session delegate then reports `UserCanceled`.
     public func cancel() {
         self.readerSession?.invalidate()
     }

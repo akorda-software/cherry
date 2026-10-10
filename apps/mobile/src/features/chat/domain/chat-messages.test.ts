@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ChatMessage } from "@snack/contracts";
+import type { ChatMessage } from "@cherry/contracts";
 
 import {
   countCharacters,

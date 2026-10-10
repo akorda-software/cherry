@@ -1,4 +1,4 @@
-import type { ReceivedLikesPage, ReceivedLikesQuery } from "@snack/contracts";
+import type { ReceivedLikesPage, ReceivedLikesQuery } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { buildCursorPath } from "./http-utils";

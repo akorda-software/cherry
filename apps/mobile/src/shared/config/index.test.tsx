@@ -2,7 +2,7 @@ import { renderHook } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { FeatureFlagReader } from "@snack/mobile-shared";
+import type { FeatureFlagReader } from "@cherry/mobile-shared";
 import { RuntimeConfigProvider, useFeatureFlag, useRuntimeConfig } from "../config";
 
 function createReader(flags: Record<string, boolean>): FeatureFlagReader {

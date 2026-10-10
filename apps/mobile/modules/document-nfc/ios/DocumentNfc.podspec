@@ -1,11 +1,11 @@
 Pod::Spec.new do |s|
   s.name           = 'DocumentNfc'
   s.version        = '0.1.0'
-  s.summary        = 'NFC reading of ICAO 9303 identity documents (DNI, TIE, passports) for Snack'
+  s.summary        = 'NFC reading of ICAO 9303 identity documents (DNI, TIE, passports) for Cherry'
   s.description    = 'Reads DG1, DG2 and EF.SOD with PACE (CAN) or BAC/PACE (MRZ). Passive authentication happens on the server.'
   s.license        = { :type => 'AGPL-3.0-only' }
-  s.author         = 'Snack'
-  s.homepage       = 'https://github.com/akorda-software/snack'
+  s.author         = 'Cherry'
+  s.homepage       = 'https://github.com/akorda-software/cherry'
   s.platforms      = { :ios => '15.1' }
   s.swift_version  = '5.9'
   s.source         = { git: '' }

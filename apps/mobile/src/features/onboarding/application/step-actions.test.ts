@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ProfileApi } from "@snack/mobile-shared";
+import type { ProfileApi } from "@cherry/mobile-shared";
 
 import { apiError, makePreferences, makeProfile } from "../testing/fixtures";
 import {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ChatMessage, MatchSummary } from "@snack/contracts";
+import type { ChatMessage, MatchSummary } from "@cherry/contracts";
 
 import {
   applyMessageToMatch,

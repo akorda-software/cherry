@@ -1,6 +1,6 @@
 # Backend
 
-Phoenix backend of Snack (dating API, sessions, chat and photo storage). Self-hosting guide (Spanish): `../../docs/12-self-hosting.md`.
+Phoenix backend of Cherry (dating API, sessions, chat and photo storage). Self-hosting guide (Spanish): `../../docs/12-self-hosting.md`.
 
 ## Responsibilities
 
@@ -14,7 +14,7 @@ Phoenix backend of Snack (dating API, sessions, chat and photo storage). Self-ho
 
 ## Code boundaries
 
-`Snack.Dating` is the public context; it delegates to focused modules. The
+`Cherry.Dating` is the public context; it delegates to focused modules. The
 paginated inbox contract is shared with the mobile SDK and OpenAPI:
 
 | Module | Responsibility |
@@ -34,8 +34,8 @@ paginated inbox contract is shared with the mobile SDK and OpenAPI:
 | `Notifications.Outbox` / `Notifications.PushWorker` | Transactional event jobs and asynchronous delivery |
 
 The profile HTTP endpoints have separate controllers for profile fields,
-preferences, photos, tags and location. `SnackWeb.OwnProfileJSON` serializes
-preloaded data without querying the database; `SnackWeb.ChangesetJSON` formats
+preferences, photos, tags and location. `CherryWeb.OwnProfileJSON` serializes
+preloaded data without querying the database; `CherryWeb.ChangesetJSON` formats
 validation errors.
 
 Concurrency guarantees live in the write modules. Refresh rotation locks the
@@ -45,7 +45,7 @@ the profile before checking limits. Swipes/blocks share `PairLock`, and messages
 take the match lock before rechecking permissions. These checks rely on
 [PostgreSQL's READ COMMITTED statement snapshots](https://www.postgresql.org/docs/17/transaction-iso.html#XACT-READ-COMMITTED).
 
-`Snack.Identity.JwksCache` owns each provider's ETS table under supervision. Cache
+`Cherry.Identity.JwksCache` owns each provider's ETS table under supervision. Cache
 hits read ETS directly; misses share a single download, and provider failures
 back off for 30 seconds (including failures with no cached keys). Existing keys
 remain available on failed refreshes. TTLs use monotonic time. This prevents the
@@ -87,7 +87,7 @@ check/broadcast per second per channel, including denied senders.
 
 ## Photo storage
 
-Photos go through `Snack.Storage` (`STORAGE_ADAPTER`):
+Photos go through `Cherry.Storage` (`STORAGE_ADAPTER`):
 
 - `local` (dev default): files under `UPLOADS_DIR` (`priv/uploads` in dev, gitignored), uploaded with a signed `PUT /api/uploads/:token` and served at `/uploads`. Nothing to configure in dev; URLs follow the host you call the API with (`localhost`, LAN IP, tunnel) unless `PUBLIC_BASE_URL` is set.
 - `r2`: Cloudflare R2, or any S3-compatible service with `S3_ENDPOINT` + `S3_REGION` (MinIO, Garage...).
@@ -105,12 +105,12 @@ mix run priv/repo/demo_seeds.exs   # dev only: ~55 realistic profiles around Mad
 
 ```bash
 curl -X POST localhost:4000/api/auth/dev/test-login -H 'content-type: application/json' \
-  -d '{"email": "demo@snack.dev"}'
+  -d '{"email": "demo@cherry.dev"}'
 ```
 
-- `demo@snack.dev` — Lucía (29): 8 unanswered likes, 5 matches (2 without messages, 3 conversations, two of them with unread messages) and some swipes.
-- `demo2@snack.dev` — Hugo (33, "a ver qué pasa"): clean profile to test live matches between two sessions.
-- Every synthetic persona can log in too: `<name>@demo.snack.dev` (e.g. `pablo@demo.snack.dev`).
+- `demo@cherry.dev` — Lucía (29): 8 unanswered likes, 5 matches (2 without messages, 3 conversations, two of them with unread messages) and some swipes.
+- `demo2@cherry.dev` — Hugo (33, "a ver qué pasa"): clean profile to test live matches between two sessions.
+- Every synthetic persona can log in too: `<name>@demo.cherry.dev` (e.g. `pablo@demo.cherry.dev`).
 
 To test Discover with your own dev account (anywhere, not only Madrid), create profiles around it, compatible both ways with your gender, filters and intents (idempotent; re-running also clears their swipes so they show up again):
 
@@ -118,7 +118,7 @@ To test Discover with your own dev account (anywhere, not only Madrid), create p
 EMAIL=you@example.com COUNT=24 mix run priv/repo/demo_nearby.exs
 ```
 
-With the compose PostGIS on port 5510: `DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_dev mix run priv/repo/demo_seeds.exs`.
+With the compose PostGIS on port 5510: `DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_dev mix run priv/repo/demo_seeds.exs`.
 
 ## Core Runtime Variables
 
@@ -148,15 +148,15 @@ Full list with defaults and which ones are mandatory in prod: `../../docs/12-sel
 
 ## Verification
 
-- `mix test` (localhost:5432/snack_test by default). With the compose PostGIS:
-  `TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_test mix test`.
+- `mix test` (localhost:5432/cherry_test by default). With the compose PostGIS:
+  `TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_test mix test`.
   `DATABASE_URL` is only honoured when its database name contains `_test`: tests
   wipe their database, so a dev `DATABASE_URL` exported in the shell makes
-  `mix test` refuse to run instead of wiping `snack_dev`.
+  `mix test` refuse to run instead of wiping `cherry_dev`.
 - `mix precommit`
 
-Concurrency regressions in `test/snack/backend_concurrency_test.exs` and
-`test/snack/swipe_concurrency_test.exs` use independent committed connections,
+Concurrency regressions in `test/cherry/backend_concurrency_test.exs` and
+`test/cherry/swipe_concurrency_test.exs` use independent committed connections,
 then remove their own fixtures. A shared sandbox connection would serialize
 the transactions and hide these races.
 
@@ -165,7 +165,7 @@ the transactions and hide these races.
 Use a dedicated database whose name ends in `_bench`:
 
 ```bash
-export DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_review_bench
+export DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_review_bench
 mix ecto.create
 mix ecto.migrate
 mix run priv/repo/seeds.exs
@@ -207,12 +207,12 @@ Discovery aggregates tag weights over the eligible set and only computes the
 expensive fairness penalty for candidates that can still enter the page. Its
 six-point maximum gives a safe pruning bound; it keeps the full ranking rather
 than imposing an arbitrary candidate cap. Regression tests compare every page
-against exhaustive scoring. `DB_JIT=false` is scoped to Snack connections, as JIT
+against exhaustive scoring. `DB_JIT=false` is scoped to Cherry connections, as JIT
 compilation outweighed execution time in these short feed queries.
 
 The [sustained-load procedure](../../infra/load/README.md) includes isolated data
 generation, real rotating sessions, a mixed HTTP/WebSocket k6 scenario, controlled
-Expo latency/failures, metrics and recovery checks. `Snack.Metrics` exports
+Expo latency/failures, metrics and recovery checks. `Cherry.Metrics` exports
 bounded, aggregated histograms (microseconds) for HTTP, database query/pool wait,
 chat and push, plus VM memory/process/run-queue gauges. It uses Peep storage
 distributed across schedulers and never retains a row per request until scrape.

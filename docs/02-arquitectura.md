@@ -21,15 +21,15 @@ Phoenix single app (sin umbrella) con contextos por dominio:
 
 | Contexto | Responsabilidad |
 |---|---|
-| `Snack.Accounts` | Usuarios canónicos |
-| `Snack.Identity` | Validación de credenciales Google/Apple y linking de providers; verificación de edad (`AgeVerifications`) con autenticación pasiva de documentos eMRTD (`Identity.Document.*`, CSCA en `priv/csca`) |
-| `Snack.Sessions` | Emisión, rotación, revocación de sesiones y refresh tokens |
-| `Snack.Dating` | Dominio dating completo: perfiles, discovery, matching, chat, safety |
-| `Snack.Features` | Feature flags leídas de config por entorno |
-| `Snack.Notifications` / `Snack.Storage` | Envío de push vía Expo Push API y almacenamiento de fotos (adaptadores local y R2/S3) |
-| `Snack.Crypto` | Cifrado en reposo de los mensajes (AES-256-GCM) |
+| `Cherry.Accounts` | Usuarios canónicos |
+| `Cherry.Identity` | Validación de credenciales Google/Apple y linking de providers; verificación de edad (`AgeVerifications`) con autenticación pasiva de documentos eMRTD (`Identity.Document.*`, CSCA en `priv/csca`) |
+| `Cherry.Sessions` | Emisión, rotación, revocación de sesiones y refresh tokens |
+| `Cherry.Dating` | Dominio dating completo: perfiles, discovery, matching, chat, safety |
+| `Cherry.Features` | Feature flags leídas de config por entorno |
+| `Cherry.Notifications` / `Cherry.Storage` | Envío de push vía Expo Push API y almacenamiento de fotos (adaptadores local y R2/S3) |
+| `Cherry.Crypto` | Cifrado en reposo de los mensajes (AES-256-GCM) |
 
-Capa web: `SnackWeb` con controllers API en `/api`, plugs de autenticación (`Authenticate` valida JWT, expiración y familia de sesión), `TrackActivity` (última actividad del perfil), `Cors` (solo clientes web), `RequireFeature` para módulos opcionales (hoy sin uso en el router) y `UserSocket` para WebSocket.
+Capa web: `CherryWeb` con controllers API en `/api`, plugs de autenticación (`Authenticate` valida JWT, expiración y familia de sesión), `TrackActivity` (última actividad del perfil), `Cors` (solo clientes web), `RequireFeature` para módulos opcionales (hoy sin uso en el router) y `UserSocket` para WebSocket.
 
 Procesos en segundo plano: `Discovery.TagWeights` (pesos IDF cada 15 min), `MatchExpirySweeper` (caducidad de matches cada hora) y `PhotoStorageSweeper` (borrado de fotos y subidas abandonadas cada 10 min).
 
@@ -37,7 +37,7 @@ Puntos clave:
 
 - **Sesiones propiedad de Phoenix:** access token JWT corto (`sub` + `session_id`) + refresh token opaco rotatorio; solo hashes salted en DB con linaje familiar; reuso ⇒ revoca la familia.
 - **PostGIS** para ubicaciones (`geography(Point,4326)` con índice GiST) y distancias.
-- **Fotos (`Snack.Storage`, D-2026-09-29):** con R2/S3 el backend firma URLs de subida (AWS SigV4 presigned PUT) y nunca proxea binarios; con almacenamiento local (`STORAGE_ADAPTER=local`, por defecto en dev y para self-hosting sin S3) recibe el PUT firmado en `/api/uploads/:token` y sirve `/uploads` con `Plug.Static`. El contrato del móvil es el mismo.
+- **Fotos (`Cherry.Storage`, D-2026-09-29):** con R2/S3 el backend firma URLs de subida (AWS SigV4 presigned PUT) y nunca proxea binarios; con almacenamiento local (`STORAGE_ADAPTER=local`, por defecto en dev y para self-hosting sin S3) recibe el PUT firmado en `/api/uploads/:token` y sirve `/uploads` con `Plug.Static`. El contrato del móvil es el mismo.
 - **OpenAPI** servido en `/openapi.yaml`.
 - **Chat en vivo:** Phoenix Channel `chat:{conversationId}` autenticado con el mismo access token que REST.
 
@@ -84,7 +84,7 @@ Reglas estructurales:
 ## Entorno e infraestructura
 
 - `infra/docker-compose.yml`: Postgres 17 + PostGIS expuesto en **localhost:5510** (estandarizado; ver D-2026-07-29 en `progress.md`). Perfiles `mobile` y `backend` con imágenes node/elixir para trabajo contenerizado.
-- Tests del backend: por defecto `localhost:5432`; con el compose, `TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_test` (ver `09-estrategia-pruebas.md`).
+- Tests del backend: por defecto `localhost:5432`; con el compose, `TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_test` (ver `09-estrategia-pruebas.md`).
 - Puertos dev estandarizados (pg=5510, backend 4000); variables por `.env.example` en cada app.
 - Producción e instancias propias: `12-self-hosting.md`.
 

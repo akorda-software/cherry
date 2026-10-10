@@ -8,7 +8,7 @@ import type {
   DiscoveryUndoResponse,
   ReceivedLike,
   ReceivedLikesPage
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import { apiErrorCode, friendlyErrorMessage } from "../../../shared/api";
 import { onSignOut } from "../../auth/presentation/on-sign-out";

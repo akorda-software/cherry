@@ -4,7 +4,7 @@ import type {
   DiscoveryActionResponse,
   DiscoveryFeedPage,
   DiscoveryUndoResponse
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { createDiscoveryApi } from "./discovery-api";

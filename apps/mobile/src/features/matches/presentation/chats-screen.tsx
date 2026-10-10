@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
-import type { MatchSummary } from "@snack/contracts";
+import type { MatchSummary } from "@cherry/contracts";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import {

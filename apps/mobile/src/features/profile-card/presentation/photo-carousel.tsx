@@ -11,7 +11,7 @@ import {
   type ViewStyle
 } from "react-native";
 
-import type { PhotoSummary } from "@snack/contracts";
+import type { PhotoSummary } from "@cherry/contracts";
 
 import { HardShadow, pastelForName, Text, useTheme, WashiTape } from "../../../shared/ui";
 

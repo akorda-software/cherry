@@ -1,4 +1,4 @@
-defmodule Snack.TestSupport.DocumentPKI do
+defmodule Cherry.TestSupport.DocumentPKI do
   @moduledoc """
   Synthetic eMRTD PKI for tests: CSCA → Document Signer → EF.SOD, plus fake
   DG1 (MRZ) and DG2. Everything is generated here; no real document data and no
@@ -10,7 +10,7 @@ defmodule Snack.TestSupport.DocumentPKI do
 
   import Bitwise
 
-  alias Snack.Identity.Document.Mrz
+  alias Cherry.Identity.Document.Mrz
 
   # ── DER encoder ──────────────────────────────────────────────────────
 
@@ -197,10 +197,10 @@ defmodule Snack.TestSupport.DocumentPKI do
 
   def sign(message, %{type: :ec} = key, {:ecdsa_plain, digest}) do
     der = sign(message, key, {:ecdsa, digest})
-    {:ok, el} = Snack.Identity.Document.Der.decode(der)
-    {:ok, [r, s]} = Snack.Identity.Document.Der.children(el)
-    {:ok, r} = Snack.Identity.Document.Der.integer(r)
-    {:ok, s} = Snack.Identity.Document.Der.integer(s)
+    {:ok, el} = Cherry.Identity.Document.Der.decode(der)
+    {:ok, [r, s]} = Cherry.Identity.Document.Der.children(el)
+    {:ok, r} = Cherry.Identity.Document.Der.integer(r)
+    {:ok, s} = Cherry.Identity.Document.Der.integer(s)
     size = div(curve_bits(key.curve) + 7, 8)
     <<r::size(size * 8), s::size(size * 8)>>
   end
@@ -213,7 +213,7 @@ defmodule Snack.TestSupport.DocumentPKI do
     do:
       seq([
         set([seq([oid("2.5.4.6"), printable(country)])]),
-        set([seq([oid("2.5.4.10"), utf8("Snack Test PKI")])]),
+        set([seq([oid("2.5.4.10"), utf8("Cherry Test PKI")])]),
         set([seq([oid("2.5.4.3"), utf8(cn)])])
       ])
 
@@ -404,9 +404,9 @@ defmodule Snack.TestSupport.DocumentPKI do
 
   # Issuer name of the DS = subject of its CSCA, read back from the DER.
   defp issuer_of(%{der: der}) do
-    {:ok, cert} = Snack.Identity.Document.Der.decode(der)
-    {:ok, [tbs | _]} = Snack.Identity.Document.Der.children(cert)
-    {:ok, fields} = Snack.Identity.Document.Der.children(tbs)
+    {:ok, cert} = Cherry.Identity.Document.Der.decode(der)
+    {:ok, [tbs | _]} = Cherry.Identity.Document.Der.children(cert)
+    {:ok, fields} = Cherry.Identity.Document.Der.children(tbs)
     [_version, _serial, _alg, {_, _, issuer} | _] = fields
     issuer
   end
@@ -438,14 +438,14 @@ defmodule Snack.TestSupport.DocumentPKI do
         binary_part(line2_head, 8, 7) <>
         binary_part(line2_head, 18, 11)
 
-    line3 = pad("PRUEBA<<SNACK<TEST", 30)
+    line3 = pad("PRUEBA<<CHERRY<TEST", 30)
     line1 <> line2_head <> cd(composite) <> line3
   end
 
   @doc "TD3 MRZ (88 characters) for passports."
   def td3(opts \\ []) do
     state = Keyword.get(opts, :state, "ESP")
-    line1 = pad("P<" <> state <> "PRUEBA<<SNACK<TEST", 44)
+    line1 = pad("P<" <> state <> "PRUEBA<<CHERRY<TEST", 44)
     number = pad(Keyword.get(opts, :document_number, "ZZ0000001"), 9)
     birth = yymmdd(Keyword.get(opts, :birth, ~D[1990-05-17]))
     expiry = yymmdd(Keyword.get(opts, :expiry, ~D[2031-05-17]))
@@ -491,7 +491,7 @@ defmodule Snack.TestSupport.DocumentPKI do
     dg1 = dg1(mrz)
     dg2 = dg2()
     sod = sod(%{1 => dg1, 2 => dg2}, ds, opts)
-    {:ok, anchor} = Snack.Identity.Document.Certificate.parse(csca.der)
+    {:ok, anchor} = Cherry.Identity.Document.Certificate.parse(csca.der)
     %{csca: csca, ds: ds, dg1: dg1, dg2: dg2, sod: sod, anchors: [anchor]}
   end
 end

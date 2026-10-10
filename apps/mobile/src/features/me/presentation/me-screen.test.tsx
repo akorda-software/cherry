@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Profile } from "@snack/contracts";
+import type { Profile } from "@cherry/contracts";
 
 import { stubBackend } from "../../../../test/fixtures/fake-backend";
 import { renderRoute } from "../../../../test/router/render-route";

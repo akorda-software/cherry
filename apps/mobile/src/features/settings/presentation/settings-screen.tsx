@@ -107,7 +107,7 @@ export function SettingsScreen() {
           accessibilityHint={location.blocked ? "Abre los ajustes del sistema" : undefined}
           description={
             location.blocked
-              ? "Snack no tiene permiso de ubicación. Actívalo en Ajustes y vuelve: la actualizamos sola."
+              ? "Cherry no tiene permiso de ubicación. Actívalo en Ajustes y vuelve: la actualizamos sola."
               : "Se actualiza sola al abrir la app, redondeada a 500 m (nunca la exacta). Tócalo si te acabas de mudar."
           }
           disabled={location.pending}
@@ -128,12 +128,12 @@ export function SettingsScreen() {
         </ListSection>
       ) : null}
 
-      <ListSection title="Snack">
+      <ListSection title="Cherry">
         <ListRow
           description="Privacidad, licencia y versión"
           icon="heart"
           iconColor="fresa"
-          label="Acerca de Snack"
+          label="Acerca de Cherry"
           onPress={() => router.push(appShellRoutes.about)}
           testID="settings-about"
         />
@@ -165,7 +165,7 @@ export function SettingsScreen() {
 
       {appInfo.version ? (
         <Text align="center" color="faint" style={styles.version} testID="settings-version" variant="caption">
-          {`Snack · versión ${appInfo.version}`}
+          {`Cherry · versión ${appInfo.version}`}
         </Text>
       ) : null}
 

@@ -285,7 +285,7 @@ public class TagReader {
             
         }
         
-        // Snack patch (upstream PR #272): `&&` let e.g. 63 00 (wrong key) pass as success.
+        // Cherry patch (upstream PR #272): `&&` let e.g. 63 00 (wrong key) pass as success.
         if rep.sw1 != 0x90 || rep.sw2 != 0x00 {
             Logger.tagReader.error( "Error reading tag: sw1 - 0x\(binToHexRep(sw1)), sw2 - 0x\(binToHexRep(sw2))" )
             let tagError: NFCPassportReaderError

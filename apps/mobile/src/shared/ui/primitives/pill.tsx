@@ -22,7 +22,7 @@ export interface PillProps {
 }
 
 /**
- * Insignia pequeña con icono: el sistema de avisos de Snack (Nuevo · Te dio
+ * Insignia pequeña con icono: el sistema de avisos de Cherry (Nuevo · Te dio
  * like · En común · Un poco más lejos). Úsala en vez de texto suelto.
  */
 export function Pill({ label, icon, color = "white", size = "md", rotate, accessibilityLabel, testID, style }: PillProps) {

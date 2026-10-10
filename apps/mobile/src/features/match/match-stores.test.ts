@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DiscoveryMatch, Profile } from "@snack/contracts";
+import type { DiscoveryMatch, Profile } from "@cherry/contracts";
 
 import { useOwnPhotoStore } from "./application/own-photo-store";
 import { useMatchCelebrationStore } from "./match-celebration-store";

@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import { Icon, Skeleton, SkeletonGroup, Stack, Text, useTheme } from "../../../shared/ui";
 import { groupTagsByCategory } from "../domain/tag-catalog";

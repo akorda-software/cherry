@@ -41,10 +41,10 @@ describe("Mascot (Mochi)", () => {
 });
 
 describe("Logo", () => {
-  it("is an image named Snack and keeps its aspect ratio", () => {
+  it("is an image named Cherry and keeps its aspect ratio", () => {
     const { getByRole } = render(<Logo height={40} />);
     const logo = getByRole("img");
-    expect(logo.getAttribute("aria-label")).toBe("Snack");
+    expect(logo.getAttribute("aria-label")).toBe("Cherry");
     expect(Number.parseFloat(logo.style.width)).toBeGreaterThan(90);
     expect(logo.style.height).toBe("40px");
   });

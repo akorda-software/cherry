@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@snack/contracts";
+import type { ChatMessage } from "@cherry/contracts";
 
 import type { OutgoingMessage } from "./chat-messages";
 import { formatDaySeparator, localDayKey } from "./time-format";

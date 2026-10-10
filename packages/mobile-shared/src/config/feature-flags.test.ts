@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { BootstrapConfig } from "@snack/contracts";
+import type { BootstrapConfig } from "@cherry/contracts";
 import { createFeatureFlagReader } from "./feature-flags";
 
 describe("createFeatureFlagReader", () => {

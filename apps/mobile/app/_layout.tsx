@@ -11,8 +11,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import type { BootstrapConfig } from "@snack/contracts";
-import { createConfigApi, createFeatureFlagReader, type FeatureFlagReader } from "@snack/mobile-shared";
+import type { BootstrapConfig } from "@cherry/contracts";
+import { createConfigApi, createFeatureFlagReader, type FeatureFlagReader } from "@cherry/mobile-shared";
 
 import {
   AppBootstrapProvider,

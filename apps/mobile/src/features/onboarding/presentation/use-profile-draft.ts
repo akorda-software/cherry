@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { createProfileApi } from "@snack/mobile-shared";
+import { createProfileApi } from "@cherry/mobile-shared";
 
 import { useAppBootstrap } from "../../app-bootstrap";
 import { useAuthedApi } from "../../auth/presentation";

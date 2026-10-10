@@ -1,4 +1,4 @@
-import type { ActivitySummary } from "@snack/contracts";
+import type { ActivitySummary } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 

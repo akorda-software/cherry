@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 
-import { createDiscoveryApi, createProfileApi } from "@snack/mobile-shared";
+import { createDiscoveryApi, createProfileApi } from "@cherry/mobile-shared";
 
 import { useAuthedApi, useSessionShell } from "../../auth/presentation";
 import { celebrateMatch } from "../../likes/application/use-received-likes";

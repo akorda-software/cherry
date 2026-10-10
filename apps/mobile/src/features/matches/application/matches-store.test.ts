@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ChatMessage, MatchSummary } from "@snack/contracts";
+import type { ChatMessage, MatchSummary } from "@cherry/contracts";
 
 import { selectMatchByConversationId, useMatchesStore } from "./matches-store";
 

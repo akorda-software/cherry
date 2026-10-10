@@ -1,4 +1,4 @@
-import type { Profile } from "@snack/contracts";
+import type { Profile } from "@cherry/contracts";
 
 import type { ProfilePerson } from "../../profile-card/domain/person";
 

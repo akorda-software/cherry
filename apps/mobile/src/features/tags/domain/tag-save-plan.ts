@@ -1,4 +1,4 @@
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import { sameTagIds, type TagKind, type TagSelection } from "./tag-selection";
 

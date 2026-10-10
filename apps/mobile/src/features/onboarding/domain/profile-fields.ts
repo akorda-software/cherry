@@ -1,6 +1,6 @@
-import type { Gender, RelationshipIntent } from "@snack/contracts";
+import type { Gender, RelationshipIntent } from "@cherry/contracts";
 
-/** Reglas de los campos del perfil (espejo de `Snack.Dating.Profile` en backend). */
+/** Reglas de los campos del perfil (espejo de `Cherry.Dating.Profile` en backend). */
 export const DISPLAY_NAME_MAX = 50;
 export const BIO_MIN = 20;
 export const BIO_MAX = 240;

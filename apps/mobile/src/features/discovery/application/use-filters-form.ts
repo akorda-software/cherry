@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { StoreApi } from "zustand/vanilla";
 import { useStore } from "zustand";
 
-import type { Gender } from "@snack/contracts";
+import type { Gender } from "@cherry/contracts";
 
 import {
   type DiscoveryFilters,

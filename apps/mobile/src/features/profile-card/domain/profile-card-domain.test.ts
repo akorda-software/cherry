@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { DiscoveryProfileCard, ProfileTag, PublicProfile } from "@snack/contracts";
+import type { DiscoveryProfileCard, ProfileTag, PublicProfile } from "@cherry/contracts";
 
 import { profileBadges } from "./badges";
 import { describeIntent, describeIntents, intentsText } from "./intent";

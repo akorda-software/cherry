@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { LocationUpdateRequest } from "@snack/contracts";
+import type { LocationUpdateRequest } from "@cherry/contracts";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import { shareLocation, type LocationService, type ShareLocationResult } from "./share-location";
@@ -25,7 +25,7 @@ export function shareLocationMessage(result: ShareLocationResult): ShareLocation
           }
         : {
             status: "blocked",
-            message: "La ubicación está desactivada para Snack. Actívala en Ajustes y vuelve: te esperamos aquí."
+            message: "La ubicación está desactivada para Cherry. Actívala en Ajustes y vuelve: te esperamos aquí."
           };
     case "unavailable":
       return {

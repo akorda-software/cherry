@@ -38,17 +38,17 @@ end
 # If you use `mix release`, you need to explicitly enable the server
 # by passing the PHX_SERVER=true when you start it:
 #
-#     PHX_SERVER=true bin/snack start
+#     PHX_SERVER=true bin/cherry start
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
 if System.get_env("PHX_SERVER") do
-  config :snack, SnackWeb.Endpoint, server: true
+  config :cherry, CherryWeb.Endpoint, server: true
 end
 
-config :snack, :app_version, System.get_env("APP_VERSION", "dev")
+config :cherry, :app_version, System.get_env("APP_VERSION", "dev")
 
-config :snack, :metrics_token, System.get_env("METRICS_TOKEN")
+config :cherry, :metrics_token, System.get_env("METRICS_TOKEN")
 
 positive_env = fn name, default, maximum ->
   case Integer.parse(System.get_env(name, to_string(default))) do
@@ -59,7 +59,7 @@ end
 
 # Concurrency is per node. Keep HTTP and database capacity available when Expo
 # slows down; increasing this requires measuring both its queue and the DB pool.
-config :snack, Oban, queues: [push: positive_env.("PUSH_CONCURRENCY", 4, 32)]
+config :cherry, Oban, queues: [push: positive_env.("PUSH_CONCURRENCY", 4, 32)]
 
 # The feed is an OLTP query. Its estimates can trigger tens of milliseconds of
 # JIT compilation for a shorter execution; keep this scoped to our connections.
@@ -70,13 +70,13 @@ database_jit =
     _ -> raise "DB_JIT must be true or false"
   end
 
-config :snack, Snack.Repo, parameters: [jit: database_jit]
+config :cherry, Cherry.Repo, parameters: [jit: database_jit]
 
 # En dev, DATABASE_URL (shell o .env) tiene prioridad sobre config/dev.exs para
 # poder apuntar al PostGIS del compose (localhost:5510) sin tocar código.
 if config_env() == :dev do
   case System.get_env("DATABASE_URL") do
-    url when is_binary(url) and url != "" -> config :snack, Snack.Repo, url: url
+    url when is_binary(url) and url != "" -> config :cherry, Cherry.Repo, url: url
     _url -> :ok
   end
 end
@@ -93,7 +93,7 @@ port =
       """
   end
 
-config :snack, SnackWeb.Endpoint, http: [port: port]
+config :cherry, CherryWeb.Endpoint, http: [port: port]
 
 # Prod: every missing or weak required variable in a single error, so a fresh
 # install is fixed in one pass instead of one restart per variable.
@@ -129,7 +129,7 @@ if config_env() == :prod do
 
     Generate each secret with `mix phx.gen.secret` (64 characters) or
     `openssl rand -base64 48`. PHX_HOST is the public host name of the API
-    (e.g. api.snack.example); STORAGE_ADAPTER is local or r2.
+    (e.g. api.cherry.example); STORAGE_ADAPTER is local or r2.
     """
   end
 end
@@ -157,7 +157,7 @@ cors_allowed_origins =
     _value -> split_csv_env.("CORS_ALLOWED_ORIGINS", nil)
   end
 
-config :snack, :cors_allowed_origins, cors_allowed_origins
+config :cherry, :cors_allowed_origins, cors_allowed_origins
 
 if config_env() != :test do
   google_web_client_id = System.get_env("GOOGLE_WEB_CLIENT_ID")
@@ -170,7 +170,7 @@ if config_env() != :test do
     |> Enum.reject(&(&1 == ""))
 
   google_provider_config = [
-    module: Snack.Identity.Providers.Google,
+    module: Cherry.Identity.Providers.Google,
     audiences: google_audiences,
     issuers: ["https://accounts.google.com", "accounts.google.com"]
   ]
@@ -178,26 +178,26 @@ if config_env() != :test do
   apple_audiences =
     split_csv_env.(
       "APPLE_AUDIENCES",
-      System.get_env("EXPO_IOS_BUNDLE_IDENTIFIER", "app.snack.mobile")
+      System.get_env("EXPO_IOS_BUNDLE_IDENTIFIER", "app.cherry.mobile")
     )
 
   apple_provider_config = [
-    module: Snack.Identity.Providers.Apple,
+    module: Cherry.Identity.Providers.Apple,
     audiences: apple_audiences,
     issuers: ["https://appleid.apple.com"]
   ]
 
-  config :snack, Snack.Auth,
+  config :cherry, Cherry.Auth,
     providers: %{
       google: google_provider_config,
       apple: apple_provider_config
     }
 end
 
-config :snack, Snack.Identity.Providers.GoogleJwksCache,
+config :cherry, Cherry.Identity.Providers.GoogleJwksCache,
   ttl_ms: String.to_integer(System.get_env("GOOGLE_JWKS_CACHE_TTL_MS", "600000"))
 
-config :snack, Snack.Identity.Providers.AppleJwksCache,
+config :cherry, Cherry.Identity.Providers.AppleJwksCache,
   ttl_ms: String.to_integer(System.get_env("APPLE_JWKS_CACHE_TTL_MS", "600000"))
 
 # ── Almacenamiento de fotos (D-2026-09-29) ─────────────────────────────
@@ -219,10 +219,10 @@ if config_env() != :test do
       end
 
     "local" ->
-      config :snack, Snack.Storage, adapter: Snack.Storage.Local
+      config :cherry, Cherry.Storage, adapter: Cherry.Storage.Local
 
     adapter when adapter in ["r2", "s3"] ->
-      config :snack, Snack.Storage, adapter: Snack.Storage.R2
+      config :cherry, Cherry.Storage, adapter: Cherry.Storage.R2
 
     other ->
       raise "invalid STORAGE_ADAPTER #{inspect(other)}: expected local, r2 or s3"
@@ -230,24 +230,24 @@ if config_env() != :test do
 
   cond do
     uploads_dir != "" ->
-      config :snack, Snack.Storage.Local, uploads_dir: uploads_dir
+      config :cherry, Cherry.Storage.Local, uploads_dir: uploads_dir
 
     config_env() == :prod and storage_adapter == "local" ->
       raise """
       environment variable UPLOADS_DIR is required with STORAGE_ADAPTER=local.
-      Point it to a persistent volume (e.g. /var/lib/snack/uploads) and back it up.
+      Point it to a persistent volume (e.g. /var/lib/cherry/uploads) and back it up.
       """
 
     true ->
       :ok
   end
 
-  config :snack, Snack.Storage.Local,
+  config :cherry, Cherry.Storage.Local,
     max_upload_bytes: String.to_integer(System.get_env("UPLOAD_MAX_BYTES", "2000000")),
     upload_url_ttl_seconds: String.to_integer(System.get_env("UPLOAD_URL_TTL_SECONDS", "600"))
 
   # Base absoluta de las URLs de medios relativas (almacenamiento local), p. ej.
-  # https://api.snack.example. Sin definir ⇒ se usa el host de cada petición,
+  # https://api.cherry.example. Sin definir ⇒ se usa el host de cada petición,
   # que el cliente controla (cabecera Host): en prod con `local` es obligatoria.
   if config_env() == :prod and storage_adapter == "local" do
     case URI.parse(public_base_url) do
@@ -258,18 +258,18 @@ if config_env() != :test do
       _invalid ->
         raise """
         environment variable PUBLIC_BASE_URL is required with STORAGE_ADAPTER=local.
-        Set it to the public origin of the API (e.g. https://api.snack.example):
+        Set it to the public origin of the API (e.g. https://api.cherry.example):
         upload and photo URLs are built from it instead of the request Host header.
         """
     end
   end
 
-  if public_base_url != "", do: config(:snack, :public_base_url, public_base_url)
+  if public_base_url != "", do: config(:cherry, :public_base_url, public_base_url)
 end
 
 s3_endpoint = System.get_env("S3_ENDPOINT", "") |> String.trim()
 
-config :snack, Snack.Storage.R2,
+config :cherry, Cherry.Storage.R2,
   account_id: System.get_env("R2_ACCOUNT_ID"),
   # Endpoint S3 genérico (MinIO, Garage...). Vacío ⇒ R2 (<account_id>.r2.cloudflarestorage.com).
   endpoint: if(s3_endpoint != "", do: s3_endpoint),
@@ -289,7 +289,7 @@ config :snack, Snack.Storage.R2,
         System.get_env("UPLOAD_URL_TTL_SECONDS", "600")
     )
 
-config :snack, :expo_push,
+config :cherry, :expo_push,
   base_url: System.get_env("EXPO_PUSH_BASE_URL", "https://exp.host"),
   access_token: System.get_env("EXPO_PUSH_ACCESS_TOKEN"),
   receive_timeout_ms: positive_env.("EXPO_PUSH_RECEIVE_TIMEOUT_MS", 5000, 15_000)
@@ -317,7 +317,7 @@ message_cipher_key =
       "__DEV_MESSAGE_CIPHER_KEY__"
   end
 
-config :snack, :message_cipher, key: message_cipher_key
+config :cherry, :message_cipher, key: message_cipher_key
 
 # ── Verificación de edad (D-2026-10-09) ────────────────────────────────
 # DOCUMENT_FINGERPRINT_KEY: clave HMAC de la huella del documento (una persona,
@@ -364,12 +364,12 @@ if config_env() == :prod do
 end
 
 if config_env() != :test do
-  config :snack, :age_verification, fingerprint_key: fingerprint_key
-  config :snack, :features, age_verification_required: age_verification_required
+  config :cherry, :age_verification, fingerprint_key: fingerprint_key
+  config :cherry, :features, age_verification_required: age_verification_required
 
   case split_csv_env.("CSCA_PATHS", nil) do
     [] -> :ok
-    paths -> config :snack, Snack.Identity.Document.TrustStore, paths: paths
+    paths -> config :cherry, Cherry.Identity.Document.TrustStore, paths: paths
   end
 end
 
@@ -388,7 +388,7 @@ if config_env() == :prod do
       Generate one with: mix phx.gen.secret
       """
 
-  config :snack, Snack.Auth,
+  config :cherry, Cherry.Auth,
     access_token_salt: access_token_salt,
     refresh_token_salt: refresh_token_salt
 end
@@ -403,7 +403,7 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
-  config :snack, Snack.Repo,
+  config :cherry, Cherry.Repo,
     ssl: System.get_env("DATABASE_SSL", "true") == "true",
     url: database_url,
     pool_size: positive_env.("POOL_SIZE", 10, 1000),
@@ -429,11 +429,11 @@ if config_env() == :prod do
   # Required (checked above): URLs and force_ssl redirects are built from it.
   host =
     System.get_env("PHX_HOST") ||
-      raise "environment variable PHX_HOST is missing (e.g. api.snack.example)"
+      raise "environment variable PHX_HOST is missing (e.g. api.cherry.example)"
 
-  config :snack, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+  config :cherry, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
-  config :snack, SnackWeb.Endpoint,
+  config :cherry, CherryWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
       # Enable IPv6 and bind on all interfaces.
@@ -449,7 +449,7 @@ if config_env() == :prod do
   # To get SSL working, you will need to add the `https` key
   # to your endpoint configuration:
   #
-  #     config :snack, SnackWeb.Endpoint,
+  #     config :cherry, CherryWeb.Endpoint,
   #       https: [
   #         ...,
   #         port: 443,
@@ -471,7 +471,7 @@ if config_env() == :prod do
   # We also recommend setting `force_ssl` in your config/prod.exs,
   # ensuring no data is ever sent via http, always redirecting to https:
   #
-  #     config :snack, SnackWeb.Endpoint,
+  #     config :cherry, CherryWeb.Endpoint,
   #       force_ssl: [hsts: true]
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.

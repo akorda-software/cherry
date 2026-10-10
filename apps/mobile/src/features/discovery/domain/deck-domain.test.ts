@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryProfileCard } from "@cherry/contracts";
 
 import {
   classifyDeckOrderChange,

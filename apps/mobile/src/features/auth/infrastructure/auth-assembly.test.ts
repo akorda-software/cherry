@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { HttpClient } from "@snack/mobile-shared";
+import type { HttpClient } from "@cherry/mobile-shared";
 import type { SessionShellServices } from "../presentation";
 import { assembleAuthServices } from "./auth-assembly";
 

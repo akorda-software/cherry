@@ -1,1 +1,1 @@
-call "%~dp0\snack" eval Snack.Release.migrate
+call "%~dp0\cherry" eval Cherry.Release.migrate

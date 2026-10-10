@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.CreateAgeVerifications do
+defmodule Cherry.Repo.Migrations.CreateAgeVerifications do
   @moduledoc """
   Age verification (D-2026-10-09, docs/compliance/02-mayoria-de-edad.md).
 

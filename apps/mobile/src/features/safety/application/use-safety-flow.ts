@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-import type { ReportReason } from "@snack/contracts";
+import type { ReportReason } from "@cherry/contracts";
 
 import { MAX_REPORT_DETAILS_LENGTH } from "../domain/report-reasons";
 import { blockProfile, reportProfile, type SafetyActionDeps } from "./safety-actions";

@@ -1,9 +1,9 @@
 import { useEffect, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import type { DiscoveryMatch } from "@snack/contracts";
-import { RECEIVED_LIKES_DEFAULT_LIMIT } from "@snack/contracts";
-import { createDiscoveryApi, createLikesApi } from "@snack/mobile-shared";
+import type { DiscoveryMatch } from "@cherry/contracts";
+import { RECEIVED_LIKES_DEFAULT_LIMIT } from "@cherry/contracts";
+import { createDiscoveryApi, createLikesApi } from "@cherry/mobile-shared";
 
 import { useActivityStore } from "../../activity/application/activity-store";
 import { useAuthedApi } from "../../auth/presentation";

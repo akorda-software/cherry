@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.CreateConversationReads do
+defmodule Cherry.Repo.Migrations.CreateConversationReads do
   @moduledoc """
   Estado de lectura por participante (D-2026-09-29): alimenta `unreadCount` en
   matches/conversaciones y los badges de `GET /api/me/summary`.

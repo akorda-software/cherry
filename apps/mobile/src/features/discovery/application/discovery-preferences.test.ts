@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { DiscoveryPreferences } from "@snack/contracts";
+import type { DiscoveryPreferences } from "@cherry/contracts";
 
 import {
   DEFAULT_FILTERS,

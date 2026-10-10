@@ -7,37 +7,37 @@
 # General application configuration
 import Config
 
-config :snack,
-  ecto_repos: [Snack.Repo],
+config :cherry,
+  ecto_repos: [Cherry.Repo],
   generators: [timestamp_type: :utc_datetime]
 
 # Serialize index migrations across release replicas without wrapping concurrent
 # index creation in a transaction or taking an exclusive table lock.
-config :snack, Snack.Repo,
+config :cherry, Cherry.Repo,
   migration_lock: :pg_advisory_lock,
-  types: Snack.PostgresTypes
+  types: Cherry.PostgresTypes
 
-config :snack, Snack.Auth,
+config :cherry, Cherry.Auth,
   access_token_ttl_seconds: 900,
   refresh_token_ttl_days: 30,
-  access_token_salt: "snack-access-token",
-  refresh_token_salt: "snack-refresh-token",
+  access_token_salt: "cherry-access-token",
+  refresh_token_salt: "cherry-refresh-token",
   providers: %{
-    google: Snack.Identity.Providers.Google,
-    apple: Snack.Identity.Providers.Apple
+    google: Cherry.Identity.Providers.Google,
+    apple: Cherry.Identity.Providers.Apple
   }
 
 # Photo storage (D-2026-09-29). The adapter is chosen per environment:
 # dev → local disk, test → R2 (tests stub it), prod → STORAGE_ADAPTER (required).
-config :snack, Snack.Storage, adapter: nil
+config :cherry, Cherry.Storage, adapter: nil
 
-config :snack, Snack.Storage.Local,
+config :cherry, Cherry.Storage.Local,
   uploads_dir: nil,
   allowed_content_types: ["image/jpeg", "image/png", "image/webp"],
   max_upload_bytes: 2_000_000,
   upload_url_ttl_seconds: 600
 
-config :snack, Snack.Storage.R2,
+config :cherry, Cherry.Storage.R2,
   account_id: nil,
   endpoint: nil,
   region: nil,
@@ -51,30 +51,30 @@ config :snack, Snack.Storage.R2,
 
 # Absolute base for media URLs stored as relative paths (local storage). Unset ⇒
 # the host of each request is used (runtime env PUBLIC_BASE_URL).
-config :snack, :public_base_url, nil
+config :cherry, :public_base_url, nil
 
 # Age verification (D-2026-10-09, docs/compliance/02-mayoria-de-edad.md).
 # fingerprint_key: DOCUMENT_FINGERPRINT_KEY (runtime). Without it the NFC
 # verification endpoint answers 503. Attempt limits: {max, window in seconds}.
-config :snack, :age_verification,
+config :cherry, :age_verification,
   fingerprint_key: nil,
   minimum_age: 18,
   attempt_limits: [{5, 3600}, {10, 86_400}]
 
 # Trusted CSCA certificates for passive authentication. `paths` defaults to the
 # release's priv/csca (Spanish CSCAs); CSCA_PATHS replaces it at runtime.
-config :snack, Snack.Identity.Document.TrustStore, certificates: []
+config :cherry, Cherry.Identity.Document.TrustStore, certificates: []
 
 # A match without messages expires after this many days (D-2026-09-29).
-config :snack, :match_expiry_days, 30
+config :cherry, :match_expiry_days, 30
 
-config :snack, :expo_push,
+config :cherry, :expo_push,
   base_url: "https://exp.host",
   access_token: nil,
   receive_timeout_ms: 5_000
 
-config :snack, Oban,
-  repo: Snack.Repo,
+config :cherry, Oban,
+  repo: Cherry.Repo,
   queues: [push: 4],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 86_400},
@@ -82,14 +82,14 @@ config :snack, Oban,
   ]
 
 # Configure the endpoint
-config :snack, SnackWeb.Endpoint,
+config :cherry, CherryWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: SnackWeb.ErrorHTML, json: SnackWeb.ErrorJSON],
+    formats: [html: CherryWeb.ErrorHTML, json: CherryWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: Snack.PubSub,
+  pubsub_server: Cherry.PubSub,
   live_view: [signing_salt: "/5NL+uU4"]
 
 # Configure Elixir's Logger

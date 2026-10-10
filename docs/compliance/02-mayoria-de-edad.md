@@ -5,7 +5,7 @@
 ## Por qué
 
 - **Pedir solo la fecha de nacimiento ya no es una verificación válida.** Las directrices de la Comisión sobre protección de menores (art. 28 de la DSA, julio de 2025) dicen que declarar la edad no basta y ponen las webs de citas para adultos como ejemplo de servicio que necesita comprobarla. La Comisión ya ha usado ese criterio contra Meta.
-- **Matiz legal:** el art. 19 de la DSA exime a micro y pequeñas empresas de la sección donde está el art. 28, así que hoy probablemente no obliga a Snack de forma estricta. Pero:
+- **Matiz legal:** el art. 19 de la DSA exime a micro y pequeñas empresas de la sección donde está el art. 28, así que hoy probablemente no obliga a Cherry de forma estricta. Pero:
   - la **ley española de protección de menores en entornos digitales** se está tramitando en el Congreso (a septiembre de 2026) y exige verificar la edad real;
   - la CNMC y la AEPD publicaron en marzo de 2026 una guía sobre el art. 28 que favorece soluciones que no permitan rastrear al usuario;
   - **un menor en una app de citas es el peor riesgo del proyecto**, legal y reputacional.
@@ -91,7 +91,7 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 
 **Backend (`apps/backend`)**
 
-- `Snack.Identity.Document.PassiveAuth`: autenticación pasiva completa (ICAO 9303-11).
+- `Cherry.Identity.Document.PassiveAuth`: autenticación pasiva completa (ICAO 9303-11).
   - SOD (CMS SignedData + LDSSecurityObject): firma del SignerInfo con atributos firmados, comprobando `contentType` y `messageDigest`.
   - Certificado del firmante dentro del SOD, validado contra un CSCA de confianza: nombre, AKI/SKI, firma, validez de ambos, uso de clave, que no sea CA y que no tenga extensiones críticas desconocidas.
   - Hashes de DG1 y DG2.
@@ -101,7 +101,7 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
   - Comprobado contra los **385 CSCA autofirmados reales** de la master list alemana: 279 RSA (también PSS) y 106 EC, la mayoría con parámetros explícitos. Todas las firmas verifican.
 - **Almacén de CSCA** (`TrustStore`): `priv/csca`, PEM/DER, `CSCA_PATHS`.
   - Incluye los CSCA españoles 2, 3 y 4 (RSA-4096), con las huellas comprobadas contra la web de la Policía.
-  - `mix snack.csca` los lista y los extrae de una master list.
+  - `mix cherry.csca` los lista y los extrae de una master list.
   - Procedencia y actualización: `apps/backend/priv/csca/README.md`.
 - **Huella** (`Fingerprint`): HMAC-SHA256 con `DOCUMENT_FINGERPRINT_KEY`.
 - **Datos**:

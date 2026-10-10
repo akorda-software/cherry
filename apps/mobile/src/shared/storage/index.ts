@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
-import type { SecureStoreLike } from "@snack/mobile-shared";
+import type { SecureStoreLike } from "@cherry/mobile-shared";
 
 /**
  * Almacén seguro de la plataforma: Keychain/Keystore en nativo. En web (solo

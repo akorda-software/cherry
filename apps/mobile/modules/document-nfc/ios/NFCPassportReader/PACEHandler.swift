@@ -35,7 +35,7 @@ extension PACEHandlerError: LocalizedError {
     }
 }
 
-/// Snack patch: PACE password type (MRZ or CAN). See PATCHES.md.
+/// Cherry patch: PACE password type (MRZ or CAN). See PATCHES.md.
 public enum PACEPasswordType {
     case mrz
     case can
@@ -94,7 +94,7 @@ public class PACEHandler {
         digestAlg = try paceInfo.getDigestAlgorithm()  // Either SHA-1 or SHA-256.
         keyLength = try paceInfo.getKeyLength()  // Get key length  the enc cipher. Either 128, 192, or 256.
 
-        // Snack patch: CAN uses key reference 0x02 and the CAN itself as the key seed.
+        // Cherry patch: CAN uses key reference 0x02 and the CAN itself as the key seed.
         paceKeyType = passwordType == .can ? PACEHandler.CAN_PACE_KEY_REFERENCE : PACEHandler.MRZ_PACE_KEY_REFERENCE
         paceKey = try createPaceKey( from: mrzKey, passwordType: passwordType )
         
@@ -606,7 +606,7 @@ extension PACEHandler {
     /// - Returns a encoded key based on the mrz key that can be used for PACE
     func createPaceKey( from mrzKey: String, passwordType: PACEPasswordType = .mrz ) throws -> [UInt8] {
         let buf: [UInt8] = Array(mrzKey.utf8)
-        // Snack patch: K_pi = KDF_pi(f(pi)); f(MRZ) = SHA-1(MRZ information), f(CAN) = CAN (ISO 8859-1).
+        // Cherry patch: K_pi = KDF_pi(f(pi)); f(MRZ) = SHA-1(MRZ information), f(CAN) = CAN (ISO 8859-1).
         let hash = passwordType == .can ? buf : calcSHA1Hash(buf)
         
         let smskg = SecureMessagingSessionKeyGenerator()

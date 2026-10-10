@@ -5,7 +5,7 @@ import {
   type Gender,
   type Profile,
   type RelationshipIntent
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 const GENDER_LABELS: Record<Gender, string> = {
   woman: "Mujer",

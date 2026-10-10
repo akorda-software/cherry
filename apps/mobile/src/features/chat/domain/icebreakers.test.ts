@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ProfileTag } from "@snack/contracts";
+import type { ProfileTag } from "@cherry/contracts";
 
 import { buildIcebreakers, icebreakerContext, icebreakerPromptForTag } from "./icebreakers";
 

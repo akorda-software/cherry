@@ -24,7 +24,7 @@ function AppRouteHost() {
   if (pathname === appShellRoutes.about) {
     return (
       <PrivateLayout>
-        <ComingSoonScreen testID="about-screen" title="Sobre Snack" />
+        <ComingSoonScreen testID="about-screen" title="Sobre Cherry" />
       </PrivateLayout>
     );
   }
@@ -33,7 +33,7 @@ function AppRouteHost() {
     <PrivateLayout>
       <ComingSoonScreen back={false} testID="likes-screen" title="Likes" />
       <button onClick={() => router.push(appShellRoutes.about)} type="button">
-        Abrir sobre Snack
+        Abrir sobre Cherry
       </button>
     </PrivateLayout>
   );
@@ -58,7 +58,7 @@ describe("private shell", () => {
     renderRoute(<AppRouteHost />, { initialPath: appShellRoutes.likes, ...signedIn });
 
     expect(await screen.findByTestId("likes-screen")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Abrir sobre Snack" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir sobre Cherry" }));
 
     expect(await screen.findByTestId("about-screen")).toBeInTheDocument();
     expect(screen.getByTestId("pathname")).toHaveTextContent(appShellRoutes.about);

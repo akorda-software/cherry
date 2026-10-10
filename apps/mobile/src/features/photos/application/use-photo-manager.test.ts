@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ProfilePhoto } from "@snack/contracts";
+import type { ProfilePhoto } from "@cherry/contracts";
 
 import { apiError, makePhoto } from "../../onboarding/testing/fixtures";
 import type { PickPhotosResult } from "../infrastructure/image-picker";

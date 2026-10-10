@@ -1,4 +1,4 @@
-import type { DiscoveryActionType, DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryActionType, DiscoveryProfileCard } from "@cherry/contracts";
 
 /** Post del feed que se está despidiendo (sello + colapso) y aún se pinta en su sitio. */
 export interface LeavingPost {

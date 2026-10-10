@@ -8,7 +8,7 @@ import Animated, {
   withTiming
 } from "react-native-reanimated";
 
-import type { DiscoveryActionType, DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryActionType, DiscoveryProfileCard } from "@cherry/contracts";
 
 import { easings, HardShadow, IconButton, Stamp, Text, useTheme } from "../../../../shared/ui";
 import { NameSticker, PhotoCarousel, ProfileSummary, toProfilePerson } from "../../../profile-card";

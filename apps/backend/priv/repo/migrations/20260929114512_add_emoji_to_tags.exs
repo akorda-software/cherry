@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.AddEmojiToTags do
+defmodule Cherry.Repo.Migrations.AddEmojiToTags do
   use Ecto.Migration
 
   # Catálogo de etiquetas con emoji (2026-09-29). Nullable: el seed del catálogo

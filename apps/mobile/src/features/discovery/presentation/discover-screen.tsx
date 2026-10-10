@@ -4,8 +4,8 @@ import { AccessibilityInfo, StyleSheet, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { DiscoveryActionType, DiscoveryMode, DiscoveryProfileCard } from "@snack/contracts";
-import { createSettingsApi } from "@snack/mobile-shared";
+import type { DiscoveryActionType, DiscoveryMode, DiscoveryProfileCard } from "@cherry/contracts";
+import { createSettingsApi } from "@cherry/mobile-shared";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import { Appear, appShellRoutes, PaperBackground, toast, useTabBarSpace } from "../../../shared/ui";
@@ -25,7 +25,7 @@ import { useDiscoveryRuntime } from "./use-discovery-runtime";
 import { useOpenProfile } from "./use-open-profile";
 
 /**
- * Descubrir: el corazón de Snack. Modo swipe (pila de polaroids) o feed vertical de posts
+ * Descubrir: el corazón de Cherry. Modo swipe (pila de polaroids) o feed vertical de posts
  * completos, con la misma cola optimista debajo.
  */
 export function DiscoverScreen() {

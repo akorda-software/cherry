@@ -87,7 +87,7 @@ const stateSpeech: Record<TagStickerState, string> = {
 };
 
 /**
- * Pegatina de etiqueta: el componente estrella de Snack. El estado nunca
+ * Pegatina de etiqueta: el componente estrella de Cherry. El estado nunca
  * depende solo del color (icono, rayas, tachado o trazo discontinuo). Al
  * cambiar de estado se despega y se vuelve a pegar (pop) con háptico.
  */

@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DiscoveryActionResponse, DiscoveryProfileCard, PublicProfile } from "@snack/contracts";
+import type { DiscoveryActionResponse, DiscoveryProfileCard, PublicProfile } from "@cherry/contracts";
 
 import { createDiscoveryQueue } from "./discovery-queue";
 import { stageProfile, useProfileTransitStore } from "./profile-transit";

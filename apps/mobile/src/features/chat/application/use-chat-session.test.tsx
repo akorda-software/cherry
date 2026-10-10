@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ChatMessage, MatchSummary } from "@snack/contracts";
+import type { ChatMessage, MatchSummary } from "@cherry/contracts";
 
 import { useMatchesStore } from "../../matches/application/matches-store";
 import { FakeSocket } from "../test-utils/fake-phoenix";

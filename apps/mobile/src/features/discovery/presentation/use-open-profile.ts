@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useCallback } from "react";
 
-import type { DiscoveryProfileCard, PublicProfile } from "@snack/contracts";
+import type { DiscoveryProfileCard, PublicProfile } from "@cherry/contracts";
 
 import { profileHref } from "../../../shared/ui";
 import { stageProfile, type StageProfileOptions } from "../application/profile-transit";

@@ -1,5 +1,5 @@
 /**
- * Paleta de Snack: neobrutalismo sobrio con color. Papel blanco roto, tinta ciruela
+ * Paleta de Cherry: neobrutalismo sobrio con color. Papel blanco roto, tinta ciruela
  * (contornos, texto y sombras duras) y siete rotuladores de saturación igualada.
  *
  * PARA CAMBIAR LOS COLORES, EDITA SOLO `brandPalette`. Cada rol ocupa una «ranura»

@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
-import type { DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryProfileCard } from "@cherry/contracts";
 
 import { Appear, HardShadow, IconButton, PopIn, Text, useTheme, WashiTape } from "../../../../shared/ui";
 import {

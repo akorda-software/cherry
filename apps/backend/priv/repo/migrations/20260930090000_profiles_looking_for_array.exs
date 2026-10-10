@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.ProfilesLookingForArray do
+defmodule Cherry.Repo.Migrations.ProfilesLookingForArray do
   @moduledoc """
   «¿Qué buscas?» pasa de una sola intención a varias (1–4):
   `what_i_am_looking_for varchar` → `looking_for text[]`.

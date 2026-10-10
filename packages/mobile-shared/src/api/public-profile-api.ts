@@ -1,4 +1,4 @@
-import type { PublicProfile, PublicProfileResponse } from "@snack/contracts";
+import type { PublicProfile, PublicProfileResponse } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { pathSegment } from "./http-utils";

@@ -1,4 +1,4 @@
-import type { DiscoveryPreferences, Gender } from "@snack/contracts";
+import type { DiscoveryPreferences, Gender } from "@cherry/contracts";
 
 /** Rango de edad que ofrece el filtro (el backend admite 18–100). */
 export const FILTER_AGE_MIN = 18;

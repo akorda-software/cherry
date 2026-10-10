@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 import { RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 
-import type { ReceivedLike } from "@snack/contracts";
+import type { ReceivedLike } from "@cherry/contracts";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import {

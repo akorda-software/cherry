@@ -138,7 +138,7 @@ Card (`DiscoveryProfileCard`, también en likes y deshacer):
 }
 ```
 
-`tags` son las positivas activas del otro perfil, compartidas primero; `photos` las activas por posición (URL absoluta). `sharedTagsCount` solo cuenta etiquetas activas del catálogo (coincide con las `shared` visibles). `score` ya no se envía (queda como opcional obsoleto en `@snack/contracts`).
+`tags` son las positivas activas del otro perfil, compartidas primero; `photos` las activas por posición (URL absoluta). `sharedTagsCount` solo cuenta etiquetas activas del catálogo (coincide con las `shared` visibles). `score` ya no se envía (queda como opcional obsoleto en `@cherry/contracts`).
 
 ## Likes recibidos y perfil público
 
@@ -208,7 +208,7 @@ Ambos adaptadores comprueban existencia, tamaño exacto frente al intent, límit
 
 ## Login de desarrollo
 
-`POST /api/auth/dev/test-login` (solo si `:enable_dev_test_login`, activo en dev; si no → 404 `dev_test_login_disabled`) → 201 con el mismo bundle de sesión que el login real. Body opcional: `{}` entra como el usuario de prueba compartido (`test@snack.app`); `{ "email": "demo@snack.dev", "displayName"?: "Lucía" }` entra como esa persona y la crea si no existe (`displayName` solo se usa al crearla). `device` es opcional y puede ser parcial. Errores: 422 `invalid_email`, 403 `account_deleted`. Las cuentas de `priv/repo/demo_seeds.exs` se usan así.
+`POST /api/auth/dev/test-login` (solo si `:enable_dev_test_login`, activo en dev; si no → 404 `dev_test_login_disabled`) → 201 con el mismo bundle de sesión que el login real. Body opcional: `{}` entra como el usuario de prueba compartido (`test@cherry.app`); `{ "email": "demo@cherry.dev", "displayName"?: "Lucía" }` entra como esa persona y la crea si no existe (`displayName` solo se usa al crearla). `device` es opcional y puede ser parcial. Errores: 422 `invalid_email`, 403 `account_deleted`. Las cuentas de `priv/repo/demo_seeds.exs` se usan así.
 
 ## Chat WebSocket
 

@@ -1,4 +1,4 @@
-import type { DiscoveryPreferences, Profile, ProfilePhoto, Tag } from "@snack/contracts";
+import type { DiscoveryPreferences, Profile, ProfilePhoto, Tag } from "@cherry/contracts";
 
 /** Datos de prueba del perfil propio (solo tests). */
 export function makeTag(index: number, overrides: Partial<Tag> = {}): Tag {

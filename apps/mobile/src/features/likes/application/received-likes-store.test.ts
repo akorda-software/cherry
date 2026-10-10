@@ -7,7 +7,7 @@ import type {
   DiscoveryUndoResponse,
   ReceivedLike,
   ReceivedLikesPage
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import { useReceivedLikesStore, type ReceivedLikesDeps } from "./received-likes-store";
 

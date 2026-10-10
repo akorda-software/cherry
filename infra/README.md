@@ -24,7 +24,7 @@ docker compose -f infra/docker-compose.yml --profile backend up -d
 docker compose -f infra/docker-compose.yml --profile mobile up -d
 ```
 
-Con el backend en el host, apunta a esta base de datos con `DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_dev` (ya es el valor de `apps/backend/.env.example`).
+Con el backend en el host, apunta a esta base de datos con `DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_dev` (ya es el valor de `apps/backend/.env.example`).
 
 ## PostGIS
 

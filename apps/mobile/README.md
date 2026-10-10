@@ -1,6 +1,6 @@
-# App móvil de Snack
+# App móvil de Cherry
 
-App Expo (SDK 54, React Native 0.81, nueva arquitectura) con Expo Router. Es la app de citas de Snack: onboarding en 11 pasos, Descubrir en modo swipe o feed, Likes, Chats en tiempo real, Yo y Ajustes, con el sistema de diseño «Libreta kawaii». Flujos y pantallas: [`docs/07-flujos-usuario.md`](../../docs/07-flujos-usuario.md).
+App Expo (SDK 54, React Native 0.81, nueva arquitectura) con Expo Router. Es la app de citas de Cherry: onboarding en 11 pasos, Descubrir en modo swipe o feed, Likes, Chats en tiempo real, Yo y Ajustes, con el sistema de diseño «Libreta kawaii». Flujos y pantallas: [`docs/07-flujos-usuario.md`](../../docs/07-flujos-usuario.md).
 
 ## Configuración (`.env`)
 
@@ -61,9 +61,9 @@ pnpm --dir apps/mobile start        # servidor de Expo
 Con `__DEV__`, la bienvenida muestra la caja «Solo en desarrollo», que usa `POST /api/auth/dev/test-login` del backend (solo activo en dev):
 
 - **«Entrar como usuario nuevo»**: cuenta desechable que empieza el onboarding desde cero.
-- **«Entrar como Lucía (demo)»**: `demo@snack.dev`, con feed, likes recibidos, matches y conversaciones. Requiere haber cargado los datos de demo en el backend (`mix run priv/repo/demo_seeds.exs`).
+- **«Entrar como Lucía (demo)»**: `demo@cherry.dev`, con feed, likes recibidos, matches y conversaciones. Requiere haber cargado los datos de demo en el backend (`mix run priv/repo/demo_seeds.exs`).
 
-El resto de cuentas demo (`demo2@snack.dev`, Hugo, y las personas sintéticas `<nombre>@demo.snack.dev`) no tienen botón: se entra con ese endpoint desde fuera de la app. Detalle en [`docs/09-estrategia-pruebas.md`](../../docs/09-estrategia-pruebas.md).
+El resto de cuentas demo (`demo2@cherry.dev`, Hugo, y las personas sintéticas `<nombre>@demo.cherry.dev`) no tienen botón: se entra con ese endpoint desde fuera de la app. Detalle en [`docs/09-estrategia-pruebas.md`](../../docs/09-estrategia-pruebas.md).
 
 ## Estructura
 

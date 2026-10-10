@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { DiscoveryPreferences } from "@snack/contracts";
+import type { DiscoveryPreferences } from "@cherry/contracts";
 
 import { createDiscoveryPreferencesStore } from "./discovery-preferences";
 import { createDiscoveryQueue } from "./discovery-queue";

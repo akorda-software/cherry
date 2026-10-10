@@ -25,7 +25,7 @@ const howItWorks: readonly string[] = [
 ];
 
 /**
- * Acerca de: qué hace Snack con tus datos, la licencia y los créditos. Información, no
+ * Acerca de: qué hace Cherry con tus datos, la licencia y los créditos. Información, no
  * eslóganes: nada de promesas comerciales (eso vive fuera de la app).
  */
 export function AboutScreen() {
@@ -34,14 +34,14 @@ export function AboutScreen() {
 
   return (
     <Screen
-      header={<TopBar fallbackHref={appShellRoutes.settings} left="back" title="Acerca de Snack" />}
+      header={<TopBar fallbackHref={appShellRoutes.settings} left="back" title="Acerca de Cherry" />}
       scroll
       testID="about-screen"
     >
       <View style={styles.hero}>
         <Mascot animated mood="happy" size={116} />
         <Text align="center" aria-level={1} role="heading" variant="title1">
-          Snack
+          Cherry
         </Text>
       </View>
 
@@ -63,7 +63,7 @@ export function AboutScreen() {
           <Text role="heading" variant="title3">
             Licencia
           </Text>
-          <Text>El código fuente de Snack se distribuye bajo licencia AGPL-3.0.</Text>
+          <Text>El código fuente de Cherry se distribuye bajo licencia AGPL-3.0.</Text>
           {sourceUrl ? (
             <Button
               accessibilityHint="Abre el repositorio en el navegador"

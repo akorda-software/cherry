@@ -4,7 +4,7 @@
 #     EMAIL=tu@correo.com COUNT=24 mix run priv/repo/demo_nearby.exs
 #
 # Lee el perfil, la ubicación y los filtros de EMAIL y crea COUNT perfiles
-# sintéticos (`cerca-<n>@demo.snack.dev`) a 2–30 km, compatibles con esa cuenta
+# sintéticos (`cerca-<n>@demo.cherry.dev`) a 2–30 km, compatibles con esa cuenta
 # en los dos sentidos: de los géneros y edades que filtra, que a su vez quieren
 # ver su género y edad, con una intención compatible y sin bloquear sus etiquetas.
 # Varios comparten etiquetas con ella para que se vea «en común».
@@ -18,22 +18,22 @@ unless Mix.env() == :dev do
   Mix.raise("demo_nearby.exs solo puede ejecutarse en dev (MIX_ENV=#{Mix.env()}).")
 end
 
-unless String.ends_with?(Snack.Repo.config()[:database] || "", "_dev") do
+unless String.ends_with?(Cherry.Repo.config()[:database] || "", "_dev") do
   Mix.raise("demo_nearby.exs solo puede ejecutarse contra una base de datos *_dev.")
 end
 
 Logger.configure(level: :warning)
 
-defmodule Snack.DemoNearby do
+defmodule Cherry.DemoNearby do
   @moduledoc false
 
   import Ecto.Query
 
-  alias Snack.Accounts
-  alias Snack.Accounts.User
-  alias Snack.Dating
+  alias Cherry.Accounts
+  alias Cherry.Accounts.User
+  alias Cherry.Dating
 
-  alias Snack.Dating.{
+  alias Cherry.Dating.{
     DiscoveryPreference,
     Match,
     Profile,
@@ -44,7 +44,7 @@ defmodule Snack.DemoNearby do
     UserBlock
   }
 
-  alias Snack.Repo
+  alias Cherry.Repo
 
   # Retratos de pravatar clasificados a mano por género aparente (ver demo_seeds.exs).
   @portraits %{
@@ -239,7 +239,7 @@ defmodule Snack.DemoNearby do
   end
 
   defp upsert(persona, now) do
-    email = "#{persona.key}@demo.snack.dev"
+    email = "#{persona.key}@demo.cherry.dev"
 
     user =
       case Repo.get_by(User, email: email) do
@@ -302,7 +302,7 @@ defmodule Snack.DemoNearby do
 
     urls =
       ["https://i.pravatar.cc/800?img=#{persona.portrait}"] ++
-        for(n <- 2..3, do: "https://picsum.photos/seed/snack-#{persona.key}-#{n}/800/1000")
+        for(n <- 2..3, do: "https://picsum.photos/seed/cherry-#{persona.key}-#{n}/800/1000")
 
     urls
     |> Enum.with_index(1)
@@ -349,4 +349,4 @@ defmodule Snack.DemoNearby do
   end
 end
 
-Snack.DemoNearby.run()
+Cherry.DemoNearby.run()

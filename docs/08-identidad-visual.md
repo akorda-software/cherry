@@ -1,6 +1,6 @@
 # Identidad visual: «Libreta kawaii»
 
-Sistema de diseño de la app móvil de Snack (decisión D-2026-09-29 en `decisions.md`). Dirección elegida por el propietario el 2026-09-29: **neobrutalismo
+Sistema de diseño de la app móvil de Cherry (decisión D-2026-09-29 en `decisions.md`). Dirección elegida por el propietario el 2026-09-29: **neobrutalismo
 kawaii** con forma de libreta de papelería japonesa. Cada perfil es una página de scrapbook: fotos pegadas con
 washi tape, etiquetas como pegatinas troqueladas y un sello «¡ME GUSTA!» que cae de golpe. Rechaza el arquetipo del
 sector (foto a sangre + degradado oscuro + interfaz blanca genérica).

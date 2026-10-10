@@ -13,7 +13,7 @@ Base modules:
 - Runtime config bootstrap from backend
 - Feature flags consumed inside the mobile tree
 
-In this repo the routes under `apps/mobile/app/(app)` are Snack's product screens (Descubrir, Likes, Chats, Yo, settings…; see `docs/07-flujos-usuario.md`). When building another app on top of the starter, replace them with your own product screens.
+In this repo the routes under `apps/mobile/app/(app)` are Cherry's product screens (Descubrir, Likes, Chats, Yo, settings…; see `docs/07-flujos-usuario.md`). When building another app on top of the starter, replace them with your own product screens.
 
 ## Production Readiness
 
@@ -21,7 +21,7 @@ This repo is a robust reusable starter, not a turnkey production deploy.
 
 Before shipping a real app on top of it, you still need to decide and wire:
 
-- CORS policy (`SnackWeb.Plugs.Cors`, driven by `CORS_ALLOWED_ORIGINS`: any origin in dev, none elsewhere unless listed — native-only apps do not need it; web builds do)
+- CORS policy (`CherryWeb.Plugs.Cors`, driven by `CORS_ALLOWED_ORIGINS`: any origin in dev, none elsewhere unless listed — native-only apps do not need it; web builds do)
 - Rate limiting on `/api/auth/:provider/callback` and `/api/session/refresh` (not implemented)
 - A real TLS termination story (the Endpoint forces SSL in prod; your infra needs to actually terminate it)
 - Real values for every env var flagged in the "Auth Setup Notes" section
@@ -121,7 +121,7 @@ Good extension points:
 - `apps/mobile/src/shared/ui` for reusable design system pieces
 - `packages/contracts` for shared payload changes
 - `packages/mobile-shared` for reusable mobile adapters
-- `apps/backend/lib/snack_web/controllers/api` for new API endpoints
+- `apps/backend/lib/cherry_web/controllers/api` for new API endpoints
 
 Avoid:
 

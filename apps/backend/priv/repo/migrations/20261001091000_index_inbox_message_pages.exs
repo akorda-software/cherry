@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.IndexInboxMessagePages do
+defmodule Cherry.Repo.Migrations.IndexInboxMessagePages do
   use Ecto.Migration
 
   @disable_ddl_transaction true

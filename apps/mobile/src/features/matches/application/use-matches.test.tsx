@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { MatchSummary } from "@snack/contracts";
+import type { MatchSummary } from "@cherry/contracts";
 
 const api = vi.hoisted(() => {
   const getForConversation = vi.fn();

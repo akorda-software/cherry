@@ -2,10 +2,10 @@
 #
 # Builds a deterministic synthetic population in a SEPARATE database and measures
 # the feed statement with EXPLAIN (ANALYZE, BUFFERS) plus the end-to-end latency
-# of `Snack.Dating.Discovery.feed/2` (viewer load + page query + mapping).
+# of `Cherry.Dating.Discovery.feed/2` (viewer load + page query + mapping).
 #
 #   cd apps/backend
-#   export DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_bench
+#   export DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_bench
 #   mix ecto.create && mix ecto.migrate && mix run priv/repo/seeds.exs
 #   BENCH_PROFILES=5000 mix run priv/repo/bench/discovery_bench.exs
 #
@@ -24,9 +24,9 @@
 # Safety: refuses to run unless the database name ends in "_bench", because it
 # TRUNCATEs users (and everything that cascades from them).
 
-alias Snack.Repo
-alias Snack.Dating.Discovery
-alias Snack.Dating.Discovery.TagWeights
+alias Cherry.Repo
+alias Cherry.Dating.Discovery
+alias Cherry.Dating.Discovery.TagWeights
 
 Logger.configure(level: :warning)
 
@@ -37,7 +37,7 @@ unless String.ends_with?(database, "_bench") do
 end
 
 # The periodic refresher would race with TRUNCATE; the script refreshes itself.
-Supervisor.terminate_child(Snack.Supervisor, TagWeights)
+Supervisor.terminate_child(Cherry.Supervisor, TagWeights)
 
 profiles_target = String.to_integer(System.get_env("BENCH_PROFILES", "5000"))
 runs = String.to_integer(System.get_env("BENCH_RUNS", "15"))
@@ -108,7 +108,7 @@ defmodule Bench do
 
   def point({lat, lng}), do: %Geo.Point{coordinates: {lng, lat}, srid: 4326}
 
-  # Same 500 m privacy grid as Snack.Dating.upsert_location/1.
+  # Same 500 m privacy grid as Cherry.Dating.upsert_location/1.
   defp grid(lat, lng) do
     lat_step = 500.0 / 111_320.0
     lng_step = 500.0 / (111_320.0 * max(abs(:math.cos(lat * :math.pi() / 180)), 0.01))
@@ -122,7 +122,7 @@ defmodule Bench do
   def insert_chunks(table, rows) do
     columns = rows |> hd() |> map_size()
     chunk = max(div(60_000, columns), 1)
-    rows |> Enum.chunk_every(chunk) |> Enum.each(&Snack.Repo.insert_all(table, &1))
+    rows |> Enum.chunk_every(chunk) |> Enum.each(&Cherry.Repo.insert_all(table, &1))
   end
 
   def ago(now, seconds), do: NaiveDateTime.add(now, -round(seconds), :second)

@@ -1,6 +1,6 @@
 import { Socket, type Channel } from "phoenix";
 
-import type { ChatMessage, ChatTypingEvent, ConversationMessagesPage } from "@snack/contracts";
+import type { ChatMessage, ChatTypingEvent, ConversationMessagesPage } from "@cherry/contracts";
 
 import {
   mergeMessages,

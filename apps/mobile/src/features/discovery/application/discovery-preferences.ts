@@ -1,6 +1,6 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 
-import type { DiscoveryMode, DiscoveryPreferences } from "@snack/contracts";
+import type { DiscoveryMode, DiscoveryPreferences } from "@cherry/contracts";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import {

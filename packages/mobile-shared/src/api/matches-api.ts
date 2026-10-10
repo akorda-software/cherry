@@ -1,4 +1,4 @@
-import type { ConversationMatchResponse, InboxPageQuery, MatchSummary, MatchesResponse, OkResponse } from "@snack/contracts";
+import type { ConversationMatchResponse, InboxPageQuery, MatchSummary, MatchesResponse, OkResponse } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { buildCursorPath, pathSegment } from "./http-utils";

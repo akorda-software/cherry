@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useRouter } from "expo-router";
 
-import { createSettingsApi } from "@snack/mobile-shared";
+import { createSettingsApi } from "@cherry/mobile-shared";
 
 import { appShellRoutes, toast } from "../../../shared/ui";
 import { useAuthedApi, useSessionShell } from "../../auth/presentation";

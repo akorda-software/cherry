@@ -10,7 +10,7 @@ import {
   type DiscoveryProfileCard,
   type DiscoveryUndoResponse,
   type OnboardingStep
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import { apiErrorCode, friendlyErrorMessage } from "../../../shared/api";
 import { classifyActionError, classifyFeedError } from "../domain/feed-errors";

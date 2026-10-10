@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { RelationshipIntent } from "@snack/contracts";
+import type { RelationshipIntent } from "@cherry/contracts";
 
 import { renderWithTheme } from "../../../../../test/ui/render-with-theme";
 import { useStepCtaStore } from "../../application/step-cta-store";

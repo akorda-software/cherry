@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import { apiError } from "../../onboarding/testing/fixtures";
 import { TagSaveFailure, useTagEditor, type TagEditorApi } from "./use-tag-editor";

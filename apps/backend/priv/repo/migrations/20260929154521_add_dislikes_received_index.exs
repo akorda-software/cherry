@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.AddDislikesReceivedIndex do
+defmodule Cherry.Repo.Migrations.AddDislikesReceivedIndex do
   @moduledoc """
   Discovery excludes candidates who already disliked the viewer (D-2026-09-29).
 

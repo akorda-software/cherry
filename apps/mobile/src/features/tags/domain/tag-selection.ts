@@ -1,4 +1,4 @@
-import { MAX_BLOCKED_TAGS, MAX_POSITIVE_TAGS } from "@snack/contracts";
+import { MAX_BLOCKED_TAGS, MAX_POSITIVE_TAGS } from "@cherry/contracts";
 
 export { MAX_BLOCKED_TAGS, MAX_POSITIVE_TAGS };
 

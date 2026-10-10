@@ -22,7 +22,7 @@ Reglas concretas:
 | Fotos activas | 2–4 |
 | Tags positivos | mín. 1 para completar el perfil (la app pide 3 en sus pantallas), máx. 8 (catálogo cerrado) |
 | Tags bloqueados | opcionales, máx. 5 (catálogo cerrado); una etiqueta no puede ser a la vez positiva y bloqueada |
-| Catálogo de tags | cerrado, sin texto libre: 52 etiquetas con emoji en 7 categorías (interests, active, lifestyle, values, personality, pets, relationship), definidas en `Snack.Dating.TagCatalog` y sincronizadas por `priv/repo/seeds.exs` / `bin/migrate` |
+| Catálogo de tags | cerrado, sin texto libre: 52 etiquetas con emoji en 7 categorías (interests, active, lifestyle, values, personality, pets, relationship), definidas en `Cherry.Dating.TagCatalog` y sincronizadas por `priv/repo/seeds.exs` / `bin/migrate` |
 
 - `gender` y `interested_in` son conceptos separados; `interested_in` admite múltiples selecciones.
 - Géneros: man / woman / non_binary.
@@ -124,4 +124,4 @@ Capacidades de admin:
 
 ## Métricas
 
-Captura mínima sobre `analytics_events`: finalización de onboarding y perfil, likes enviados, matches creados, conversaciones iniciadas, primera respuesta, retención D1/D7, reportes y bloques. Pendiente: la tabla y `Snack.Dating.track_event/1` existen, pero hoy no se registra ningún evento.
+Captura mínima sobre `analytics_events`: finalización de onboarding y perfil, likes enviados, matches creados, conversaciones iniciadas, primera respuesta, retención D1/D7, reportes y bloques. Pendiente: la tabla y `Cherry.Dating.track_event/1` existen, pero hoy no se registra ningún evento.

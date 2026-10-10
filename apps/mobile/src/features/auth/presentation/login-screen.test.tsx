@@ -170,13 +170,13 @@ describe("LoginScreen", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Entrar como usuario nuevo" }));
     await waitFor(() => expect(execute).toHaveBeenCalledTimes(1));
-    expect(execute.mock.calls[0]?.[0]).toMatch(/^nuevo-[a-z0-9]+-[a-z0-9]{4}@snack\.dev$/);
+    expect(execute.mock.calls[0]?.[0]).toMatch(/^nuevo-[a-z0-9]+-[a-z0-9]{4}@cherry\.dev$/);
   });
 });
 
 describe("createFreshTestEmail", () => {
   it("builds unique-looking throwaway addresses", () => {
-    expect(createFreshTestEmail(0, () => 0)).toBe("nuevo-0-0000@snack.dev");
+    expect(createFreshTestEmail(0, () => 0)).toBe("nuevo-0-0000@cherry.dev");
     expect(createFreshTestEmail(1_700_000_000_000, () => 0.5)).not.toBe(createFreshTestEmail(1_700_000_000_001, () => 0.5));
   });
 });

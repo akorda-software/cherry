@@ -15,10 +15,10 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@snack/contracts": [
+      "@cherry/contracts": [
         "../../packages/contracts/src/index.ts"
       ],
-      "@snack/mobile-shared": [
+      "@cherry/mobile-shared": [
         "../../packages/mobile-shared/src/index.ts"
       ]
     }

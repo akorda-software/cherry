@@ -1,4 +1,4 @@
-defmodule SnackWeb.ChannelCase do
+defmodule CherryWeb.ChannelCase do
   @moduledoc """
   This module defines the test case to be used by
   channel tests.
@@ -18,15 +18,15 @@ defmodule SnackWeb.ChannelCase do
     quote do
       # Import conveniences for testing with channels
       import Phoenix.ChannelTest
-      import SnackWeb.ChannelCase
+      import CherryWeb.ChannelCase
 
       # The default endpoint for testing
-      @endpoint SnackWeb.Endpoint
+      @endpoint CherryWeb.Endpoint
     end
   end
 
   setup tags do
-    Snack.DataCase.setup_sandbox(tags)
+    Cherry.DataCase.setup_sandbox(tags)
     :ok
   end
 end

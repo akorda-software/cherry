@@ -1,5 +1,5 @@
 # Nombre de proyecto explícito: evita que el nombre derive de la carpeta.
-name: snack
+name: cherry
 
 services:
   mobile:
@@ -16,7 +16,7 @@ services:
     command: sh -lc "mix local.hex --force && mix local.rebar --force && sleep infinity"
     environment:
       MIX_ENV: dev
-      DATABASE_URL: ecto://postgres:postgres@postgres/snack_dev
+      DATABASE_URL: ecto://postgres:postgres@postgres/cherry_dev
     # mix phx.server dentro del contenedor (dev.exs escucha en 0.0.0.0:4000).
     ports:
       - "4000:4000"
@@ -32,11 +32,11 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: snack_dev
+      POSTGRES_DB: cherry_dev
     ports:
       - "5510:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d snack_dev"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cherry_dev"]
       interval: 5s
       timeout: 5s
       retries: 12

@@ -1,7 +1,7 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ReceivedLike } from "@snack/contracts";
+import type { ReceivedLike } from "@cherry/contracts";
 
 import { renderWithTheme } from "../../../../test/ui/render-with-theme";
 import { LikePolaroid } from "./like-polaroid";

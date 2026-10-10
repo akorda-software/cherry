@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { AppState } from "react-native";
 
-import type { ActivitySummary } from "@snack/contracts";
-import { createActivityApi } from "@snack/mobile-shared";
+import type { ActivitySummary } from "@cherry/contracts";
+import { createActivityApi } from "@cherry/mobile-shared";
 
 import { useAuthedApi } from "../../auth/presentation";
 import { ACTIVITY_POLL_INTERVAL_MS, acquireActivityPolling, type AppStateLike } from "./activity-poller";

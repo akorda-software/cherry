@@ -3,7 +3,7 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { FlatList, type ListRenderItem, Platform, StyleSheet, type TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { MatchSummary } from "@snack/contracts";
+import type { MatchSummary } from "@cherry/contracts";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import {

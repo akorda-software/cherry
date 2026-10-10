@@ -1,4 +1,4 @@
-import type { Gender, RelationshipIntent } from "@snack/contracts";
+import type { Gender, RelationshipIntent } from "@cherry/contracts";
 
 import type { IconName } from "../../../../shared/ui";
 import type { InterestedIn } from "../../domain/preferences";

@@ -21,7 +21,7 @@ import type {
   RelationshipIntent,
   Tag,
   TagCatalogResponse
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { httpDelete, pathSegment } from "./http-utils";

@@ -1,4 +1,4 @@
-import type { LocationUpdateRequest } from "@snack/contracts";
+import type { LocationUpdateRequest } from "@cherry/contracts";
 
 import { isValidFix, toLocationUpdateRequest, type LocationFix, type LocationService } from "./share-location";
 

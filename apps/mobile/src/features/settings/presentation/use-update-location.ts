@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import type { LocationUpdateRequest } from "@snack/contracts";
-import { createProfileApi } from "@snack/mobile-shared";
+import type { LocationUpdateRequest } from "@cherry/contracts";
+import { createProfileApi } from "@cherry/mobile-shared";
 
 import { toast } from "../../../shared/ui";
 import { useAuthedApi } from "../../auth/presentation";

@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { Linking } from "react-native";
 
-import type { Profile } from "@snack/contracts";
-import type { ProfileApi } from "@snack/mobile-shared";
+import type { Profile } from "@cherry/contracts";
+import type { ProfileApi } from "@cherry/mobile-shared";
 
 import { Text } from "../../../../shared/ui";
 import { activePhotos } from "../../../photos/domain/photo-slots";

@@ -4,6 +4,6 @@
     "modules": ["DocumentNfcModule"]
   },
   "android": {
-    "modules": ["app.snack.documentnfc.DocumentNfcModule"]
+    "modules": ["app.cherry.documentnfc.DocumentNfcModule"]
   }
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 
-import { createSettingsApi } from "@snack/mobile-shared";
+import { createSettingsApi } from "@cherry/mobile-shared";
 
 import { haptics, toast } from "../../../shared/ui";
 import { refreshBootstrap, useAppBootstrap } from "../../app-bootstrap";

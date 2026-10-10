@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ChatMessage, ConversationMessagesPage } from "@snack/contracts";
+import type { ChatMessage, ConversationMessagesPage } from "@cherry/contracts";
 
 import { FakeSocket } from "../test-utils/fake-phoenix";
 import {

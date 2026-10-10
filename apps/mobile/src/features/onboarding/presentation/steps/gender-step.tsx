@@ -1,4 +1,4 @@
-import type { Gender } from "@snack/contracts";
+import type { Gender } from "@cherry/contracts";
 
 import { useProfileDraftStore } from "../../application/profile-draft-store";
 import { saveGender } from "../../application/step-actions";

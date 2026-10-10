@@ -3,11 +3,11 @@ import {
   MAX_PROFILE_PHOTOS,
   MIN_PROFILE_PHOTOS,
   type Profile
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import { meRoutes, type MeRoute } from "./me-routes";
 
-/** Mismos límites que el backend (`Snack.Dating.profile_completion_missing/1`). */
+/** Mismos límites que el backend (`Cherry.Dating.profile_completion_missing/1`). */
 export const BIO_MIN_LENGTH = 20;
 /** A partir de aquí dejamos de sugerir etiquetas: con 3 ya hay de dónde tirar para encontrar afinidad. */
 export const COMFORTABLE_TAG_COUNT = 3;

@@ -1,6 +1,6 @@
 # Reportes y moderación
 
-**Estado:** parcial. Existe: bloquear (oculta en ambas direcciones y cierra el chat), reportar con motivos (`fake_profile`, `inappropriate_photos`, `harassment`, `spam`, `underage`, `offensive_bio`, `other`; `Snack.Dating.Safety`), deshacer match, pausar y borrar cuenta. Existen `list_reports/2`, `update_report/2` y `disable_profile`, **pero no hay panel, rutas ni vistas** de moderación.
+**Estado:** parcial. Existe: bloquear (oculta en ambas direcciones y cierra el chat), reportar con motivos (`fake_profile`, `inappropriate_photos`, `harassment`, `spam`, `underage`, `offensive_bio`, `other`; `Cherry.Dating.Safety`), deshacer match, pausar y borrar cuenta. Existen `list_reports/2`, `update_report/2` y `disable_profile`, **pero no hay panel, rutas ni vistas** de moderación.
 
 ## Por qué
 

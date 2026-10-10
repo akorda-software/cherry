@@ -1,8 +1,8 @@
 /**
  * Mock for expo-application in jsdom tests.
  */
-export const applicationId = "app.snack.mobile.test";
-export const applicationName = "Snack";
+export const applicationId = "app.cherry.mobile.test";
+export const applicationName = "Cherry";
 export const nativeApplicationVersion = "0.0.0";
 export const nativeBuildVersion = "1";
 export const installationId = "test-installation-id";

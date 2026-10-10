@@ -1,8 +1,8 @@
 # Concurrent chat authorization benchmark, over committed database connections.
 #
-#   DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_chat_bench mix ecto.create
-#   DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_chat_bench mix ecto.migrate
-#   DATABASE_URL=ecto://postgres:postgres@localhost:5510/snack_chat_bench \
+#   DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_chat_bench mix ecto.create
+#   DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_chat_bench mix ecto.migrate
+#   DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_chat_bench \
 #     mix run priv/repo/bench/chat_authorization_bench.exs
 #
 # BENCH_REQUESTS=5000, BENCH_PAIRS=100, BENCH_CONCURRENCY=1,8,32.
@@ -10,12 +10,12 @@
 # Measures domain/database authorization, including connection-pool waiting.
 # It does not measure HTTP, WebSocket fan-out or push-provider latency.
 
-defmodule Snack.ChatAuthorizationBench do
+defmodule Cherry.ChatAuthorizationBench do
   import Ecto.Query
 
-  alias Snack.Accounts.User
-  alias Snack.Dating.{Conversation, Match, Profile}
-  alias Snack.Repo
+  alias Cherry.Accounts.User
+  alias Cherry.Dating.{Conversation, Match, Profile}
+  alias Cherry.Repo
 
   def run do
     Logger.configure(level: :warning)
@@ -39,11 +39,11 @@ defmodule Snack.ChatAuthorizationBench do
       end)
 
     context =
-      Module.safe_concat(String.split(System.get_env("BENCH_CONTEXT", "Snack.Dating"), "."))
+      Module.safe_concat(String.split(System.get_env("BENCH_CONTEXT", "Cherry.Dating"), "."))
 
     user_ids = Enum.map(1..(pair_count * 2), fn _ -> Ecto.UUID.generate() end)
     handler = {__MODULE__, self()}
-    :ok = :telemetry.attach(handler, [:snack, :repo, :query], &__MODULE__.count_query/4, nil)
+    :ok = :telemetry.attach(handler, [:cherry, :repo, :query], &__MODULE__.count_query/4, nil)
 
     try do
       pairs = seed_pairs(user_ids)
@@ -196,4 +196,4 @@ defmodule Snack.ChatAuthorizationBench do
   defp format(value), do: :erlang.float_to_binary(value / 1, decimals: 2)
 end
 
-Snack.ChatAuthorizationBench.run()
+Cherry.ChatAuthorizationBench.run()

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import type { ProfilePhoto } from "@snack/contracts";
-import type { ProfileApi } from "@snack/mobile-shared";
+import type { ProfilePhoto } from "@cherry/contracts";
+import type { ProfileApi } from "@cherry/mobile-shared";
 
 import { bindPhotoApi } from "../application/photo-api";
 import { usePhotoManager } from "../application/use-photo-manager";

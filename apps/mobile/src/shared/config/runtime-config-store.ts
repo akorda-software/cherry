@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 
-import type { BootstrapConfig } from "@snack/contracts";
-import type { FeatureFlagReader } from "@snack/mobile-shared";
+import type { BootstrapConfig } from "@cherry/contracts";
+import type { FeatureFlagReader } from "@cherry/mobile-shared";
 
 interface RuntimeConfigState {
   apiBaseUrl: string;

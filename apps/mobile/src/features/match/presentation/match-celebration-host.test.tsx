@@ -1,7 +1,7 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import type { DiscoveryMatch } from "@snack/contracts";
+import type { DiscoveryMatch } from "@cherry/contracts";
 
 import { renderWithTheme } from "../../../../test/ui/render-with-theme";
 import { useMatchCelebrationStore } from "../match-celebration-store";

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { PhotoUploadCompleteRequest, PhotoUploadIntent, PhotoUploadIntentRequest, ProfilePhoto } from "@snack/contracts";
+import type { PhotoUploadCompleteRequest, PhotoUploadIntent, PhotoUploadIntentRequest, ProfilePhoto } from "@cherry/contracts";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import { isRetryablePhotoError, photoErrorMessage } from "../domain/photo-errors";
@@ -205,7 +205,7 @@ export function usePhotoManager({
             result.canAskAgain
               ? { message: "Necesitamos permiso para usar la cámara. También puedes elegir fotos de tu galería." }
               : {
-                  message: "La cámara está bloqueada para Snack. Puedes activarla en Ajustes o elegir fotos de tu galería.",
+                  message: "La cámara está bloqueada para Cherry. Puedes activarla en Ajustes o elegir fotos de tu galería.",
                   action: "settings"
                 }
           );

@@ -1,4 +1,4 @@
-import type { OkResponse, ProfileReport, ReportRequest, ReportResponse } from "@snack/contracts";
+import type { OkResponse, ProfileReport, ReportRequest, ReportResponse } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 import { pathSegment } from "./http-utils";

@@ -1,6 +1,6 @@
 # Cumplimiento legal y de tiendas
 
-Dossier de trabajo para poder publicar Snack en App Store y Google Play cumpliendo la ley. Un archivo por frente; en cada uno, **por qué hay que hacerlo, qué hemos decidido, cómo lo construimos y en qué punto está**.
+Dossier de trabajo para poder publicar Cherry en App Store y Google Play cumpliendo la ley. Un archivo por frente; en cada uno, **por qué hay que hacerlo, qué hemos decidido, cómo lo construimos y en qué punto está**.
 
 > **Excepción a la regla canónica de `docs/`:** el resto de documentos describen solo lo implementado. Esta carpeta mezcla a propósito investigación, plan y estado, porque es donde se va avanzando poco a poco. Cuando algo se construya, se documenta también en el documento canónico que toque (`01`, `05`, `07`…) y aquí se marca como hecho.
 

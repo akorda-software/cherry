@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { AccessibilityInfo } from "react-native";
 
-import type { Tag } from "@snack/contracts";
+import type { Tag } from "@cherry/contracts";
 
 import { haptics, toast, useShake } from "../../../shared/ui";
 import type { TagKind, TagSelectionState, ToggleOutcome } from "../domain/tag-selection";

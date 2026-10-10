@@ -341,7 +341,7 @@ function KitchenSink() {
           <TextField
             error={error}
             label="Correo"
-            placeholder="hola@snack.dev"
+            placeholder="hola@cherry.dev"
             testID="ks-email"
             value="hola@"
           />

@@ -1,7 +1,7 @@
 import { memo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import type { MatchSummary } from "@snack/contracts";
+import type { MatchSummary } from "@cherry/contracts";
 
 import { Avatar, Badge, Text, useTheme } from "../../../shared/ui";
 import { formatRelativeTime, formatRelativeTimeForA11y } from "../../chat/domain/time-format";

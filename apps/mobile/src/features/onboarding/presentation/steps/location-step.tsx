@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { AppState, StyleSheet, View } from "react-native";
 
-import type { LocationUpdateRequest } from "@snack/contracts";
+import type { LocationUpdateRequest } from "@cherry/contracts";
 
 import { Button, FormMessage, Icon, Mascot, type MascotMood, Stack, Surface, Text, useTheme } from "../../../../shared/ui";
 import { useShareLocation, type ShareLocationStatus } from "../../../location/application/use-share-location";

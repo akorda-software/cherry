@@ -29,7 +29,7 @@ function birthdayMessage(parts: BirthdayParts, validation: ReturnType<typeof val
     case "future":
       return "Esa fecha aún no ha llegado.";
     case "too_young":
-      return "Snack es solo para mayores de 18. ¡Te esperamos cuando llegue el día!";
+      return "Cherry es solo para mayores de 18. ¡Te esperamos cuando llegue el día!";
     case "implausible":
       return "¿Seguro? Revisa el año.";
     default:

@@ -3,4 +3,4 @@ set -eu
 
 # Sincroniza el catálogo de etiquetas (idempotente). `bin/migrate` ya lo hace.
 cd -P -- "$(dirname -- "$0")"
-exec ./snack eval Snack.Release.seed
+exec ./cherry eval Cherry.Release.seed

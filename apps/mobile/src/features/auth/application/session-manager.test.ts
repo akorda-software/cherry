@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { SessionBundle } from "@snack/contracts";
+import type { SessionBundle } from "@cherry/contracts";
 import { createSessionManager } from "./session-manager";
 
 const expiredSession: SessionBundle = {

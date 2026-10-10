@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 
-import type { DiscoveryActionType, DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryActionType, DiscoveryProfileCard } from "@cherry/contracts";
 
 import { Button, useTheme } from "../../../shared/ui";
 

@@ -1,5 +1,5 @@
-import type { AuthCallbackPayload, SessionBundle } from "@snack/contracts";
-import type { AuthProvider, HttpClient } from "@snack/mobile-shared";
+import type { AuthCallbackPayload, SessionBundle } from "@cherry/contracts";
+import type { AuthProvider, HttpClient } from "@cherry/mobile-shared";
 
 import { createBootstrapSession } from "../application/bootstrap-session";
 import { createCompleteAuthCallback } from "../application/complete-auth-callback";

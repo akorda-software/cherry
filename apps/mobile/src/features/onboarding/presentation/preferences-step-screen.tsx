@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text as RNText, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import type { DiscoveryPreferences } from "@snack/contracts";
+import type { DiscoveryPreferences } from "@cherry/contracts";
 
 import { refreshBootstrap } from "../../app-bootstrap/presentation/app-bootstrap-provider";
 import { FormMessage, Screen, Stack, useTheme } from "../../../shared/ui";

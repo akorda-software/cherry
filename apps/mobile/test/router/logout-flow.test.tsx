@@ -60,14 +60,14 @@ describe("logout flow", () => {
       expect(screen.getByTestId("pathname")).toHaveTextContent("/(public)/login");
     });
 
-    expect(screen.getByRole("heading", { name: "Welcome to Snack" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Welcome to Cherry" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Go back" }));
 
     await waitFor(() => {
       expect(screen.queryByTestId("settings-screen")).not.toBeInTheDocument();
       expect(screen.queryByTestId("home-screen")).not.toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Welcome to Snack" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Welcome to Cherry" })).toBeInTheDocument();
     });
   });
 });

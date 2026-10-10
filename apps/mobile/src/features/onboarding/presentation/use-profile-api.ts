@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { createProfileApi, type ProfileApi } from "@snack/mobile-shared";
+import { createProfileApi, type ProfileApi } from "@cherry/mobile-shared";
 
 import { useSessionShell } from "../../auth/presentation";
 import { useRuntimeConfig } from "../../../shared/config";

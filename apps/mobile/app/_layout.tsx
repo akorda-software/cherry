@@ -5,8 +5,8 @@ import { Slot } from "expo-router";
 import Constants from "expo-constants";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import type { BootstrapConfig } from "@snack/contracts";
-import { createConfigApi, createFeatureFlagReader, type FeatureFlagReader } from "@snack/mobile-shared";
+import type { BootstrapConfig } from "@cherry/contracts";
+import { createConfigApi, createFeatureFlagReader, type FeatureFlagReader } from "@cherry/mobile-shared";
 
 import {
   AppBootstrapProvider,

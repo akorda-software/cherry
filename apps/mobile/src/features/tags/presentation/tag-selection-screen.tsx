@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import type { Tag } from "@snack/contracts";
-import { createProfileApi, type ProfileApi } from "@snack/mobile-shared";
+import type { Tag } from "@cherry/contracts";
+import { createProfileApi, type ProfileApi } from "@cherry/mobile-shared";
 
 import { refreshBootstrap } from "../../../features/app-bootstrap/presentation/app-bootstrap-provider";
 import { useSessionShell } from "../../auth/presentation";

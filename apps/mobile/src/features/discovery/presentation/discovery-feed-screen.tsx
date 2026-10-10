@@ -5,8 +5,8 @@ import type {
   DiscoveryActionRequest,
   DiscoveryActionType,
   DiscoveryProfileCard
-} from "@snack/contracts";
-import { createDiscoveryApi, type DiscoveryApi } from "@snack/mobile-shared";
+} from "@cherry/contracts";
+import { createDiscoveryApi, type DiscoveryApi } from "@cherry/mobile-shared";
 
 import { useSessionShell } from "../../auth/presentation";
 import { useRuntimeConfig } from "../../../shared/config";

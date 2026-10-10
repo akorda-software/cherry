@@ -1,4 +1,4 @@
-import type { SessionUser } from "@snack/contracts";
+import type { SessionUser } from "@cherry/contracts";
 import { StyleSheet, Text as RNText } from "react-native";
 
 import { useTheme } from "../providers/theme-provider";

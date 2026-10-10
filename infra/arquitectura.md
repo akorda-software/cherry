@@ -1,6 +1,6 @@
-# Arquitectura de infraestructura — Snack en el home server
+# Arquitectura de infraestructura — Cherry en el home server
 
-Arquitectura acordada para Snack en el servidor propio: hardware, VMs, red, runtime, CI/CD, seguridad y backups. Decisiones con su contexto: [docs/decisions.md](../docs/decisions.md). Procedimientos: [runbook de despliegue](deploy/README.md). El estado de implementación y los pasos pendientes se distinguen en §10.
+Arquitectura acordada para Cherry en el servidor propio: hardware, VMs, red, runtime, CI/CD, seguridad y backups. Decisiones con su contexto: [docs/decisions.md](../docs/decisions.md). Procedimientos: [runbook de despliegue](deploy/README.md). El estado de implementación y los pasos pendientes se distinguen en §10.
 
 **Acuerdo de operación inicial (2026-09-05):** un único MS-A2, una réplica de la app y despliegues con downtime aceptado de segundos o minutos. Backups previstos en el SATA local de ~1 TB y en R2. Sin alta disponibilidad ni VPS de respaldo en esta fase. Se esperará al ventilador del PM1735 para instalarlo y comprobar temperaturas antes del despliegue y las pruebas.
 
@@ -17,7 +17,7 @@ Arquitectura acordada para Snack en el servidor propio: hardware, VMs, red, runt
                                   ▼
               Traefik · VM 101 192.168.0.126:80 (Swarm)
                                   ▼
-                  contenedor snack (:4000 interno)
+                  contenedor cherry (:4000 interno)
                           │           │
                           ▼           ▼
         VM 102 · PostgreSQL    Cloudflare R2 (UE)
@@ -34,8 +34,8 @@ Arquitectura acordada para Snack en el servidor propio: hardware, VMs, red, runt
 | Cloudflare | Externo | DNS proxified, TLS edge, absorbe DDoS. CNAME → `home.akorda.es` (A maestro DDNS, IP dinámica) |
 | UCG-Fiber | Router casa | Firewall stateful; 80/443 solo desde rangos Cloudflare; WireGuard 10.77.0.0/24 = acceso admin |
 | VM 100 caddy | DMZ, Debian 13 | Única entrada web pública; enruta por Host a Traefik |
-| VM 101 snack-backend | LAN .126, Debian 13 | Docker + Swarm 1 nodo + Dokploy (panel) + Traefik + contenedor snack |
-| VM 102 snack-db | LAN .142, Debian 13 | PostgreSQL 17 + PostGIS nativos, PGDATA en PM1735 |
+| VM 101 cherry-backend | LAN .126, Debian 13 | Docker + Swarm 1 nodo + Dokploy (panel) + Traefik + contenedor cherry |
+| VM 102 cherry-db | LAN .142, Debian 13 | PostgreSQL 17 + PostGIS nativos, PGDATA en PM1735 |
 | GitHub Actions + GHCR | GitHub | CI, build de imágenes inmutables, orquestación de deploy |
 
 ## 2. Hardware y virtualización
@@ -51,8 +51,8 @@ Arquitectura acordada para Snack en el servidor propio: hardware, VMs, red, runt
 | VM | vCPU | RAM | IP | Contenido |
 |---|---|---|---|---|
 | 100 caddy | 2 | 2 GB | 192.168.30.21 | Debian 13, Caddy systemd |
-| 101 snack-backend | 8 (host) | 16 GB | 192.168.0.126 | Debian 13, Docker, Swarm, Dokploy, Traefik, snack |
-| 102 snack-db | 8 (host) | 24 GB | 192.168.0.142 | Debian 13, PostgreSQL 17.11 + PostGIS 3.6.4 |
+| 101 cherry-backend | 8 (host) | 16 GB | 192.168.0.126 | Debian 13, Docker, Swarm, Dokploy, Traefik, cherry |
+| 102 cherry-db | 8 (host) | 24 GB | 192.168.0.142 | Debian 13, PostgreSQL 17.11 + PostGIS 3.6.4 |
 
 Asignación: 18 vCPU sobre 32 hilos lógicos y 42/64 GB de RAM; las vCPU comparten el procesador físico. Sin ballooning ni pinning; ampliación por métricas (CPU>60% 15 min, p95 latencia, cache hit<99%, IO wait sostenido).
 
@@ -78,18 +78,18 @@ Asignación: 18 vCPU sobre 32 hilos lógicos y 42/64 GB de RAM; las vCPU compart
 
 - **Dokploy** (panel `:3000`, solo VPN + 2FA): gestiona la app como servicio Swarm de un nodo. Es un controlador: su caída no tumba el tráfico (Traefik corre bajo Docker; los servicios Swarm bajo dockerd).
 - **Traefik**: entrypoint web `:80`, sin HTTPS (TLS termina en Cloudflare/Caddy), sin redirecciones.
-- **Contenedor snack**: imagen `ghcr.io/<repo>-backend:<sha>` (nunca `latest`), usuario `nobody`, sin socket Docker. Arranque: `bin/migrate && bin/server`.
+- **Contenedor cherry**: imagen `ghcr.io/<repo>-backend:<sha>` (nunca `latest`), usuario `nobody`, sin socket Docker. Arranque: `bin/migrate && bin/server`.
 - **Swarm (configuración acordada, pendiente de aplicar en Dokploy)**: healthcheck `curl -fsS localhost:4000/healthz` · UpdateConfig y RollbackConfig con `order: stop-first`, `Parallelism 1` · UpdateConfig `FailureAction: rollback`, `Monitor 30s` · `RestartPolicy on-failure` · **1 réplica**. Se detiene la versión anterior antes de arrancar la nueva; se acepta una interrupción de segundos o minutos, sin prometer una duración máxima. Así se evita que dos versiones atiendan chats simultáneamente con PubSub aislados. Distribución Erlang desactivada; `dns_cluster` permanece inactivo.
 - **Cliente durante el despliegue:** debe tolerar la desconexión, reconectar y recuperar mensajes persistidos por REST. Este comportamiento se comprobará cuando esté implementado el chat móvil.
 - **Mantenimiento**: `daemon.json` con log rotation (`json-file` 50m×3); `docker image prune -a --filter until=168h` semanal; snapshot de VM antes de actualizar Dokploy o Traefik (ciclos separados, versiones anotadas en el runbook).
 
 ## 5. Base de datos (VM 102)
 
-- PostgreSQL 17.11 (PGDG) + PostGIS 3.6.4, nativos. Rol `snack` owner de `snack_prod`; extensiones `postgis`, `pgcrypto`, `uuid-ossp` (las migraciones las crean), `pg_stat_statements`.
-- `listen_addresses = 'localhost,192.168.0.142'` · `pg_hba`: `host snack_prod snack 192.168.0.126/32 scram-sha-256`.
+- PostgreSQL 17.11 (PGDG) + PostGIS 3.6.4, nativos. Rol `cherry` owner de `cherry_prod`; extensiones `postgis`, `pgcrypto`, `uuid-ossp` (las migraciones las crean), `pg_stat_statements`.
+- `listen_addresses = 'localhost,192.168.0.142'` · `pg_hba`: `host cherry_prod cherry 192.168.0.126/32 scram-sha-256`.
 - Tuning: `shared_buffers=4GB`, `effective_cache_size=12GB`, `max_connections=100`, `work_mem` default (subir solo con evidencia de `pg_stat_statements`).
 - PGDATA: `/var/lib/postgresql` sobre PM1735 (ext4, noatime, fstrim activo). LUKS pendiente de decisión (ver §10).
-- Conexión desde la app: `DATABASE_URL=ecto://snack:…@192.168.0.142/snack_prod`, `DATABASE_SSL=false` (LAN privada), `POOL_SIZE=20`.
+- Conexión desde la app: `DATABASE_URL=ecto://cherry:…@192.168.0.142/cherry_prod`, `DATABASE_SSL=false` (LAN privada), `POOL_SIZE=20`.
 
 ## 6. CI/CD (`.github/workflows/ci.yml`)
 
@@ -120,7 +120,7 @@ main  → build imagen (APP_VERSION=sha, cache GHA) → push GHCR:<sha>
 | `GET /healthz` | Liveness + versión, **sin DB** (reiniciar Phoenix no arregla una DB caída) | `{"status":"ok","version":"<sha>"}` |
 | `GET /readyz` | Disponibilidad para tráfico (ping Repo) | `{"status":"ready"}` / 503 |
 
-`version` = `APP_VERSION` (env horneada por CI) vía `config :snack, :app_version` en `runtime.exs`. Swarm mantiene `/healthz` como liveness. La comprobación post-deploy prevista debe exigir también `/readyz` 200; el workflow todavía comprueba solo versión en `/healthz`.
+`version` = `APP_VERSION` (env horneada por CI) vía `config :cherry, :app_version` en `runtime.exs`. Swarm mantiene `/healthz` como liveness. La comprobación post-deploy prevista debe exigir también `/readyz` 200; el workflow todavía comprueba solo versión en `/healthz`.
 
 ## 9. Seguridad — capas y secretos
 

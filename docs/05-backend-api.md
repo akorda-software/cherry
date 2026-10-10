@@ -1,6 +1,6 @@
 # API del backend
 
-Superficie REST y WebSocket **implementada** en `apps/backend` (fuente: `lib/snack_web/router.ex`). Contratos de payload en detalle: `06-contratos-mobile-backend.md`. OpenAPI machine-readable servida en `/openapi.yaml`.
+Superficie REST y WebSocket **implementada** en `apps/backend` (fuente: `lib/cherry_web/router.ex`). Contratos de payload en detalle: `06-contratos-mobile-backend.md`. OpenAPI machine-readable servida en `/openapi.yaml`.
 
 Pipelines: `:api` (público), `:authenticated_api` (valida JWT + expiración + familia de sesión no revocada).
 

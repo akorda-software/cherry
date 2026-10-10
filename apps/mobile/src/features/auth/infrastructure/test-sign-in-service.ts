@@ -1,6 +1,6 @@
-import type { SessionBundle } from "@snack/contracts";
+import type { SessionBundle } from "@cherry/contracts";
 
-import type { HttpClient } from "@snack/mobile-shared";
+import type { HttpClient } from "@cherry/mobile-shared";
 import type { AuthSessionStorage } from "../domain/session-storage";
 
 const TEST_LOGIN_PATH = "/api/auth/dev/test-login";

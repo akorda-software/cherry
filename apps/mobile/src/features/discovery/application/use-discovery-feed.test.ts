@@ -5,7 +5,7 @@ import type {
   DiscoveryActionResponse,
   DiscoveryFeedPage,
   DiscoveryProfileCard
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import { useDiscoveryFeed } from "./use-discovery-feed";
 

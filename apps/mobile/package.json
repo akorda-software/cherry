@@ -1,5 +1,5 @@
 {
-  "name": "@snack/mobile",
+  "name": "@cherry/mobile",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -22,8 +22,8 @@
     "@react-navigation/drawer": "^7.5.0",
     "@react-navigation/native": "^7.1.8",
     "@shopify/flash-list": "2.0.2",
-    "@snack/contracts": "workspace:*",
-    "@snack/mobile-shared": "workspace:*",
+    "@cherry/contracts": "workspace:*",
+    "@cherry/mobile-shared": "workspace:*",
     "expo": "^54.0.13",
     "expo-apple-authentication": "^8.0.8",
     "expo-application": "^7.0.8",

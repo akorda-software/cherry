@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createBootstrapSession } from "./bootstrap-session";
-import type { SessionBundle } from "@snack/contracts";
+import type { SessionBundle } from "@cherry/contracts";
 
 const session: SessionBundle = {
   accessToken: "access-token",

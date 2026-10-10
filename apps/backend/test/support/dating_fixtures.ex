@@ -1,12 +1,12 @@
-defmodule Snack.TestSupport.DatingFixtures do
+defmodule Cherry.TestSupport.DatingFixtures do
   @moduledoc """
   Fixtures for dating domain tests.
   """
 
-  alias Snack.Accounts
-  alias Snack.Dating
-  alias Snack.Repo
-  alias Snack.Sessions
+  alias Cherry.Accounts
+  alias Cherry.Dating
+  alias Cherry.Repo
+  alias Cherry.Sessions
 
   def user_fixture(attrs \\ %{}) do
     {:ok, user} =
@@ -78,7 +78,7 @@ defmodule Snack.TestSupport.DatingFixtures do
 
     # Mark complete
     Dating.set_profile_complete(profile)
-    Repo.get!(Snack.Dating.Profile, profile.id)
+    Repo.get!(Cherry.Dating.Profile, profile.id)
   end
 
   def tag_fixture(attrs \\ %{}) do

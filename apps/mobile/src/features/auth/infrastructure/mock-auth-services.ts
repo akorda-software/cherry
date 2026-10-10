@@ -1,4 +1,4 @@
-import type { SessionBundle } from "@snack/contracts";
+import type { SessionBundle } from "@cherry/contracts";
 import type { SessionShellServices } from "../presentation";
 
 const FAKE_SESSION: SessionBundle = {
@@ -8,7 +8,7 @@ const FAKE_SESSION: SessionBundle = {
   refreshTokenExpiresAt: "2099-01-01T00:00:00Z",
   user: {
     id: "dev-user",
-    email: "dev@snack.app",
+    email: "dev@cherry.app",
     displayName: "Dev User"
   }
 };

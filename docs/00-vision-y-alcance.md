@@ -1,8 +1,8 @@
 # Visión y alcance
 
-## Qué es Snack
+## Qué es Cherry
 
-Snack es una **app de dating móvil** de alcance reducido y alta exigencia de relevancia, construida sobre un **starter reusable** (Expo + Phoenix) pensado para servir de base a varias apps.
+Cherry es una **app de dating móvil** de alcance reducido y alta exigencia de relevancia, construida sobre un **starter reusable** (Expo + Phoenix) pensado para servir de base a varias apps.
 
 Dos capas conviven en el repositorio:
 

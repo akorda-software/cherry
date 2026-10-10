@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { DiscoveryProfileCard } from "@snack/contracts";
+import type { DiscoveryProfileCard } from "@cherry/contracts";
 
 import { renderWithTheme } from "../../../../test/ui/render-with-theme";
 import { ProfileFeedGrid } from "./profile-feed-grid";

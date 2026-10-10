@@ -13,27 +13,27 @@ Internet → Cloudflare (proxied, Full strict)
         → UCG-Fiber (80/443 solo desde rangos IP de Cloudflare)
         → Caddy (DMZ 192.168.30.21)
         → Traefik (192.168.0.126:80, Swarm)
-        → contenedor snack (:4000, nunca publicado directo)
+        → contenedor cherry (:4000, nunca publicado directo)
 
 GitHub Actions → tests → imagen ghcr.io/<repo>-backend:<sha> → API Dokploy (solo VPN)
-snack-backend → PostgreSQL 192.168.0.142:5432 · fotos → R2 (UE)
+cherry-backend → PostgreSQL 192.168.0.142:5432 · fotos → R2 (UE)
 ```
 
 | VM | IP | Contenido |
 |---|---|---|
 | caddy (VM 100) | 192.168.30.21 | Debian 13 + Caddy (systemd) |
-| snack-backend (VM 101) | 192.168.0.126 | Debian 13 + Docker + Swarm 1 nodo + Dokploy + Traefik + snack |
-| snack-db (VM 102) | 192.168.0.142 | Debian 13 + PostgreSQL 17 + PostGIS, PGDATA en PM1735 (raw block scsi1, ext4 noatime) |
+| cherry-backend (VM 101) | 192.168.0.126 | Debian 13 + Docker + Swarm 1 nodo + Dokploy + Traefik + cherry |
+| cherry-db (VM 102) | 192.168.0.142 | Debian 13 + PostgreSQL 17 + PostGIS, PGDATA en PM1735 (raw block scsi1, ext4 noatime) |
 
-## 1. Base de datos (snack-db)
+## 1. Base de datos (cherry-db)
 
 Ya instalado: PG 17.11 + PostGIS 3.6.4 (PGDG), PGDATA en PM1735.
 
 ```bash
-sudo -u postgres createuser snack --pwprompt        # contraseña: openssl rand -hex 32 → Bitwarden
-sudo -u postgres createdb snack_prod --owner=snack
-sudo -u postgres psql snack_prod -c 'CREATE EXTENSION postgis; CREATE EXTENSION pg_stat_statements;'
-sudo -u postgres psql -c 'REVOKE ALL ON DATABASE snack_prod FROM PUBLIC;'
+sudo -u postgres createuser cherry --pwprompt        # contraseña: openssl rand -hex 32 → Bitwarden
+sudo -u postgres createdb cherry_prod --owner=cherry
+sudo -u postgres psql cherry_prod -c 'CREATE EXTENSION postgis; CREATE EXTENSION pg_stat_statements;'
+sudo -u postgres psql -c 'REVOKE ALL ON DATABASE cherry_prod FROM PUBLIC;'
 ```
 
 `postgresql.conf`:
@@ -43,11 +43,11 @@ sudo -u postgres psql -c 'REVOKE ALL ON DATABASE snack_prod FROM PUBLIC;'
 - Punto de partida: `shared_buffers = 4GB`, `effective_cache_size = 12GB`, `max_connections = 100`. `work_mem` al default hasta ver consultas reales.
 - Backups previstos con pgBackRest en el SATA local de ~1 TB y en R2; frecuencia externa orientativa de una o varias horas y unas diez copias recuperables recientes. Cadencia, esquema de copias/WAL y retención final por concretar al configurarlo (ver §8).
 
-`pg_hba.conf`: `host snack_prod snack 192.168.0.126/32 scram-sha-256`. Firewall VM: 5432 solo desde `.126`; SSH solo desde VPN.
+`pg_hba.conf`: `host cherry_prod cherry 192.168.0.126/32 scram-sha-256`. Firewall VM: 5432 solo desde `.126`; SSH solo desde VPN.
 
 **LUKS en PGDATA: decisión pendiente** (recomendado mientras la DB está vacía; GDPR art. 9). Coste: desbloqueo manual por SSH tras reboot.
 
-## 2. Dokploy en snack-backend (VM 101)
+## 2. Dokploy en cherry-backend (VM 101)
 
 ```bash
 curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nodo + Dokploy + Traefik
@@ -63,7 +63,7 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 
 - Aplicación tipo Docker, imagen `ghcr.io/<repo>-backend:<sha>` (nunca `latest`).
 - Env del servicio (variables obligatorias en prod; el release no arranca sin ellas):
-  `SECRET_KEY_BASE`, `AUTH_ACCESS_TOKEN_SALT`, `AUTH_REFRESH_TOKEN_SALT`, `MESSAGE_ENCRYPTION_KEY`, `DATABASE_URL` (`ecto://snack:…@192.168.0.142/snack_prod`), `PHX_HOST`, y `DATABASE_SSL=false`, `POOL_SIZE=20`. Secretos generados con `openssl rand -base64 48` y guardados en Bitwarden.
+  `SECRET_KEY_BASE`, `AUTH_ACCESS_TOKEN_SALT`, `AUTH_REFRESH_TOKEN_SALT`, `MESSAGE_ENCRYPTION_KEY`, `DATABASE_URL` (`ecto://cherry:…@192.168.0.142/cherry_prod`), `PHX_HOST`, y `DATABASE_SSL=false`, `POOL_SIZE=20`. Secretos generados con `openssl rand -base64 48` y guardados en Bitwarden.
 - **Swarm (Advanced → Swarm)**: health check `curl -fsS localhost:4000/healthz`; UpdateConfig `order: stop-first`, `Parallelism 1`, `FailureAction rollback`, `Monitor 30s`; RollbackConfig también `order: stop-first` y `Parallelism 1`; `RestartPolicy on-failure`. **1 réplica**, sin distribución Erlang. Se acepta downtime de segundos o minutos y reconexión de los clientes; no se solapan versiones atendiendo chats.
 - Comando/entrypoint objetivo: `sh -c "bin/migrate && exec bin/server"` (migraciones al arrancar, lock activo). Verificar el override en Dokploy: el CMD actual de la imagen solo ejecuta `/app/bin/server`.
 - Dominio en Dokploy con HTTPS **desactivado** (TLS termina en Cloudflare/Caddy; Traefik escucha HTTP).
@@ -73,13 +73,13 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 1. **UCG-Fiber**: 80/443 hacia Caddy solo desde los rangos IP publicados de Cloudflare.
 2. **Caddy**:
    ```
-   api.snack.example {
+   api.cherry.example {
        reverse_proxy 192.168.0.126:80
    }
    ```
    Con `trusted_proxies` estricto (solo rangos de Cloudflare) y preferencia por `CF-Connecting-IP`.
 3. **Traefik** (traefik.yml editable desde Dokploy): en el entrypoint web, `forwardedHeaders.trustedIPs: ["192.168.30.21/32"]`. Sin redirecciones a HTTPS.
-4. **Firewall snack-backend**: 80 solo desde `192.168.30.21`; 3000 solo VPN; SSH solo VPN.
+4. **Firewall cherry-backend**: 80 solo desde `192.168.30.21`; 3000 solo VPN; SSH solo VPN.
 5. **Phoenix** (pendiente en repo): plug `RemoteIp` con proxies explícitos (Caddy DMZ + subred Traefik); nunca confiar en redes privadas indiscriminadas.
 6. Cloudflare: CNAME → `home.akorda.es` proxificado, Full strict. Verificar desde red externa. Nota: `vpn.akorda.es` (DNS-only) revela la WAN; riesgo aceptado para WireGuard.
 
@@ -124,6 +124,6 @@ No se configura ahora alta disponibilidad, réplica externa ni VPS de reserva. A
 
 ## 9. Alternativa local a Dokploy y evolución futura
 
-`deploy-backend.sh` + `snack-backend.service` quedan como referencia para operar el release directamente en el servidor propio si se decide abandonar Dokploy. No ofrecen failover ante una avería del hardware.
+`deploy-backend.sh` + `cherry-backend.service` quedan como referencia para operar el release directamente en el servidor propio si se decide abandonar Dokploy. No ofrecen failover ante una avería del hardware.
 
 Si la aplicación consigue usuarios y justifica el coste, se podrá estudiar una recuperación temporal en VPS u otro proveedor. No se requiere contratar ese servicio ni preparar un simulacro de evacuación externo para empezar las pruebas actuales.

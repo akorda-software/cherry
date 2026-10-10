@@ -1,3 +1,3 @@
-import type { SessionStorage } from "@snack/mobile-shared";
+import type { SessionStorage } from "@cherry/mobile-shared";
 
 export type AuthSessionStorage = SessionStorage;

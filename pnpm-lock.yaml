@@ -32,10 +32,10 @@ importers:
       '@shopify/flash-list':
         specifier: 2.0.2
         version: 2.0.2(@babel/runtime@7.29.2)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.0(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      '@snack/contracts':
+      '@cherry/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@snack/mobile-shared':
+      '@cherry/mobile-shared':
         specifier: workspace:*
         version: link:../../packages/mobile-shared
       expo:
@@ -138,7 +138,7 @@ importers:
 
   packages/mobile-shared:
     dependencies:
-      '@snack/contracts':
+      '@cherry/contracts':
         specifier: workspace:*
         version: link:../contracts
     devDependencies:

@@ -1,6 +1,6 @@
-import type { SessionBundle } from "@snack/contracts";
+import type { SessionBundle } from "@cherry/contracts";
 
-import type { SessionApi } from "@snack/mobile-shared";
+import type { SessionApi } from "@cherry/mobile-shared";
 import type { AuthSessionStorage } from "../domain/session-storage";
 
 interface CreateLogoutSessionOptions {

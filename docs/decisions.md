@@ -24,10 +24,10 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ## D-2026-09-04 — Runtime del backend: Dokploy+Docker (Swarm) en VM dedicada; systemd queda como plan B
 
-- **Contexto:** Despliegue del backend en el home server (MS-A2, Proxmox, exclusivo para Snack), primero para pruebas de rendimiento y luego producción. Cuatro modelos sobre la mesa: release+systemd+scripts, runner local de Actions, Dokploy de NiPoGi, Dokploy dedicado. Equipo de 2 personas sin dedicación DevOps.
+- **Contexto:** Despliegue del backend en el home server (MS-A2, Proxmox, exclusivo para Cherry), primero para pruebas de rendimiento y luego producción. Cuatro modelos sobre la mesa: release+systemd+scripts, runner local de Actions, Dokploy de NiPoGi, Dokploy dedicado. Equipo de 2 personas sin dedicación DevOps.
 - **Decisión:**
-  1. **VM `snack-backend` (.126)**: Dokploy + Docker/Swarm 1 nodo + Traefik + contenedor Snack (imagen GHCR, tag = sha). Builds siempre fuera (GitHub Actions); Dokploy solo descarga y despliega. Panel y API de Dokploy solo por VPN, nada públicos.
-  2. **VM `snack-db` (.142)**: PostgreSQL 17 + PostGIS nativos sobre PM1735; la DB nunca pasa por Dokploy.
+  1. **VM `cherry-backend` (.126)**: Dokploy + Docker/Swarm 1 nodo + Traefik + contenedor Cherry (imagen GHCR, tag = sha). Builds siempre fuera (GitHub Actions); Dokploy solo descarga y despliega. Panel y API de Dokploy solo por VPN, nada públicos.
+  2. **VM `cherry-db` (.142)**: PostgreSQL 17 + PostGIS nativos sobre PM1735; la DB nunca pasa por Dokploy.
   3. **Entrada**: Cloudflare → UCG → Caddy → Traefik:80, con cadena de confianza de IP real completa; el 4000 del contenedor nunca se publica.
   4. **Verificación post-deploy**: `/healthz` expone `version` (sha horneado); CI hace polling hasta `version == sha` (mitiga Dokploy #3987: rollbacks silenciosos de Swarm). `/healthz` = liveness sin DB; `/readyz` = ping a Repo.
   5. **Migraciones**: al arrancar el contenedor, con lock siempre activo; expand/contract; nunca `ecto.rollback` en producción (redesplegar N−1).
@@ -75,7 +75,7 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 ## D-2026-04-28 — Dominio dating en backend con PostGIS y chat WebSocket
 
 - **Contexto:** El discovery necesita filtrado geográfico eficiente y el chat requiere entrega en vivo sobre las sesiones ya resueltas.
-- **Decisión:** Contexto `Snack.Dating` con PostgreSQL + PostGIS (`geography(Point,4326)` con índice GiST) para ubicaciones y cálculo de distancias. Chat en tiempo real vía Phoenix Channel (`chat:{conversationId}`) autenticado con el access token JWT validando expiración; REST sigue siendo la fuente de historia.
+- **Decisión:** Contexto `Cherry.Dating` con PostgreSQL + PostGIS (`geography(Point,4326)` con índice GiST) para ubicaciones y cálculo de distancias. Chat en tiempo real vía Phoenix Channel (`chat:{conversationId}`) autenticado con el access token JWT validando expiración; REST sigue siendo la fuente de historia.
 - **Motivación:** PostGIS da consultas de proximidad indexadas sin infraestructura adicional; el socket de Phoenix reutiliza el mismo token y reglas de sesión que REST.
 - **Referencias:** `docs/02-arquitectura.md`, `docs/04-modelo-datos.md`.
 

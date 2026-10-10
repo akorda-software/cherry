@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.CreatePushTokens do
+defmodule Cherry.Repo.Migrations.CreatePushTokens do
   use Ecto.Migration
 
   def change do

@@ -1,0 +1,29 @@
+[Unit]
+Description=Cherry backend (release Phoenix) — PLAN B, el principal es Dokploy (D-2026-09-04)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+User=cherry
+Group=cherry
+WorkingDirectory=/opt/cherry
+Environment=HOME=/opt/cherry
+Environment=PHX_SERVER=true
+EnvironmentFile=/opt/cherry/env
+ExecStart=/opt/cherry/current/bin/server
+Restart=always
+RestartSec=5
+
+# Muchas conexiones WebSocket
+LimitNOFILE=65535
+
+# Endurecimiento
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

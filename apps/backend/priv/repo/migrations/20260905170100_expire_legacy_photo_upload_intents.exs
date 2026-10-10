@@ -1,4 +1,4 @@
-defmodule Snack.Repo.Migrations.ExpireLegacyPhotoUploadIntents do
+defmodule Cherry.Repo.Migrations.ExpireLegacyPhotoUploadIntents do
   use Ecto.Migration
 
   def up do

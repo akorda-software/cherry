@@ -3,7 +3,7 @@ import type {
   DiscoveryActionResponse,
   DiscoveryFeedPage,
   DiscoveryFeedQuery
-} from "@snack/contracts";
+} from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
 

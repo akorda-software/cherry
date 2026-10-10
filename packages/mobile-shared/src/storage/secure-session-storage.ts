@@ -1,6 +1,6 @@
-import type { SessionBundle } from "@snack/contracts";
+import type { SessionBundle } from "@cherry/contracts";
 
-import { createSessionBundle } from "@snack/contracts";
+import { createSessionBundle } from "@cherry/contracts";
 import { createAuthConfig, type AuthConfig } from "../config/auth-config";
 
 export interface SecureStoreLike {

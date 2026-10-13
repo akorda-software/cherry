@@ -16,9 +16,12 @@ Formatos de payload aceptados entre la app Expo y Phoenix. Complementa `05-backe
     "isPaused": false,
     "onboardingRequired": true,
     "nextOnboardingStep": "photos"
-  }
+  },
+  "ageVerification": { "required": false, "status": "unverified" }
 }
 ```
+
+`ageVerification.status`: `unverified` (sin verificación) | `verified` | `revoked`; `required` refleja `AGE_VERIFICATION_REQUIRED`.
 
 Reglas de routing móvil:
 
@@ -26,6 +29,7 @@ Reglas de routing móvil:
 - `onboardingRequired` → `(onboarding)`; el resolver navega según `nextOnboardingStep`.
 - Perfil completo, no borrado y no pausado → shell `(app)`.
 - Pausado → shell con estado de visibilidad pausada.
+- `ageVerification.required` y `status` distinto de `verified` → perfil «pendiente de verificar»: editable, pero invisible (`isDiscoverable: false` con `isPaused: false`); no es una pausa.
 - Discovery bloqueado hasta perfil completo y descubrible.
 
 `nextOnboardingStep` es conveniencia del backend (derivado de `missing`), no frontera de seguridad.
@@ -245,11 +249,13 @@ Diseño y estado: `docs/compliance/02-mayoria-de-edad.md`. Contrato en `packages
 
 - `GET /api/me/verification` → `{verification: {status, method, verifiedAt}, required}`. `status`: `unverified` | `verified` | `revoked`; `method`: `nfc_dni` (tarjetas de identidad: DNI y TIE/NIE) | `nfc_passport` | `provider` | `eu_wallet` (hoy solo existen los NFC); `required` refleja `AGE_VERIFICATION_REQUIRED`.
 - `POST /api/me/verification/nfc` con `{dg1, dg2, sod}`: los ficheros del chip tal cual, en base64 (máx. 1 KB, 256 KB y 32 KB decodificados). El CAN o la MRZ nunca salen del móvil. El servidor hace la autenticación pasiva (firma del SOD → certificado del firmante → CSCA de confianza, hashes de DG1 y DG2, dígitos de control de la MRZ), exige 18 años cumplidos (fecha UTC) y guarda solo estado, método, fecha y la huella HMAC del documento. Respuesta 200 igual que el GET; repetir con el mismo documento es idempotente.
-- Errores: 422 `invalid_payload` | `underage` | `document_expired` (caducado según la MRZ) | `document_not_verified` con `reason` (`malformed_sod`, `unsupported_algorithm`, `missing_document_signer`, `invalid_signature`, `untrusted_certificate`, `certificate_expired`, `data_group_mismatch`, `malformed_dg1`, `invalid_check_digit`, `unsupported_document`); 409 `document_already_used` (otra cuenta) | `already_verified` (con otro documento); 403 `verification_revoked`; 429 `too_many_attempts` con `retryAfter` y cabecera `Retry-After` (5 intentos por hora y 10 por día por usuario, cuenten o no); 503 `age_verification_unavailable` (sin `DOCUMENT_FINGERPRINT_KEY`); 500 `verification_error`.
+- Errores: 422 `invalid_payload` | `underage` con `accountDeleted` (`true`: la cuenta se ha borrado entera, ver abajo) | `document_expired` (caducado según la MRZ) | `document_not_verified` con `reason` (`malformed_sod`, `unsupported_algorithm`, `missing_document_signer`, `invalid_signature`, `untrusted_certificate`, `certificate_expired`, `data_group_mismatch`, `malformed_dg1`, `invalid_check_digit`, `unsupported_document`); 409 `document_already_used` (otra cuenta) | `already_verified` (con otro documento); 403 `verification_revoked`; 429 `too_many_attempts` con `retryAfter` y cabecera `Retry-After` (5 intentos por hora y 10 por día por usuario, cuenten o no); 503 `age_verification_unavailable` (sin `DOCUMENT_FINGERPRINT_KEY`); 500 `verification_error`.
 - Huella: «una persona, una cuenta». En DNI y TIE españoles se calcula con el número de DNI/NIE (sobrevive a las renovaciones); en el resto, con el número del documento (los pasaportes cambian de número al renovarse; su campo de número personal no se usa porque en pasaportes de menores puede llevar el DNI de un progenitor).
 - Obligatoriedad (desactivada): con `AGE_VERIFICATION_REQUIRED=true`, discovery, perfiles públicos, likes, matches y conversaciones responden 403 `age_verification_required` hasta verificarse. Perfil propio, bootstrap, configuración, la propia verificación, bloquear y reportar siguen abiertos. El WebSocket del chat aún no lo comprueba.
+- Perfil pendiente de verificar: con la obligatoriedad activa, el onboarding no cambia, pero un perfil sin verificación válida no es descubrible (nadie lo ve en discovery, likes ni perfil público). Verificarse lo hace descubrible si está completo y no lo ha pausado su dueño (una pausa se respeta). Hoy `is_discoverable` se recalcula al completar, editar, despausar y verificarse: al activar o desactivar el flag con usuarios existentes no se recalcula solo.
+- Menor de edad: `{"error": "underage", "accountDeleted": true}` (422). Se borra toda la cuenta: fotos y subidas del almacenamiento y, en BD, usuario, perfil, matches, conversaciones, mensajes, bloqueos, reportes, sesiones, tokens e intentos de verificación. No se guarda nada del documento (ni huella). La sesión deja de valer: la app debe cerrar sesión localmente.
 - Privacidad: `dg1`, `dg2`, `sod`, `can` y `mrz` están en `:filter_parameters` (los logs de petición muestran `[FILTERED]`); los fallos internos se registran sin argumentos ni mensaje; el log de resultado no incluye el usuario.
 
 ## Feature flags
 
-El móvil no hardcodea flags: los lee de `GET /api/config` (el bootstrap no incluye flags). Flag off ⇒ sin entrada de navegación y pantalla autogateada del módulo opcional. Fuera de los tests, el backend publica `age_verification_required` (`AGE_VERIFICATION_REQUIRED`, `false` por defecto); el registro de módulos opcionales del móvil está vacío.
+El móvil no hardcodea flags: los lee de `GET /api/config` (el bootstrap no incluye flags; solo repite `age_verification_required` en `ageVerification.required`). Flag off ⇒ sin entrada de navegación y pantalla autogateada del módulo opcional. Fuera de los tests, el backend publica `age_verification_required` (`AGE_VERIFICATION_REQUIRED`, `false` por defecto); el registro de módulos opcionales del móvil está vacío.

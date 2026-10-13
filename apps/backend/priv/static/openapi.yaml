@@ -625,7 +625,9 @@ paths:
         `required` mirrors the `age_verification_required` feature flag
         (`AGE_VERIFICATION_REQUIRED`, off by default). When it is on, the social
         API (discovery, profiles, likes, matches, conversations) answers 403
-        `age_verification_required` until the user is verified.
+        `age_verification_required` until the user is verified, and the profile
+        is not discoverable (pending verification, not paused). The same state is
+        in `GET /api/bootstrap` (`ageVerification`).
       security:
         - bearerAuth: []
       responses:
@@ -648,7 +650,10 @@ paths:
         checks the holder is 18 or older and stores only status, method, date and
         a keyed fingerprint of the document (one document, one account). The data
         groups are never stored nor logged. Limit: 5 attempts per hour and 10 per
-        day per user.
+        day per user. A successful verification makes a pending profile
+        discoverable again unless the user paused it. A minor's document erases
+        the whole account (profile, photos, matches, messages, sessions and
+        attempts); nothing about the document is kept.
       security:
         - bearerAuth: []
       requestBody:
@@ -680,7 +685,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: |
-            `invalid_payload`; `underage`; `document_expired`; or `document_not_verified` with `reason`:
+            `invalid_payload`; `underage` with `accountDeleted` (true: the account,
+            its profile, photos and sessions were erased; the app must log out);
+            `document_expired`; or `document_not_verified` with `reason`:
             `malformed_sod`, `unsupported_algorithm`, `missing_document_signer`,
             `invalid_signature`, `untrusted_certificate`, `certificate_expired`,
             `data_group_mismatch`, `malformed_dg1`, `invalid_check_digit`,
@@ -1208,6 +1215,9 @@ components:
         retryAfter:
           type: integer
           description: Seconds to wait (only with `too_many_attempts`).
+        accountDeleted:
+          type: boolean
+          description: Only with `underage`; true when the account was erased.
     ValidationErrorResponse:
       type: object
       required: [errors]
@@ -1293,12 +1303,29 @@ components:
                 type: boolean
     BootstrapResponse:
       type: object
-      required: [user, profile]
+      required: [user, profile, ageVerification]
       properties:
         user:
           $ref: '#/components/schemas/User'
         profile:
           $ref: '#/components/schemas/ProfileState'
+        ageVerification:
+          $ref: '#/components/schemas/AgeVerificationState'
+    AgeVerificationState:
+      type: object
+      required: [required, status]
+      description: |
+        While `required` is true and `status` is not `verified`, the profile is
+        pending verification: it can be edited but is not discoverable
+        (`isDiscoverable` false, distinct from `isPaused`) and the social API
+        answers 403 `age_verification_required`.
+      properties:
+        required:
+          type: boolean
+          description: Mirrors the `age_verification_required` feature flag (`AGE_VERIFICATION_REQUIRED`).
+        status:
+          type: string
+          enum: [unverified, verified, revoked]
     ProfileState:
       type: object
       required: [exists, isComplete, isDiscoverable, isPaused, onboardingRequired]
@@ -1309,8 +1336,12 @@ components:
           type: boolean
         isDiscoverable:
           type: boolean
+          description: |
+            Shown to others: complete, not paused, not deleted and, while age
+            verification is required, verified.
         isPaused:
           type: boolean
+          description: Paused by the user (not set by a pending age verification).
         onboardingRequired:
           type: boolean
         nextOnboardingStep:

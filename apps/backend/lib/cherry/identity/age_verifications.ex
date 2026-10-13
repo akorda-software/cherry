@@ -11,7 +11,13 @@ defmodule Cherry.Identity.AgeVerifications do
   Making verification mandatory is prepared but off: the
   `:age_verification_required` feature flag (`AGE_VERIFICATION_REQUIRED`) is
   reported to the app and blocks the social API for unverified users through
-  `CherryWeb.Plugs.RequireAgeVerification`.
+  `CherryWeb.Plugs.RequireAgeVerification`. While it is on, an unverified
+  profile is "pending verification": it can be edited but is not discoverable
+  (`allows_discovery?/1`, used by `Cherry.Dating.Profiles`), and a successful
+  verification makes it discoverable again unless the user paused it.
+
+  A minor's document is answered with `{:error, :underage}`; the caller erases
+  the whole account (`Cherry.Accounts.purge_account/1`).
   """
 
   import Ecto.Query
@@ -19,6 +25,7 @@ defmodule Cherry.Identity.AgeVerifications do
   require Logger
 
   alias Cherry.Accounts.User
+  alias Cherry.Dating.Profile
   alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt}
   alias Cherry.Identity.Document.{Fingerprint, Mrz, PassiveAuth}
   alias Cherry.Repo
@@ -52,6 +59,23 @@ defmodule Cherry.Identity.AgeVerifications do
       from(v in AgeVerification, where: v.user_id == ^user_id and v.status == "verified")
     )
   end
+
+  @doc "`\"unverified\"` (no verification), `\"verified\"` or `\"revoked\"`."
+  @spec status(Ecto.UUID.t()) :: String.t()
+  def status(user_id) do
+    case get(user_id) do
+      %AgeVerification{status: status} -> status
+      nil -> "unverified"
+    end
+  end
+
+  @doc """
+  Whether the user's profile may be shown to others: verification is not
+  mandatory or the user holds a valid one. Only the age verification part of
+  `is_discoverable`; completeness and pause are checked by `Cherry.Dating.Profiles`.
+  """
+  @spec allows_discovery?(Ecto.UUID.t()) :: boolean()
+  def allows_discovery?(user_id), do: not required?() or verified?(user_id)
 
   @doc """
   Verifies an identity document read by NFC and records the user as an adult.
@@ -259,6 +283,7 @@ defmodule Cherry.Identity.AgeVerifications do
         |> Repo.insert()
         |> case do
           {:ok, verification} ->
+            refresh_discoverable(user_id, now)
             {:ok, verification}
 
           {:error, %Ecto.Changeset{errors: errors}} ->
@@ -269,6 +294,22 @@ defmodule Cherry.Identity.AgeVerifications do
             end
         end
     end
+  end
+
+  # A profile left pending verification becomes discoverable again when it is
+  # complete, not paused by its owner and not deleted. Only the schema is used
+  # (no call into Cherry.Dating) so the contexts do not call each other back.
+  defp refresh_discoverable(user_id, now) do
+    from(p in Profile,
+      where: p.user_id == ^user_id,
+      update: [
+        set: [
+          is_discoverable: p.is_complete and not p.is_paused and is_nil(p.deleted_at),
+          updated_at: ^now
+        ]
+      ]
+    )
+    |> Repo.update_all([])
   end
 
   # Only the outcome and which CSCA anchored the chain (shared by every

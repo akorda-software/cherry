@@ -26,7 +26,7 @@ Pipelines: `:api` (público), `:authenticated_api` (valida JWT + expiración + f
 
 | Ruta | Descripción |
 |---|---|
-| `GET /api/bootstrap` | Usuario + estado de perfil (`exists`, `isComplete`, `isDiscoverable`, `isPaused`, `onboardingRequired`, `nextOnboardingStep`). Fuente de routing del móvil |
+| `GET /api/bootstrap` | Usuario + estado de perfil (`exists`, `isComplete`, `isDiscoverable`, `isPaused`, `onboardingRequired`, `nextOnboardingStep`) + `ageVerification: {required, status}` (`status` ∈ `unverified`, `verified`, `revoked`; sin fila → `unverified`). Fuente de routing del móvil |
 
 ## Perfil y onboarding (`/api/me/*`, autenticado)
 
@@ -82,7 +82,8 @@ Caducidad: 30 días sin mensajes (`config :cherry, :match_expiry_days`), aplicad
 |---|---|
 | `POST /api/users/:profile_id/block` | Bloqueo idempotente; oculta en ambas direcciones discovery, likes, perfil público, matches y conversaciones, y cierra la mensajería (REST y WS). 422 `cannot_block_self`; 404 `profile_not_found` (también si el perfil o su cuenta están borrados) |
 | `POST /api/users/:profile_id/report` | Reporte de moderación: `reason` ∈ `fake_profile`, `inappropriate_photos`, `harassment`, `spam`, `underage`, `offensive_bio`, `other` (si no → 422 `invalid_report_reason`); `details` opcional ≤ 1000 (422 `details_too_long`); 422 `cannot_report_self`; 404 `profile_not_found` (también si el perfil o su cuenta están borrados: no se distingue de uno inexistente). Idempotente: con un reporte abierto del mismo reporter sobre el mismo perfil devuelve ese reporte sin crear otro |
-| `POST /api/me/pause` / `POST /api/me/unpause` | Pausa/restaura descubribilidad (si el perfil sigue completo) |
+| `POST /api/me/pause` / `POST /api/me/unpause` | Pausa/restaura descubribilidad (si el perfil sigue completo y, con la verificación de edad obligatoria, verificado) |
+| `GET /api/me/verification` / `POST /api/me/verification/nfc` | Verificación de edad por NFC (contrato en `06-contratos-mobile-backend.md`). Con `AGE_VERIFICATION_REQUIRED=true`, un perfil sin verificación válida queda «pendiente de verificar»: se puede editar, pero `is_discoverable` es falso (distinto de `is_paused`) y la API social responde 403 `age_verification_required`. Verificarse lo hace descubrible si está completo y no pausado. Un documento de menor → 422 `{error: "underage", accountDeleted: true}` y borrado físico de toda la cuenta (`Cherry.Accounts.purge_account/1`): fotos y subidas del almacenamiento, usuario y, en cascada, perfil, matches, mensajes, reportes, sesiones, tokens e intentos; no se guarda nada del documento |
 | `DELETE /api/me/account` | Soft-delete de cuenta y perfil (funciona también sin perfil): revoca todas las sesiones y tokens push, desconecta sus sockets e impide volver a entrar con esa cuenta. Las fotos se borran físicamente del almacenamiento; el resto de registros (perfil, matches, mensajes cifrados, reportes) se conserva |
 
 ## Tags (autenticado)

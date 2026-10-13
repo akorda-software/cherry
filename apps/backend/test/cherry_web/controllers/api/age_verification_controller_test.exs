@@ -1,10 +1,17 @@
 defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
   use CherryWeb.ConnCase, async: false
 
+  import Ecto.Query
   import ExUnit.CaptureLog
   import Cherry.TestSupport.DatingFixtures
+  import Cherry.TestSupport.SocialFixtures
 
+  alias Cherry.Accounts.User
+  alias Cherry.Dating
+  alias Cherry.Dating.{Match, Profile, ProfilePhoto}
+  alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt}
   alias Cherry.Identity.Document.TrustStore
+  alias Cherry.Repo
   alias Cherry.TestSupport.DocumentPKI, as: PKI
 
   setup do
@@ -142,11 +149,33 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
                |> json_response(422)
     end
 
-    test "minors", %{conn: conn} = ctx do
-      assert %{"error" => "underage"} =
+    test "a minor's account is erased entirely", %{conn: conn, user: user} = ctx do
+      profile = complete_profile_fixture(user)
+      other = complete_profile_fixture(user_fixture())
+      mutual_match!(profile, other)
+
+      assert %{"error" => "underage", "accountDeleted" => true} =
                conn
                |> post("/api/me/verification/nfc", body(document(ctx, birth: ~D[2012-06-01])))
                |> json_response(422)
+
+      refute Repo.get(User, user.id)
+      refute Repo.get(Profile, profile.id)
+
+      for schema <- [Match, AgeVerification, AgeVerificationAttempt] do
+        assert Repo.aggregate(schema, :count) == 0, inspect(schema)
+      end
+
+      photos = fn id ->
+        Repo.aggregate(from(p in ProfilePhoto, where: p.profile_id == ^id), :count)
+      end
+
+      assert photos.(profile.id) == 0
+      assert photos.(other.id) == 2
+
+      # The session is gone with the account.
+      assert conn |> get("/api/bootstrap") |> json_response(401)
+      assert Repo.get(Profile, other.id)
     end
 
     test "expired documents", %{conn: conn} = ctx do
@@ -245,6 +274,142 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
       assert conn |> post("/api/me/verification/nfc", body(document(ctx))) |> json_response(200)
 
       refute authed_conn_for_user(user) |> get("/api/discovery/feed") |> Map.get(:status) == 403
+    end
+  end
+
+  describe "pending verification (AGE_VERIFICATION_REQUIRED on)" do
+    setup %{user: user} = ctx do
+      Application.put_env(:cherry, :features, age_verification_required: true)
+      viewer = complete_profile_fixture(user)
+      refute viewer.is_discoverable
+
+      assert ctx.conn
+             |> post("/api/me/verification/nfc", body(document(ctx, personal_number: PKI.dni(1))))
+             |> json_response(200)
+
+      %{viewer: Repo.get!(Profile, viewer.id)}
+    end
+
+    defp verify!(ctx, user, n) do
+      assert authed_conn_for_user(user)
+             |> post("/api/me/verification/nfc", body(document(ctx, personal_number: PKI.dni(n))))
+             |> json_response(200)
+    end
+
+    defp feed_ids(conn) do
+      conn
+      |> get("/api/discovery/feed")
+      |> json_response(200)
+      |> Map.fetch!("profiles")
+      |> Enum.map(& &1["id"])
+    end
+
+    defp liker_ids(conn) do
+      conn
+      |> get("/api/likes/received")
+      |> json_response(200)
+      |> Map.fetch!("likes")
+      |> Enum.map(& &1["profile"]["id"])
+    end
+
+    test "verifying makes the profile discoverable", %{viewer: viewer} do
+      assert viewer.is_discoverable
+      refute viewer.is_paused
+    end
+
+    test "an unverified profile is invisible until verified, then visible", ctx do
+      other_user = user_fixture()
+      other = complete_profile_fixture(other_user)
+      like!(other, ctx.viewer)
+
+      refute other.is_discoverable
+      refute other.is_paused
+
+      assert %{
+               "profile" => %{
+                 "isComplete" => true,
+                 "isDiscoverable" => false,
+                 "isPaused" => false
+               },
+               "ageVerification" => %{"required" => true, "status" => "unverified"}
+             } = authed_conn_for_user(other_user) |> get("/api/bootstrap") |> json_response(200)
+
+      refute other.id in feed_ids(ctx.conn)
+      refute other.id in liker_ids(ctx.conn)
+
+      assert %{"error" => "profile_not_found"} =
+               ctx.conn |> get("/api/profiles/#{other.id}") |> json_response(404)
+
+      # Editing the profile keeps it pending.
+      assert authed_conn_for_user(other_user)
+             |> put("/api/me/profile", %{"bio" => "Una bio nueva y suficientemente larga."})
+             |> json_response(200)
+
+      refute Repo.get!(Profile, other.id).is_discoverable
+
+      verify!(ctx, other_user, 2)
+
+      assert Repo.get!(Profile, other.id).is_discoverable
+      assert other.id in feed_ids(ctx.conn)
+      assert other.id in liker_ids(ctx.conn)
+      assert ctx.conn |> get("/api/profiles/#{other.id}") |> json_response(200)
+
+      assert %{
+               "profile" => %{"isDiscoverable" => true},
+               "ageVerification" => %{"required" => true, "status" => "verified"}
+             } = authed_conn_for_user(other_user) |> get("/api/bootstrap") |> json_response(200)
+    end
+
+    test "verifying respects a pause by the owner", ctx do
+      other_user = user_fixture()
+      other = complete_profile_fixture(other_user)
+      {:ok, _} = Dating.pause_profile(other)
+
+      verify!(ctx, other_user, 3)
+
+      paused = Repo.get!(Profile, other.id)
+      assert paused.is_paused
+      refute paused.is_discoverable
+      refute other.id in feed_ids(ctx.conn)
+
+      assert %{"ok" => true} =
+               authed_conn_for_user(other_user) |> post("/api/me/unpause") |> json_response(200)
+
+      assert Repo.get!(Profile, other.id).is_discoverable
+      assert other.id in feed_ids(ctx.conn)
+    end
+
+    test "unpausing does not skip the verification", ctx do
+      other_user = user_fixture()
+      other = complete_profile_fixture(other_user)
+      {:ok, _} = Dating.pause_profile(other)
+
+      assert %{"ok" => true} =
+               authed_conn_for_user(other_user) |> post("/api/me/unpause") |> json_response(200)
+
+      resumed = Repo.get!(Profile, other.id)
+      refute resumed.is_paused
+      refute resumed.is_discoverable
+      refute other.id in feed_ids(ctx.conn)
+    end
+  end
+
+  describe "AGE_VERIFICATION_REQUIRED off" do
+    test "unverified profiles stay discoverable and visible", %{user: user, conn: conn} do
+      viewer = complete_profile_fixture(user)
+      other = complete_profile_fixture(user_fixture())
+      like!(other, viewer)
+
+      assert viewer.is_discoverable
+      assert other.is_discoverable
+
+      assert %{"profiles" => profiles} = conn |> get("/api/discovery/feed") |> json_response(200)
+      assert other.id in Enum.map(profiles, & &1["id"])
+
+      assert %{"likes" => [%{"profile" => %{"id" => id}}]} =
+               conn |> get("/api/likes/received") |> json_response(200)
+
+      assert id == other.id
     end
   end
 end

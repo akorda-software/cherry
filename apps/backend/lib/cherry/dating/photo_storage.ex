@@ -4,6 +4,9 @@ defmodule Cherry.Dating.PhotoStorage do
 
     * `purge_photo/1`: al borrar una foto (`Cherry.Dating.delete_photo/1`).
     * `purge_user_photos/1`: al borrar una cuenta (`Cherry.Accounts.delete_account/1`).
+    * `purge_user_storage/1`: al borrar una cuenta del todo
+      (`Cherry.Accounts.purge_account/1`): fotos y subidas en curso, antes de
+      borrar las filas, porque después nadie podría reintentarlo.
     * `sweep/1` (periódico, `Cherry.Dating.PhotoStorageSweeper`): reintenta lo
       anterior si el almacenamiento falló (fotos inactivas o de perfiles
       borrados aún con objeto) y limpia las subidas caducadas: borra el objeto
@@ -58,6 +61,45 @@ defmodule Cherry.Dating.PhotoStorage do
   end
 
   @doc """
+  Borra los objetos de todas las fotos y subidas (intents) de los perfiles de
+  `user_id`. Devuelve `:ok` o `{:error, claves}` con los objetos que no se han
+  podido borrar (las claves son aleatorias, sin datos de la persona).
+  """
+  def purge_user_storage(user_id) do
+    purge_user_photos(user_id)
+
+    from(i in ProfilePhotoUploadIntent,
+      join: p in Profile,
+      on: p.id == i.profile_id,
+      where: p.user_id == ^user_id and is_nil(i.storage_deleted_at)
+    )
+    |> Repo.all()
+    |> Enum.filter(&purge_intent/1)
+    |> mark_intents()
+
+    photos =
+      from(ph in ProfilePhoto,
+        join: p in Profile,
+        on: p.id == ph.profile_id,
+        where: p.user_id == ^user_id and is_nil(ph.storage_deleted_at),
+        select: ph.storage_key
+      )
+
+    intents =
+      from(i in ProfilePhotoUploadIntent,
+        join: p in Profile,
+        on: p.id == i.profile_id,
+        where: p.user_id == ^user_id and is_nil(i.storage_deleted_at),
+        select: i.storage_key
+      )
+
+    case Repo.all(photos) ++ Repo.all(intents) do
+      [] -> :ok
+      keys -> {:error, keys}
+    end
+  end
+
+  @doc """
   Un barrido: fotos pendientes de borrar e intents caducados. Devuelve
   `%{photos: n, intents: n}` (filas limpiadas).
   """
@@ -83,31 +125,38 @@ defmodule Cherry.Dating.PhotoStorage do
   defp sweep_intents(now, batch) do
     cutoff = now |> DateTime.add(-@intent_grace_seconds, :second) |> DateTime.truncate(:second)
 
-    cleaned =
-      from(i in ProfilePhotoUploadIntent,
-        where: is_nil(i.storage_deleted_at) and i.expires_at < ^cutoff,
-        limit: ^batch
-      )
-      |> Repo.all()
-      |> Enum.filter(fn intent ->
-        result =
-          if intent.completed_at,
-            do: Storage.delete_object(Storage.pending_key(intent.storage_key)),
-            else: Storage.delete_upload_objects(intent.storage_key)
+    from(i in ProfilePhotoUploadIntent,
+      where: is_nil(i.storage_deleted_at) and i.expires_at < ^cutoff,
+      limit: ^batch
+    )
+    |> Repo.all()
+    |> Enum.filter(&purge_intent/1)
+    |> mark_intents()
+  end
 
-        case result do
-          :ok ->
-            true
+  # A completed intent's final object is a photo (purged with it): only the
+  # pending one is left. Otherwise both may exist.
+  defp purge_intent(%ProfilePhotoUploadIntent{} = intent) do
+    result =
+      if intent.completed_at,
+        do: Storage.delete_object(Storage.pending_key(intent.storage_key)),
+        else: Storage.delete_upload_objects(intent.storage_key)
 
-          {:error, reason} ->
-            log_failure("upload intent #{intent.id}", reason)
-            false
-        end
-      end)
-      |> Enum.map(& &1.id)
+    case result do
+      :ok ->
+        true
+
+      {:error, reason} ->
+        log_failure("upload intent #{intent.id}", reason)
+        false
+    end
+  end
+
+  defp mark_intents(intents) do
+    ids = Enum.map(intents, & &1.id)
 
     {count, _} =
-      Repo.update_all(from(i in ProfilePhotoUploadIntent, where: i.id in ^cleaned),
+      Repo.update_all(from(i in ProfilePhotoUploadIntent, where: i.id in ^ids),
         set: [storage_deleted_at: now()]
       )
 

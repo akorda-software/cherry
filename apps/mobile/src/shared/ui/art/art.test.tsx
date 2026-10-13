@@ -45,7 +45,7 @@ describe("Logo", () => {
     const { getByRole } = render(<Logo height={40} />);
     const logo = getByRole("img");
     expect(logo.getAttribute("aria-label")).toBe("Cherry");
-    expect(Number.parseFloat(logo.style.width)).toBeGreaterThan(90);
+    expect(Number.parseFloat(logo.style.width)).toBeGreaterThan(70);
     expect(logo.style.height).toBe("40px");
   });
 

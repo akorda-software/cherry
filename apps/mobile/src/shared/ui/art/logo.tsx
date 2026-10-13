@@ -9,6 +9,7 @@ import {
   CHERRY_BALLS_PATH,
   CHERRY_LEAF_PATH,
   CHERRY_SHINE_PATH,
+  CHERRY_STEMS_GAP_PATH,
   CHERRY_STEMS_PATH,
   WORDMARK_PATH
 } from "./wordmark-path";
@@ -28,23 +29,25 @@ export interface LogoProps {
   testID?: string;
 }
 
-// Unidades de la caja de la palabra (≈ 450 × 100, más rabitos arriba y la «y» abajo).
-const RIM = 13;
-const OUTLINE = 6;
-const SHADOW = 9;
-const LETTER_STROKE = 9;
-const STEM = 7;
-const CHERRY_STROKE = 5;
-const HEART_SCALE = 2.1;
-const HEART_TRANSFORM = `translate(452 -34) scale(${HEART_SCALE}) rotate(14 12 12)`;
+// Unidades de la caja de la palabra (≈ 1200 × 400, más rabitos arriba y la «y» abajo).
+const RIM = 39;
+const OUTLINE = 18;
+const SHADOW = 27;
+const LETTER_STROKE = 22;
+const STEM = 15;
+const LEAF_STROKE = 12;
+const CHERRY_STROKE = 14;
+const SHINE = 10;
+const HEART_SCALE = 6.3;
+const HEART_TRANSFORM = `translate(1080 -330) scale(${HEART_SCALE}) rotate(14 12 12)`;
 const VIEWBOX = {
-  sticker: { x: -22, y: -64, w: 502, h: 209 },
-  plain: { x: -6, y: -48, w: 462, h: 168 }
+  sticker: { x: -65, y: -497, w: 1365, h: 693 },
+  plain: { x: -8, y: -440, w: 1224, h: 552 }
 } as const;
 
 /**
- * Logo «cherry»: la palabra en Rubik Black como pegatina troquelada; las dos erres acaban en
- * un par de cerezas unidas por los rabitos y una hoja.
+ * Logo «cherry»: la palabra en Fraunces Black, sola o como pegatina troquelada; las bolas de
+ * las dos erres son un par de cerezas unidas por los rabitos y una hoja.
  */
 export const Logo = memo(function Logo({
   height = 40,
@@ -68,12 +71,14 @@ export const Logo = memo(function Logo({
   const outer = 2 * (RIM + OUTLINE);
   const rim = 2 * RIM;
 
-  // Silueta completa (letras, cerezas, hoja y rabitos) con un grosor de trazo dado: sombra,
+  // Silueta completa (letras, cerezas, hoja, rabitos y el hueco entre ellos) con un grosor de trazo dado: sombra,
   // contorno y troquel blanco de la pegatina.
   const silhouette = (color: string, extra: number) => (
     <>
-      <Path d={`${WORDMARK_PATH}${CHERRY_BALLS_PATH}`} fill={color} stroke={color} strokeWidth={letterStroke + extra} strokeLinejoin="round" />
-      <Path d={CHERRY_LEAF_PATH} fill={color} stroke={color} strokeWidth={CHERRY_STROKE + extra} strokeLinejoin="round" />
+      <Path d={WORDMARK_PATH} fill={color} stroke={color} strokeWidth={letterStroke + extra} strokeLinejoin="round" />
+      <Path d={CHERRY_BALLS_PATH} fill={color} stroke={color} strokeWidth={CHERRY_STROKE + extra} strokeLinejoin="round" />
+      <Path d={CHERRY_LEAF_PATH} fill={color} stroke={color} strokeWidth={LEAF_STROKE + extra} strokeLinejoin="round" />
+      <Path d={CHERRY_STEMS_GAP_PATH} fill={color} stroke={color} strokeWidth={STEM + extra} strokeLinejoin="round" />
       <Path d={CHERRY_STEMS_PATH} fill="none" stroke={color} strokeWidth={STEM + extra} strokeLinecap="round" />
     </>
   );
@@ -113,10 +118,10 @@ export const Logo = memo(function Logo({
           strokeWidth={letterStroke || undefined}
           strokeLinejoin="round"
         />
-        <Path d={CHERRY_STEMS_PATH} fill="none" stroke={c.ink} strokeWidth={STEM} strokeLinecap="round" />
-        <Path d={CHERRY_LEAF_PATH} fill={pastel.menta.fill} stroke={c.ink} strokeWidth={CHERRY_STROKE} strokeLinejoin="round" />
+        <Path d={CHERRY_STEMS_PATH} fill="none" stroke={c.ink} strokeWidth={STEM} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d={CHERRY_LEAF_PATH} fill={pastel.menta.fill} stroke={c.ink} strokeWidth={LEAF_STROKE} strokeLinejoin="round" />
         <Path d={CHERRY_BALLS_PATH} fill={cherryFill} stroke={c.ink} strokeWidth={CHERRY_STROKE} />
-        <Path d={CHERRY_SHINE_PATH} fill={c.white} />
+        <Path d={CHERRY_SHINE_PATH} fill="none" stroke={c.paper} strokeWidth={SHINE} strokeLinecap="round" />
         {heart ? (
           <G transform={HEART_TRANSFORM}>
             {heartLayers({ fill: heartFill, stroke: c.ink, width: 7 / HEART_SCALE })}

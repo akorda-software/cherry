@@ -18,7 +18,7 @@ todas las personas que lo han hecho y nadie puede cerrarlo.
 como imágenes puedes usarlos donde quieras bajo CC BY-SA 4.0: una web, un
 cartel, otra app. Basta con citar «Cherry, por Akorda Software y colaboradores»
 y compartir tus cambios con la misma licencia. El logotipo «cherry» está
-dibujado a partir de las letras de la fuente Rubik (OFL-1.1).
+dibujado a partir de las letras de la fuente Fraunces (OFL-1.1), retocadas a mano.
 
 **El nombre es otra cosa.** Las licencias cubren el código, los textos y los
 dibujos, no el nombre «Cherry». Cuándo puedes llamar «Cherry» a tu instancia lo

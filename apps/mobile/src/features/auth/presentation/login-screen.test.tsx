@@ -1,8 +1,10 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { Platform } from "react-native";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderRoute } from "../../../../test/router/render-route";
 import { sessionFixture } from "../../../../test/router/session-shell.fixture";
+import { createFreshTestEmail, DEMO2_TEST_EMAIL, DEMO_TEST_EMAIL } from "./auth-action-list";
 import { LoginScreen } from "./login-screen";
 
 function deferred<T>() {
@@ -16,47 +18,53 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-describe("LoginScreen", () => {
-  it("renders shared screen, card, and auth actions for the login shell", async () => {
-    renderRoute(<LoginScreen />);
+const platform = Platform as { OS: string };
+const originalOS = platform.OS;
 
-    expect(await screen.findByRole("heading", { name: "Welcome to Cherry" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Sign in to continue" })).toBeInTheDocument();
-    expect(screen.getByText("Reusable auth access for the current app shell.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continue with Apple" })).toBeInTheDocument();
-    expect(screen.getByTestId("pathname")).toHaveTextContent("/");
+describe("LoginScreen", () => {
+  // Sign in with Apple only exists natively on iOS: the provider tests run as iOS.
+  beforeEach(() => {
+    platform.OS = "ios";
   });
 
-  it("shows a loading state while Google sign-in is in flight", async () => {
+  afterEach(() => {
+    platform.OS = originalOS;
+  });
+
+  it("welcomes with a plain headline, no slogans, and both providers", async () => {
+    renderRoute(<LoginScreen />);
+
+    expect(await screen.findByRole("heading", { name: /Conoce gente\s+cerca de ti\./ })).toBeInTheDocument();
+    expect(screen.queryByText(/gratis|trucos|muros de pago|código abierto/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continuar con Google" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continuar con Apple" })).toBeInTheDocument();
+  });
+
+  it("shows the loading state on the chosen provider and locks the rest", async () => {
     const flow = deferred<typeof sessionFixture>();
 
     renderRoute(<LoginScreen />, {
       services: {
         completeAuth: {
-          google: {
-            execute: vi.fn(() => flow.promise)
-          },
-          apple: {
-            execute: async () => sessionFixture
-          }
+          google: { execute: vi.fn(() => flow.promise) },
+          apple: { execute: async () => sessionFixture }
         }
       }
     });
 
-    fireEvent.click(await screen.findByRole("button", { name: "Continue with Google" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Continuar con Google" }));
 
-    expect(await screen.findByText("Signing in with Google…")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Continue with Apple" })).toBeDisabled();
+    const google = await screen.findByRole("button", { name: "Continuar con Google" });
+    await waitFor(() => expect(google).toHaveAttribute("aria-busy", "true"));
+    expect(screen.getByLabelText("Entrando con Google…")).toBeInTheDocument();
+    expect(google).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Continuar con Apple" })).toBeDisabled();
 
     flow.resolve(sessionFixture);
-    await waitFor(() => {
-      expect(screen.queryByText("Signing in with Google…")).not.toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.queryByLabelText("Entrando con Google…")).not.toBeInTheDocument());
   });
 
-  it("shows an error message when Apple sign-in fails", async () => {
+  it("explains a failed sign-in kindly, without provider internals", async () => {
     renderRoute(<LoginScreen />, {
       services: {
         authProviders: {
@@ -78,29 +86,97 @@ describe("LoginScreen", () => {
       }
     });
 
-    fireEvent.click(await screen.findByRole("button", { name: "Continue with Apple" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Continuar con Apple" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Apple is unavailable");
+    expect(await screen.findByRole("alert")).toHaveTextContent("No hemos podido entrar con Apple. Inténtalo otra vez.");
   });
 
-  it("hands off to the canonical home route after a successful sign-in", async () => {
+  it("stays quiet when the person closes the provider sheet", async () => {
     renderRoute(<LoginScreen />, {
       services: {
-        completeAuth: {
+        authProviders: {
           google: {
-            execute: vi.fn(async () => sessionFixture)
+            authenticate: vi.fn(async () => {
+              throw new Error("Google Sign-In was cancelled by the user");
+            })
           },
           apple: {
-            execute: async () => sessionFixture
+            authenticate: vi.fn(async () => {
+              throw new Error("unused");
+            })
           }
         }
       }
     });
 
-    fireEvent.click(await screen.findByRole("button", { name: "Continue with Google" }));
+    const google = await screen.findByRole("button", { name: "Continuar con Google" });
+    fireEvent.click(google);
+
+    await waitFor(() => expect(google).not.toBeDisabled());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("hands off to the index route, which waits for the bootstrap before routing", async () => {
+    renderRoute(<LoginScreen />, {
+      initialPath: "/(public)/login",
+      services: {
+        completeAuth: {
+          google: { execute: vi.fn(async () => sessionFixture) },
+          apple: { execute: async () => sessionFixture }
+        }
+      }
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Continuar con Google" }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/(tabs)/home");
+      expect(screen.getByTestId("pathname")).toHaveTextContent(/^\/$/);
     });
+  });
+
+  it("hides «Continuar con Apple» where there is no supported flow (Android, web)", async () => {
+    for (const os of ["android", "web"]) {
+      platform.OS = os;
+      const view = renderRoute(<LoginScreen />);
+
+      expect(await screen.findByRole("button", { name: "Continuar con Google" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Continuar con Apple" })).not.toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
+  it("offers a second demo persona to try live matches between two sessions", async () => {
+    const execute = vi.fn(async (_email?: string) => sessionFixture);
+
+    renderRoute(<LoginScreen />, { services: { testSignIn: { execute } } });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Entrar como Hugo (demo 2)" }));
+    await waitFor(() => expect(execute).toHaveBeenCalledWith(DEMO2_TEST_EMAIL));
+  });
+
+  it("offers the development shortcuts: a brand-new user and the demo persona", async () => {
+    const execute = vi.fn(async (_email?: string) => sessionFixture);
+
+    renderRoute(<LoginScreen />, { services: { testSignIn: { execute } } });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Entrar como Lucía (demo)" }));
+    await waitFor(() => expect(execute).toHaveBeenCalledWith(DEMO_TEST_EMAIL));
+  });
+
+  it("signs in a brand-new user with a fresh throwaway email", async () => {
+    const execute = vi.fn(async (_email?: string) => sessionFixture);
+
+    renderRoute(<LoginScreen />, { services: { testSignIn: { execute } } });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Entrar como usuario nuevo" }));
+    await waitFor(() => expect(execute).toHaveBeenCalledTimes(1));
+    expect(execute.mock.calls[0]?.[0]).toMatch(/^nuevo-[a-z0-9]+-[a-z0-9]{4}@cherry\.dev$/);
+  });
+});
+
+describe("createFreshTestEmail", () => {
+  it("builds unique-looking throwaway addresses", () => {
+    expect(createFreshTestEmail(0, () => 0)).toBe("nuevo-0-0000@cherry.dev");
+    expect(createFreshTestEmail(1_700_000_000_000, () => 0.5)).not.toBe(createFreshTestEmail(1_700_000_000_001, () => 0.5));
   });
 });

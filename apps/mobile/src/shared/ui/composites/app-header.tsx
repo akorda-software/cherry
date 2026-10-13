@@ -1,12 +1,8 @@
 import type { ReactNode } from "react";
-import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { Heading } from "../primitives/heading";
-import { Inline } from "../primitives/inline";
-import { Stack } from "../primitives/stack";
 import { Text } from "../primitives/text";
-import { useTheme } from "../providers/theme-provider";
 
 interface AppHeaderProps {
   title: string;
@@ -14,30 +10,29 @@ interface AppHeaderProps {
   actions?: ReactNode;
 }
 
+/** @deprecated usa `TopBar`. Se mantiene para código antiguo. */
 export function AppHeader({ actions, subtitle, title }: AppHeaderProps) {
-  const theme = useTheme();
-
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        banner: {
-          paddingBottom: theme.primitives.spacing.sm,
-          borderBottomWidth: theme.primitives.border.heavy,
-          borderColor: theme.primitives.color.ink
-        }
-      }),
-    [theme]
-  );
-
   return (
     <View role="banner" style={styles.banner}>
-      <Inline style={{ justifyContent: "space-between" }}>
-        <Stack>
-          <Heading level={1}>{title}</Heading>
-          {subtitle ? <Text>{subtitle}</Text> : null}
-        </Stack>
-        {actions}
-      </Inline>
+      <View style={styles.texts}>
+        <Heading level={1}>{title}</Heading>
+        {subtitle ? <Text color="muted">{subtitle}</Text> : null}
+      </View>
+      {actions}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  banner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingBottom: 8
+  },
+  texts: {
+    flex: 1,
+    gap: 4
+  }
+});

@@ -37,6 +37,7 @@ defmodule Cherry.Dating.Match do
     |> validate_required([:status, :matched_at, :profile_a_id, :profile_b_id])
     |> validate_inclusion(:status, ["active", "expired", "unmatched"])
     |> validate_different_profiles()
+    |> unique_constraint([:profile_a_id, :profile_b_id], name: :idx_matches_canonical_pair)
     |> foreign_key_constraint(:profile_a_id)
     |> foreign_key_constraint(:profile_b_id)
   end

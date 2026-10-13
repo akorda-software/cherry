@@ -4,6 +4,8 @@ import { useShallow } from "zustand/react/shallow";
 import type { AuthCallbackPayload, SessionBundle } from "@cherry/contracts";
 import type { AuthProvider } from "@cherry/mobile-shared";
 
+import { describeAuthError } from "./auth-error-copy";
+
 export type BusyProvider = AuthProvider | "test";
 
 export type AuthShellState =
@@ -33,7 +35,8 @@ interface LogoutSessionService {
 }
 
 interface TestSignInService {
-  execute(): Promise<SessionBundle>;
+  /** Sin `email`, el usuario de test compartido; con `email`, esa persona (se crea si no existe). */
+  execute(email?: string): Promise<SessionBundle>;
 }
 
 export interface SessionShellServices {
@@ -55,7 +58,7 @@ interface SessionStoreState {
   configure(services: SessionShellServices): void;
   bootstrap(): Promise<void>;
   signInWith(provider: AuthProvider): Promise<void>;
-  signInAsTest(): Promise<void>;
+  signInAsTest(email?: string): Promise<void>;
   signOut(): Promise<void>;
   executeAuthenticated<T>(request: (accessToken: string) => Promise<T>): Promise<T>;
 }
@@ -101,7 +104,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       set({
         status: "signed-out",
         session: null,
-        error: error instanceof Error ? error.message : "Unable to restore session",
+        error: describeAuthError(error, "restore"),
         busyProvider: null
       });
     }
@@ -119,13 +122,13 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       set({
         status: "signed-out",
         session: null,
-        error: error instanceof Error ? error.message : "Unable to sign in",
+        error: describeAuthError(error, provider),
         busyProvider: null
       });
     }
   },
 
-  signInAsTest: async () => {
+  signInAsTest: async (email) => {
     const { services } = get();
     if (!services.testSignIn) {
       return;
@@ -134,13 +137,13 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     set({ status: "signed-out", session: null, error: null, busyProvider: "test" });
 
     try {
-      const session = await services.testSignIn.execute();
+      const session = await services.testSignIn.execute(email);
       set({ status: "signed-in", session, error: null, busyProvider: null });
     } catch (error) {
       set({
         status: "signed-out",
         session: null,
-        error: error instanceof Error ? error.message : "Unable to sign in as test",
+        error: describeAuthError(error, "test"),
         busyProvider: null
       });
     }
@@ -149,8 +152,15 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   signOut: async () => {
     const { services, session, status } = get();
     const currentSession = status === "signed-in" ? session : null;
-    await services.logoutSession.execute(currentSession);
-    set({ status: "signed-out", session: null, error: null, busyProvider: null });
+
+    try {
+      await services.logoutSession.execute(currentSession);
+    } catch {
+      // La sesión local ya se ha borrado; si revocarla en el servidor falla (sin red,
+      // cuenta ya borrada), la persona sale igualmente.
+    } finally {
+      set({ status: "signed-out", session: null, error: null, busyProvider: null });
+    }
   },
 
   executeAuthenticated: async (request) => {
@@ -171,7 +181,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
 export function useSessionShell(): {
   state: AuthShellState;
   signInWith(provider: AuthProvider): Promise<void>;
-  signInAsTest?(): Promise<void>;
+  signInAsTest?(email?: string): Promise<void>;
   signOut(): Promise<void>;
   executeAuthenticated<T>(request: (accessToken: string) => Promise<T>): Promise<T>;
 } {

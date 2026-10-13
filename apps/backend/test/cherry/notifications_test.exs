@@ -1,11 +1,13 @@
 defmodule Cherry.NotificationsTest do
   use Cherry.DataCase, async: true
+  use Oban.Testing, repo: Cherry.Repo
 
   import Cherry.TestSupport.DatingFixtures
 
   alias Cherry.Dating
   alias Cherry.Dating.Conversation
   alias Cherry.Notifications
+  alias Cherry.Notifications.PushWorker
   alias Cherry.Repo
   alias Cherry.Sessions
   alias Cherry.Sessions.PushToken
@@ -37,7 +39,7 @@ defmodule Cherry.NotificationsTest do
   end
 
   describe "product notification triggers" do
-    test "record_swipe/1 sends new_match notifications to both matched profiles" do
+    test "record_swipe/1 queues independent new_match jobs without calling Expo" do
       user_a = user_fixture(%{display_name: "Ana"})
       user_b = user_fixture(%{display_name: "Ben"})
       profile_a = profile_fixture(user_a, %{display_name: "Ana"})
@@ -62,6 +64,20 @@ defmodule Cherry.NotificationsTest do
                  action_type: "like"
                })
 
+      refute_receive {:expo_push_messages, _messages}
+
+      assert_enqueued(
+        worker: PushWorker,
+        args: %{event: "new_match", entity_id: match.id, recipient_profile_id: profile_a.id}
+      )
+
+      assert_enqueued(
+        worker: PushWorker,
+        args: %{event: "new_match", entity_id: match.id, recipient_profile_id: profile_b.id}
+      )
+
+      assert %{success: 2} = Oban.drain_queue(queue: :push)
+
       assert_receive {:expo_push_messages, [message_a]}
       assert_receive {:expo_push_messages, [message_b]}
 
@@ -72,9 +88,20 @@ defmodule Cherry.NotificationsTest do
 
       assert Enum.all?(messages, &(get_in(&1, ["data", "type"]) == "new_match"))
       assert Enum.all?(messages, &(get_in(&1, ["data", "matchId"]) == match.id))
+
+      conversation = Repo.get_by!(Conversation, match_id: match.id)
+      assert Enum.all?(messages, &(get_in(&1, ["data", "conversationId"]) == conversation.id))
+
+      assert messages |> Enum.map(& &1["title"]) |> Enum.sort() ==
+               ["¡Match con Ana! 💘", "¡Match con Ben! 💘"]
+
+      assert Enum.all?(
+               messages,
+               &(&1["body"] == "Os habéis gustado. Rompe el hielo cuando te apetezca 👋")
+             )
     end
 
-    test "send_message/1 sends a new_message notification only to the recipient" do
+    test "send_message/1 queues a new_message notification only to the recipient" do
       user_a = user_fixture(%{display_name: "Ana"})
       user_b = user_fixture(%{display_name: "Ben"})
       profile_a = profile_fixture(user_a, %{display_name: "Ana"})
@@ -106,10 +133,19 @@ defmodule Cherry.NotificationsTest do
                  body: "Hola, que tal?"
                })
 
+      refute_receive {:expo_push_messages, _messages}
+
+      assert_enqueued(
+        worker: PushWorker,
+        args: %{event: "new_message", entity_id: message.id, recipient_profile_id: profile_b.id}
+      )
+
+      assert %{success: 1} = Oban.drain_queue(queue: :push)
+
       assert_receive {:expo_push_messages, [push]}
       assert push["to"] == "ExponentPushToken[token-recipient]"
-      assert push["title"] == "Nuevo mensaje de Ana"
-      assert push["body"] == "Tienes un mensaje nuevo."
+      assert push["title"] == "Ana te ha escrito"
+      assert push["body"] == "Tienes un mensaje nuevo esperándote 💬"
 
       assert push["data"] == %{
                "type" => "new_message",
@@ -119,6 +155,105 @@ defmodule Cherry.NotificationsTest do
              }
 
       refute_receive {:expo_push_messages, _messages}
+    end
+  end
+
+  describe "outbox reliability" do
+    setup do
+      sender = profile_fixture(user_fixture())
+      user = user_fixture()
+      recipient = profile_fixture(user)
+
+      {:ok, %{match: nil}} =
+        Dating.record_swipe(%{
+          actor_profile_id: sender.id,
+          target_profile_id: recipient.id,
+          action_type: "like"
+        })
+
+      {:ok, %{match: match}} =
+        Dating.record_swipe(%{
+          actor_profile_id: recipient.id,
+          target_profile_id: sender.id,
+          action_type: "like"
+        })
+
+      conversation = Repo.get_by!(Conversation, match_id: match.id)
+      token = register_push_token(user, "ExponentPushToken[outbox]", "outbox-install")
+      %{sender: sender, recipient: recipient, conversation: conversation, token: token}
+    end
+
+    test "a rolled-back message leaves no push job", context do
+      assert {:error, :abort} =
+               Repo.transaction(fn ->
+                 assert {:ok, _message} = send_message(context)
+                 Repo.rollback(:abort)
+               end)
+
+      refute_enqueued(worker: PushWorker)
+      refute_receive {:expo_push_messages, _}
+    end
+
+    test "delivery retries a transport failure independently of the committed message", context do
+      assert {:ok, message} = send_message(context)
+      Process.put(:expo_push_test_result, {:error, :provider_unavailable})
+      assert %{failure: 1} = Oban.drain_queue(queue: :push)
+      assert Repo.get!(Cherry.Dating.Message, message.id).body == "Outbox test"
+      Process.delete(:expo_push_test_result)
+      assert %{success: 1} = Oban.drain_queue(queue: :push, with_scheduled: true)
+    end
+
+    test "a committed block cancels a queued message push", context do
+      assert {:ok, _} = send_message(context)
+
+      assert {:ok, _} =
+               Dating.block_profile(%{
+                 actor_profile_id: context.recipient.id,
+                 target_profile_id: context.sender.id
+               })
+
+      assert %{cancelled: 1} = Oban.drain_queue(queue: :push)
+      refute_receive {:expo_push_messages, _}
+    end
+
+    test "reading a message before delivery suppresses its push", context do
+      assert {:ok, message} = send_message(context)
+
+      assert {:ok, _} =
+               Cherry.Dating.Inbox.mark_read(
+                 context.conversation.id,
+                 context.recipient.id,
+                 message.inserted_at
+               )
+
+      assert %{cancelled: 1} = Oban.drain_queue(queue: :push)
+      refute_receive {:expo_push_messages, _}
+    end
+
+    test "revoked sessions are rechecked at delivery time", context do
+      assert {:ok, _} = send_message(context)
+      assert :ok = Sessions.revoke_user_sessions(context.recipient.user_id)
+      assert %{success: 1} = Oban.drain_queue(queue: :push)
+      refute_receive {:expo_push_messages, _}
+    end
+
+    test "queued payloads contain no plaintext message", context do
+      assert {:ok, message} = send_message(context)
+      [job] = all_enqueued(worker: PushWorker)
+
+      assert job.args == %{
+               "event" => "new_message",
+               "entity_id" => message.id,
+               "recipient_profile_id" => context.recipient.id
+             }
+    end
+
+    defp send_message(context) do
+      Dating.send_message(%{
+        conversation_id: context.conversation.id,
+        sender_profile_id: context.sender.id,
+        body: "Outbox test"
+      })
     end
   end
 

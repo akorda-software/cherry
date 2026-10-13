@@ -17,7 +17,8 @@ defmodule Cherry.Dating.Message do
     belongs_to(:conversation, Conversation)
     belongs_to(:sender_profile, Profile, foreign_key: :sender_profile_id)
 
-    timestamps(type: :utc_datetime)
+    # Microsegundos: el orden de la conversación depende de ello (D-2026-09-29).
+    timestamps(type: :utc_datetime_usec)
   end
 
   def changeset(message, attrs) do

@@ -29,6 +29,21 @@ defmodule CherryWeb.Endpoint do
     raise_on_missing_only: code_reloading?
   )
 
+  # Profile photos of the local storage adapter (Cherry.Storage.Local), stored as
+  # UPLOADS_DIR/<storage_key>. The directory is resolved per request (runtime
+  # config). Only published photos are exposed: `photos/` (random keys) and the
+  # legacy `profiles/`; never the `pending/` upload area nor `.tmp/`.
+  # Directories are never listed. Deleted photos are removed from disk, so the
+  # cache lifetime is one day (not "immutable"): caches forget them soon.
+  plug(Plug.Static,
+    at: "/uploads",
+    from: {Cherry.Storage.Local, :uploads_dir, []},
+    only: ~w(photos profiles),
+    gzip: false,
+    cache_control_for_etags: "public, max-age=86400",
+    headers: %{"x-content-type-options" => "nosniff"}
+  )
+
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do
@@ -40,6 +55,7 @@ defmodule CherryWeb.Endpoint do
 
   plug(Plug.RequestId)
   plug(Plug.Telemetry, event_prefix: [:phoenix, :endpoint])
+  plug(CherryWeb.Plugs.Cors)
 
   plug(Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
@@ -58,6 +74,12 @@ defmodule CherryWeb.Endpoint do
   """
   def read_body_cache(conn, opts) do
     {:ok, body, conn} = Plug.Conn.read_body(conn, opts)
-    {:ok, body, Plug.Conn.put_private(conn, :raw_body, body)}
+
+    # Identity documents (age verification) are never kept as a raw copy.
+    if String.starts_with?(conn.request_path, "/api/me/verification") do
+      {:ok, body, conn}
+    else
+      {:ok, body, Plug.Conn.put_private(conn, :raw_body, body)}
+    end
   end
 end

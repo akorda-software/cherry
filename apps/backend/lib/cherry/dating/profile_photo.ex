@@ -13,6 +13,8 @@ defmodule Cherry.Dating.ProfilePhoto do
     field(:url, :string)
     field(:position, :integer)
     field(:is_active, :boolean, default: true)
+    # Stored object(s) physically deleted (Cherry.Dating.PhotoStorage).
+    field(:storage_deleted_at, :utc_datetime)
 
     belongs_to(:profile, Profile)
 

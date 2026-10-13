@@ -3,9 +3,18 @@ import type {
   DiscoveryPreferences,
   DiscoveryPreferencesResponse,
   Gender,
+  LocationUpdateRequest,
+  OkResponse,
+  PhotoReorderResponse,
+  PhotoUploadCompleteRequest,
+  PhotoUploadCompleteResponse,
+  PhotoUploadIntent,
+  PhotoUploadIntentRequest,
   Profile,
   ProfileCompleteResponse,
   ProfileField,
+  ProfilePhoto,
+  ProfilePhotosResponse,
   ProfileResponse,
   ProfileTagsResponse,
   ProfileUpdateResponse,
@@ -15,6 +24,7 @@ import type {
 } from "@cherry/contracts";
 
 import type { HttpClient } from "./auth-api";
+import { httpDelete, pathSegment } from "./http-utils";
 
 export interface ProfileApi {
   getTagCatalog(): Promise<Tag[]>;
@@ -30,19 +40,25 @@ export interface ProfileApi {
   getDiscoveryPreferences(): Promise<DiscoveryPreferencesResponse>;
   updateDiscoveryPreferences(fields: Partial<DiscoveryPreferences>): Promise<DiscoveryPreferencesResponse>;
 
-  updateLocation(fields: {
-    lat: number;
-    lng: number;
-    city?: string;
-    region?: string;
-    country?: string;
-  }): Promise<{ location: unknown }>;
+  /** `POST /api/me/location` con `{latitude, longitude, accuracyMeters?, recordedAt?}`. */
+  updateLocation(location: LocationUpdateRequest): Promise<void>;
+
+  /** Fotos activas propias, por posición. */
+  listPhotos(): Promise<ProfilePhoto[]>;
+  /** Paso 1 de la subida: pide la URL firmada. Luego `PUT uploadUrl` con TODOS los `headers`. */
+  createPhotoUploadIntent(request: PhotoUploadIntentRequest): Promise<PhotoUploadIntent>;
+  /** Paso 3 de la subida: el backend verifica el objeto subido y registra la foto. */
+  completePhotoUpload(request: PhotoUploadCompleteRequest): Promise<ProfilePhoto>;
+  deletePhoto(photoId: string): Promise<void>;
+  /** Reordena las fotos activas (`photoIds` en el orden deseado) y devuelve la lista resultante. */
+  reorderPhotos(photoIds: string[]): Promise<ProfilePhoto[]>;
 }
 
 export type ProfileUpdateFields = Partial<
   Pick<Profile, ProfileField> & {
     gender: Gender | null;
-    whatIAmLookingFor: RelationshipIntent | null;
+    /** Se envía como `looking_for` (1–4 intenciones). */
+    lookingFor: RelationshipIntent[];
   }
 >;
 
@@ -50,7 +66,7 @@ const FIELD_TO_SNAKE: Record<ProfileField, string> = {
   displayName: "display_name",
   birthDate: "birth_date",
   gender: "gender",
-  whatIAmLookingFor: "what_i_am_looking_for",
+  lookingFor: "looking_for",
   bio: "bio"
 };
 
@@ -75,6 +91,7 @@ function toSnakeDiscovery(
   if (fields.showWomen !== undefined) out.show_women = fields.showWomen;
   if (fields.showNonBinary !== undefined) out.show_non_binary = fields.showNonBinary;
   if (fields.compatibleOnly !== undefined) out.compatible_only = fields.compatibleOnly;
+  if (fields.expandDistance !== undefined) out.expand_distance = fields.expandDistance;
   if (fields.discoveryMode !== undefined) out.discovery_mode = fields.discoveryMode;
   return out;
 }
@@ -123,14 +140,52 @@ export function createProfileApi(httpClient: HttpClient): ProfileApi {
         toSnakeDiscovery(fields)
       );
     },
-    async updateLocation(fields) {
-      return httpClient.post<{ location: unknown }>("/api/me/location", {
-        lat: fields.lat,
-        lng: fields.lng,
-        city: fields.city,
-        region: fields.region,
-        country: fields.country
+    async updateLocation(location) {
+      const body: Record<string, unknown> = {
+        latitude: location.latitude,
+        longitude: location.longitude
+      };
+      if (location.accuracyMeters !== undefined) body.accuracyMeters = location.accuracyMeters;
+      if (location.recordedAt !== undefined) body.recordedAt = location.recordedAt;
+
+      await httpClient.post<OkResponse>("/api/me/location", body);
+    },
+    async listPhotos() {
+      const response = await httpClient.get<ProfilePhotosResponse>("/api/me/photos");
+      return response.photos;
+    },
+    async createPhotoUploadIntent(request) {
+      return httpClient.post<PhotoUploadIntent>("/api/me/photos/upload-intent", {
+        position: request.position,
+        contentType: request.contentType,
+        sizeBytes: request.sizeBytes
       });
+    },
+    async completePhotoUpload(request) {
+      const body: Record<string, unknown> = {
+        storageKey: request.storageKey,
+        publicUrl: request.publicUrl,
+        position: request.position,
+        contentType: request.contentType,
+        sizeBytes: request.sizeBytes
+      };
+      if (request.width !== undefined) body.width = request.width;
+      if (request.height !== undefined) body.height = request.height;
+
+      const response = await httpClient.post<PhotoUploadCompleteResponse>(
+        "/api/me/photos/complete",
+        body
+      );
+      return response.photo;
+    },
+    async deletePhoto(photoId) {
+      await httpDelete<OkResponse>(httpClient, `/api/me/photos/${pathSegment(photoId)}`);
+    },
+    async reorderPhotos(photoIds) {
+      const response = await httpClient.put<PhotoReorderResponse>("/api/me/photos/order", {
+        photoIds
+      });
+      return response.photos;
     }
   };
 }

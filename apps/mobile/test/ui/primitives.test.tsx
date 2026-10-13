@@ -2,14 +2,19 @@ import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  Avatar,
+  Badge,
   Button,
   Divider,
   Heading,
   IconButton,
   Inline,
+  Pill,
+  ProgressBar,
   Screen,
   Stack,
   Surface,
+  Switch,
   Text,
   UserBadge
 } from "../../src/shared/ui";
@@ -20,10 +25,10 @@ describe("shared ui primitives", () => {
     renderWithTheme(
       <Screen description="Reusable shell content" testId="screen-root" title="Foundation screen">
         <Surface>
-          <Stack data-testid="stack-layout">
+          <Stack testID="stack-layout">
             <Heading>Section heading</Heading>
             <Text>Body copy</Text>
-            <Inline data-testid="inline-layout">
+            <Inline testID="inline-layout">
               <Text>Inline one</Text>
               <Text>Inline two</Text>
             </Inline>
@@ -41,44 +46,79 @@ describe("shared ui primitives", () => {
     expect(screen.getByTestId("inline-layout")).toBeInTheDocument();
   });
 
-  it("keeps button variants accessible for default, disabled, and destructive states", () => {
-    const onPress = vi.fn();
-
+  it("renders text with the variant font family and resolves color roles", () => {
     renderWithTheme(
-      <Stack>
-        <Button onPress={onPress}>Continue</Button>
-        <Button disabled onPress={onPress}>
-          Waiting
-        </Button>
-        <Button onPress={onPress} tone="destructive">
-          Delete profile
-        </Button>
-      </Stack>
+      <>
+        <Text variant="title1">Titular</Text>
+        <Text color="muted">Secundario</Text>
+      </>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.click(screen.getByRole("button", { name: "Delete profile" }));
-
-    expect(onPress).toHaveBeenCalledTimes(2);
-    expect(screen.getByRole("button", { name: "Waiting" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Delete profile" })).toHaveAttribute("data-tone", "destructive");
+    expect(screen.getByText("Titular")).toHaveStyle({ fontFamily: "Rubik-Black", fontSize: "30px" });
+    expect(screen.getByText("Secundario")).toHaveStyle({ fontFamily: "Rubik-Regular", color: "#5E5468" });
   });
 
-  it("communicates icon button selected and disabled states consistently", () => {
+  it("makes a pressable surface sink toward its shadow and call onPress", () => {
+    const onPress = vi.fn();
+
+    renderWithTheme(
+      <Surface accessibilityLabel="Nota" onPress={onPress}>
+        <Text>Púlsame</Text>
+      </Surface>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Nota" }));
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("communicates icon button labels, selected and disabled states", () => {
     const onPress = vi.fn();
 
     renderWithTheme(
       <Stack>
-        <IconButton icon="⌂" label="Go home" onPress={onPress} selected />
-        <IconButton disabled icon="⚙" label="Open settings" onPress={onPress} />
+        <IconButton accessibilityLabel="Me gusta" color="fresa" icon="heart" onPress={onPress} selected size="xl" />
+        <IconButton accessibilityLabel="Ajustes" disabled icon="gear" onPress={onPress} />
+        <IconButton accessibilityLabel="Chats" badge={3} icon="chat" />
       </Stack>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Go home" }));
+    fireEvent.click(screen.getByRole("button", { name: "Me gusta" }));
 
     expect(onPress).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Go home" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Open settings" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Me gusta" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Ajustes" })).toBeDisabled();
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("toggles the switch with switch semantics", () => {
+    const onValueChange = vi.fn();
+
+    renderWithTheme(<Switch accessibilityLabel="Avisos" onValueChange={onValueChange} value={false} />);
+
+    const control = screen.getByRole("switch", { name: "Avisos" });
+    expect(control).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(control);
+    expect(onValueChange).toHaveBeenCalledWith(true);
+  });
+
+  it("renders badges, pills, avatars and progress with readable labels", () => {
+    renderWithTheme(
+      <Stack>
+        <Badge count={120} />
+        <Badge count={0} testID="empty-badge" />
+        <Pill icon="sparkle" label="Nuevo" />
+        <Avatar name="Lucía" />
+        <ProgressBar accessibilityLabel="Perfil completado" value={0.5} />
+        <ProgressBar segments={6} value={3} />
+      </Stack>
+    );
+
+    expect(screen.getByText("99+")).toBeInTheDocument();
+    expect(screen.queryByTestId("empty-badge")).not.toBeInTheDocument();
+    expect(screen.getByText("Nuevo")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Foto de Lucía" })).toHaveTextContent("L");
+    expect(screen.getByRole("progressbar", { name: "Perfil completado" })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Paso 3 de 6" })).toBeInTheDocument();
   });
 
   it("renders divider and user badges with readable default and selected states", () => {
@@ -92,6 +132,20 @@ describe("shared ui primitives", () => {
 
     expect(screen.getByRole("separator", { name: "Profile section" })).toBeInTheDocument();
     expect(screen.getByText("sam@example.com")).toBeInTheDocument();
-    expect(screen.getByLabelText("Pat, selected user badge")).toBeInTheDocument();
+    expect(screen.getByLabelText("Pat, seleccionado")).toBeInTheDocument();
+  });
+
+  it("keeps the legacy button tone working", () => {
+    const onPress = vi.fn();
+
+    renderWithTheme(
+      <Button onPress={onPress} tone="destructive">
+        Delete profile
+      </Button>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete profile" }));
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Delete profile" })).toHaveAttribute("data-variant", "danger");
   });
 });

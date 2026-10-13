@@ -14,6 +14,7 @@ defmodule Cherry.Dating.Tag do
     field(:category, :string)
     field(:is_active, :boolean, default: true)
     field(:sort_order, :integer, default: 0)
+    field(:emoji, :string)
 
     many_to_many(:profiles, Profile, join_through: "profile_tags")
 
@@ -22,8 +23,9 @@ defmodule Cherry.Dating.Tag do
 
   def changeset(tag, attrs) do
     tag
-    |> cast(attrs, [:slug, :label, :category, :is_active, :sort_order])
+    |> cast(attrs, [:slug, :label, :category, :is_active, :sort_order, :emoji])
     |> validate_required([:slug, :label, :category])
+    |> validate_length(:emoji, max: 16)
     |> unique_constraint(:slug)
   end
 end

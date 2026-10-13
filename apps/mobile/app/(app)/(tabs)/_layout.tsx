@@ -1,92 +1,64 @@
 import { Tabs } from "expo-router";
-import Svg, { Circle, Path } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useTheme } from "../../../src/shared/ui";
+import {
+  Icon,
+  KawaiiTabBar,
+  TabBarSpaceContext,
+  tabBarSpace,
+  tabItems,
+  type TabRouteName,
+  useTabBadgesStore,
+  useTheme
+} from "../../../src/shared/ui";
 
 export default function TabsLayoutRoute() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const likes = useTabBadgesStore((state) => state.likes);
+  const chats = useTabBadgesStore((state) => state.chats);
+  const space = tabBarSpace(insets.bottom);
+  const p = theme.primitives.pastel;
+
+  const stickers: Record<TabRouteName, string> = {
+    discover: p.fresa.fill,
+    likes: p.limonada.fill,
+    chats: p.cielo.fill,
+    me: p.lavanda.fill
+  };
+  const badges: Partial<Record<TabRouteName, number>> = { likes, chats };
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: theme.semantic.text.accent,
-        tabBarInactiveTintColor: theme.semantic.text.muted,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "700",
-        },
-        tabBarStyle: {
-          height: 62,
-          paddingBottom: 8,
-          paddingTop: 8,
-          borderTopWidth: theme.primitives.border.heavy,
-          borderColor: theme.primitives.color.ink,
-          backgroundColor: theme.semantic.color.surfaceBackground,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: "Descubrir",
-          tabBarIcon: ({ color, focused, size }) => (
-            <HomeIcon color={color} filled={focused} size={size} />
-          ),
+    <TabBarSpaceContext.Provider value={space}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          sceneStyle: { backgroundColor: theme.semantic.color.screenBackground },
+          tabBarStyle: { height: space }
         }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, focused, size }) => (
-            <ProfileIcon color={color} filled={focused} size={size} />
-          ),
-        }}
-      />
-    </Tabs>
-  );
-}
-
-interface IconProps {
-  color: string;
-  filled: boolean;
-  size: number;
-}
-
-function HomeIcon({ color, filled, size }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M3.75 9.75 12 3l8.25 6.75V19.5a1.5 1.5 0 0 1-1.5 1.5h-4.125v-6.75h-5.25V21H5.25a1.5 1.5 0 0 1-1.5-1.5V9.75z"
-        fill={filled ? color : "none"}
-        stroke={color}
-        strokeWidth={1.75}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function ProfileIcon({ color, filled, size }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle
-        cx={12}
-        cy={8}
-        r={4}
-        fill={filled ? color : "none"}
-        stroke={color}
-        strokeWidth={1.75}
-      />
-      <Path
-        d="M4 20.5a8 8 0 0 1 16 0"
-        fill={filled ? color : "none"}
-        stroke={color}
-        strokeWidth={1.75}
-        strokeLinecap="round"
-      />
-    </Svg>
+        tabBar={(props) => <KawaiiTabBar {...props} />}
+      >
+        {tabItems.map((tab) => (
+          <Tabs.Screen
+            key={tab.name}
+            name={tab.name}
+            options={{
+              title: tab.label,
+              tabBarButtonTestID: `tab-${tab.name}`,
+              tabBarActiveBackgroundColor: stickers[tab.name],
+              tabBarBadge: badges[tab.name] || undefined,
+              tabBarIcon: ({ focused, color }) => (
+                <Icon
+                  color={color}
+                  fill={focused ? theme.primitives.color.white : undefined}
+                  name={tab.icon}
+                  size={26}
+                />
+              )
+            }}
+          />
+        ))}
+      </Tabs>
+    </TabBarSpaceContext.Provider>
   );
 }

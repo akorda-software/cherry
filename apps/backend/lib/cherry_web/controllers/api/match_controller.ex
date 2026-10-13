@@ -2,68 +2,66 @@ defmodule CherryWeb.Controllers.Api.MatchController do
   use CherryWeb, :controller
 
   alias Cherry.Dating
+  alias Cherry.Dating.Inbox
+  alias CherryWeb.ChatJSON
 
-  def index(conn, _params) do
+  @doc """
+  Matches visibles (activos, sin caducar, sin bloqueos, cuentas vivas) con foto,
+  último mensaje y no leídos, por actividad reciente.
+  """
+  def index(conn, params) do
     profile = conn.assigns.current_profile
 
     if profile do
-      matches = Dating.list_matches(profile.id)
-      json(conn, %{matches: Enum.map(matches, &serialize_match(&1, profile.id))})
+      with {:ok, limit} <- CherryWeb.Pagination.limit(params, 50),
+           {:ok, page} <- Inbox.list_page(profile.id, limit: limit, cursor: params["cursor"]) do
+        json(conn, %{
+          matches: Enum.map(page.entries, &ChatJSON.match_summary(conn, &1)),
+          nextCursor: page.next_cursor
+        })
+      else
+        {:error, reason} -> conn |> put_status(:unprocessable_entity) |> json(%{error: reason})
+      end
     else
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "profile_not_found"})
+      profile_not_found(conn)
+    end
+  end
+
+  def for_conversation(conn, %{"id" => conversation_id}) do
+    if profile = conn.assigns.current_profile do
+      case Inbox.get_entry(conversation_id, profile.id) do
+        {:ok, entry} -> json(conn, %{match: ChatJSON.match_summary(conn, entry)})
+        {:error, reason} -> conn |> put_status(:forbidden) |> json(%{error: reason})
+      end
+    else
+      profile_not_found(conn)
     end
   end
 
   def unmatch(conn, %{"id" => match_id}) do
     profile = conn.assigns.current_profile
 
-    if profile do
-      match = Dating.get_match(match_id)
+    with %{} <- profile,
+         {:ok, match_id} <- Ecto.UUID.cast(match_id),
+         %Dating.Match{} = match <- Dating.get_match(match_id),
+         true <- Dating.Match.other_profile(match, profile.id) != nil do
+      case Dating.unmatch(match.id) do
+        {:ok, _match} ->
+          json(conn, %{ok: true})
 
-      if match && Dating.Match.other_profile(match, profile.id) do
-        case Dating.unmatch(match_id) do
-          {:ok, _} ->
-            json(conn, %{ok: true})
-
-          {:error, changeset} ->
-            conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
-        end
-      else
-        conn
-        |> put_status(:forbidden)
-        |> json(%{error: "not_participant"})
+        {:error, changeset} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
       end
     else
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "profile_not_found"})
+      nil when is_nil(profile) -> profile_not_found(conn)
+      false -> conn |> put_status(:forbidden) |> json(%{error: "not_participant"})
+      _not_found -> conn |> put_status(:not_found) |> json(%{error: "match_not_found"})
     end
   end
 
-  defp serialize_match(match, viewer_profile_id) do
-    other_id = Dating.Match.other_profile(match, viewer_profile_id)
-    other = Dating.get_profile(other_id)
-
-    %{
-      id: match.id,
-      matchedAt: match.matched_at,
-      expiresAt: match.expires_at,
-      firstMessageAt: match.first_message_at,
-      otherProfile: %{
-        id: other_id,
-        displayName: other && other.display_name,
-        age: other && Cherry.Dating.Profile.age(other)
-      }
-    }
+  defp profile_not_found(conn) do
+    conn |> put_status(:not_found) |> json(%{error: "profile_not_found"})
   end
 
-  defp format_errors(changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Regex.replace(~r/%{(\w+)}/, msg, fn _, key ->
-        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
-      end)
-    end)
-  end
+  defp format_errors(changeset), do: CherryWeb.ChangesetJSON.errors(changeset)
 end

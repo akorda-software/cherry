@@ -2,46 +2,54 @@ defmodule CherryWeb.Controllers.Api.ChatController do
   use CherryWeb, :controller
 
   alias Cherry.Dating
+  alias Cherry.Dating.Inbox
+  alias CherryWeb.ChatJSON
 
-  def index(conn, _params) do
+  @doc "Conversaciones visibles, coherentes con `GET /api/matches`."
+  def index(conn, params) do
     profile = conn.assigns.current_profile
 
     if profile do
-      conversations = Dating.list_conversations(profile.id)
-
-      json(conn, %{
-        conversations: Enum.map(conversations, &serialize_conversation(&1, profile.id))
-      })
+      with {:ok, limit} <- CherryWeb.Pagination.limit(params, 50),
+           {:ok, page} <- Inbox.list_page(profile.id, limit: limit, cursor: params["cursor"]) do
+        json(conn, %{
+          conversations: Enum.map(page.entries, &ChatJSON.conversation_summary(conn, &1)),
+          nextCursor: page.next_cursor
+        })
+      else
+        {:error, reason} -> conn |> put_status(:unprocessable_entity) |> json(%{error: reason})
+      end
     else
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "profile_not_found"})
+      profile_not_found(conn)
     end
   end
 
+  @doc """
+  Historial (más nuevos primero) con `nextCursor` opaco. Solo participantes de
+  una conversación activa (sin caducar, sin bloqueos, cuentas vivas).
+  """
   def messages(conn, %{"id" => conversation_id} = params) do
     profile = conn.assigns.current_profile
 
     if profile do
-      conversation = Dating.get_conversation(conversation_id)
-
-      if conversation && participant?(conversation, profile.id) do
-        with {:ok, limit} <- CherryWeb.Pagination.limit(params, 50),
-             {:ok, cursor} <- parse_cursor(Map.get(params, "cursor")) do
-          msgs = Dating.list_messages(conversation_id, limit: limit, cursor: cursor)
-          json(conn, %{messages: Enum.map(msgs, &serialize_message/1)})
-        else
-          {:error, reason} -> conn |> put_status(:unprocessable_entity) |> json(%{error: reason})
-        end
+      with {:ok, conversation} <-
+             Dating.get_messageable_conversation(conversation_id, profile.id),
+           {:ok, limit} <- CherryWeb.Pagination.limit(params, 50),
+           {:ok, %{messages: messages, next_cursor: next_cursor}} <-
+             Inbox.list_messages_page(conversation.id,
+               limit: limit,
+               cursor: Map.get(params, "cursor")
+             ) do
+        json(conn, %{messages: Enum.map(messages, &ChatJSON.message/1), nextCursor: next_cursor})
       else
-        conn
-        |> put_status(:forbidden)
-        |> json(%{error: "not_participant"})
+        {:error, reason} when reason in [:not_participant, :conversation_not_active] ->
+          conn |> put_status(:forbidden) |> json(%{error: reason})
+
+        {:error, reason} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{error: reason})
       end
     else
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "profile_not_found"})
+      profile_not_found(conn)
     end
   end
 
@@ -57,76 +65,53 @@ defmodule CherryWeb.Controllers.Api.ChatController do
 
       case Dating.send_message(attrs) do
         {:ok, message} ->
-          json(conn, %{message: serialize_message(message)})
+          # Replying implies having read everything up to this message (the
+          # `new_message` broadcast happens in `Dating.send_message/1`).
+          Inbox.mark_read(message.conversation_id, profile.id, message.inserted_at)
+          json(conn, %{message: ChatJSON.message(message)})
 
-        {:error, :not_participant} ->
-          conn
-          |> put_status(:forbidden)
-          |> json(%{error: "not_participant"})
-
-        {:error, :conversation_not_active} ->
-          conn
-          |> put_status(:forbidden)
-          |> json(%{error: "conversation_not_active"})
+        {:error, reason} when reason in [:not_participant, :conversation_not_active] ->
+          conn |> put_status(:forbidden) |> json(%{error: reason})
 
         {:error, changeset} ->
           conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
       end
     else
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "profile_not_found"})
+      profile_not_found(conn)
     end
   end
 
-  defp participant?(conversation, profile_id) do
-    match = conversation.match
-    match.profile_a_id == profile_id || match.profile_b_id == profile_id
-  end
-
-  defp serialize_conversation(conversation, viewer_profile_id) do
-    match = conversation.match
-    other_id = Dating.Match.other_profile(match, viewer_profile_id)
-    other = Dating.get_profile(other_id)
-
-    %{
-      id: conversation.id,
-      matchId: match.id,
-      otherProfile: %{
-        id: other_id,
-        displayName: other && other.display_name,
-        age: other && Cherry.Dating.Profile.age(other)
-      },
-      insertedAt: conversation.inserted_at
-    }
-  end
-
-  defp serialize_message(%Cherry.Dating.Message{} = msg) do
-    %{
-      id: msg.id,
-      conversationId: msg.conversation_id,
-      senderProfileId: msg.sender_profile_id,
-      body: msg.body,
-      insertedAt: msg.inserted_at
-    }
-  end
-
-  defp parse_cursor(nil), do: {:ok, nil}
-
-  defp parse_cursor(str) when is_binary(str) do
-    case DateTime.from_iso8601(str) do
-      {:ok, dt, _} -> {:ok, dt}
-      _ -> {:error, :invalid_cursor}
+  def create_message(conn, _params) do
+    if conn.assigns.current_profile do
+      conn |> put_status(:unprocessable_entity) |> json(%{errors: %{body: ["can't be blank"]}})
+    else
+      profile_not_found(conn)
     end
   end
 
-  defp parse_cursor(_), do: {:error, :invalid_cursor}
+  @doc "Marca la conversación como leída hasta ahora (badges y `unreadCount`)."
+  def read(conn, %{"id" => conversation_id}) do
+    profile = conn.assigns.current_profile
 
-  defp format_errors(changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Regex.replace(~r/%{(\w+)}/, msg, fn _, key ->
-        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
-      end)
-    end)
+    if profile do
+      case Inbox.mark_read(conversation_id, profile.id) do
+        {:ok, _read} ->
+          json(conn, %{ok: true})
+
+        {:error, :not_participant} ->
+          conn |> put_status(:forbidden) |> json(%{error: "not_participant"})
+
+        {:error, changeset} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+      end
+    else
+      profile_not_found(conn)
+    end
   end
+
+  defp profile_not_found(conn) do
+    conn |> put_status(:not_found) |> json(%{error: "profile_not_found"})
+  end
+
+  defp format_errors(changeset), do: CherryWeb.ChangesetJSON.errors(changeset)
 end

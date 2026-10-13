@@ -40,6 +40,17 @@ defmodule Cherry.SessionsTest do
   end
 
   describe "refresh_session/1" do
+    test "a token expiring at the current second is already invalid" do
+      user = create_user!()
+      {:ok, issued} = Sessions.issue_session(user, device_attrs())
+      expires_at = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      Repo.update_all(RefreshToken, set: [expires_at: expires_at])
+
+      assert {:error, :session_revoked} = Sessions.refresh_session(issued.session.refresh_token)
+      refute Sessions.active_session_family?(issued.session_family.id, user.id)
+    end
+
     test "rotates the refresh token and invalidates the prior token" do
       user = create_user!()
       {:ok, issued} = Sessions.issue_session(user, device_attrs())

@@ -1,4 +1,3 @@
-export * from "./discovery-feed-screen";
-export * from "./profile-detail-sheet";
-export * from "./profile-feed-card";
-export * from "./profile-feed-grid";
+export * from "./discover-screen";
+export * from "./filters/filters-screen";
+export * from "./full-profile/full-profile-screen";

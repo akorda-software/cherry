@@ -1,46 +1,35 @@
 # Deuda técnica pendiente
 
-Gaps conocidos entre contratos, documentación y código (auditoría 2026-08-21). Ordenados por impacto.
-
-## Bloqueantes de flujo (móvil)
-
-1. **Onboarding incompletable para usuarios nuevos.** El backend exige fotos y ubicación para `complete`; el móvil no tiene esos pasos y el resolver mapea `photos`→bio y `location`→preferences (`app/(onboarding)/index.tsx:6-25`). Un usuario nuevo queda atrapado en «Todavía faltan campos».
-2. **Payload de ubicación divergente.** El cliente (`packages/mobile-shared/src/api/profile-api.ts:126-134`) envía `{lat, lng, city, region, country}`; el contrato vigente es `latitude/longitude/accuracyMeters/recordedAt`. De usarse hoy, fallaría con 422.
+Huecos conocidos entre producto, contratos, documentación y código a 2026-09-29, tras el rediseño «Libreta kawaii» y su revisión. Ordenados por impacto dentro de cada bloque. Lo ya resuelto no se lista aquí: está en `progress.md`, `decisions.md` y el historial de git.
 
 ## Móvil
 
-3. Sin cliente para: upload-intent/complete de fotos, matches/unmatch, chat REST+WS (sin dependencia de socket), block/report, pause/unpause/delete account, push-token.
-4. `isPaused` ignorado en el shell y el feed (el dominio lo modela y el backend lo expone).
-5. Estados de feed diferenciados ausentes (poca oferta, perfil incompleto, pausado, offline); solo existe un empty-state genérico con reintento.
-6. `home.tsx` sin renombrar a `discover.tsx`; falta tab Matches.
-7. Modal de match sin CTA a conversación.
-8. Login navega a home sin esperar bootstrap (carrera latente; `index.tsx` la corrige después).
-9. Sin tests de las pantallas de onboarding ni del resolver `stepToRoute` (justo donde está el bug de mapeo).
-10. Dirección visual sin decidir: tema neobrutal activo vs paleta dating planificada (ver `08-identidad-visual.md`).
+1. **Sin notificaciones push.** La app no registra token (`POST /api/me/push-token` no se usa; no depende de `expo-notifications`) ni gestiona la recepción o la apertura de una notificación. El backend ya envía los avisos de match y mensaje nuevos (`Cherry.Notifications`), así que hoy no llega ninguno.
+2. **Verificada solo en Expo Web.** Hápticos, cámara y galería, teclado en Android, permiso de ubicación nativo, login nativo con Google/Apple y el socket del chat en redes móviles no se han probado en un dispositivo real. Falta una pasada en Android e iOS antes de cualquier prueba con personas.
+3. **Sin modo oscuro.** `userInterfaceStyle: "light"` y un único tema (`light-theme.ts`); no se usa `useColorScheme`. La arquitectura de tokens admite un segundo tema con el mismo contrato (`createTheme`).
+4. **Sin estado «sin conexión».** Descubrir y el resto de pantallas tratan un fallo de red como error genérico con reintento; no hay detección de conectividad.
+5. **Expo Go no sirve para entrar.** En Expo Go no se crean servicios de login y la app se queda en la pantalla de carga (deducido del código). Hace falta un build de desarrollo, Expo Web con el login de desarrollo o `EXPO_PUBLIC_MOCK_AUTH=true`.
+6. **«Continuar con Apple» también se muestra en web**, donde Sign in with Apple nativo no está disponible (la condición es `Platform.OS !== "android"`).
+7. **Sin tests de renderizado de las pantallas de producto** (onboarding, Descubrir, Likes, Chats, Yo): se prueban dominio, stores y componentes del sistema de diseño.
+8. **Acerca de no menciona la licencia del software (AGPL-3.0)**, solo la de las fuentes; el enlace «Ver el código» depende de compilar con `EXPO_PUBLIC_SOURCE_URL`.
+9. El selector de edad de Filtros llega a 99; el backend admite hasta 100.
+10. **Lectura NFC del DNI sin probar en hardware** (`modules/document-nfc`, rama `feat/dni-nfc`). Android compila; iOS no se ha compilado nunca. Pendientes y guía: `compliance/02-mayoria-de-edad.md` («Estado del prototipo») y `compliance/02-nfc-pruebas-manana.md`.
 
 ## Backend
 
-11. `GET /api/matches` sin preview del último mensaje (lo pedía el spec original).
-12. Feed con perfil incompleto responde 403 `profile_incomplete` sin `onboardingRequired`/`nextOnboardingStep`, a diferencia del resto de la API.
-13. Campo `discovery_mode` huérfano: migrado y serializado pero sin uso en filtros/scoring del feed — decidir si se implementa o se elimina.
-16. Swipe duplicado devuelve 422 genérico por unique constraint, sin error semántico («ya swipé»).
-17. Flag `strict_profile_completion` permite desactivar la exigencia de fotos/ubicación en completitud; el contrato v1 las hace obligatorias — **en dev está a `false`** (`config/dev.exs:8`); asegurar `true` en entornos reales.
-18. Tests de controller ausentes para bootstrap, safety, settings y match.
-21. **Expiración de match solo lazy**: no hay job que marque `expired`; matches caducados siguen apareciendo en `GET /api/matches` y sus conversaciones son legibles (solo el envío está bloqueado).
-22. `PUT /api/me/discovery-preferences` acepta cualquier `distance_km > 0` y no valida `age_min <= age_max` fuera de la completitud; un perfil ya completo puede quedar silenciosamente incompleto al guardar preferencias inválidas.
-23. `set_tags`/`set_blocked_tags` descartan silenciosamente IDs desconocidos e ignoran el flag activo del catálogo.
+1. **Admin sin rutas ni vistas.** Los reportes se guardan (`reports`) y existen `list_reports/2`, `update_report/2` y `disable_profile/1`, pero no hay forma de revisarlos salvo consultando la base de datos. Con usuarios reales, la moderación no escala.
+2. **Borrar la cuenta no purga los datos.** Solo se borran físicamente las fotos. Cuenta, identidad del proveedor, email, perfil (nombre, fecha de nacimiento, bio, última ubicación aproximada), swipes, matches, mensajes (cifrados) y reportes se conservan sin plazo. Falta una política de retención y un borrado real (o anonimización) tras un periodo de gracia. Consecuencia actual: la misma cuenta de Google/Apple no puede volver a registrarse.
+3. **Anti-abuso activo pendiente.** No hay rate limiting de swipes, de login (`/api/auth/:provider/callback`) ni de refresh, ni límites a la creación de cuentas, ni flags de usuarios sospechosos. Las únicas protecciones son las de subida de fotos, ubicación y reportes. Tampoco hay plug `RemoteIp`: detrás de un proxy, la IP que ve Phoenix es la del proxy.
+4. **Métricas sin capturar.** Existe `analytics_events` y `Cherry.Dating.track_event/1`, pero nada lo llama: no se registra ningún evento de producto.
+5. **Índices sin `CONCURRENTLY` sobre `swipe_actions`.** `20260929113715_discovery_ranking_v2` (`swipe_actions_likes_received_index`) y `20260929154521_add_dislikes_received_index` crean índices normales, que bloquean escrituras en `swipe_actions` mientras se construyen. Inocuo en el primer despliegue (tabla vacía y `stop-first`); con una tabla grande ya en producción habría que usar `migration_lock: :pg_advisory_lock` y una migración propia con `@disable_ddl_transaction true` (detalle en `04-modelo-datos.md`, «Reglas de migraciones»).
+6. **`decimal` 2.4.1.** El arreglo del aviso conocido está en 3.x y `ecto 3.13` exige `~> 2.0`: actualizar cuando Ecto lo admita. El resto de dependencias se actualizó el 2026-09-29.
+7. **Coste del feed lineal en candidatos** (unos 20–25 µs cada uno; 10–42 ms p50 con 3.000–10.000 perfiles). Con decenas de miles de candidatos en un mismo radio habrá que precalcular (cola de candidatos o estadísticas de atención por perfil).
+8. **`compatible_only` simétrico, pendiente de validar con el propietario.** Hoy, si cualquiera de los dos lo activa, se exige una etiqueta en común en ambos sentidos (D-2026-09-29, ranking v2).
+9. **Una sola réplica.** Sin clúster de Erlang (libcluster) el PubSub del chat no cruza nodos: no se puede escalar horizontalmente el backend.
+10. **Fotos sin moderación.** Se verifican existencia, tamaño, MIME y cabecera binaria; no hay decodificación completa ni moderación de contenido.
+11. **Verificación de edad sin hacer obligatoria del todo.** `AGE_VERIFICATION_REQUIRED` bloquea la API REST social, pero no excluye de los feeds a los perfiles sin verificar ni se comprueba en el WebSocket del chat; tampoco se consulta la CRL de la Policía. Detalle en `compliance/02-mayoria-de-edad.md`.
 
-## Proceso
+## Documentación e infraestructura
 
-24. Trabajo extenso sin commitear (~58 modificados + ~42 sin trackear tras la reestructuración de docs): consolidar en commits antes de seguir creciendo sobre él.
-
-## Resuelto el 2026-09-05
-
-- Bloqueos aplicados al envío REST/WS y a broadcasts pendientes; envíos serializados con bloqueos por match.
-- Historial REST carga el match antes de comprobar participantes; valida límite y cursor.
-- Cuenta desactivada con revocación de todas las sesiones y push tokens, desconexión WS y denegación de nuevos logins; funciona antes del onboarding.
-- Discovery extraído a `Cherry.Dating.Discovery`, scoring/límite en SQL y cursor opaco coherente con el orden. Corregidos el filtro de tags bloqueados y el conteo de tags compartidos con UUIDs.
-- Fotos verificadas contra R2 y subida condicional para impedir sobrescrituras posteriores. Retirado el endpoint de creación directa de metadatos.
-- Reanudar un perfil completo restaura la visibilidad.
-
-Las fotos se comprueban por metadatos y cabecera binaria; la decodificación completa/moderación y la purga física de datos tras borrar una cuenta siguen fuera de esta implementación.
+1. **Sin `eas.json`** ni pipeline de build móvil: la compilación de la app para las tiendas es manual (`12-self-hosting.md` §8).
+2. `docs/starter-guide.md` sigue en inglés y describe el starter genérico, no el producto.

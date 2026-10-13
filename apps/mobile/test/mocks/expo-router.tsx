@@ -18,6 +18,7 @@ export interface RouterController {
   push(path: string): void;
   replace(path: string): void;
   back(): void;
+  canGoBack(): boolean;
 }
 
 const RouterContext = createContext<RouterController | null>(null);
@@ -58,6 +59,9 @@ export function RouterProvider({
               })
         }));
       },
+      canGoBack() {
+        return state.history.length > 1;
+      },
       back() {
         setState((current) => {
           if (current.history.length <= 1) {
@@ -88,7 +92,10 @@ export function useRouter(): RouterController {
       history: ["/"],
       push() {},
       replace() {},
-      back() {}
+      back() {},
+      canGoBack() {
+        return false;
+      }
     };
   }
 
@@ -97,6 +104,11 @@ export function useRouter(): RouterController {
 
 export function usePathname() {
   return useRouter().pathname;
+}
+
+/** En tests la pantalla siempre está enfocada: el efecto corre al montar (y al cambiar el callback). */
+export function useFocusEffect(effect: () => void | (() => void)) {
+  useEffect(() => effect(), [effect]);
 }
 
 export function Redirect({ href }: { href: string }) {

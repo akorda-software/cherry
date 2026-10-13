@@ -2,42 +2,45 @@
 
 Documentación y servicios de infraestructura del monorepo.
 
+- [Monta tu instancia](../docs/12-self-hosting.md): guía genérica de self-hosting.
 - `docker-compose.yml`: servicios de desarrollo local descritos debajo.
 
 ## Services
 
-- `postgres` — PostgreSQL 17 with **PostGIS 3.5** extension enabled.
-- `backend` — Elixir/Phoenix development container.
-- `mobile` — Node/Expo development container.
+- `postgres` — PostgreSQL 17 con PostGIS 3.5 (`postgis/postgis:17-3.5-alpine`), en el puerto **5510** del host.
+- `backend` — contenedor de desarrollo Elixir/Phoenix (perfil `backend`), con el puerto 4000 publicado.
+- `mobile` — contenedor de desarrollo Node/Expo (perfil `mobile`).
 
 ## Quick start
 
 ```bash
-# Start only the database (most common)
-docker compose up postgres -d
+# Solo la base de datos (lo más habitual)
+docker compose -f infra/docker-compose.yml up postgres -d
 
-# Start the backend container
-docker compose --profile backend up -d
+# Contenedor del backend; después: docker compose -f infra/docker-compose.yml exec backend sh -lc "mix setup && mix phx.server"
+docker compose -f infra/docker-compose.yml --profile backend up -d
 
-# Start the mobile container
-docker compose --profile mobile up -d
+# Contenedor móvil
+docker compose -f infra/docker-compose.yml --profile mobile up -d
 ```
+
+Con el backend en el host, apunta a esta base de datos con `DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_dev` (ya es el valor de `apps/backend/.env.example`).
 
 ## PostGIS
 
-The Postgres image includes PostGIS out of the box. After the container is running, enable the extension in your database:
+La imagen trae PostGIS y **las migraciones crean las extensiones** (`postgis`, `uuid-ossp`, `pgcrypto`): basta con `mix setup` (o `mix ecto.migrate`). En esta base de datos de desarrollo el usuario `postgres` es superusuario, así que no hace falta nada más.
 
-```sql
-CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-```
-
-> **Note:** If you had a previous `postgres-data` volume from the plain Postgres image, you may need to remove it first so PostGIS initializes cleanly:
+> Si tenías un volumen `postgres-data` de una imagen de Postgres sin PostGIS, bórralo para que se inicialice limpio:
 > ```bash
-> docker compose down -v
-> docker compose up postgres -d
+> docker compose -f infra/docker-compose.yml down -v
+> docker compose -f infra/docker-compose.yml up postgres -d
 > ```
 
 ## Ports
 
-- `5510` en el host → `5432` en el contenedor — Postgres de desarrollo (configuración de `docker-compose.yml`).
+- `5510` en el host → `5432` en el contenedor — Postgres de desarrollo.
+- `4000` en el host → `4000` en el contenedor — backend (solo con el perfil `backend`).
+
+## Producción
+
+Para montar una instancia propia, ver la guía genérica [`docs/12-self-hosting.md`](../docs/12-self-hosting.md).

@@ -1,26 +1,28 @@
 import { primitiveBorderTokens } from "../tokens/primitives/border";
-import { primitiveColorTokens } from "../tokens/primitives/color";
+import { pastelSwatches, primitiveColorTokens as c } from "../tokens/primitives/color";
 import { primitiveElevationTokens } from "../tokens/primitives/elevation";
 import { primitiveMotionTokens } from "../tokens/primitives/motion";
 import { primitiveOpacityTokens } from "../tokens/primitives/opacity";
 import { primitiveRadiusTokens } from "../tokens/primitives/radius";
 import { primitiveSizeTokens } from "../tokens/primitives/size";
 import { primitiveSpacingTokens } from "../tokens/primitives/spacing";
-import { primitiveTypographyTokens } from "../tokens/primitives/typography";
+import { fontFamilies, primitiveTypographyTokens, textVariantTokens } from "../tokens/primitives/typography";
 import type { AppTheme } from "./theme-types";
 
 /**
- * Default theme for the app: a neobrutalism palette — warm cream surfaces,
- * near-black ("ink") thick borders, bright accent fills, and hard offset
- * shadows (see primitiveElevationTokens).
+ * Tema «Libreta kawaii»: neobrutalismo kawaii sobre papel de puntos rosado.
+ * Contornos y sombras duras en tinta ciruela, rellenos pastel, tinta encima.
  */
 export const lightTheme: AppTheme = {
-  name: "neobrutal",
+  name: "libreta-kawaii",
   primitives: {
-    color: primitiveColorTokens,
+    color: c,
+    pastel: pastelSwatches,
     spacing: primitiveSpacingTokens,
     radius: primitiveRadiusTokens,
     size: primitiveSizeTokens,
+    fonts: fontFamilies,
+    text: textVariantTokens,
     typography: primitiveTypographyTokens,
     border: primitiveBorderTokens,
     elevation: primitiveElevationTokens,
@@ -29,47 +31,81 @@ export const lightTheme: AppTheme = {
   },
   semantic: {
     color: {
-      screenBackground: primitiveColorTokens.paper,
-      surfaceBackground: primitiveColorTokens.white,
-      surfaceElevatedBackground: primitiveColorTokens.cloud
+      screenBackground: c.paper,
+      surfaceBackground: c.white,
+      surfaceElevatedBackground: c.paperDeep,
+      paperDot: c.dot,
+      scrim: c.scrim
     },
     text: {
-      default: primitiveColorTokens.ink,
-      muted: "#5C574A",
-      inverse: primitiveColorTokens.white,
-      accent: primitiveColorTokens.blue
+      default: c.ink,
+      muted: c.inkSoft,
+      faint: c.inkFaint,
+      inverse: c.white,
+      accent: c.fresaDeep,
+      danger: c.tomateDeep,
+      success: c.mentaDeep
     },
     icon: {
-      default: primitiveColorTokens.ink,
-      accent: primitiveColorTokens.blue,
-      muted: "#5C574A"
+      default: c.ink,
+      accent: c.fresaDeep,
+      muted: c.inkSoft
     },
     surface: {
-      base: primitiveColorTokens.white,
-      elevated: primitiveColorTokens.cloud,
-      selected: primitiveColorTokens.yellow
+      base: c.white,
+      elevated: c.paperDeep,
+      selected: c.limonada,
+      sunken: c.paperDeep
     },
     border: {
-      subtle: primitiveColorTokens.ink,
-      strong: primitiveColorTokens.ink,
-      accent: primitiveColorTokens.blue
+      subtle: c.dot,
+      strong: c.ink,
+      accent: c.fresaDeep
     },
     action: {
-      primaryBackground: primitiveColorTokens.blue,
-      primaryForeground: primitiveColorTokens.white,
-      destructiveBackground: primitiveColorTokens.red,
-      destructiveForeground: primitiveColorTokens.white,
-      disabledBackground: primitiveColorTokens.mist,
-      disabledForeground: primitiveColorTokens.ink
+      primaryBackground: c.fresa,
+      primaryForeground: c.ink,
+      secondaryBackground: c.white,
+      secondaryForeground: c.ink,
+      destructiveBackground: c.tomate,
+      destructiveForeground: c.ink,
+      disabledBackground: c.paperDeep,
+      disabledForeground: c.inkFaint,
+      like: c.fresa,
+      pass: c.lavanda,
+      undo: c.limonada
     },
     state: {
-      info: primitiveColorTokens.blue,
-      success: primitiveColorTokens.green,
-      danger: primitiveColorTokens.red
+      info: c.cieloDeep,
+      success: c.mentaDeep,
+      danger: c.tomateDeep,
+      warning: c.limonadaDeep,
+      infoSoft: c.cieloSoft,
+      successSoft: c.mentaSoft,
+      dangerSoft: c.tomateSoft,
+      warningSoft: c.limonadaSoft
+    },
+    tag: {
+      neutralBackground: c.white,
+      likedBackground: c.menta,
+      blockedBackground: c.tomateSoft,
+      blockedForeground: c.tomateDeep,
+      sharedBackground: c.limonada
+    },
+    category: {
+      interests: pastelSwatches.cielo,
+      active: pastelSwatches.menta,
+      lifestyle: pastelSwatches.melocoton,
+      values: pastelSwatches.lavanda,
+      personality: pastelSwatches.limonada,
+      pets: pastelSwatches.fresa,
+      relationship: pastelSwatches.tomate
     },
     layout: {
       contentMaxWidth: primitiveSizeTokens.contentMax,
-      touchTargetMinHeight: primitiveSizeTokens.buttonHeight
+      touchTargetMinHeight: primitiveSizeTokens.touchTarget,
+      screenPadding: primitiveSpacingTokens.lg,
+      tabBarHeight: primitiveSizeTokens.tabBarHeight
     }
   }
 };

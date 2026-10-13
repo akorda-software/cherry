@@ -34,7 +34,9 @@ data class RawDocument(val dg1: ByteArray, val dg2: ByteArray, val sod: ByteArra
 class DocumentReader(private val onStep: (String) -> Unit) {
 
   fun read(isoDep: IsoDep, key: AccessKey): RawDocument {
-    isoDep.timeout = 10_000
+    // A healthy chip answers each command in well under a second (PACE peaks at ~0.6 s on a
+    // DNI 4.0); a silent chip has usually lost power, so give up early and retry.
+    isoDep.timeout = 5_000
     val cardService = IsoDepCardService(isoDep)
 
     try {

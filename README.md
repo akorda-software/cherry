@@ -90,4 +90,10 @@ Todo vive en [`docs/`](./docs); empieza por [`docs/README.md`](./docs/README.md)
 
 ## Licencia
 
-[GNU Affero General Public License v3.0](./LICENSE) (AGPL-3.0). Puedes usar, estudiar, modificar y redistribuir Cherry, también para montar tu propia instancia. Si ofreces una versión modificada a otras personas, también a través de la red, tienes que ofrecerles su código fuente. Motivo: nadie puede cerrar una instancia modificada y cobrar por lo que aquí es gratis (D-2026-09-29 en `docs/decisions.md`).
+Cherry es software libre: [AGPL-3.0](./LICENSE) con un [permiso adicional para publicarlo en las tiendas de apps](./LICENSE-EXCEPTION.md). Puedes usarlo, estudiarlo, modificarlo y montar tu propia instancia; si ofreces una versión modificada, también a través de la red, tienes que ofrecer su código.
+
+- **Dibujos** (logo, mascota, ilustraciones) y **documentación**: también [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).
+- **Nombre**: puedes llamar «Cherry» a tu instancia si cumples unas condiciones mínimas ([`TRADEMARKS.md`](./TRADEMARKS.md)).
+- **Contribuir**: sin ceder derechos, solo firmando tus commits con el DCO ([`CONTRIBUTING.md`](./CONTRIBUTING.md)).
+
+Detalle en [`COPYRIGHT.md`](./COPYRIGHT.md). Copyright © 2026 Akorda Software y las personas que contribuyen a Cherry.

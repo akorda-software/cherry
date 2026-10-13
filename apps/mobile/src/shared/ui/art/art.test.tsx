@@ -50,12 +50,22 @@ describe("Logo", () => {
   });
 
   it("supports the plain variant and pastel letters", () => {
-    const plain = render(<Logo variant="plain" heart={false} />);
-    expect(plain.container.querySelectorAll("path").length).toBe(1);
+    // Letras, rabitos, hoja, cerezas y brillos; sin capas de pegatina.
+    const plain = render(<Logo variant="plain" />);
+    expect(plain.container.querySelectorAll("path").length).toBe(5);
     plain.unmount();
     const filled = render(<Logo fill="fresa" />);
     const fills = Array.from(filled.container.querySelectorAll("path")).map((p) => p.getAttribute("fill"));
     expect(fills).toContain(lightTheme.primitives.color.fresa);
+    // Las cerezas no se confunden con unas letras fresa.
+    expect(fills).toContain(lightTheme.primitives.pastel.tomate.fill);
+  });
+
+  it("the two r's end in cherries", () => {
+    const { container } = render(<Logo />);
+    const fills = Array.from(container.querySelectorAll("path")).map((p) => p.getAttribute("fill"));
+    expect(fills).toContain(lightTheme.primitives.pastel.fresa.fill);
+    expect(fills).toContain(lightTheme.primitives.pastel.menta.fill);
   });
 });
 

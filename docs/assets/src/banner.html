@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="cherry.css">
+<style>
+  body { width: 1240px; height: 600px; padding: 4px 16px 16px 4px; }
+
+  .card {
+    position: relative;
+    width: 1220px;
+    height: 580px;
+    overflow: hidden;
+    border: 3px solid var(--edge);
+    border-radius: 36px;
+    box-shadow: 10px 10px 0 var(--drop);
+  }
+
+  .copy { position: absolute; left: 64px; top: 62px; width: 720px; }
+  .copy .logo { height: 116px; margin-left: -18px; }
+
+  h1 {
+    margin-top: 22px;
+    font-weight: 900;
+    font-size: 50px;
+    line-height: 1.08;
+    letter-spacing: -0.5px;
+  }
+
+  mark {
+    color: inherit;
+    background: linear-gradient(transparent 58%, var(--secondary) 58%, var(--secondary) 92%, transparent 92%);
+    padding: 0 4px;
+  }
+
+  p.lead {
+    margin-top: 20px;
+    width: 600px;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 14px 12px; margin-top: 34px; width: 660px; }
+  .chips .sticker:nth-child(1) { transform: rotate(-2deg); }
+  .chips .sticker:nth-child(2) { transform: rotate(1.5deg); }
+  
+  .phones .phone { --edge: var(--ink); --drop: var(--ink); position: absolute; }
+  .phones .back { left: 760px; top: 96px; transform: rotate(-9deg) scale(0.86); transform-origin: top left; }
+  .phones .front { left: 892px; top: 60px; transform: rotate(6deg) scale(0.92); transform-origin: top left; }
+
+  .mochi { position: absolute; left: 676px; top: 330px; width: 150px; transform: rotate(-8deg); }
+
+  .wip { position: absolute; right: 36px; top: 30px; transform: rotate(7deg); z-index: 5; }
+  .wip > span { font-size: 16px; padding: 6px 13px; }
+
+  .washi.a { left: -26px; top: 26px; width: 150px; transform: rotate(-36deg); }
+  .washi.b { left: 1004px; top: 52px; width: 120px; transform: rotate(14deg); z-index: 4; }
+</style>
+</head>
+<body>
+  <div class="card dots">
+    <div class="washi stripes a"></div>
+
+    <div class="copy">
+      <img class="logo" src="../logo.svg" alt="">
+      <h1>Citas abiertas,<br>hechas para las <mark>personas</mark>.</h1>
+      <p class="lead">Open source y self-hosteable, para que cada país tenga su propio Cherry.</p>
+      <div class="chips">
+        <span class="sticker"><span class="fill-positive">🛡️ Solo mayores de edad</span></span>
+        <span class="sticker"><span class="fill-tertiary">🏷️ Las etiquetas mandan</span></span>
+      </div>
+    </div>
+
+    <div class="phones">
+      <div class="phone back"><div class="screen" data-shot="likes"></div></div>
+      <div class="phone front"><div class="screen" data-shot="discover"></div></div>
+    </div>
+    <div class="washi grid b"></div>
+
+    <img class="mochi" src="../mochi-celebrate.svg" alt="">
+
+    <span class="sticker wip"><span class="fill-secondary">🚧 En construcción</span></span>
+  </div>
+  <script src="phone.js"></script>
+</body>
+</html>

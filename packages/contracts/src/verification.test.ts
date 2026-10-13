@@ -4,7 +4,9 @@ import {
   AGE_VERIFICATION_METHODS,
   isAgeVerified,
   isDocumentNotVerifiedReason,
-  type AgeVerificationResponse
+  isProviderVerified,
+  type AgeVerificationResponse,
+  type ProviderCheckResponse
 } from "./verification";
 
 describe("age verification contract", () => {
@@ -31,5 +33,19 @@ describe("age verification contract", () => {
     expect(isAgeVerified(unverified)).toBe(false);
     expect(isAgeVerified(verified)).toBe(true);
     expect(isAgeVerified({ verification: { ...verified.verification, status: "revoked" } })).toBe(false);
+  });
+
+  it("tells verified provider checks from pending ones", () => {
+    const verified: ProviderCheckResponse = {
+      result: "verified",
+      verification: { status: "verified", method: "provider", verifiedAt: "2026-10-13T12:00:00Z" },
+      required: false
+    };
+    const pending: ProviderCheckResponse = { result: "pending" };
+    const inReview: ProviderCheckResponse = { result: "in_review" };
+
+    expect(isProviderVerified(verified)).toBe(true);
+    expect(isProviderVerified(pending)).toBe(false);
+    expect(isProviderVerified(inReview)).toBe(false);
   });
 });

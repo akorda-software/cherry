@@ -6,13 +6,19 @@ defmodule Cherry.Identity.AgeVerificationsTest do
 
   alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt, AgeVerifications}
   alias Cherry.Identity.Document.TrustStore
+  alias Cherry.TestSupport.DiditStub
   alias Cherry.TestSupport.DocumentPKI, as: PKI
 
   @now ~U[2026-10-09 12:00:00Z]
 
   setup do
     previous = Application.get_env(:cherry, :age_verification)
-    on_exit(fn -> Application.put_env(:cherry, :age_verification, previous) end)
+    previous_didit = Application.get_env(:cherry, :didit)
+
+    on_exit(fn ->
+      Application.put_env(:cherry, :age_verification, previous)
+      Application.put_env(:cherry, :didit, previous_didit)
+    end)
 
     csca = PKI.csca()
     %{csca: csca, ds: PKI.document_signer(csca)}
@@ -274,6 +280,334 @@ defmodule Cherry.Identity.AgeVerificationsTest do
       verify(user, bad)
 
       assert attempts(user) == 1
+    end
+  end
+
+  describe "start_provider/3" do
+    test "creates a Didit session for the user and counts an attempt" do
+      user = user_fixture()
+      DiditStub.stub()
+
+      assert {:ok, %{session_id: id, url: "https://verify.didit.test/session/fake-token"}} =
+               AgeVerifications.start_provider(user, "cherry://verify/selfie", now: @now)
+
+      assert id == DiditStub.session_id()
+      assert_receive {:didit, "POST", "/v3/session/", %{"vendor_data" => vendor_data}}
+      assert vendor_data == user.id
+      assert attempts(user) == 1
+    end
+
+    test "unavailable without Didit or without a fingerprint key" do
+      user = user_fixture()
+      DiditStub.stub()
+
+      Application.put_env(
+        :cherry,
+        :didit,
+        Keyword.put(Application.get_env(:cherry, :didit), :api_key, nil)
+      )
+
+      refute AgeVerifications.provider_available?()
+      assert {:error, :unavailable} = AgeVerifications.start_provider(user, nil)
+
+      Application.put_env(
+        :cherry,
+        :didit,
+        Keyword.put(Application.get_env(:cherry, :didit), :api_key, "k")
+      )
+
+      Application.put_env(:cherry, :age_verification, fingerprint_key: nil)
+      assert {:error, :unavailable} = AgeVerifications.start_provider(user, nil)
+
+      assert attempts(user) == 0
+      refute_receive {:didit, _, _, _}
+    end
+
+    test "a verified user does not start another verification", ctx do
+      user = user_fixture()
+      {:ok, _} = verify(user, document(ctx))
+      DiditStub.stub()
+
+      assert {:error, :already_verified} = AgeVerifications.start_provider(user, nil)
+      refute_receive {:didit, _, _, _}
+    end
+
+    test "shares the attempt limits with NFC" do
+      user = user_fixture()
+      DiditStub.stub()
+
+      for _ <- 1..5, do: assert({:ok, _} = AgeVerifications.start_provider(user, nil, now: @now))
+
+      assert {:error, {:too_many_attempts, _}} =
+               AgeVerifications.start_provider(user, nil, now: @now)
+    end
+
+    test "provider errors" do
+      DiditStub.stub(create_status: 500)
+
+      capture_log(fn ->
+        assert {:error, :provider_error} = AgeVerifications.start_provider(user_fixture(), nil)
+      end)
+    end
+  end
+
+  describe "check_provider/3" do
+    defp check(user, decision, opts \\ []) do
+      DiditStub.stub(Keyword.put(opts, :decision, decision))
+      AgeVerifications.check_provider(user, DiditStub.session_id(), now: @now)
+    end
+
+    defp assert_erased do
+      path = "/v3/session/#{DiditStub.session_id()}/delete/"
+      assert_receive {:didit, "DELETE", ^path, %{"deletion_instruction" => "privacy_erasure"}}
+    end
+
+    defp refute_erased, do: refute_receive({:didit, "DELETE", _, _})
+
+    test "an approved adult's DNI is stored like NFC and erased at Didit" do
+      user = user_fixture()
+      level = Logger.level()
+      Logger.configure(level: :info)
+      on_exit(fn -> Logger.configure(level: level) end)
+
+      log =
+        capture_log([level: :info], fn ->
+          assert {:ok, %AgeVerification{} = v} =
+                   check(user, DiditStub.decision(user.id, "Approved"))
+
+          assert v.status == "verified"
+          assert v.method == "provider"
+          assert v.verified_at == @now
+          assert v.document_fingerprint == hmac("v1|ESP|ID|99999999R")
+        end)
+
+      assert AgeVerifications.verified?(user.id)
+      assert_erased()
+      assert attempts(user) == 0
+
+      assert log =~ "age verification (provider): verified"
+
+      for secret <- [user.id, DiditStub.session_id(), "99999999R", "ZZZ000001", "PRUEBA", "1990"] do
+        refute log =~ secret
+      end
+    end
+
+    test "the same DNI read by NFC is the same person (one document, one account)", ctx do
+      assert {:ok, _} = verify(user_fixture(), document(ctx, personal_number: "99999999R"))
+
+      user = user_fixture()
+
+      # Didit may give the DNI as the document number and the card's number
+      # elsewhere; formatting is ignored.
+      decision =
+        DiditStub.decision(user.id, "Approved", %{
+          "document_number" => "99999999-r",
+          "personal_number" => nil
+        })
+
+      assert {:error, :document_already_used} = check(user, decision)
+      refute AgeVerifications.verified?(user.id)
+      assert_erased()
+    end
+
+    test "a TIE uses the NIE and a passport its number, as with NFC", ctx do
+      assert {:ok, _} =
+               verify(user_fixture(), document(ctx, code: "IR", personal_number: "X0000000T"))
+
+      user = user_fixture()
+
+      tie =
+        DiditStub.decision(user.id, "Approved", %{
+          "document_type" => "Residence Permit",
+          "document_number" => "E00000001",
+          "personal_number" => "X0000000T"
+        })
+
+      assert {:error, :document_already_used} = check(user, tie)
+
+      passport =
+        DiditStub.decision(user.id, "APPROVED", %{
+          "document_type" => "Passport",
+          "document_number" => "ZZ7654321",
+          "personal_number" => "99999999R"
+        })
+
+      assert {:ok, %{document_fingerprint: fingerprint}} = check(user, passport)
+      assert fingerprint == hmac("v1|ESP|P|ZZ7654321")
+
+      assert {:error, :document_already_used} =
+               verify(user_fixture(), document(ctx, format: :td3, document_number: "ZZ7654321"))
+    end
+
+    test "other countries' identity cards use the document number" do
+      user = user_fixture()
+
+      decision =
+        DiditStub.decision(user.id, "Approved", %{
+          "issuing_state" => "PRT",
+          "document_number" => "zz 123456",
+          "personal_number" => "99999999R"
+        })
+
+      assert {:ok, %{document_fingerprint: fingerprint}} = check(user, decision)
+      assert fingerprint == hmac("v1|PRT|I|ZZ123456")
+    end
+
+    test "a minor is underage, nothing is stored and the session is erased" do
+      user = user_fixture()
+
+      log =
+        capture_log([level: :info], fn ->
+          assert {:error, :underage} =
+                   check(
+                     user,
+                     DiditStub.decision(user.id, "Approved", %{"date_of_birth" => "2010-03-01"})
+                   )
+        end)
+
+      assert Repo.aggregate(AgeVerification, :count) == 0
+      assert_erased()
+      refute log =~ user.id
+      refute log =~ "underage"
+    end
+
+    test "declined sessions are erased; a declined minor is underage" do
+      user = user_fixture()
+
+      assert {:error, :verification_declined} =
+               check(user, DiditStub.decision(user.id, "Declined"))
+
+      assert_erased()
+
+      assert {:error, :verification_declined} =
+               check(
+                 user,
+                 DiditStub.decision(user.id, "Declined", %{}, %{"id_verifications" => nil})
+               )
+
+      assert_erased()
+
+      assert {:error, :underage} =
+               check(
+                 user,
+                 DiditStub.decision(user.id, "Declined", %{"date_of_birth" => "2012-01-01"})
+               )
+
+      assert_erased()
+      refute AgeVerifications.verified?(user.id)
+    end
+
+    test "unfinished and in-review sessions are pending and kept" do
+      user = user_fixture()
+
+      for status <- ["Not Started", "In Progress", "Awaiting User", "Resubmitted", "IN PROGRESS"] do
+        decision = DiditStub.decision(user.id, status, %{}, %{"id_verifications" => nil})
+        assert {:pending, :in_progress} = check(user, decision), status
+      end
+
+      assert {:pending, :in_review} = check(user, DiditStub.decision(user.id, "In Review"))
+      refute_erased()
+      refute AgeVerifications.verified?(user.id)
+    end
+
+    test "expired or abandoned sessions" do
+      user = user_fixture()
+
+      for status <- ["Expired", "Kyc Expired", "Abandoned"] do
+        assert {:error, :session_expired} = check(user, DiditStub.decision(user.id, status))
+        assert_erased()
+      end
+    end
+
+    test "nobody can claim the session of another user" do
+      user = user_fixture()
+      other = user_fixture()
+
+      assert {:error, :session_not_found} =
+               check(user, DiditStub.decision(other.id, "Approved"))
+
+      refute_erased()
+      refute AgeVerifications.verified?(user.id)
+      refute AgeVerifications.verified?(other.id)
+    end
+
+    test "unknown sessions" do
+      user = user_fixture()
+      assert {:error, :session_not_found} = check(user, :not_found)
+
+      assert {:error, :session_not_found} =
+               AgeVerifications.check_provider(user, "../other", now: @now)
+    end
+
+    test "expired documents are refused; documents without expiry are not" do
+      user = user_fixture()
+
+      assert {:error, :document_expired} =
+               check(
+                 user,
+                 DiditStub.decision(user.id, "Approved", %{"expiration_date" => "2026-10-08"})
+               )
+
+      assert_erased()
+
+      assert {:ok, _} =
+               check(user, DiditStub.decision(user.id, "Approved", %{"expiration_date" => nil}))
+    end
+
+    test "documents other than identity cards, residence permits and passports" do
+      user = user_fixture()
+
+      decision =
+        DiditStub.decision(user.id, "Approved", %{"document_type" => "Driver's License"})
+
+      assert {:error, :unsupported_document} = check(user, decision)
+      assert_erased()
+    end
+
+    test "an approved session without a birth date is declined" do
+      user = user_fixture()
+
+      assert {:error, :verification_declined} =
+               check(user, DiditStub.decision(user.id, "Approved", %{"date_of_birth" => nil}))
+    end
+
+    test "a failed erasure does not undo the verification" do
+      user = user_fixture()
+
+      log =
+        capture_log(fn ->
+          assert {:ok, _} =
+                   check(user, DiditStub.decision(user.id, "Approved"), delete_status: 503)
+        end)
+
+      assert AgeVerifications.verified?(user.id)
+      assert log =~ "session erasure failed (503)"
+      refute log =~ DiditStub.session_id()
+    end
+
+    test "sandbox decisions are refused unless allowed" do
+      user = user_fixture()
+
+      Application.put_env(
+        :cherry,
+        :didit,
+        Keyword.put(Application.get_env(:cherry, :didit), :allow_sandbox, false)
+      )
+
+      capture_log(fn ->
+        assert {:error, :provider_error} = check(user, DiditStub.decision(user.id, "Approved"))
+      end)
+
+      refute AgeVerifications.verified?(user.id)
+
+      live = DiditStub.decision(user.id, "Approved", %{}, %{"environment" => "live"})
+      assert {:ok, _} = check(user, live)
+    end
+
+    test "a verified user checking the same document again is idempotent" do
+      user = user_fixture()
+      assert {:ok, %{id: id}} = check(user, DiditStub.decision(user.id, "Approved"))
+      assert {:ok, %{id: ^id}} = check(user, DiditStub.decision(user.id, "Approved"))
     end
   end
 end

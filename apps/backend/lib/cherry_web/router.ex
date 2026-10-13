@@ -99,6 +99,8 @@ defmodule CherryWeb.Router do
 
     get("/verification", AgeVerificationController, :show)
     post("/verification/nfc", AgeVerificationController, :create_nfc)
+    post("/verification/provider", AgeVerificationController, :create_provider)
+    post("/verification/provider/check", AgeVerificationController, :check_provider)
   end
 
   scope "/api/discovery", CherryWeb.Controllers.Api do

@@ -2,16 +2,23 @@ import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { Icon, Pill, Screen, Stack, Surface, Text, TopBar } from "../../../shared/ui";
+import { useAppBootstrap } from "../../app-bootstrap";
 import { VERIFICATION_METHODS, type VerificationMethodId } from "../domain/verification-copy";
 import { verificationRoutes } from "./verification-routes";
 
 const ROUTES: Partial<Record<VerificationMethodId, string>> = {
-  nfc: verificationRoutes.document
+  nfc: verificationRoutes.document,
+  selfie_provider: verificationRoutes.selfie
 };
 
-/** Elegir cómo verificarse. El DNI por NFC es la vía recomendada; el resto llegará más adelante. */
+/**
+ * Elegir cómo verificarse. El DNI por NFC es la vía recomendada; el selfie solo si el servidor tiene
+ * proveedor y la cartera europea llegará más adelante.
+ */
 export function VerificationMethodsScreen() {
   const router = useRouter();
+  const { state } = useAppBootstrap();
+  const providerAvailable = state.status === "ready" && state.bootstrap.ageVerification?.providerAvailable === true;
 
   return (
     <Screen
@@ -29,7 +36,8 @@ export function VerificationMethodsScreen() {
 
         {VERIFICATION_METHODS.map((method) => {
           const route = ROUTES[method.id];
-          const enabled = method.available && route !== undefined;
+          const available = method.available && (method.id !== "selfie_provider" || providerAvailable);
+          const enabled = available && route !== undefined;
 
           return (
             <Surface
@@ -62,7 +70,7 @@ export function VerificationMethodsScreen() {
                   {method.recommended ? (
                     <Pill color="limonada" icon="star" label="Recomendado" size="sm" style={styles.pill} />
                   ) : null}
-                  {!method.available ? <Pill label="Próximamente" size="sm" style={styles.pill} /> : null}
+                  {!available ? <Pill label="Próximamente" size="sm" style={styles.pill} /> : null}
                 </Stack>
                 {enabled ? <Icon name="chevron-right" size={20} /> : null}
               </View>

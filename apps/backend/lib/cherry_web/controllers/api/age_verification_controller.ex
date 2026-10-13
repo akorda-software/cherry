@@ -1,13 +1,17 @@
 defmodule CherryWeb.Controllers.Api.AgeVerificationController do
   @moduledoc """
-  `GET /api/me/verification` and `POST /api/me/verification/nfc`.
+  `GET /api/me/verification`, `POST /api/me/verification/nfc` and the
+  external provider (Didit, selfie + document): `POST /api/me/verification/provider`
+  starts a session the app opens in a browser and `POST
+  /api/me/verification/provider/check` reads its decision.
 
   The NFC body carries DG1, DG2 and EF.SOD in base64 (`dg1`, `dg2`, `sod`).
   They are filtered from the request logs (`:filter_parameters`) and dropped
   after the response; see `Cherry.Identity.AgeVerifications`.
 
   A minor's document erases the whole account (`Cherry.Accounts.purge_account/1`)
-  and answers 422 `{"error": "underage", "accountDeleted": true}`.
+  and answers 422 `{"error": "underage", "accountDeleted": true}`, whatever
+  the method.
   """
   use CherryWeb, :controller
 
@@ -37,7 +41,8 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
 
     json(conn, %{
       verification: serialize(AgeVerifications.get(user.id)),
-      required: AgeVerifications.required?()
+      required: AgeVerifications.required?(),
+      providerAvailable: AgeVerifications.provider_available?()
     })
   end
 
@@ -49,13 +54,103 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
       json(conn, %{verification: serialize(verification), required: AgeVerifications.required?()})
     else
       {:error, :underage} ->
-        deleted = match?({:ok, _}, Accounts.purge_account(user))
-        send_error(conn, 422, "underage", %{accountDeleted: deleted})
+        underage(conn, user)
 
       {:error, reason} ->
         error(conn, reason)
     end
   end
+
+  def create_provider(conn, params) do
+    user = conn.assigns.current_user
+
+    with {:ok, callback} <- callback(params["callback"]),
+         {:ok, session} <- AgeVerifications.start_provider(user, callback) do
+      conn
+      |> put_status(201)
+      |> json(%{sessionId: session.session_id, url: session.url})
+    else
+      {:error, reason} -> provider_error(conn, user, reason)
+    end
+  end
+
+  def check_provider(conn, params) do
+    user = conn.assigns.current_user
+
+    with {:ok, session_id} <- session_id(params["sessionId"]) do
+      case AgeVerifications.check_provider(user, session_id) do
+        {:ok, verification} ->
+          json(conn, %{
+            result: "verified",
+            verification: serialize(verification),
+            required: AgeVerifications.required?()
+          })
+
+        {:pending, :in_progress} ->
+          json(conn, %{result: "pending"})
+
+        {:pending, :in_review} ->
+          json(conn, %{result: "in_review"})
+
+        {:error, reason} ->
+          provider_error(conn, user, reason)
+      end
+    else
+      {:error, reason} -> provider_error(conn, user, reason)
+    end
+  end
+
+  # Where Didit sends the user back: the app's own scheme or https. Never
+  # plain http, nor schemes that run code or read files.
+  @callback_format ~r/\A[a-z][a-z0-9+.-]*:\/\/[^\s]*\z/
+  @refused_schemes ["http", "file", "javascript", "data", "vbscript"]
+
+  defp callback(nil), do: {:ok, nil}
+
+  defp callback(value) when is_binary(value) and byte_size(value) <= 200 do
+    with true <- Regex.match?(@callback_format, value),
+         [scheme | _] = String.split(value, ":", parts: 2),
+         false <- scheme in @refused_schemes do
+      {:ok, value}
+    else
+      _ -> {:error, :invalid_payload}
+    end
+  end
+
+  defp callback(_value), do: {:error, :invalid_payload}
+
+  defp session_id(value) when is_binary(value) do
+    case Ecto.UUID.cast(value) do
+      {:ok, uuid} -> {:ok, uuid}
+      :error -> {:error, :invalid_payload}
+    end
+  end
+
+  defp session_id(_value), do: {:error, :invalid_payload}
+
+  defp underage(conn, user) do
+    deleted = match?({:ok, _}, Accounts.purge_account(user))
+    send_error(conn, 422, "underage", %{accountDeleted: deleted})
+  end
+
+  defp provider_error(conn, user, :underage), do: underage(conn, user)
+
+  defp provider_error(conn, _user, :unsupported_document),
+    do: send_error(conn, 422, "unsupported_document")
+
+  defp provider_error(conn, _user, :verification_declined),
+    do: send_error(conn, 422, "verification_declined")
+
+  defp provider_error(conn, _user, :session_expired),
+    do: send_error(conn, 422, "session_expired")
+
+  defp provider_error(conn, _user, :session_not_found),
+    do: send_error(conn, 404, "session_not_found")
+
+  defp provider_error(conn, _user, :provider_error),
+    do: send_error(conn, 502, "provider_error")
+
+  defp provider_error(conn, _user, reason), do: error(conn, reason)
 
   defp decode(params) do
     Enum.reduce_while(@fields, {:ok, %{}}, fn {key, field, max}, {:ok, acc} ->

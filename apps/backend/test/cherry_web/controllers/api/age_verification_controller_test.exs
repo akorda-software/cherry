@@ -12,18 +12,21 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
   alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt}
   alias Cherry.Identity.Document.TrustStore
   alias Cherry.Repo
+  alias Cherry.TestSupport.DiditStub
   alias Cherry.TestSupport.DocumentPKI, as: PKI
 
   setup do
     previous = %{
       store: Application.get_env(:cherry, TrustStore),
       age: Application.get_env(:cherry, :age_verification),
+      didit: Application.get_env(:cherry, :didit),
       features: Application.get_env(:cherry, :features)
     }
 
     on_exit(fn ->
       Application.put_env(:cherry, TrustStore, previous.store)
       Application.put_env(:cherry, :age_verification, previous.age)
+      Application.put_env(:cherry, :didit, previous.didit)
 
       if previous.features,
         do: Application.put_env(:cherry, :features, previous.features),
@@ -53,8 +56,22 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
     test "unverified by default", %{conn: conn} do
       assert %{
                "verification" => %{"status" => "unverified", "method" => nil, "verifiedAt" => nil},
-               "required" => false
+               "required" => false,
+               "providerAvailable" => true
              } = conn |> get("/api/me/verification") |> json_response(200)
+    end
+
+    test "providerAvailable needs Didit and the fingerprint key", %{conn: conn} do
+      assert %{"ageVerification" => %{"providerAvailable" => true}} =
+               conn |> get("/api/bootstrap") |> json_response(200)
+
+      Application.put_env(:cherry, :didit, workflow_id: nil)
+
+      assert %{"providerAvailable" => false} =
+               conn |> get("/api/me/verification") |> json_response(200)
+
+      assert %{"ageVerification" => %{"providerAvailable" => false}} =
+               conn |> get("/api/bootstrap") |> json_response(200)
     end
 
     test "requires a session" do
@@ -410,6 +427,197 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
                conn |> get("/api/likes/received") |> json_response(200)
 
       assert id == other.id
+    end
+  end
+
+  describe "POST /api/me/verification/provider" do
+    test "starts a Didit session for the user", %{conn: conn, user: user} do
+      DiditStub.stub()
+
+      assert %{"sessionId" => id, "url" => "https://verify.didit.test/session/fake-token"} =
+               conn
+               |> post("/api/me/verification/provider", %{"callback" => "cherry://verify/selfie"})
+               |> json_response(201)
+
+      assert id == DiditStub.session_id()
+
+      assert_receive {:didit, "POST", "/v3/session/",
+                      %{"vendor_data" => vendor_data, "callback" => "cherry://verify/selfie"}}
+
+      assert vendor_data == user.id
+    end
+
+    test "the callback is optional and may be https", %{conn: conn} do
+      DiditStub.stub()
+      assert conn |> post("/api/me/verification/provider", %{}) |> json_response(201)
+
+      assert conn
+             |> post("/api/me/verification/provider", %{"callback" => "https://cherry.test/v"})
+             |> json_response(201)
+    end
+
+    test "invalid callbacks", %{conn: conn} do
+      DiditStub.stub()
+
+      for callback <- [
+            "http://cherry.test/v",
+            "javascript://alert(1)",
+            "file:///etc/passwd",
+            "cherry:verify",
+            "no scheme",
+            "cherry://with space",
+            "Cherry://upper",
+            "cherry://" <> String.duplicate("a", 200),
+            42
+          ] do
+        assert %{"error" => "invalid_payload"} =
+                 conn
+                 |> post("/api/me/verification/provider", %{"callback" => callback})
+                 |> json_response(422),
+               inspect(callback)
+      end
+
+      refute_receive {:didit, _, _, _}
+    end
+
+    test "unavailable without Didit", %{conn: conn} do
+      Application.put_env(:cherry, :didit, api_key: nil)
+
+      assert %{"error" => "age_verification_unavailable"} =
+               conn |> post("/api/me/verification/provider", %{}) |> json_response(503)
+    end
+
+    test "already verified", %{conn: conn} = ctx do
+      assert conn |> post("/api/me/verification/nfc", body(document(ctx))) |> json_response(200)
+
+      assert %{"error" => "already_verified"} =
+               conn |> post("/api/me/verification/provider", %{}) |> json_response(409)
+    end
+
+    test "too many attempts", %{conn: conn} do
+      DiditStub.stub()
+      for _ <- 1..5, do: conn |> post("/api/me/verification/provider", %{}) |> json_response(201)
+
+      assert %{"error" => "too_many_attempts", "retryAfter" => _} =
+               conn |> post("/api/me/verification/provider", %{}) |> json_response(429)
+    end
+
+    test "provider errors", %{conn: conn} do
+      DiditStub.stub(create_status: 401)
+
+      capture_log(fn ->
+        assert %{"error" => "provider_error"} =
+                 conn |> post("/api/me/verification/provider", %{}) |> json_response(502)
+      end)
+    end
+  end
+
+  describe "POST /api/me/verification/provider/check" do
+    defp check(conn, decision, opts \\ []) do
+      DiditStub.stub(Keyword.put(opts, :decision, decision))
+
+      post(conn, "/api/me/verification/provider/check", %{"sessionId" => DiditStub.session_id()})
+    end
+
+    test "verified", %{conn: conn, user: user} do
+      assert %{
+               "result" => "verified",
+               "verification" => %{
+                 "status" => "verified",
+                 "method" => "provider",
+                 "verifiedAt" => at
+               },
+               "required" => false
+             } = conn |> check(DiditStub.decision(user.id, "Approved")) |> json_response(200)
+
+      assert {:ok, _, _} = DateTime.from_iso8601(at)
+
+      path = "/v3/session/#{DiditStub.session_id()}/delete/"
+      assert_receive {:didit, "DELETE", ^path, _}
+
+      assert %{"ageVerification" => %{"status" => "verified"}} =
+               authed_conn_for_user(user) |> get("/api/bootstrap") |> json_response(200)
+    end
+
+    test "pending and in review", %{conn: conn, user: user} do
+      assert %{"result" => "pending"} =
+               conn |> check(DiditStub.decision(user.id, "In Progress")) |> json_response(200)
+
+      assert %{"result" => "in_review"} =
+               conn |> check(DiditStub.decision(user.id, "In Review")) |> json_response(200)
+    end
+
+    test "invalid session ids", %{conn: conn} do
+      DiditStub.stub()
+
+      for body <- [%{}, %{"sessionId" => "nope"}, %{"sessionId" => 1}] do
+        assert %{"error" => "invalid_payload"} =
+                 conn
+                 |> post("/api/me/verification/provider/check", body)
+                 |> json_response(422)
+      end
+
+      refute_receive {:didit, _, _, _}
+    end
+
+    test "a minor's account is erased entirely", %{conn: conn, user: user} do
+      profile = complete_profile_fixture(user)
+
+      decision = DiditStub.decision(user.id, "Approved", %{"date_of_birth" => "2012-06-01"})
+
+      assert %{"error" => "underage", "accountDeleted" => true} =
+               conn |> check(decision) |> json_response(422)
+
+      refute Repo.get(User, user.id)
+      refute Repo.get(Profile, profile.id)
+      assert Repo.aggregate(AgeVerificationAttempt, :count) == 0
+      assert conn |> get("/api/bootstrap") |> json_response(401)
+    end
+
+    test "rejections", %{conn: conn, user: user} do
+      for {decision, status, code} <- [
+            {DiditStub.decision(user.id, "Declined"), 422, "verification_declined"},
+            {DiditStub.decision(user.id, "Expired"), 422, "session_expired"},
+            {DiditStub.decision(user.id, "Approved", %{"document_type" => "Driver's License"}),
+             422, "unsupported_document"},
+            {DiditStub.decision(user.id, "Approved", %{"expiration_date" => "2020-01-01"}), 422,
+             "document_expired"},
+            {DiditStub.decision(user_fixture().id, "Approved"), 404, "session_not_found"},
+            {:not_found, 404, "session_not_found"}
+          ] do
+        assert %{"error" => ^code} = conn |> check(decision) |> json_response(status)
+      end
+
+      capture_log(fn ->
+        assert %{"error" => "provider_error"} =
+                 conn |> check({:status, 500}) |> json_response(502)
+      end)
+
+      assert %{"verification" => %{"status" => "unverified"}} =
+               conn |> get("/api/me/verification") |> json_response(200)
+    end
+
+    test "a document already used with NFC by another account", %{conn: conn, user: user} = ctx do
+      assert authed_conn_for_user(user_fixture())
+             |> post(
+               "/api/me/verification/nfc",
+               body(document(ctx, personal_number: "99999999R"))
+             )
+             |> json_response(200)
+
+      assert %{"error" => "document_already_used"} =
+               conn |> check(DiditStub.decision(user.id, "Approved")) |> json_response(409)
+    end
+
+    test "a revoked verification", %{conn: conn, user: user} = ctx do
+      assert conn |> post("/api/me/verification/nfc", body(document(ctx))) |> json_response(200)
+
+      Repo.update_all(from(v in AgeVerification, where: v.user_id == ^user.id),
+        set: [status: "revoked"]
+      )
+
+      assert %{"error" => "verification_revoked"} =
+               conn |> check(DiditStub.decision(user.id, "Approved")) |> json_response(403)
     end
   end
 end

@@ -100,3 +100,6 @@ config :phoenix_live_view,
 # Age verification: log public metadata of the Document Signer certificate when
 # a real document is rejected (never document data). See AgeVerifications.
 config :cherry, :age_verification, diagnostics: true
+
+# Didit's sandbox keys are used in development: accept its made-up decisions.
+config :cherry, :didit, allow_sandbox: true

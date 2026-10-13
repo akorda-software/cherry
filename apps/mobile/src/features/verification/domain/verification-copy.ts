@@ -42,7 +42,10 @@ export const WHY_REASONS = [
 
 export type VerificationMethodId = "nfc" | "selfie_provider" | "eu_wallet";
 
-/** Formas de verificarse. Solo la del DNI está disponible; las demás llegarán más adelante. */
+/**
+ * Formas de verificarse. La del DNI por NFC es la recomendada; la del selfie depende de que el
+ * servidor tenga proveedor (`providerAvailable` del bootstrap). La cartera europea llegará más adelante.
+ */
 export const VERIFICATION_METHODS: readonly {
   id: VerificationMethodId;
   icon: "shield-check" | "camera" | "lock";
@@ -63,8 +66,8 @@ export const VERIFICATION_METHODS: readonly {
     id: "selfie_provider",
     icon: "camera",
     title: "Con un selfie y una foto del documento",
-    body: "Para quien no tenga NFC en el móvil o un documento con chip.",
-    available: false,
+    body: "Para quien no tenga NFC en el móvil o un documento con chip. Lo hace Didit, una empresa de verificación.",
+    available: true,
     recommended: false
   },
   {
@@ -102,6 +105,40 @@ export function placementSteps(platform: string, kind: DocumentKind): string[] {
         "Cuando empiece a leer, no lo muevas hasta que termine. Tarda unos 10 segundos."
       ];
 }
+
+/** Qué hace falta para la vía del selfie. */
+export const PROVIDER_REQUIREMENTS = [
+  { icon: "shield-check", text: "Tu DNI, TIE o pasaporte en vigor, a mano." },
+  { icon: "camera", text: "Buena luz y la cara despejada: sin gafas de sol ni gorra." },
+  { icon: "clock", text: "Un par de minutos." }
+] as const;
+
+/** Qué pasa en la vía del selfie, paso a paso. */
+export const PROVIDER_STEPS = [
+  "Se abre la página de Didit, la empresa que hace la comprobación.",
+  "Haces una foto de las dos caras del documento.",
+  "Te grabas la cara unos segundos, para comprobar que eres tú y que eres una persona real.",
+  "Al terminar, vuelves aquí y lo comprobamos."
+] as const;
+
+/** Qué ve Didit, qué se guarda y qué se borra (vía del selfie). */
+export const PROVIDER_DATA_SUMMARY = [
+  {
+    icon: "eye",
+    title: "Qué ve Didit",
+    body: "Las fotos del documento y de tu cara. Las usa solo para esta comprobación."
+  },
+  {
+    icon: "shield-check",
+    title: "Qué se guarda en Cherry",
+    body: "Lo mismo que con el NFC: que eres mayor de edad, la fecha y una huella cifrada del número del documento."
+  },
+  {
+    icon: "trash",
+    title: "Qué se borra",
+    body: "En cuanto tenemos la respuesta, pedimos a Didit que borre las fotos y los datos de la sesión."
+  }
+] as const;
 
 /** Qué se lee, qué se guarda y qué se borra (pantalla inicial). */
 export const DATA_SUMMARY = [
@@ -263,6 +300,36 @@ export function serverErrorCopy(
         action: "none"
       };
     }
+    case "verification_declined":
+      return {
+        title: "No se ha podido comprobar",
+        message: "Las fotos no han servido: puede que se vieran borrosas o con reflejos. Prueba otra vez con buena luz.",
+        action: "retry"
+      };
+    case "session_expired":
+      return {
+        title: "La comprobación se quedó a medias",
+        message: "Ha caducado o se cerró antes de acabar. Empieza otra vez.",
+        action: "retry"
+      };
+    case "unsupported_document":
+      return {
+        title: "Ese documento no nos sirve",
+        message: "Usa un DNI, un TIE o un pasaporte. El carné de conducir no vale.",
+        action: "retry"
+      };
+    case "session_not_found":
+      return {
+        title: "No encontramos la comprobación",
+        message: "Empieza otra vez desde el principio.",
+        action: "retry"
+      };
+    case "provider_error":
+      return {
+        title: "No podemos conectar con Didit",
+        message: "Su servicio no responde ahora mismo. Inténtalo de nuevo en un rato.",
+        action: "retry"
+      };
     case "age_verification_unavailable":
       return {
         title: "La comprobación no está disponible",

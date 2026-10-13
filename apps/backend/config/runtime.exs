@@ -363,8 +363,24 @@ if config_env() == :prod do
   end
 end
 
+# DIDIT_API_KEY y DIDIT_WORKFLOW_ID: verificación con selfie y documento (Didit).
+# Sin ellas, POST /api/me/verification/provider responde 503. DIDIT_WEBHOOK_SECRET
+# aún no se usa (en dev se consulta la decisión; producción necesitará el webhook
+# para las sesiones «In Review»).
+didit_env = fn name ->
+  case System.get_env(name, "") |> String.trim() do
+    "" -> nil
+    value -> value
+  end
+end
+
 if config_env() != :test do
   config :cherry, :age_verification, fingerprint_key: fingerprint_key
+
+  config :cherry, :didit,
+    api_key: didit_env.("DIDIT_API_KEY"),
+    workflow_id: didit_env.("DIDIT_WORKFLOW_ID")
+
   config :cherry, :features, age_verification_required: age_verification_required
 
   case split_csv_env.("CSCA_PATHS", nil) do

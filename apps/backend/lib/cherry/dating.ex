@@ -87,5 +87,7 @@ defmodule Cherry.Dating do
   defdelegate track_event(attrs \\ %{}), to: Cherry.Dating.Analytics
 
   @doc "Returns a SQL-ranked discovery page with an opaque cursor."
-  defdelegate discovery_feed(viewer_profile_id, opts \\ []), to: Cherry.Dating.Discovery, as: :feed
+  defdelegate discovery_feed(viewer_profile_id, opts \\ []),
+    to: Cherry.Dating.Discovery,
+    as: :feed
 end

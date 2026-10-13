@@ -551,8 +551,39 @@ if config_env() == :prod do
 
   config :cherry, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  # Public URL of the API. Behind Cloudflare/Caddy it is https on 443; for a
+  # first deploy reachable only over the LAN, PHX_URL_SCHEME=http (and
+  # FORCE_SSL=false, below).
+  url_scheme =
+    case System.get_env("PHX_URL_SCHEME", "https") |> String.trim() |> String.downcase() do
+      scheme when scheme in ["http", "https"] ->
+        scheme
+
+      other ->
+        raise "environment variable PHX_URL_SCHEME must be http or https, got: #{inspect(other)}"
+    end
+
+  url_port =
+    case Integer.parse(System.get_env("PHX_URL_PORT", "") |> String.trim()) do
+      {port, ""} when port in 1..65_535 -> port
+      _ -> if(url_scheme == "https", do: 443, else: 80)
+    end
+
+  # HTTPS redirect + HSTS (CherryWeb.Plugs.ForceSSL). On unless FORCE_SSL=false:
+  # only for trying the API over plain HTTP on a private network.
+  force_ssl =
+    case System.get_env("FORCE_SSL", "true") |> String.trim() |> String.downcase() do
+      value when value in ["false", "0", "no"] ->
+        false
+
+      _ ->
+        [rewrite_on: [:x_forwarded_proto], hsts: true, exclude: ["localhost", "127.0.0.1"]]
+    end
+
+  config :cherry, :force_ssl, force_ssl
+
   config :cherry, CherryWeb.Endpoint,
-    url: [host: host, port: 443, scheme: "https"],
+    url: [host: host, port: url_port, scheme: url_scheme],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.

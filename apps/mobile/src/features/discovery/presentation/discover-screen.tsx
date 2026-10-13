@@ -18,6 +18,7 @@ import {
   useDiscoveryQueue
 } from "../application/discovery-runtime";
 import { DiscoverHeader } from "./discover-header";
+import { useVerificationPending, VerificationPendingState } from "../../verification";
 import { DiscoverError, DiscoverPaused } from "./discover-states";
 import { FeedMode } from "./feed/feed-mode";
 import { SwipeMode } from "./swipe/swipe-mode";
@@ -38,6 +39,7 @@ export function DiscoverScreen() {
   const callSettings = useAuthedApi(createSettingsApi);
   const { state: bootstrapState } = useAppBootstrap();
   const bootstrapPaused = bootstrapState.status === "ready" && bootstrapState.bootstrap.profile.isPaused;
+  const pendingVerification = useVerificationPending();
 
   const status = useDiscoveryQueue((state) => state.status);
   const profiles = useDiscoveryQueue((state) => state.profiles);
@@ -70,10 +72,10 @@ export function DiscoverScreen() {
       void discoveryPreferencesStore.getState().load();
     }
 
-    if (!bootstrapPaused && discoveryQueueStore.getState().status === "idle") {
+    if (!bootstrapPaused && !pendingVerification && discoveryQueueStore.getState().status === "idle") {
       void discoveryQueueStore.getState().load();
     }
-  }, [bootstrapPaused, ownerId]);
+  }, [bootstrapPaused, ownerId, pendingVerification]);
 
   // Avisos amables de la cola (fallo al guardar, nada que deshacer…).
   useEffect(() => {
@@ -166,7 +168,13 @@ export function DiscoverScreen() {
 
   let content: React.ReactNode;
 
-  if (paused) {
+  if (pendingVerification) {
+    content = (
+      <View style={[styles.fill, { paddingBottom: bottomSpace }]}>
+        <VerificationPendingState context="discover" />
+      </View>
+    );
+  } else if (paused) {
     content = (
       <View style={[styles.fill, { paddingBottom: bottomSpace }]}>
         <DiscoverPaused error={resumeError} onResume={() => void resume()} resuming={resuming} />
@@ -223,7 +231,7 @@ export function DiscoverScreen() {
     <View style={[styles.fill, { paddingTop: insets.top }]} testID="discover-screen">
       <PaperBackground />
       <DiscoverHeader mode={mode} onModeChange={changeMode} onOpenFilters={openFilters} />
-      <Appear key={paused ? "paused" : mode} from="none" style={styles.fill}>
+      <Appear key={pendingVerification ? "pending" : paused ? "paused" : mode} from="none" style={styles.fill}>
         {content}
       </Appear>
     </View>

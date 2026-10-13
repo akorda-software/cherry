@@ -49,7 +49,11 @@ describe("useDocumentVerification", () => {
     await act(() => result.current.start());
     expect(result.current.state.phase).toBe("key");
 
-    await act(() => result.current.submit({ can: "123456" }));
+    act(() => result.current.submit({ can: "123456" }));
+    expect(result.current.state.phase).toBe("guide");
+    expect(deps.readDocument).not.toHaveBeenCalled();
+
+    await act(() => result.current.beginRead());
 
     expect(deps.readDocument).toHaveBeenCalledWith({ can: "123456" }, { messages: undefined });
     expect(deps.verify).toHaveBeenCalledWith({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k" });
@@ -63,7 +67,10 @@ describe("useDocumentVerification", () => {
     });
     const { result } = renderHook(() => useDocumentVerification(deps));
 
-    act(() => void result.current.submit({ can: "123456" }));
+    act(() => {
+      result.current.submit({ can: "123456" });
+      void result.current.beginRead();
+    });
     expect(result.current.state).toMatchObject({ phase: "reading", step: "waiting" });
 
     act(() => emit({ step: "reading_dg2" }));
@@ -97,13 +104,19 @@ describe("useDocumentVerification", () => {
     const { deps } = makeDeps({ readDocument });
     const { result } = renderHook(() => useDocumentVerification(deps));
 
-    await act(() => result.current.submit({ can: "111111" }));
+    await act(() => {
+      result.current.submit({ can: "111111" });
+      return result.current.beginRead();
+    });
     expect(result.current.state.error).toMatchObject({ title: "El CAN no coincide", action: "edit_key" });
 
     act(() => result.current.editKey());
     expect(result.current.state.phase).toBe("key");
 
-    await act(() => result.current.submit({ can: "222222" }));
+    await act(() => {
+      result.current.submit({ can: "222222" });
+      return result.current.beginRead();
+    });
     expect(result.current.state.error?.action).toBe("retry");
 
     await act(async () => result.current.retry());
@@ -115,7 +128,10 @@ describe("useDocumentVerification", () => {
     const { deps } = makeDeps({ readDocument: vi.fn().mockRejectedValue(new DocumentNfcError("CANCELLED")) });
     const { result } = renderHook(() => useDocumentVerification(deps));
 
-    await act(() => result.current.submit({ mrz: { documentNumber: "ZZ1", dateOfBirth: "900517", dateOfExpiry: "310517" } }));
+    await act(() => {
+      result.current.submit({ mrz: { documentNumber: "ZZ1", dateOfBirth: "900517", dateOfExpiry: "310517" } });
+      return result.current.beginRead();
+    });
     expect(result.current.state).toMatchObject({ phase: "key", kind: "passport", error: null });
 
     act(() => result.current.cancel());
@@ -133,16 +149,28 @@ describe("useDocumentVerification", () => {
     });
     const { result } = renderHook(() => useDocumentVerification(deps));
 
-    await act(() => result.current.submit({ can: "123456" }));
+    await act(() => {
+      result.current.submit({ can: "123456" });
+      return result.current.beginRead();
+    });
     expect(result.current.state.error).toMatchObject({ action: "retry", detail: "untrusted_certificate" });
 
-    await act(() => result.current.submit({ can: "123456" }));
-    expect(result.current.state.error).toMatchObject({ action: "none", detail: "underage" });
+    await act(() => {
+      result.current.submit({ can: "123456" });
+      return result.current.beginRead();
+    });
+    expect(result.current.state.error).toMatchObject({ action: "sign_out", detail: "underage" });
 
-    await act(() => result.current.submit({ can: "123456" }));
+    await act(() => {
+      result.current.submit({ can: "123456" });
+      return result.current.beginRead();
+    });
     expect(result.current.state.error?.message).toBe("Vuelve a probar dentro de 10 minutos.");
 
-    await act(() => result.current.submit({ can: "123456" }));
+    await act(() => {
+      result.current.submit({ can: "123456" });
+      return result.current.beginRead();
+    });
     expect(result.current.state.error).toMatchObject({ action: "retry", detail: "network" });
   });
 
@@ -156,11 +184,38 @@ describe("useDocumentVerification", () => {
   it("reset forgets everything", async () => {
     const { deps } = makeDeps();
     const { result } = renderHook(() => useDocumentVerification(deps));
-    await act(() => result.current.submit({ can: "123456" }));
+    await act(() => {
+      result.current.submit({ can: "123456" });
+      return result.current.beginRead();
+    });
     act(() => result.current.reset());
     expect(result.current.state).toMatchObject({ phase: "intro", verification: null, error: null });
 
     act(() => result.current.retry());
+    expect(result.current.state.phase).toBe("key");
+  });
+
+  it("calls onVerified after a successful verification", async () => {
+    const onVerified = vi.fn().mockResolvedValue(undefined);
+    const { deps } = makeDeps({ onVerified });
+    const { result } = renderHook(() => useDocumentVerification(deps));
+
+    await act(() => {
+      result.current.submit({ can: "123456" });
+      return result.current.beginRead();
+    });
+
+    expect(onVerified).toHaveBeenCalledTimes(1);
+    expect(result.current.state.phase).toBe("success");
+  });
+
+  it("asks for the key again if reading starts without one", async () => {
+    const { deps } = makeDeps();
+    const { result } = renderHook(() => useDocumentVerification(deps));
+
+    await act(() => result.current.beginRead());
+
+    expect(deps.readDocument).not.toHaveBeenCalled();
     expect(result.current.state.phase).toBe("key");
   });
 });

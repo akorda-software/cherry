@@ -43,6 +43,12 @@ async function enterCan(can: string) {
   fireEvent.change(await screen.findByTestId("verify-can"), { target: { value: can } });
 }
 
+/** Continuar desde la clave y empezar a leer desde la guía de colocación. */
+async function readNow() {
+  fireEvent.click(screen.getByTestId("verify-read"));
+  fireEvent.click(await screen.findByTestId("verify-begin-read"));
+}
+
 describe("DocumentVerificationScreen", () => {
   beforeEach(() => {
     native.current = fakeNative();
@@ -70,7 +76,13 @@ describe("DocumentVerificationScreen", () => {
 
     fireEvent.click(screen.getByTestId("verify-read"));
 
-    expect(await screen.findByTestId("verify-success")).toHaveTextContent("Hecho: eres mayor de edad");
+    // Antes de leer, cómo colocarlo.
+    expect(await screen.findByTestId("nfc-placement-art")).toBeInTheDocument();
+    expect(screen.getByTestId("verify-guide-steps")).toHaveTextContent("a la altura de la cámara");
+    expect(native.current?.read).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("verify-begin-read"));
+
+    expect(await screen.findByTestId("verify-success")).toHaveTextContent("Listo: tu perfil ya está activo");
     expect(native.current?.read).toHaveBeenCalledWith({ can: "123456" }, expect.objectContaining({ timeoutMs: 90_000 }));
     // Only the chip files reach the server: never the CAN.
     expect(backend.callsTo("/api/me/verification/nfc", "POST")[0]?.body).toEqual({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k" });
@@ -92,11 +104,26 @@ describe("DocumentVerificationScreen", () => {
     );
     renderScreen();
     await enterCan("123456");
-    fireEvent.click(screen.getByTestId("verify-read"));
+    await readNow();
 
     expect(await screen.findByTestId("verify-error-title")).toHaveTextContent("No hemos podido comprobar el documento");
     expect(screen.getByTestId("verify-error-detail")).toHaveTextContent("untrusted_certificate");
     expect(screen.getByTestId("verify-retry")).toBeInTheDocument();
+  });
+
+  it("a minor's account is gone: the only way out is signing out", async () => {
+    stubBackend(({ path }) =>
+      path === "/api/me/verification/nfc"
+        ? { status: 422, body: { error: "underage", accountDeleted: true } }
+        : { status: 404, body: {} }
+    );
+    renderScreen();
+    await enterCan("123456");
+    await readNow();
+
+    expect(await screen.findByTestId("verify-error-title")).toHaveTextContent("Cherry es para mayores de edad");
+    expect(screen.getByTestId("verify-sign-out")).toBeInTheDocument();
+    expect(screen.queryByTestId("verify-retry")).not.toBeInTheDocument();
   });
 
   it("a wrong CAN offers to change it", async () => {
@@ -104,7 +131,7 @@ describe("DocumentVerificationScreen", () => {
     native.current = fakeNative({ read: vi.fn().mockRejectedValue(Object.assign(new Error("PACE failed"), { code: "ACCESS_DENIED" })) });
     renderScreen();
     await enterCan("654321");
-    fireEvent.click(screen.getByTestId("verify-read"));
+    await readNow();
 
     expect(await screen.findByTestId("verify-error-title")).toHaveTextContent("El CAN no coincide");
     fireEvent.click(screen.getByTestId("verify-edit-key"));
@@ -135,7 +162,7 @@ describe("DocumentVerificationScreen", () => {
     fireEvent.change(screen.getByTestId("verify-passport-birth"), { target: { value: "17/05/1990" } });
     expect(screen.getByTestId("verify-read")).toBeDisabled();
     fireEvent.change(screen.getByTestId("verify-passport-expiry"), { target: { value: "17/05/2031" } });
-    fireEvent.click(screen.getByTestId("verify-read"));
+    await readNow();
 
     await waitFor(() =>
       expect(native.current?.read).toHaveBeenCalledWith(

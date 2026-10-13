@@ -13,8 +13,10 @@ import {
   TopBar,
   useTheme
 } from "../../../shared/ui";
+import { useAppBootstrap } from "../../app-bootstrap";
 import { useLogoutAction, useSessionShell } from "../../auth/presentation";
 import { resolveOptionalNavigationEntries } from "../../optional-modules";
+import { verificationRoutes } from "../../verification";
 import { readAppInfo } from "../infrastructure/app-info";
 import { DeleteAccountSheet } from "./delete-account-sheet";
 import { useDeleteAccountAction } from "./use-delete-account-action";
@@ -34,6 +36,8 @@ export function SettingsScreen() {
   const appInfo = useMemo(() => readAppInfo(), []);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const { state: bootstrapState } = useAppBootstrap();
+  const ageVerification = bootstrapState.status === "ready" ? bootstrapState.bootstrap.ageVerification : undefined;
 
   const email = state.status === "signed-in" ? state.session.user.email : null;
 
@@ -139,15 +143,19 @@ export function SettingsScreen() {
         />
       </ListSection>
 
-      {__DEV__ ? (
-        <ListSection footnote="Solo en desarrollo. Todavía no forma parte del registro." title="Pruebas">
+      {ageVerification?.required || ageVerification?.status === "verified" ? (
+        <ListSection title="Edad">
           <ListRow
-            description="Lectura NFC del DNI o pasaporte"
+            description={
+              ageVerification.status === "verified"
+                ? "Comprobada con tu documento."
+                : "Pendiente. Tu perfil no se activa hasta que la compruebes."
+            }
             icon="shield-check"
             iconColor="menta"
             label="Comprobar mi edad"
-            onPress={() => router.push("/verify-document")}
-            testID="settings-dev-verify-document"
+            onPress={ageVerification.status === "verified" ? undefined : () => router.push(verificationRoutes.intro)}
+            testID="settings-verify-age"
           />
         </ListSection>
       ) : null}

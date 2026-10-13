@@ -2,8 +2,11 @@ import type { AgeVerificationErrorCode } from "@cherry/contracts";
 
 import type { DocumentNfcErrorCode, DocumentReadStep } from "../../../../modules/document-nfc";
 
-/** Qué hacer tras un error: volver a leer, corregir la clave, abrir ajustes o solo salir. */
-export type VerificationErrorAction = "retry" | "edit_key" | "settings" | "none";
+/**
+ * Qué hacer tras un error: volver a leer, corregir la clave, abrir ajustes, solo salir o cerrar
+ * la sesión (la cuenta ya no existe).
+ */
+export type VerificationErrorAction = "retry" | "edit_key" | "settings" | "none" | "sign_out";
 
 export interface VerificationErrorCopy {
   title: string;
@@ -12,6 +15,93 @@ export interface VerificationErrorCopy {
 }
 
 export type DocumentKind = "id_card" | "passport";
+
+/** Por qué se pide (primera pantalla de la verificación). */
+export const WHY_REASONS = [
+  {
+    icon: "cake",
+    title: "Cherry es solo para mayores de edad",
+    body: "La ley obliga a comprobarlo de verdad: escribir tu fecha de nacimiento no basta."
+  },
+  {
+    icon: "shield",
+    title: "Para frenar bots y perfiles falsos",
+    body: "Comprobar que detrás de cada perfil hay una persona real deja fuera a los bots, los spammers y las estafas."
+  },
+  {
+    icon: "user",
+    title: "Una persona, una cuenta",
+    body: "Cada documento sirve para una sola cuenta. Quien sea expulsado no puede volver con otra."
+  },
+  {
+    icon: "lock",
+    title: "Tu documento no se queda aquí",
+    body: "Solo guardamos que eres mayor de edad. Lo demás se borra en cuanto termina la comprobación."
+  }
+] as const;
+
+export type VerificationMethodId = "nfc" | "selfie_provider" | "eu_wallet";
+
+/** Formas de verificarse. Solo la del DNI está disponible; las demás llegarán más adelante. */
+export const VERIFICATION_METHODS: readonly {
+  id: VerificationMethodId;
+  icon: "shield-check" | "camera" | "lock";
+  title: string;
+  body: string;
+  available: boolean;
+  recommended: boolean;
+}[] = [
+  {
+    id: "nfc",
+    icon: "shield-check",
+    title: "Con tu DNI y el NFC del móvil",
+    body: "Tarda menos de un minuto. Sirve el DNI desde 2015, el TIE y el pasaporte electrónico.",
+    available: true,
+    recommended: true
+  },
+  {
+    id: "selfie_provider",
+    icon: "camera",
+    title: "Con un selfie y una foto del documento",
+    body: "Para quien no tenga NFC en el móvil o un documento con chip.",
+    available: false,
+    recommended: false
+  },
+  {
+    id: "eu_wallet",
+    icon: "lock",
+    title: "Con la cartera digital europea",
+    body: "La app oficial de la UE, que confirma tu edad sin dar ningún otro dato.",
+    available: false,
+    recommended: false
+  }
+];
+
+/** Qué hace falta antes de empezar con el DNI. */
+export const NFC_REQUIREMENTS = [
+  { icon: "shield-check", text: "Un DNI de 2015 o posterior (o un TIE o pasaporte con chip), en vigor." },
+  { icon: "check-circle", text: "El NFC del móvil activado." },
+  { icon: "clock", text: "Un minuto y una mesa donde apoyarte." }
+] as const;
+
+/** Pasos de cómo colocar el documento, según la plataforma. */
+export function placementSteps(platform: string, kind: DocumentKind): string[] {
+  const document = kind === "passport" ? "el pasaporte" : "el DNI";
+  const where = kind === "passport" ? "abierto por la página de la foto" : "por cualquier cara";
+
+  return platform === "ios"
+    ? [
+        `Deja ${document} sobre la mesa, ${where}.`,
+        "Apoya encima la parte de arriba del iPhone (donde está la cámara).",
+        "Cuando empiece a leer, no muevas nada hasta que termine. Tarda unos 10 segundos."
+      ]
+    : [
+        "Si la funda es gruesa o tiene metal, quítala.",
+        `Apoya ${document} en la parte de atrás del móvil, a la altura de la cámara.`,
+        "Si no lo detecta, deslízalo despacio hacia el centro.",
+        "Cuando empiece a leer, no lo muevas hasta que termine. Tarda unos 10 segundos."
+      ];
+}
 
 /** Qué se lee, qué se guarda y qué se borra (pantalla inicial). */
 export const DATA_SUMMARY = [
@@ -39,7 +129,20 @@ export const READ_STEP_COPY: Record<DocumentReadStep, string> = {
   reading_dg1: "Leyendo los datos…",
   reading_dg2: "Leyendo la foto (es lo que más tarda)…",
   reading_sod: "Leyendo la firma…",
+  retrying: "Se ha cortado la conexión. No lo muevas: lo intentamos otra vez…",
   done: "Lectura completa."
+};
+
+/** Avance aproximado de la lectura (0–1) para la barra. La foto es lo más largo. */
+export const READ_STEP_PROGRESS: Record<DocumentReadStep, number> = {
+  waiting: 0,
+  connecting: 0.1,
+  authenticating: 0.25,
+  reading_dg1: 0.4,
+  reading_dg2: 0.55,
+  reading_sod: 0.9,
+  retrying: 0.1,
+  done: 1
 };
 
 export function holdInstruction(platform: string, kind: DocumentKind): string {
@@ -82,8 +185,8 @@ export function readErrorCopy(code: DocumentNfcErrorCode, kind: DocumentKind): V
           };
     case "TAG_LOST":
       return {
-        title: "Se ha movido el documento",
-        message: `Deja ${document} quieto, apoyado en el móvil, hasta que termine. Suele tardar unos segundos.`,
+        title: "Se ha cortado la conexión con el chip",
+        message: `Suele pasar cuando ${document} no queda justo encima de la antena. Quita la funda si es gruesa, apóyalo a la altura de la cámara y, si no lo detecta, deslízalo despacio hasta encontrar el punto. Luego no lo muevas.`,
         action: "retry"
       };
     case "UNSUPPORTED_DOCUMENT":
@@ -118,8 +221,9 @@ export function serverErrorCopy(
     case "underage":
       return {
         title: "Cherry es para mayores de edad",
-        message: "Según el documento, aún no tienes 18 años. No hemos guardado nada.",
-        action: "none"
+        message:
+          "Según el documento, aún no tienes 18 años. Hemos borrado tu cuenta y todo lo que habías subido, y no hemos guardado nada del documento.",
+        action: "sign_out"
       };
     case "document_expired":
       return {
@@ -130,7 +234,7 @@ export function serverErrorCopy(
     case "document_already_used":
       return {
         title: "Este documento ya está en otra cuenta",
-        message: "Cada documento sirve para una sola cuenta.",
+        message: "Cada documento sirve para una sola cuenta. Si tienes otra cuenta en Cherry, entra con ella.",
         action: "none"
       };
     case "already_verified":

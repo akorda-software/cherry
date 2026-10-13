@@ -19,7 +19,7 @@ import {
   type VerificationErrorCopy
 } from "../domain/verification-copy";
 
-export type VerificationPhase = "intro" | "key" | "reading" | "sending" | "success" | "error";
+export type VerificationPhase = "intro" | "key" | "guide" | "reading" | "sending" | "success" | "error";
 
 export interface VerificationError extends VerificationErrorCopy {
   /** Código técnico (motivo del servidor o código NFC), para las pruebas en desarrollo. */
@@ -44,13 +44,16 @@ export interface DocumentVerificationDeps {
   verify(request: NfcVerificationRequest): Promise<AgeVerificationResponse>;
   /** Textos de la hoja del sistema (iOS). */
   readMessages?: ReadDocumentOptions["messages"];
+  /** Tras verificarse (p. ej. recargar el bootstrap para activar el perfil). */
+  onVerified?(): Promise<void> | void;
 }
 
 const INITIAL: VerificationState = { phase: "intro", kind: "id_card", step: null, error: null, verification: null };
 
 /**
- * Flujo de verificación: explicación → CAN (o datos del pasaporte) → lectura NFC → envío al
- * servidor → éxito o error. La clave de acceso solo vive en memoria mientras dura el flujo.
+ * Flujo de verificación: explicación → CAN (o datos del pasaporte) → cómo colocar el documento →
+ * lectura NFC → envío al servidor → éxito o error. La clave de acceso solo vive en memoria
+ * mientras dura el flujo.
  */
 export function useDocumentVerification(deps: DocumentVerificationDeps) {
   const [state, setState] = useState<VerificationState>(INITIAL);
@@ -134,6 +137,11 @@ export function useDocumentVerification(deps: DocumentVerificationDeps) {
         const response = await depsRef.current.verify(document);
         keyRef.current = null;
         update({ phase: "success", verification: response.verification });
+        try {
+          await depsRef.current.onVerified?.();
+        } catch {
+          // El perfil se activa igual en la próxima carga del bootstrap.
+        }
       } catch (error) {
         if (runId !== runRef.current) {
           return;
@@ -152,8 +160,23 @@ export function useDocumentVerification(deps: DocumentVerificationDeps) {
     [fail, update]
   );
 
-  /** Lee el documento con la clave dada y envía los datos. */
-  const submit = useCallback((key: DocumentAccessKey) => run(key), [run]);
+  /** Guarda la clave y enseña cómo colocar el documento. */
+  const submit = useCallback(
+    (key: DocumentAccessKey) => {
+      keyRef.current = key;
+      update({ phase: "guide", kind: "can" in key ? "id_card" : "passport", error: null });
+    },
+    [update]
+  );
+
+  /** Empieza a leer con la clave guardada (desde la guía). */
+  const beginRead = useCallback(async () => {
+    if (keyRef.current) {
+      await run(keyRef.current);
+    } else {
+      update({ phase: "key" });
+    }
+  }, [run, update]);
 
   /** Vuelve a intentar con la misma clave. */
   const retry = useCallback(() => {
@@ -182,5 +205,5 @@ export function useDocumentVerification(deps: DocumentVerificationDeps) {
     update(INITIAL);
   }, [update]);
 
-  return { state, start, setKind, submit, retry, cancel, editKey, openSettings, reset };
+  return { state, start, setKind, submit, beginRead, retry, cancel, editKey, openSettings, reset };
 }

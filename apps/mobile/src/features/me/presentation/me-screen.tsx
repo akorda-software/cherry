@@ -7,6 +7,7 @@ import { createProfileApi } from "@cherry/mobile-shared";
 
 import {
   appShellRoutes,
+  Button,
   Deco,
   EmptyState,
   ErrorState,
@@ -16,11 +17,14 @@ import {
   Screen,
   Skeleton,
   SkeletonGroup,
+  Stack,
+  Surface,
   Text,
   TopBar,
   useTheme
 } from "../../../shared/ui";
 import { useAuthedApi } from "../../auth/presentation";
+import { useVerificationPending, verificationRoutes } from "../../verification";
 import { PAUSED_MESSAGE, type ProfilePause, useProfilePause } from "../../settings/presentation/use-profile-pause";
 import { useMyProfile } from "../application/use-my-profile";
 import { meRoutes, type MeRoute } from "../domain/me-routes";
@@ -49,6 +53,7 @@ export function MeScreen() {
   const fetchProfile = useCallback(() => callApi((api) => api.getProfile()), [callApi]);
   const me = useMyProfile(fetchProfile);
   const pause = useProfilePause();
+  const pendingVerification = useVerificationPending();
   const { reload } = me;
 
   // Al volver de editar fotos, etiquetas o bio, refresca sin quitar lo que ya se ve.
@@ -81,6 +86,25 @@ export function MeScreen() {
       scroll
       testID="me-screen"
     >
+      {pendingVerification ? (
+        <Surface color="limonada" padding="md" radius="lg" soft testID="me-verification-pending">
+          <Stack gap="sm">
+            <Text variant="bodyStrong">Tu perfil aún no está activo</Text>
+            <Text color="muted" variant="callout">
+              Nadie te ve hasta que compruebes tu edad. Mientras, puedes dejarlo a tu gusto.
+            </Text>
+            <Button
+              icon="shield-check"
+              onPress={() => router.push(verificationRoutes.intro)}
+              style={styles.pendingButton}
+              testID="me-verify"
+            >
+              Comprobar mi edad
+            </Button>
+          </Stack>
+        </Surface>
+      ) : null}
+
       {me.status === "loading" ? <MeSkeleton previewWidth={previewWidth} /> : null}
 
       {me.status === "error" ? (
@@ -211,6 +235,9 @@ function MeSkeleton({ previewWidth }: { previewWidth: number }) {
 }
 
 const styles = StyleSheet.create({
+  pendingButton: {
+    alignSelf: "flex-start"
+  },
   preview: {
     gap: 12
   },

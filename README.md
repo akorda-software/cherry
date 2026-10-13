@@ -1,17 +1,22 @@
 <div align="center">
 
-<img src="./docs/assets/logo.svg" alt="cherry" height="120">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/banner-dark.png">
+  <img src="./docs/assets/banner-light.png" width="100%" alt="Cherry: citas abiertas, hechas para las personas. Open source y self-hosteable, para que cada país tenga su propio Cherry. Junto al texto, Mochi (la mascota, dos cerezas sonrientes) y dos móviles con la app: la pantalla de descubrir y la de likes.">
+</picture>
 
-**Una app de citas abierta, hecha para las personas y no para retenerlas.**
+<br>
 
-<img src="./docs/assets/mochi-celebrate.svg" alt="Mochi, la mascota de Cherry: dos cerezas sonrientes" height="110">
+[![Licencia AGPL-3.0](https://img.shields.io/badge/licencia-AGPL--3.0-FF6B57?style=for-the-badge&labelColor=1D1426)](./COPYRIGHT.md)
+[![Estado: en construcción](https://img.shields.io/badge/estado-en_construcci%C3%B3n-FFC53D?style=for-the-badge&labelColor=1D1426)](./docs/10-plan-fases.md)
+[![Contribuir con DCO](https://img.shields.io/badge/contribuir-DCO-62D98C?style=for-the-badge&labelColor=1D1426)](./CONTRIBUTING.md)
+<br>
+[![Expo SDK 54](https://img.shields.io/badge/Expo_SDK_54-1D1426?style=for-the-badge&logo=expo&logoColor=FAF6F0)](./apps/mobile)
+[![Elixir y Phoenix](https://img.shields.io/badge/Elixir_%C2%B7_Phoenix-A58BFF?style=for-the-badge&logo=elixir&logoColor=1D1426&labelColor=A58BFF)](./apps/backend)
+[![PostgreSQL 17 con PostGIS](https://img.shields.io/badge/PostgreSQL_17_%C2%B7_PostGIS-5EC0FF?style=for-the-badge&logo=postgresql&logoColor=1D1426)](./infra/docker-compose.yml)
+[![iOS y Android](https://img.shields.io/badge/iOS_%C2%B7_Android-B9E53C?style=for-the-badge&logo=android&logoColor=1D1426)](./apps/mobile)
 
-[![Licencia: AGPL-3.0](https://img.shields.io/badge/licencia-AGPL--3.0-1D1426)](./COPYRIGHT.md)
-[![Estado: en construcción](https://img.shields.io/badge/estado-en%20construcci%C3%B3n-F4C95D)](./docs/10-plan-fases.md)
-[![iOS y Android](https://img.shields.io/badge/app-iOS%20%C2%B7%20Android-7FD6A4)](./apps/mobile)
-[![Contribuciones con DCO](https://img.shields.io/badge/contribuir-DCO-9FC6F0)](./CONTRIBUTING.md)
-
-[Qué es](#qué-es-cherry) · [Qué incluye](#qué-incluye-hoy) · [Un Cherry por país](#un-cherry-por-país) · [Arrancarlo](#arrancarlo-en-tu-ordenador) · [Montar tu instancia](#montar-tu-instancia) · [Contribuir](#contribuir) · [Licencia](#licencia)
+**[Qué es](#qué-es-cherry)** · **[La app](#la-app)** · **[Un Cherry por país](#un-cherry-por-país)** · **[Arrancarlo](#arrancarlo-en-tu-ordenador)** · **[Montar tu instancia](#montar-tu-instancia)** · **[Contribuir](#contribuir)** · **[Licencia](#licencia)**
 
 </div>
 
@@ -22,12 +27,52 @@
 
 Cherry es una app de citas **open source y self-hosteable**. Existe para demostrar que una app de citas puede servir a las personas en lugar de explotarlas: sin muros de pago, sin escasez simulada, sin anuncios y sin trucos para que pases más tiempo dentro. Lo que otras apps cobran (ver quién te ha dado like, los filtros, deshacer) aquí forma parte de la app.
 
-- 🏷️ **Las etiquetas mandan.** Eliges las etiquetas que te definen y las que no van contigo. Nunca verás a nadie con una etiqueta que bloqueas, ni te verá a ti, y la compatibilidad pesa más que la distancia.
-- 🛡️ **Solo personas reales y adultas.** Cada cuenta comprueba su mayoría de edad con el DNI o con un selfie. Cada documento vale para una sola cuenta, así que los bots y los expulsados no vuelven con otra.
-- 🤝 **Sin presión.** Tono cálido, sin culpa y sin notificaciones para engancharte. La app quiere que encuentres lo que buscas, no que no la sueltes.
-- 🔓 **Tuya.** Código auditable bajo AGPL-3.0. Cualquiera puede montar su propio Cherry para su país.
+<table>
+<tr>
+<td width="50%" valign="top">
 
-## Qué incluye hoy
+### 🏷️ Las etiquetas mandan
+
+Eliges las etiquetas que te definen y las que no van contigo. Nunca verás a nadie con una etiqueta que bloqueas, ni te verá a ti, y la compatibilidad pesa más que la distancia.
+
+</td>
+<td width="50%" valign="top">
+
+### 🛡️ Solo personas reales y adultas
+
+Cada cuenta comprueba su mayoría de edad con el DNI o con un selfie. Cada documento vale para una sola cuenta, así que los bots y los expulsados no vuelven con otra.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🤝 Sin presión
+
+Tono cálido, sin culpa y sin notificaciones para engancharte. La app quiere que encuentres lo que buscas, no que no la sueltes.
+
+</td>
+<td width="50%" valign="top">
+
+### 🔓 Tuya
+
+Código auditable bajo AGPL-3.0. Cualquiera puede montar su propio Cherry para su país, con el mismo nombre y la misma mascota.
+
+</td>
+</tr>
+</table>
+
+## La app
+
+<div align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/showcase-dark.png">
+  <img src="./docs/assets/showcase-light.png" width="100%" alt="Cinco pantallas de Cherry: descubrir perfiles con sus etiquetas, la lista de personas que te han dado like, los chats con los nuevos matches, tu perfil tal como lo ven los demás y la elección del método para comprobar la edad.">
+</picture>
+<sub>Capturas de la versión en desarrollo con perfiles de demo. Las fotos son retratos ilustrados.</sub>
+</div>
+
+### Qué incluye hoy
 
 - **Login** con Google y Apple; sesiones propias con refresco rotatorio.
 - **Comprobación de la edad** tras el onboarding, explicada paso a paso:
@@ -41,13 +86,20 @@ Cherry es una app de citas **open source y self-hosteable**. Existe para demostr
 - **Seguridad**: bloquear, denunciar, deshacer un match, pausar el perfil y borrar la cuenta.
 - **Privacidad**: la ubicación se redondea a una rejilla de 500 m y nunca se expone, y los mensajes se cifran en reposo.
 - **Fotos** en el disco del servidor o en cualquier almacenamiento compatible con S3.
-- Sistema de diseño **«Libreta kawaii»**: neobrutalismo pastel, con Mochi de mascota.
+- Sistema de diseño **«Libreta kawaii»**: neobrutalismo sobrio con color, con Mochi de mascota.
 
 Lo que falta (notificaciones push, panel de moderación, otros idiomas, modo oscuro…) está en el [plan por fases](./docs/10-plan-fases.md) y en la [deuda técnica](./docs/11-deuda-tecnica-pendiente.md).
 
 ## Un Cherry por país
 
 Cherry no es una app global con un único servidor. Cada país (o región, o comunidad) puede tener **su propio Cherry**, montado y gestionado por gente de allí, que cumple la ley de su país.
+
+<div align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/countries-dark.png">
+  <img src="./docs/assets/countries-light.png" width="100%" alt="Cherry España, de Akorda Software, en preparación. Al lado, huecos para Cherry Portugal, Cherry Francia y cualquier otro país que alguien quiera montar.">
+</picture>
+</div>
 
 - **Cherry España** es la instancia de [Akorda Software](https://github.com/akorda-software), en preparación.
 - ¿Quieres montar Cherry en otro sitio? Puedes usar el código, el nombre, el logo y la mascota siempre que cumplas unas [condiciones mínimas](./TRADEMARKS.md): código abierto, comprobar la edad de verdad, moderación y nada de vender datos.
@@ -147,3 +199,11 @@ Cherry is meant to run as **one instance per country**, each one run by local pe
 License: [AGPL-3.0](./LICENSE) with an [app store additional permission](./LICENSE-EXCEPTION.md); artwork and docs also under CC BY-SA 4.0. Contributions use the [DCO](./DCO), no CLA. Status: under construction.
 
 </details>
+
+---
+
+<div align="center">
+<img src="./docs/assets/mochi-wink.svg" alt="" height="72">
+
+<sub>Hecho en España por <a href="https://github.com/akorda-software">Akorda Software</a> y las personas que contribuyen a Cherry.</sub>
+</div>

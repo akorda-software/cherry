@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="cherry.css">
+<style>
+  body { width: 1240px; height: 300px; }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    height: 100%;
+    padding: 0 12px 12px 0;
+  }
+
+  /* Postal de una instancia. */
+  .card {
+    position: relative;
+    width: 232px;
+    height: 220px;
+    padding: 22px 18px;
+    border-radius: 26px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .card .flag { font-size: 54px; line-height: 1; }
+  .card .name { margin-top: 14px; font-weight: 900; font-size: 24px; }
+  .card .who { margin-top: 6px; font-size: 16px; color: var(--ink-soft); }
+
+  .live {
+    background: #fff;
+    border: 3px solid var(--edge);
+    box-shadow: 6px 6px 0 var(--drop);
+    transform: rotate(-3deg);
+  }
+
+  .live .tag { margin-top: 12px; }
+  .live .tag > span { font-size: 15px; padding: 5px 12px; }
+
+  /* Hueco para la instancia que todavía no existe. */
+  .open {
+    border: 3px dashed var(--edge);
+    opacity: 0.85;
+  }
+
+  .open .name, .open .who { color: var(--edge); }
+  .open .flag { filter: grayscale(0.15); }
+  .open:nth-child(2) { transform: rotate(2deg); }
+  .open:nth-child(3) { transform: rotate(-1.5deg); }
+  .open:nth-child(4) { transform: rotate(2.5deg); }
+
+  .plus {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--secondary);
+    border: 3px solid var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 36px;
+    line-height: 1;
+    padding-bottom: 4px;
+  }
+
+  .washi { left: 64px; top: -14px; width: 84px; transform: rotate(-6deg); }
+  .mochi { width: 132px; margin-left: -6px; transform: rotate(6deg); }
+  /* La mascota lleva contorno de tinta: en oscuro se recorta con papel. */
+  .dark .mochi {
+    filter: drop-shadow(1.5px 0 0 var(--paper)) drop-shadow(-1.5px 0 0 var(--paper))
+      drop-shadow(0 1.5px 0 var(--paper)) drop-shadow(0 -1.5px 0 var(--paper));
+  }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="card live">
+      <div class="washi dotted"></div>
+      <div class="flag">🇪🇸</div>
+      <div class="name">Cherry España</div>
+      <div class="who">por Akorda Software</div>
+      <span class="sticker tag"><span class="fill-secondary">En preparación</span></span>
+    </div>
+    <div class="card open">
+      <div class="flag">🇵🇹</div>
+      <div class="name">¿Cherry Portugal?</div>
+      <div class="who">Se busca quien lo monte</div>
+    </div>
+    <div class="card open">
+      <div class="flag">🇫🇷</div>
+      <div class="name">¿Cherry Francia?</div>
+      <div class="who">Se busca quien lo monte</div>
+    </div>
+    <div class="card open">
+      <div class="plus">+</div>
+      <div class="name">¿Y en tu país?</div>
+      <div class="who">Monta el tuyo</div>
+    </div>
+    <img class="mochi" src="../mochi-wink.svg" alt="">
+  </div>
+  <script src="phone.js"></script>
+</body>
+</html>

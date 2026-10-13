@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="cherry.css">
+<style>
+  body { width: 1240px; height: 590px; }
+
+  .row {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    padding: 18px 10px 0;
+  }
+
+  figure { position: relative; display: flex; flex-direction: column; align-items: center; }
+  figure .phone { zoom: 0.72; }
+  figure:nth-child(odd) { margin-top: 34px; }
+  figure:nth-child(1) .phone { transform: rotate(-3deg); }
+  figure:nth-child(2) .phone { transform: rotate(1.5deg); }
+  figure:nth-child(4) .phone { transform: rotate(-1.5deg); }
+  figure:nth-child(5) .phone { transform: rotate(3deg); }
+
+  figcaption { margin-top: -26px; z-index: 2; }
+  figcaption .sticker > span { font-size: 17px; padding: 6px 14px; }
+  figure:nth-child(odd) figcaption .sticker { transform: rotate(-3deg); }
+  figure:nth-child(even) figcaption .sticker { transform: rotate(2deg); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <figure>
+      <div class="phone"><div class="screen" data-shot="discover"></div></div>
+      <figcaption><span class="sticker edge"><span class="fill-tertiary">🏷️ Descubre por etiquetas</span></span></figcaption>
+    </figure>
+    <figure>
+      <div class="phone"><div class="screen" data-shot="likes"></div></div>
+      <figcaption><span class="sticker edge"><span class="fill-secondary">💛 Ves quién te da like</span></span></figcaption>
+    </figure>
+    <figure>
+      <div class="phone"><div class="screen" data-shot="chats"></div></div>
+      <figcaption><span class="sticker edge"><span class="fill-quaternary">💬 Chats en directo</span></span></figcaption>
+    </figure>
+    <figure>
+      <div class="phone"><div class="screen" data-shot="me"></div></div>
+      <figcaption><span class="sticker edge"><span class="fill-primary">🍒 Tu perfil</span></span></figcaption>
+    </figure>
+    <figure>
+      <div class="phone"><div class="screen" data-shot="methods"></div></div>
+      <figcaption><span class="sticker edge"><span class="fill-positive">🛡️ Comprueba tu edad</span></span></figcaption>
+    </figure>
+  </div>
+  <script src="phone.js"></script>
+</body>
+</html>

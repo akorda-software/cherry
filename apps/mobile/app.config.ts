@@ -51,7 +51,7 @@ export default (): ExpoConfig => {
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundImage: "./assets/images/adaptive-icon-background.png",
-        backgroundColor: "#FFF1DF",
+        backgroundColor: "#FFC53D",
         monochromeImage: "./assets/images/adaptive-icon-monochrome.png"
       }
     },

@@ -57,9 +57,11 @@ aviso limonada, cada uno con su `Soft`).
 Fuentes cargadas en `app/_layout.tsx` con `expo-font` (subconjuntos latinos en `assets/fonts`); el splash nativo se
 mantiene hasta que están listas.
 
-- **Mochiy Pop One** (`fonts.display`): titulares, sellos, números grandes, nombre en las pegatinas de perfil.
-- **M PLUS Rounded 1c** (`regular`, `medium`, `bold`, `extraBold`, `black`): interfaz y texto.
-- **Yomogi** (`fonts.hand`): anotaciones manuscritas puntuales, nunca por debajo de 18 pt.
+- **Rubik** (`regular`, `medium`, `bold`, `extraBold`, `black`): toda la interfaz. Los titulares (`fonts.display`) van
+  en Black con interletraje cerrado; `fonts.hand` es Rubik Medium (nada de letra «a mano»).
+- **Logo**: la palabra «cherry» en Fraunces Black (SOFT 100, opsz 144; OFL), convertida a trazados y retocada a mano
+  en `src/shared/ui/art/wordmark-path.ts`. Las bolas de las dos erres son las cerezas, unidas por los rabitos y una
+  hoja. No se carga como fuente. El icono de la app son las dos erres con sus cerezas sobre amarillo.
 
 Escala (`theme.primitives.text`): `hero 40`, `title1 30`, `title2 24`, `title3 19`, `body 16`, `bodyStrong 16`,
 `callout 15`, `label 15`, `caption 13`, `micro 11 (mayúsculas)`, `button 17`, `buttonSmall 15`, `hand 20`,

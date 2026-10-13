@@ -21,8 +21,19 @@ export interface DocumentReadResult {
 
 export type NfcStatus = "unavailable" | "disabled" | "enabled";
 
-/** Fases de la lectura que emite el nativo (para el texto de estado). */
-export type DocumentReadStep = "waiting" | "connecting" | "authenticating" | "reading_dg1" | "reading_dg2" | "reading_sod" | "done";
+/**
+ * Fases de la lectura que emite el nativo (para el texto de estado). `retrying`: se cortó la
+ * conexión con el chip y la lectura vuelve a empezar sola en cuanto lo detecta (solo Android).
+ */
+export type DocumentReadStep =
+  | "waiting"
+  | "connecting"
+  | "authenticating"
+  | "reading_dg1"
+  | "reading_dg2"
+  | "reading_sod"
+  | "retrying"
+  | "done";
 
 export interface DocumentReadProgress {
   step: DocumentReadStep;
@@ -56,7 +67,8 @@ export const DOCUMENT_NFC_ERROR_CODES = [
  * - `NFC_UNAVAILABLE`: el móvil no tiene NFC (o es web).
  * - `NFC_DISABLED`: NFC apagado en ajustes (solo Android).
  * - `ACCESS_DENIED`: el chip rechazó la clave (CAN o MRZ incorrectos).
- * - `TAG_LOST`: el documento se separó antes de terminar.
+ * - `TAG_LOST`: se perdió la conexión con el chip (documento separado o mal colocado) y no se
+ *   recuperó tras los reintentos automáticos.
  * - `UNSUPPORTED_DOCUMENT`: no es un documento electrónico compatible (sin PACE/BAC, otra tarjeta…).
  * - `CANCELLED`: lo canceló la persona (o la app).
  * - `TIMEOUT`: no se acercó ningún documento a tiempo.

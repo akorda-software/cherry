@@ -18,7 +18,7 @@ cancelRead(); openNfcSettings(); addReadProgressListener(fn)
 ```
 
 Errores: `DocumentNfcError` con `code` en `NFC_UNAVAILABLE`, `NFC_DISABLED`, `ACCESS_DENIED` (CAN o
-MRZ incorrectos), `TAG_LOST` (documento retirado antes de tiempo), `UNSUPPORTED_DOCUMENT`,
+MRZ incorrectos), `TAG_LOST` (conexión con el chip perdida; en Android se reintenta sola hasta 3 veces antes), `UNSUPPORTED_DOCUMENT`,
 `CANCELLED`, `TIMEOUT`, `BUSY`, `INVALID_KEY`, `UNKNOWN`. Sin el módulo nativo (web, Expo Go, dev
 client compilado antes de añadirlo) `getNfcStatus` da `unavailable` y `readDocument` rechaza con
 `NFC_UNAVAILABLE`.

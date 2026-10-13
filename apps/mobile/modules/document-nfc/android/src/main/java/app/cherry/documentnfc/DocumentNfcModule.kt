@@ -16,6 +16,8 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
 class ReadKey : Record {
@@ -34,13 +36,21 @@ class DocumentNfcException(code: String, message: String) : CodedException(code,
 /**
  * Expo module: NFC reader mode while the app is in the foreground; the first
  * IsoDep tag is read on a background thread. One read at a time.
+ *
+ * If the chip stops answering mid-read (usually a document slightly off the
+ * antenna: enough power for plain commands, not for the PACE crypto), reader
+ * mode stays on and the read starts over as soon as the chip is detected again,
+ * up to [MAX_RETRIES] times within the overall timeout.
  */
 class DocumentNfcModule : Module() {
   private val executor = Executors.newSingleThreadExecutor()
   private val mainHandler = Handler(Looper.getMainLooper())
   private val pending = AtomicReference<PendingRead?>(null)
 
-  private class PendingRead(val key: AccessKey, val promise: Promise, val timeout: Runnable)
+  private class PendingRead(val key: AccessKey, val promise: Promise, val timeout: Runnable) {
+    val reading = AtomicBoolean(false)
+    val retries = AtomicInteger(0)
+  }
 
   override fun definition() = ModuleDefinition {
     Name("DocumentNfc")
@@ -133,6 +143,8 @@ class DocumentNfcModule : Module() {
   // Binder thread: hand the work to our executor so the NFC stack is not blocked.
   private fun onTag(read: PendingRead, tag: Tag) {
     if (pending.get() !== read) return
+    // A tag rediscovered while a read is still unwinding: ignore it.
+    if (!read.reading.compareAndSet(false, true)) return
 
     val isoDep = IsoDep.get(tag)
     if (isoDep == null) {
@@ -153,6 +165,11 @@ class DocumentNfcModule : Module() {
           )
         }
       } catch (e: ReadException) {
+        if (e.code == "TAG_LOST" && pending.get() === read && read.retries.incrementAndGet() <= MAX_RETRIES) {
+          read.reading.set(false)
+          emit("retrying")
+          return@execute
+        }
         finish(read) { it.reject(DocumentNfcException(e.code, e.message ?: e.code)) }
       } catch (e: Exception) {
         finish(read) { it.reject(DocumentNfcException("UNKNOWN", e.javaClass.simpleName)) }
@@ -174,6 +191,10 @@ class DocumentNfcModule : Module() {
       }
     }
     settle(read.promise)
+  }
+
+  private companion object {
+    const val MAX_RETRIES = 3
   }
 
   private fun emit(step: String) {

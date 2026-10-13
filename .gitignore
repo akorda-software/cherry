@@ -26,3 +26,6 @@ apps/mobile/.mobile-dev
 # Capturas de revisión visual (efímeras)
 .impeccable/review/
 .impeccable/questions/
+
+# Compilación de los módulos nativos locales
+apps/mobile/modules/*/android/build/

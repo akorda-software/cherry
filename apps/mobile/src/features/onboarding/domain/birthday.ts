@@ -152,7 +152,8 @@ export function isBirthdayPartOutOfRange(part: BirthdayPart, value: string): boo
   }
 }
 
-export function validateBirthday(parts: BirthdayParts, now: Date = new Date()): BirthdayValidation {
+/** `minAge`: la edad mínima de la instancia (`GET /api/config`); 18 por defecto. */
+export function validateBirthday(parts: BirthdayParts, now: Date = new Date(), minAge: number = MIN_AGE): BirthdayValidation {
   const { day, month, year } = parts;
 
   if (day.length < 1 || month.length < 1 || year.length < 4) {
@@ -177,7 +178,7 @@ export function validateBirthday(parts: BirthdayParts, now: Date = new Date()): 
 
   const age = ageOn(birth, today);
 
-  if (age < MIN_AGE) {
+  if (age < minAge) {
     return { status: "too_young", age };
   }
 

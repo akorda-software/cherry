@@ -103,6 +103,39 @@ defmodule Cherry.Identity.AgeVerificationsTest do
       assert {:ok, _} = verify(user_fixture(), doc, now: ~U[2026-10-09 00:00:00Z])
     end
 
+    test "the minimum age is configurable", ctx do
+      Application.put_env(
+        :cherry,
+        :age_verification,
+        Keyword.put(Application.get_env(:cherry, :age_verification), :minimum_age, 21)
+      )
+
+      assert AgeVerifications.minimum_age() == 21
+      assert {:error, :underage} = verify(user_fixture(), document(ctx, birth: ~D[2006-01-01]))
+      assert {:ok, _} = verify(user_fixture(), document(ctx, birth: ~D[2005-01-01]))
+    end
+
+    test "only the accepted kinds of document", ctx do
+      Application.put_env(
+        :cherry,
+        :age_verification,
+        Keyword.put(Application.get_env(:cherry, :age_verification), :accepted_documents, [
+          :id_card
+        ])
+      )
+
+      user = user_fixture()
+
+      assert {:error, :unsupported_document} =
+               verify(user, document(ctx, format: :td3, document_number: "ZZ7654321"))
+
+      # A minor's genuine document is still a minor's, whatever its kind.
+      assert {:error, :underage} =
+               verify(user, document(ctx, format: :td3, birth: ~D[2010-03-01]))
+
+      assert {:ok, %{method: "nfc_dni"}} = verify(user, document(ctx))
+    end
+
     test "verifying again with the same document is idempotent", ctx do
       user = user_fixture()
       doc = document(ctx)
@@ -562,6 +595,29 @@ defmodule Cherry.Identity.AgeVerificationsTest do
 
       assert {:error, :unsupported_document} = check(user, decision)
       assert_erased()
+    end
+
+    test "documents the instance does not accept are unsupported, after the age check" do
+      Application.put_env(
+        :cherry,
+        :age_verification,
+        Keyword.put(Application.get_env(:cherry, :age_verification), :accepted_documents, [
+          :passport
+        ])
+      )
+
+      user = user_fixture()
+
+      assert {:error, :unsupported_document} =
+               check(user, DiditStub.decision(user.id, "Approved"))
+
+      assert {:error, :underage} =
+               check(
+                 user,
+                 DiditStub.decision(user.id, "Approved", %{"date_of_birth" => "2010-03-01"})
+               )
+
+      refute AgeVerifications.verified?(user.id)
     end
 
     test "an approved session without a birth date is declined" do

@@ -53,12 +53,30 @@ config :cherry, Cherry.Storage.R2,
 # the host of each request is used (runtime env PUBLIC_BASE_URL).
 config :cherry, :public_base_url, nil
 
+# Identity of this instance (one Cherry per country, see TRADEMARKS.md). Public:
+# served by GET /api/config. Runtime env INSTANCE_* (config/runtime.exs); the
+# defaults keep the behaviour of the Spanish instance. operator/contact/legal
+# URLs have no default: each instance must state who runs it.
+config :cherry, :instance,
+  name: "Cherry",
+  country: "ES",
+  locale: "es-ES",
+  operator: nil,
+  contact_email: nil,
+  privacy_url: nil,
+  terms_url: nil,
+  source_url: nil
+
 # Age verification (D-2026-10-09, docs/compliance/02-mayoria-de-edad.md).
 # fingerprint_key: DOCUMENT_FINGERPRINT_KEY (runtime). Without it the NFC
-# verification endpoint answers 503. Attempt limits: {max, window in seconds}.
+# verification endpoint answers 503. minimum_age (AGE_VERIFICATION_MINIMUM_AGE)
+# also applies to the birth date of a profile. accepted_documents
+# (AGE_VERIFICATION_DOCUMENTS): :id_card (identity cards and residence
+# permits) and/or :passport. Attempt limits: {max, window in seconds}.
 config :cherry, :age_verification,
   fingerprint_key: nil,
   minimum_age: 18,
+  accepted_documents: [:id_card, :passport],
   attempt_limits: [{5, 3600}, {10, 86_400}]
 
 # External age verification method: selfie + document with Didit
@@ -73,7 +91,8 @@ config :cherry, :didit,
   allow_sandbox: false
 
 # Trusted CSCA certificates for passive authentication. `paths` defaults to the
-# release's priv/csca (Spanish CSCAs); CSCA_PATHS replaces it at runtime.
+# release's priv/csca (Spanish CSCAs); CSCA_PATHS replaces it and CSCA_COUNTRIES
+# picks country folders of priv/csca at runtime (see TrustStore).
 config :cherry, Cherry.Identity.Document.TrustStore, certificates: []
 
 # A match without messages expires after this many days (D-2026-09-29).

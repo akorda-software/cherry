@@ -71,60 +71,122 @@ Genera `_build/prod/rel/cherry` y el tarball `_build/prod/cherry-<versión>.tar.
 
 Los datos de demo (`priv/repo/demo_seeds.exs`) solo existen en desarrollo y se niegan a ejecutarse fuera de `MIX_ENV=dev`.
 
-## 4. Variables de entorno
+## 4. Variables de entorno del backend
 
-La fuente de verdad es `apps/backend/config/runtime.exs`; la plantilla comentada, `apps/backend/.env.example`.
+La fuente de verdad es `apps/backend/config/runtime.exs`; la plantilla comentada, `apps/backend/.env.example` (en desarrollo, el backend carga `apps/backend/.env`). Las variables de compilación de la app están en §8.
+
+Todo lo que depende de la infraestructura o del país se configura aquí; los valores por defecto reproducen la instancia española. Un valor vacío cuenta como no definido. Un valor mal formado (un país que no es ISO, una URL que no es `http(s)`, una edad fuera de rango…) **impide arrancar** con un mensaje que nombra la variable.
 
 ### Obligatorias en producción
 
 El release **no arranca** si falta alguna o si un secreto es débil (más corto que el mínimo o un valor de relleno como `changeme`). El error lista todos los problemas de una vez.
 
-| Variable | Qué es |
-|---|---|
-| `DATABASE_URL` | Conexión a PostgreSQL (§2) |
-| `SECRET_KEY_BASE` | Secreto de Phoenix, ≥ 64 caracteres |
-| `AUTH_ACCESS_TOKEN_SALT` | Sal de los access tokens, ≥ 32 caracteres |
-| `AUTH_REFRESH_TOKEN_SALT` | Sal de los refresh tokens, ≥ 32 caracteres |
-| `MESSAGE_ENCRYPTION_KEY` | Clave de cifrado en reposo de los mensajes del chat, ≥ 32 caracteres. **Si la pierdes, los mensajes guardados no se pueden leer**: guárdala con tus backups, fuera de la base de datos |
-| `PHX_HOST` | Nombre público de la API (p. ej. `api.tu-dominio.example`), sin esquema |
-| `STORAGE_ADAPTER` | `local` o `r2` (`s3` es alias de `r2`) |
-| `UPLOADS_DIR` | Solo con `local`: directorio de fotos en un volumen persistente |
-| `PUBLIC_BASE_URL` | Solo con `local`: origen público de la API (`https://api.tu-dominio.example`). Las URLs de fotos y de subida se construyen con él, nunca con la cabecera `Host` |
+| Variable | Por defecto | Qué es |
+|---|---|---|
+| `DATABASE_URL` | — | Conexión a PostgreSQL (§2) |
+| `SECRET_KEY_BASE` | — | Secreto de Phoenix, ≥ 64 caracteres |
+| `AUTH_ACCESS_TOKEN_SALT` | — | Sal de los access tokens, ≥ 32 caracteres |
+| `AUTH_REFRESH_TOKEN_SALT` | — | Sal de los refresh tokens, ≥ 32 caracteres |
+| `MESSAGE_ENCRYPTION_KEY` | — | Clave de cifrado en reposo de los mensajes del chat, ≥ 32 caracteres. **Si la pierdes, los mensajes guardados no se pueden leer**: guárdala con tus backups, fuera de la base de datos |
+| `PHX_HOST` | — | Nombre público de la API (p. ej. `api.tu-dominio.example`), sin esquema |
+| `STORAGE_ADAPTER` | — (`local` en dev) | `local` o `r2` (`s3` es alias de `r2`) |
+| `UPLOADS_DIR` | `priv/uploads` en dev | Solo con `local`: directorio de fotos en un volumen persistente |
+| `PUBLIC_BASE_URL` | host de cada petición (solo dev) | Solo con `local`: origen público de la API (`https://api.tu-dominio.example`). Las URLs de fotos y de subida se construyen con él, nunca con la cabecera `Host` |
 
 Genera cada secreto con `mix phx.gen.secret` o `openssl rand -base64 48`. No reutilices el mismo valor en varias variables.
 
-### Login (sin ellas nadie puede entrar)
+Para entrar hace falta además al menos un proveedor de login (§6):
 
-| Variable | Qué es |
-|---|---|
-| `GOOGLE_WEB_CLIENT_ID` | Client ID de OAuth de tipo «Aplicación web» (§6). Es la audiencia de los tokens que emite Google Sign-In en Android |
-| `GOOGLE_IOS_CLIENT_ID` | Client ID de OAuth de tipo iOS (§6) |
-| `APPLE_AUDIENCES` | Bundle IDs aceptados para Sign in with Apple, separados por comas. Por defecto `EXPO_IOS_BUNDLE_IDENTIFIER` o `app.cherry.mobile` |
+| Variable | Por defecto | Qué es |
+|---|---|---|
+| `GOOGLE_WEB_CLIENT_ID` | vacío | Client ID de OAuth de tipo «Aplicación web». Es la audiencia de los tokens que emite Google Sign-In en Android |
+| `GOOGLE_IOS_CLIENT_ID` | vacío | Client ID de OAuth de tipo iOS |
+| `APPLE_AUDIENCES` | `EXPO_IOS_BUNDLE_IDENTIFIER` o `app.cherry.mobile` | Bundle IDs aceptados para Sign in with Apple, separados por comas |
 
 Un proveedor sin audiencias rechaza todos sus logins; el backend lo avisa en el log al arrancar (error si no hay ninguno configurado).
+
+### Instancia y país
+
+Quién gestiona la instancia y para qué país es. La app lo lee al arrancar de `GET /api/config` (público), así que **la misma compilación de la app sirve para cualquier instancia**: no hay que recompilar para cambiarlos. Se enseñan en «Acerca de». La política de nombre (`TRADEMARKS.md`, condición 5) pide decir en la app quién gestiona la instancia y cómo contactar: define al menos `INSTANCE_OPERATOR` e `INSTANCE_CONTACT_EMAIL`.
+
+| Variable | Por defecto | Qué es |
+|---|---|---|
+| `INSTANCE_NAME` | `Cherry` | Nombre visible de la instancia (p. ej. `Cherry España`, `Cherry France`). Es el título de «Acerca de». El nombre de la app en el teléfono es `EXPO_APP_NAME` (§8) |
+| `INSTANCE_COUNTRY` | `ES` | País al que sirve, código ISO 3166-1 alfa-2. Hoy es informativo (lo devuelve `/api/config`); no filtra usuarios ni documentos |
+| `INSTANCE_LOCALE` | `es-ES` | Idioma por defecto (etiqueta BCP 47: `fr-FR`, `pt-PT`, `eu`). Se usa para el idioma del flujo de Didit. La app solo está en español (ver «Montar Cherry en otro país») |
+| `INSTANCE_OPERATOR` | vacío | Persona o entidad que gestiona la instancia (responsable del tratamiento). Sin ella, «Acerca de» no dice quién la gestiona |
+| `INSTANCE_CONTACT_EMAIL` | vacío | Correo de contacto y soporte. «Acerca de» ofrece escribir a él |
+| `INSTANCE_PRIVACY_URL` | vacío | URL `http(s)` de la política de privacidad |
+| `INSTANCE_TERMS_URL` | vacío | URL `http(s)` de las condiciones de uso |
+| `INSTANCE_SOURCE_URL` | vacío | Código fuente de la versión del servidor que corre (AGPL-3.0). El enlace «Ver el código» de la app usa `EXPO_PUBLIC_SOURCE_URL` si se compiló con ella y, si no, esta |
+
+Gestor, contacto y URLs legales no tienen valor por defecto a propósito: una instancia nueva no debe heredar los datos de otra.
+
+`GET /api/config` devuelve:
+
+```json
+{
+  "features": { "age_verification_required": { "enabled": false } },
+  "instance": {
+    "name": "Cherry", "country": "ES", "locale": "es-ES",
+    "operator": null, "contactEmail": null, "privacyUrl": null, "termsUrl": null, "sourceUrl": null
+  },
+  "ageVerification": { "minimumAge": 18 }
+}
+```
+
+### Verificación de edad
+
+Detalle del funcionamiento en `docs/compliance/02-mayoria-de-edad.md`.
+
+| Variable | Por defecto | Qué es |
+|---|---|---|
+| `DOCUMENT_FINGERPRINT_KEY` | vacío (relleno en dev) | Clave HMAC (≥ 32 caracteres) de la huella del documento («una persona, una cuenta»). Sin ella, `POST /api/me/verification/nfc` y `…/provider` responden 503. **No se puede cambiar después**: las huellas guardadas dejarían de casar. Guárdala con tus backups, fuera de la base de datos |
+| `AGE_VERIFICATION_REQUIRED` | `false` | `true` exige verificarse para usar la parte social (necesita `DOCUMENT_FINGERPRINT_KEY`) |
+| `AGE_VERIFICATION_MINIMUM_AGE` | `18` | Edad mínima (18–99). Se aplica al documento (NFC y Didit) y a la fecha de nacimiento del perfil (`POST /api/me/profile/complete`). La app la lee de `/api/config` en el paso de la fecha de nacimiento |
+| `AGE_VERIFICATION_DOCUMENTS` | `id_card,passport` | Documentos aceptados, separados por comas: `id_card` (tarjetas de identidad y permisos de residencia: DNI, TIE…) y `passport`. Un documento auténtico de un menor se trata como tal aunque su tipo no se acepte |
+| `CSCA_PATHS` | — | Ficheros o carpetas (separados por comas) con certificados CSCA de confianza para la autenticación pasiva por NFC. Sustituyen a la carpeta incluida en el código |
+| `CSCA_COUNTRIES` | — (toda `priv/csca`) | Carpetas de país de `apps/backend/priv/csca` en las que confiar (`es` = España). Se suman a `CSCA_PATHS`. Sin `CSCA_PATHS` ni `CSCA_COUNTRIES` se confía en toda `priv/csca`, que hoy solo trae los CSCA españoles (`priv/csca/README.md`) |
+| `DIDIT_API_KEY` / `DIDIT_WORKFLOW_ID` | vacío | Verificación con selfie + documento (Didit). Sin ellas (o sin `DOCUMENT_FINGERPRINT_KEY`), `POST /api/me/verification/provider` responde 503 y la app no ofrece el método. En producción solo se aceptan decisiones del entorno *live* de Didit. Los países y documentos que admite Didit se eligen además en su consola, en el workflow |
+| `DIDIT_WEBHOOK_SECRET` | vacío | Aún no se usa |
+
+Sin CSCA del país del documento, la autenticación pasiva NFC lo rechaza (`untrusted_certificate`): la lista de CSCA es, en la práctica, la lista de países cuyos documentos se aceptan por NFC.
+
+### Infraestructura
+
+| Variable | Por defecto | Qué es |
+|---|---|---|
+| `PORT` | `4000` | Puerto HTTP de Phoenix (1–65535; el healthcheck de la imagen lo usa) |
+| `PHX_SERVER` | — | `true` arranca el servidor HTTP en un release (`bin/server` ya la pone) |
+| `DATABASE_SSL` | `true` en prod | TLS hacia PostgreSQL; `false` en red privada sin TLS (§2) |
+| `ECTO_IPV6` | `false` | `true` si llegas a PostgreSQL por IPv6 |
+| `POOL_SIZE` | `10` | Conexiones de la API y workers por nodo; dimensionar contra el presupuesto total de PostgreSQL |
+| `DB_JIT` | `false` | JIT en las conexiones de Cherry; desactivado para evitar compilación costosa en consultas cortas |
+| `DB_QUEUE_TARGET_MS` / `DB_QUEUE_INTERVAL_MS` | `50` / `1000` | Objetivo de espera y ventana del pool antes de rechazar sobrecarga |
+| `DB_QUERY_TIMEOUT_MS` | `15000` | Timeout por operación del repositorio |
+| `DNS_CLUSTER_QUERY` | vacío | Consulta DNS para formar un clúster de Erlang (aún no soportado: una réplica, §9) |
+| `CORS_ALLOWED_ORIGINS` | ninguno (cualquiera en dev) | Solo si sirves un cliente web: orígenes separados por comas (o `*`). La app nativa no lo necesita |
+| `UPLOAD_MAX_BYTES` | `2000000` | Tamaño máximo por foto |
+| `UPLOAD_URL_TTL_SECONDS` | `600` | Validez de una URL de subida |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL_BASE` | vacío | Bucket de fotos con `STORAGE_ADAPTER=r2` (§5) |
+| `S3_ENDPOINT` / `S3_REGION` | vacío / `us-east-1` con `S3_ENDPOINT` | Otro S3 compatible (MinIO, Garage…) en lugar de R2 (§5) |
+| `R2_MAX_UPLOAD_BYTES` / `R2_UPLOAD_URL_TTL_SECONDS` | los de `UPLOAD_*` | Límites propios del adaptador `r2` |
+| `EXPO_PUSH_ACCESS_TOKEN` | vacío | Token de la Expo Push API. El backend acepta dispositivos en `/api/me/push-token`; el móvil aún no registra tokens (ver `11-deuda-tecnica-pendiente.md`) |
+| `EXPO_PUSH_BASE_URL` / `EXPO_PUSH_RECEIVE_TIMEOUT_MS` | `https://exp.host` / `5000` | Proveedor de push y timeout de respuesta (1–15000 ms); para carga, usar el simulador de `infra/load` |
+| `PUSH_CONCURRENCY` | `4` | Workers Oban de push por nodo (1–32), con jobs persistentes y reintentos |
 
 ### Opcionales
 
 | Variable | Por defecto | Qué es |
 |---|---|---|
-| `PORT` | `4000` | Puerto HTTP de Phoenix |
-| `CORS_ALLOWED_ORIGINS` | ninguno | Solo si sirves un cliente web: orígenes separados por comas (o `*`). La app nativa no lo necesita |
-| `UPLOAD_MAX_BYTES` | `2000000` | Tamaño máximo por foto |
-| `UPLOAD_URL_TTL_SECONDS` | `600` | Validez de una URL de subida |
-| `GOOGLE_JWKS_CACHE_TTL_MS` / `APPLE_JWKS_CACHE_TTL_MS` | `600000` | Caché de las claves públicas de los proveedores |
-| `POOL_SIZE` | `10` | Conexiones de la API y workers por nodo; dimensionar contra el presupuesto total de PostgreSQL |
-| `DB_JIT` | `false` | JIT en las conexiones de Cherry; desactivado para evitar compilación costosa en consultas cortas |
-| `DB_QUEUE_TARGET_MS` / `DB_QUEUE_INTERVAL_MS` | `50` / `1000` | Objetivo de espera y ventana del pool antes de rechazar sobrecarga |
-| `DB_QUERY_TIMEOUT_MS` | `15000` | Timeout por operación del repositorio |
 | `METRICS_TOKEN` | vacío | Habilita `GET /metrics` con `Authorization: Bearer <token>` para Prometheus |
-| `PUSH_CONCURRENCY` | `4` | Workers Oban de push por nodo (1–32), con jobs persistentes y reintentos |
-| `EXPO_PUSH_ACCESS_TOKEN` | vacío | Token de la Expo Push API. El backend acepta dispositivos en `/api/me/push-token`; el móvil aún no registra tokens (ver `11-deuda-tecnica-pendiente.md`) |
-| `EXPO_PUSH_BASE_URL` / `EXPO_PUSH_RECEIVE_TIMEOUT_MS` | `https://exp.host` / `5000` | Proveedor de push y timeout de respuesta (1–15000 ms); para carga, usar el simulador de `infra/load` |
 | `APP_VERSION` | `dev` | Versión que devuelve `/healthz` (la imagen la hornea en el build) |
-| `DOCUMENT_FINGERPRINT_KEY` | vacío | Clave HMAC (≥ 32 caracteres) de la huella del documento en la verificación de edad («una persona, una cuenta»). Sin ella, `POST /api/me/verification/nfc` responde 503. **No se puede cambiar después**: las huellas guardadas dejarían de casar. Guárdala con tus backups, fuera de la base de datos |
-| `DIDIT_API_KEY` / `DIDIT_WORKFLOW_ID` | vacío | Verificación de edad con selfie + documento (Didit). Sin ellas (o sin `DOCUMENT_FINGERPRINT_KEY`), `POST /api/me/verification/provider` responde 503 y la app no ofrece el método. En producción solo se aceptan decisiones del entorno *live* de Didit. `DIDIT_WEBHOOK_SECRET` aún no se usa |
-| `AGE_VERIFICATION_REQUIRED` | `false` | `true` exige verificarse para usar la parte social (necesita `DOCUMENT_FINGERPRINT_KEY`). Ver `docs/compliance/02-mayoria-de-edad.md` |
-| `CSCA_PATHS` | `priv/csca` del release | Ficheros o carpetas (separados por comas) con los certificados CSCA de confianza para la autenticación pasiva. Por defecto, los CSCA españoles incluidos en el código (`apps/backend/priv/csca/README.md`) |
+| `GOOGLE_JWKS_CACHE_TTL_MS` / `APPLE_JWKS_CACHE_TTL_MS` | `600000` | Caché de las claves públicas de los proveedores |
+| `DEMO_CENTER` | `40.4168,-3.7038` (Madrid) | Solo desarrollo: centro `lat,lng` del escenario de `priv/repo/demo_seeds.exs` (las bios siguen hablando de Madrid) |
+
+### Lo que no es configurable
+
+Queda en el código (detalle y motivo en `11-deuda-tecnica-pendiente.md`): los textos de la app (solo en español), la regla de huella del DNI/NIE español (va por Estado emisor, así que no afecta a otros países), los límites antiabuso (subidas por hora, intentos de verificación: 5/hora y 10/día), las distancias del filtro (en km), la caducidad de los matches (30 días) y el rango de edades del filtro (18–100).
 
 ## 5. Fotos
 
@@ -209,7 +271,26 @@ Las métricas incluyen latencia HTTP/chat, consultas y espera del pool, memoria/
 
 ## 8. Compilar la app contra tu instancia
 
-La app lee la URL de la API **en tiempo de compilación** desde `apps/mobile/.env` (plantilla: `apps/mobile/.env.example`):
+La app lee estas variables **en tiempo de compilación** desde `apps/mobile/.env` (plantilla: `apps/mobile/.env.example`). Lo que depende de la instancia y no de la tienda (nombre de la instancia, gestor, contacto, textos legales, edad mínima) **no** va aquí: la app lo pide a `GET /api/config` al arrancar (§4, «Instancia y país»).
+
+| Variable | Por defecto | Qué es |
+|---|---|---|
+| `EXPO_PUBLIC_API_BASE_URL_ANDROID` | `http://10.0.2.2:4000` | URL de la API en Android (el valor por defecto es el host visto desde el emulador). Con `http://` el build permite tráfico en claro; con `https://` no |
+| `EXPO_PUBLIC_API_BASE_URL_IOS` | `http://localhost:4000` | URL de la API en iOS |
+| `EXPO_PUBLIC_API_BASE_URL_WEB` | vacío (mismo origen) | URL de la API en web |
+| `EXPO_APP_NAME` | `Cherry` | Nombre de la app en el teléfono y en las tiendas, y en los textos de permisos del sistema (fotos, cámara, ubicación, NFC) |
+| `EXPO_APP_SLUG` | `cherry` | Slug del proyecto de Expo/EAS |
+| `EXPO_APP_SCHEME` | `cherry` | Esquema de deep links (`cherry://`); también es la vuelta del flujo de Didit |
+| `EXPO_ANDROID_PACKAGE` | `app.cherry.mobile` | Paquete de Android |
+| `EXPO_IOS_BUNDLE_IDENTIFIER` | `app.cherry.mobile` | Bundle ID de iOS (y audiencia de Apple en el backend si no defines `APPLE_AUDIENCES`) |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | vacío | Client ID web de Google (§6) |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | vacío | Client ID iOS de Google (§6) |
+| `GOOGLE_IOS_URL_SCHEME` | vacío | «iOS URL scheme» de Google (client ID invertido). Sin él no se añade el plugin de Google Sign-In en iOS |
+| `EXPO_PUBLIC_SOURCE_URL` | vacío | Enlace «Ver el código» de «Acerca de» (tu fork; ver la nota de AGPL arriba). Sin ella se usa `INSTANCE_SOURCE_URL` del servidor |
+| `EXPO_PUBLIC_MOCK_AUTH` | `false` | Solo desarrollo: login y bootstrap simulados, sin backend |
+| `EXPO_PUBLIC_TEST_LOGIN` | — | Builds internas: enseña los accesos de prueba del login fuera de desarrollo. El backend solo los acepta si corre con `MIX_ENV=dev` |
+
+Ejemplo:
 
 ```bash
 EXPO_PUBLIC_API_BASE_URL_ANDROID=https://api.tu-dominio.example
@@ -224,7 +305,6 @@ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=…
 EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=…
 GOOGLE_IOS_URL_SCHEME=com.googleusercontent.apps.…
 
-# Enlace «Ver el código» de Acerca de (tu fork; ver la nota de AGPL arriba)
 EXPO_PUBLIC_SOURCE_URL=https://…
 ```
 
@@ -251,7 +331,25 @@ El repositorio no trae `eas.json`. Con una cuenta de Expo: `npx eas-cli build:co
 ## 9. Operación
 
 - **Backups**: PostgreSQL y, con `local`, `UPLOADS_DIR`. Guarda `MESSAGE_ENCRYPTION_KEY`, `DOCUMENT_FINGERPRINT_KEY` y el resto de secretos aparte.
-- **Certificados CSCA**: revisa cada pocos meses si hay CSCA nuevos (España publicará previsiblemente un CSCA 5 hacia 2027). Procedimiento en `apps/backend/priv/csca/README.md`.
+- **Certificados CSCA**: revisa cada pocos meses si hay CSCA nuevos de los países en los que confías (España publicará previsiblemente un CSCA 5 hacia 2027). Procedimiento en `apps/backend/priv/csca/README.md`.
 - **Actualizar**: construye la imagen nueva y reemplaza el contenedor; las migraciones se aplican al arrancar. Las migraciones del proyecto siguen expand/contract y no deben revertirse en producción (despliega la versión anterior en su lugar). Algunas crean índices sin `CONCURRENTLY` sobre `swipe_actions`, que bloquean escrituras en esa tabla mientras se construyen (ver `11-deuda-tecnica-pendiente.md`).
 - **Una sola réplica** mientras no se configure un clúster de Erlang: el PubSub del chat no cruza nodos.
 - **Moderación**: los reportes se guardan en la tabla `reports`, pero todavía no hay panel de administración (ver `11-deuda-tecnica-pendiente.md`).
+
+## 10. Montar Cherry en otro país
+
+El código no asume España salvo donde se indica. Para montar, por ejemplo, «Cherry France»:
+
+1. **Identidad de la instancia.** Define `INSTANCE_NAME`, `INSTANCE_COUNTRY` (`FR`), `INSTANCE_LOCALE` (`fr-FR`), `INSTANCE_OPERATOR`, `INSTANCE_CONTACT_EMAIL` e `INSTANCE_SOURCE_URL` (§4). Respeta la política de nombre de `TRADEMARKS.md` (no uses el nombre de otro país y di que tu instancia es independiente) y añádete a su lista de instancias.
+2. **Textos legales.** Redacta la política de privacidad y las condiciones de uso según la ley de tu país (protección de datos, servicios digitales, edad mínima, autoridad de control) y publícalas en `INSTANCE_PRIVACY_URL` e `INSTANCE_TERMS_URL`. Los textos de `docs/compliance/` están pensados para España (RGPD + LOPDGDD, AEPD): úsalos como guía, no como texto legal.
+3. **Edad mínima.** `AGE_VERIFICATION_MINIMUM_AGE` si en tu país la mayoría de edad (o la exigida a una app de citas) es mayor de 18.
+4. **Documentos de identidad.**
+   - NFC: añade los CSCA de tu país en una carpeta `apps/backend/priv/csca/<código de país>/` (o en un volumen, con `CSCA_PATHS`) con sus huellas comprobadas contra la fuente oficial, como hace `priv/csca/README.md` para España (la master list del BSI incluye muchos países: `mix cherry.csca GermanMasterList.ml --country FR --export /tmp/fr`). Elige en qué países confías con `CSCA_COUNTRIES` (p. ej. `fr`, o `fr,es` si también aceptas documentos españoles). Si un país no está en la lista, sus documentos no pasan la lectura NFC.
+   - `AGE_VERIFICATION_DOCUMENTS` limita los tipos (`id_card`, `passport`).
+   - La huella «una persona, una cuenta» usa el número del documento salvo en las tarjetas españolas (DNI/TIE), donde usa el DNI/NIE porque sobrevive a las renovaciones. Si las tarjetas de tu país cambian de número al renovarse y llevan un número personal estable, habría que añadir su regla en `Cherry.Identity.Document.Mrz` y `Fingerprint` (es una regla por Estado emisor, como la española). Las huellas no se pueden recalcular: decide esto antes de abrir.
+   - Didit: crea tu propio workflow y elige en su consola los países y documentos que aceptas.
+5. **Claves de proveedores.** Las tuyas, nunca las de otra instancia: Google y Apple (§6), Didit, Expo Push y el almacenamiento de fotos. Genera tus propios secretos (§4); `DOCUMENT_FINGERPRINT_KEY` y `MESSAGE_ENCRYPTION_KEY` no se pueden cambiar después.
+6. **Distribución en las tiendas.** Publica con tu cuenta de desarrollador, tu paquete y bundle ID (§8) y limita la distribución a tu país en Google Play Console y App Store Connect. Las fichas, la clasificación de edad y los requisitos de cada tienda están resumidos en `docs/compliance/01-tiendas.md` (para España).
+7. **Idioma.** La app solo está en español (textos en el código, sin i18n), y algunos textos de la verificación nombran documentos españoles (DNI, TIE). Traducirla está pendiente (`11-deuda-tecnica-pendiente.md`); hasta entonces, una instancia en otro idioma tiene que mantener su traducción en su fork.
+8. **Unidades y formato.** Distancias en kilómetros y fechas con formato español (24 h); no hay moneda porque no hay pagos.
+

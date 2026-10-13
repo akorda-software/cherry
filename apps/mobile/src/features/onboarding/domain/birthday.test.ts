@@ -51,6 +51,11 @@ describe("validateBirthday", () => {
     expect(validateBirthday({ day: "01", month: "01", year: "1901" }, NOW)).toEqual({ status: "implausible", age: 125 });
   });
 
+  it("uses the instance's minimum age when it is higher than 18", () => {
+    expect(validateBirthday({ day: "14", month: "05", year: "2006" }, NOW, 21)).toEqual({ status: "too_young", age: 20 });
+    expect(validateBirthday({ day: "14", month: "05", year: "2005" }, NOW, 21).status).toBe("valid");
+  });
+
   it("turns 18 exactly on the birthday (UTC)", () => {
     expect(validateBirthday({ day: "29", month: "09", year: "2008" }, NOW)).toEqual({
       status: "valid",

@@ -118,6 +118,7 @@ defmodule Cherry.Identity.AgeVerifications do
            {:ok, %{mrz: mrz} = auth} <- passive_auth(document, Keyword.put(opts, :now, now)),
            :ok <- check_in_force(mrz, now),
            :ok <- check_adult(mrz, now),
+           :ok <- check_document_accepted(nfc_document_kind(mrz)),
            {:ok, fingerprint} <- Fingerprint.compute(mrz),
            {:ok, verification} <- store(user_id, method(mrz), fingerprint, now) do
         log_outcome(:ok, auth)
@@ -258,9 +259,10 @@ defmodule Cherry.Identity.AgeVerifications do
   defp approved(%{environment: environment, id_verifications: idvs}, user_id, now) do
     with :ok <- check_environment(environment),
          [idv | _] <- idvs,
-         {:ok, code_letter} <- document_kind(idv.document_type),
+         {:ok, kind, code_letter} <- document_kind(idv.document_type),
          {:ok, birth} <- parse_date(idv.date_of_birth) |> or_declined(),
          :ok <- if(adult?(birth, now), do: :ok, else: {:error, :underage}),
+         :ok <- check_document_accepted(kind),
          :ok <- check_provider_in_force(idv.expiration_date, now),
          {:ok, fingerprint} <- provider_fingerprint(idv, code_letter) do
       store(user_id, "provider", fingerprint, now)
@@ -283,13 +285,15 @@ defmodule Cherry.Identity.AgeVerifications do
     end
   end
 
-  # Code letter of the MRZ for each accepted kind of document (see
-  # `Fingerprint`). A driving licence does not prove identity for this.
+  # Kind and code letter of the MRZ for each known kind of document (see
+  # `Fingerprint`). A driving licence does not prove identity for this. Which
+  # kinds the instance accepts is checked after the age: a minor's genuine
+  # document is treated as such whatever its kind.
   defp document_kind(type) do
     case type && String.downcase(type) do
-      "identity card" -> {:ok, "I"}
-      "residence permit" -> {:ok, "I"}
-      "passport" -> {:ok, "P"}
+      "identity card" -> {:ok, :id_card, "I"}
+      "residence permit" -> {:ok, :id_card, "I"}
+      "passport" -> {:ok, :passport, "P"}
       _other -> {:error, :unsupported_document}
     end
   end
@@ -521,9 +525,27 @@ defmodule Cherry.Identity.AgeVerifications do
 
   defp adult?(birth, now), do: Mrz.age(birth, DateTime.to_date(now)) >= minimum_age()
 
-  defp minimum_age do
+  @doc """
+  Minimum age of the instance (`AGE_VERIFICATION_MINIMUM_AGE`, 18): for the
+  document check and for the birth date of a profile.
+  """
+  @spec minimum_age() :: pos_integer()
+  def minimum_age do
     Application.get_env(:cherry, :age_verification, []) |> Keyword.get(:minimum_age, 18)
   end
+
+  # Kinds of document the instance accepts (`AGE_VERIFICATION_DOCUMENTS`):
+  # `:id_card` (identity cards and residence permits, TD1) and `:passport`.
+  defp check_document_accepted(kind) do
+    accepted =
+      Application.get_env(:cherry, :age_verification, [])
+      |> Keyword.get(:accepted_documents, [:id_card, :passport])
+
+    if kind in accepted, do: :ok, else: {:error, :unsupported_document}
+  end
+
+  defp nfc_document_kind(%Mrz{format: :td1}), do: :id_card
+  defp nfc_document_kind(%Mrz{format: :td3}), do: :passport
 
   defp method(%Mrz{format: :td1}), do: "nfc_dni"
   defp method(%Mrz{format: :td3}), do: "nfc_passport"

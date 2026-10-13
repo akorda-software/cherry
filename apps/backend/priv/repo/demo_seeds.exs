@@ -5,7 +5,8 @@
 # Qué crea (idempotente: re-ejecutarlo restaura el mismo escenario sin duplicar):
 #
 #   * El catálogo de etiquetas (evalúa `seeds.exs`).
-#   * 53 perfiles sintéticos completos y descubribles a 1–40 km de Madrid
+#   * 53 perfiles sintéticos completos y descubribles a 1–40 km de Madrid (o de
+#     DEMO_CENTER="lat,lng" si se define: todo el escenario se traslada allí)
 #     (`<nombre>@demo.cherry.dev`), de 20 a 45 años, hombres, mujeres y personas
 #     no binarias, con intenciones, preferencias, etiquetas y bios variadas.
 #   * `demo@cherry.dev` — Lucía, 29, busca relación; interesada en hombres y
@@ -68,6 +69,26 @@ defmodule Cherry.DemoSeeds do
   alias Cherry.Repo
 
   @madrid {40.4168, -3.7038}
+
+  # DEMO_CENTER="lat,lng" moves the whole scenario (bios still talk about Madrid).
+  defp center do
+    case System.get_env("DEMO_CENTER", "") |> String.split(",", trim: true) do
+      [] ->
+        @madrid
+
+      [lat, lng] ->
+        with {lat, ""} <- Float.parse(String.trim(lat)),
+             {lng, ""} <- Float.parse(String.trim(lng)),
+             true <- lat >= -90 and lat <= 90 and lng >= -180 and lng <= 180 do
+          {lat, lng}
+        else
+          _ -> Mix.raise("DEMO_CENTER debe ser \"lat,lng\", p. ej. 48.8566,2.3522")
+        end
+
+      _other ->
+        Mix.raise("DEMO_CENTER debe ser \"lat,lng\", p. ej. 48.8566,2.3522")
+    end
+  end
 
   # ── Personas ───────────────────────────────────────────────────────────
   #
@@ -1343,10 +1364,17 @@ defmodule Cherry.DemoSeeds do
     |> Date.add(-(20 + :erlang.phash2(persona.key, 300)))
   end
 
-  defp coordinates(%{coords: {latitude, longitude}}), do: {latitude, longitude}
+  # Fixed coordinates are relative to Madrid: shifted with the center.
+  defp coordinates(%{coords: {latitude, longitude}}) do
+    {center_lat, center_lng} = center()
+    {madrid_lat, madrid_lng} = @madrid
+
+    {Float.round(latitude - madrid_lat + center_lat, 5),
+     Float.round(longitude - madrid_lng + center_lng, 5)}
+  end
 
   defp coordinates(persona) do
-    {lat0, lng0} = @madrid
+    {lat0, lng0} = center()
     bearing = :erlang.phash2({persona.key, :bearing}, 360) * :math.pi() / 180
     latitude = lat0 + persona.km / 111.32 * :math.cos(bearing)
 

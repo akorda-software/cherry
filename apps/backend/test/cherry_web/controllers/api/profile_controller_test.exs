@@ -167,6 +167,21 @@ defmodule CherryWeb.Controllers.Api.ProfileControllerTest do
              } =
                json_response(conn, 200)
     end
+
+    test "the birth date must reach the instance's minimum age", %{
+      authed_conn: conn,
+      profile: profile
+    } do
+      complete_profile_requirements(profile)
+      previous = Application.get_env(:cherry, :age_verification)
+      on_exit(fn -> Application.put_env(:cherry, :age_verification, previous) end)
+
+      # Born 1995-01-15: an adult at 18, not at an (unrealistic) minimum of 99.
+      Application.put_env(:cherry, :age_verification, Keyword.put(previous, :minimum_age, 99))
+
+      conn = post(conn, "/api/me/profile/complete")
+      assert %{"missing" => ["birth_date"]} = json_response(conn, 422)
+    end
   end
 
   describe "GET /api/me/discovery-preferences" do

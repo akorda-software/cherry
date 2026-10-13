@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { useMinimumAge } from "../../../../shared/config";
 import { Icon, PopIn, Sticker, Text, useTheme } from "../../../../shared/ui";
 import { useProfileDraftStore } from "../../application/profile-draft-store";
 import { saveBirthDate } from "../../application/step-actions";
@@ -18,7 +19,11 @@ import { useOnboardingNavigation } from "../use-onboarding-navigation";
 import { useProfileDraft } from "../use-profile-draft";
 import { useStepSave } from "../use-step-save";
 
-function birthdayMessage(parts: BirthdayParts, validation: ReturnType<typeof validateBirthday>): string | null {
+function birthdayMessage(
+  parts: BirthdayParts,
+  validation: ReturnType<typeof validateBirthday>,
+  minimumAge: number
+): string | null {
   if (isBirthdayPartOutOfRange("day", parts.day)) return "Ese día no existe. Revisa el número.";
   if (isBirthdayPartOutOfRange("month", parts.month)) return "Los meses van del 01 al 12.";
   if (isBirthdayPartOutOfRange("year", parts.year)) return "¿Seguro? Revisa el año.";
@@ -29,7 +34,7 @@ function birthdayMessage(parts: BirthdayParts, validation: ReturnType<typeof val
     case "future":
       return "Esa fecha aún no ha llegado.";
     case "too_young":
-      return "Cherry es solo para mayores de 18. ¡Te esperamos cuando llegue el día!";
+      return `Cherry es solo para mayores de ${minimumAge}. ¡Te esperamos cuando llegue el día!`;
     case "implausible":
       return "¿Seguro? Revisa el año.";
     default:
@@ -37,7 +42,7 @@ function birthdayMessage(parts: BirthdayParts, validation: ReturnType<typeof val
   }
 }
 
-/** Paso 2: fecha de nacimiento en tres casillas; valida 18+ y celebra la edad. */
+/** Paso 2: fecha de nacimiento en tres casillas; valida la edad mínima de la instancia (18+) y celebra la edad. */
 export function BirthdayStep() {
   const theme = useTheme();
   const { profile, ready, callApi } = useProfileDraft();
@@ -52,8 +57,9 @@ export function BirthdayStep() {
   }, [parts, profile?.birthDate, ready]);
 
   const value = parts ?? EMPTY_BIRTHDAY;
-  const validation = useMemo(() => validateBirthday(value), [value]);
-  const message = birthdayMessage(value, validation);
+  const minimumAge = useMinimumAge();
+  const validation = useMemo(() => validateBirthday(value, new Date(), minimumAge), [minimumAge, value]);
+  const message = birthdayMessage(value, validation, minimumAge);
   const valid = validation.status === "valid";
 
   const submit = () => {

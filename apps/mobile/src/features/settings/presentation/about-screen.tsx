@@ -15,6 +15,8 @@ import {
   TopBar,
   useTheme
 } from "../../../shared/ui";
+import { useInstanceInfo } from "../../../shared/config";
+import { normalizeContactEmail, normalizeSourceUrl } from "../domain/app-info";
 import { readAppInfo } from "../infrastructure/app-info";
 
 const howItWorks: readonly string[] = [
@@ -25,12 +27,20 @@ const howItWorks: readonly string[] = [
 ];
 
 /**
- * Acerca de: qué hace Cherry con tus datos, la licencia y los créditos. Información, no
- * eslóganes: nada de promesas comerciales (eso vive fuera de la app).
+ * Acerca de: qué hace Cherry con tus datos, quién gestiona la instancia (de `GET /api/config`), la
+ * licencia y los créditos. Información, no eslóganes: nada de promesas comerciales (eso vive fuera
+ * de la app).
  */
 export function AboutScreen() {
   const appInfo = useMemo(() => readAppInfo(), []);
-  const { sourceUrl } = appInfo;
+  const instance = useInstanceInfo();
+  // El código de esta compilación primero; si no, el que declara el servidor.
+  const sourceUrl = appInfo.sourceUrl ?? normalizeSourceUrl(instance?.sourceUrl);
+  const operator = instance?.operator?.trim() || null;
+  const contactEmail = normalizeContactEmail(instance?.contactEmail);
+  const privacyUrl = normalizeSourceUrl(instance?.privacyUrl);
+  const termsUrl = normalizeSourceUrl(instance?.termsUrl);
+  const instanceName = instance?.name?.trim() || "Cherry";
 
   return (
     <Screen
@@ -41,7 +51,7 @@ export function AboutScreen() {
       <View style={styles.hero}>
         <Mascot animated mood="happy" size={116} />
         <Text align="center" aria-level={1} role="heading" variant="title1">
-          Cherry
+          {instanceName}
         </Text>
       </View>
 
@@ -57,6 +67,56 @@ export function AboutScreen() {
           ))}
         </View>
       </StickyNote>
+
+      {operator || contactEmail || privacyUrl || termsUrl ? (
+        <Surface padding="lg" radius="lg" testID="about-instance">
+          <View style={styles.noteBody}>
+            <Text role="heading" variant="title3">
+              Quién gestiona esta instancia
+            </Text>
+            {operator ? <Text>{`Esta instancia la gestiona ${operator}, de forma independiente.`}</Text> : null}
+            {contactEmail ? (
+              <Button
+                accessibilityHint="Abre tu app de correo"
+                icon="mail"
+                onPress={() => void Linking.openURL(`mailto:${contactEmail}`)}
+                size="md"
+                style={styles.sourceButton}
+                testID="about-contact"
+                variant="secondary"
+              >
+                {`Escribir a ${contactEmail}`}
+              </Button>
+            ) : null}
+            {privacyUrl ? (
+              <Button
+                accessibilityHint="Abre la política de privacidad en el navegador"
+                iconRight="external"
+                onPress={() => void Linking.openURL(privacyUrl)}
+                size="md"
+                style={styles.sourceButton}
+                testID="about-privacy"
+                variant="secondary"
+              >
+                Política de privacidad
+              </Button>
+            ) : null}
+            {termsUrl ? (
+              <Button
+                accessibilityHint="Abre las condiciones de uso en el navegador"
+                iconRight="external"
+                onPress={() => void Linking.openURL(termsUrl)}
+                size="md"
+                style={styles.sourceButton}
+                testID="about-terms"
+                variant="secondary"
+              >
+                Condiciones de uso
+              </Button>
+            ) : null}
+          </View>
+        </Surface>
+      ) : null}
 
       <Surface padding="lg" radius="lg" testID="about-license">
         <View style={styles.noteBody}>

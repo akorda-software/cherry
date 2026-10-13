@@ -20,7 +20,7 @@ Pipelines: `:api` (público), `:authenticated_api` (valida JWT + expiración + f
 | `POST /api/auth/dev/test-login` | Solo dev (`:enable_dev_test_login`): login sin providers nativos. Body opcional: `{}` → usuario de prueba compartido; `{email, displayName?}` → entra como esa persona (la crea si no existe; así se usan las cuentas de `demo_seeds.exs`); `device` opcional y puede ser parcial. 422 `invalid_email`, 403 `account_deleted`, 404 si está desactivado |
 | `POST /api/session/refresh` | Rotación de refresh token; reuso revoca la familia |
 | `DELETE /api/session` | Logout device-scoped |
-| `GET /api/config` | Runtime config + feature flags para el móvil |
+| `GET /api/config` | Runtime config para el móvil: feature flags, identidad de la instancia (`instance`) y edad mínima (`ageVerification.minimumAge`) |
 
 ## Bootstrap
 

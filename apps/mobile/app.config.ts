@@ -33,9 +33,11 @@ const withCleartextForHttpBackend: ConfigPlugin<string | undefined> = (config, a
 
 export default (): ExpoConfig => {
   const googleIosUrlScheme = readOptionalEnv("GOOGLE_IOS_URL_SCHEME");
+  // Nombre de la app en la tienda y en los textos de permisos del sistema.
+  const appName = readOptionalEnv("EXPO_APP_NAME") ?? "Cherry";
 
   const config: ExpoConfig = {
-    name: readOptionalEnv("EXPO_APP_NAME") ?? "Cherry",
+    name: appName,
     slug: readOptionalEnv("EXPO_APP_SLUG") ?? "cherry",
     scheme: readOptionalEnv("EXPO_APP_SCHEME") ?? "cherry",
     version: "0.0.0",
@@ -70,8 +72,8 @@ export default (): ExpoConfig => {
       [
         "expo-image-picker",
         {
-          photosPermission: "Cherry necesita acceso a tus fotos para que puedas añadirlas a tu perfil.",
-          cameraPermission: "Cherry usa la cámara solo si quieres hacerte una foto para tu perfil.",
+          photosPermission: `${appName} necesita acceso a tus fotos para que puedas añadirlas a tu perfil.`,
+          cameraPermission: `${appName} usa la cámara solo si quieres hacerte una foto para tu perfil.`,
           // Solo imágenes (mediaTypes: ["images"]): sin NSMicrophoneUsageDescription ni RECORD_AUDIO.
           microphonePermission: false
         }
@@ -79,8 +81,7 @@ export default (): ExpoConfig => {
       [
         "expo-location",
         {
-          locationWhenInUsePermission:
-            "Cherry usa tu ubicación aproximada (redondeada a 500 m) para enseñarte gente cerca. Nunca compartimos tu ubicación exacta.",
+          locationWhenInUsePermission: `${appName} usa tu ubicación aproximada (redondeada a 500 m) para enseñarte gente cerca. Nunca compartimos tu ubicación exacta.`,
           // Solo primer plano (requestForegroundPermissionsAsync): sin claves "Always" con texto en inglés por defecto.
           locationAlwaysAndWhenInUsePermission: false,
           locationAlwaysPermission: false
@@ -106,8 +107,7 @@ export default (): ExpoConfig => {
   };
 
   const withNfc = withDocumentNfc(config, {
-    nfcUsageDescription:
-      "Cherry lee el chip de tu DNI o pasaporte para comprobar que eres mayor de edad. Solo se guarda que lo eres."
+    nfcUsageDescription: `${appName} lee el chip de tu DNI o pasaporte para comprobar que eres mayor de edad. Solo se guarda que lo eres.`
   });
 
   return withCleartextForHttpBackend(withNfc, readOptionalEnv("EXPO_PUBLIC_API_BASE_URL_ANDROID"));

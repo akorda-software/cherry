@@ -6,6 +6,7 @@ defmodule Cherry.Identity.Didit do
 
   Config `:cherry, :didit`: `api_key` (`DIDIT_API_KEY`), `workflow_id`
   (`DIDIT_WORKFLOW_ID`), `base_url` and `req_options` (tests plug `Req.Test`).
+  The flow is shown in the language of the instance (`Cherry.Instance.language/0`).
 
   Nothing here is logged except HTTP status codes: decisions carry the
   holder's name, birth date, document number and photos. `get_decision/1`
@@ -53,7 +54,7 @@ defmodule Cherry.Identity.Didit do
         workflow_id: config()[:workflow_id],
         vendor_data: user_id,
         callback_method: "both",
-        language: "es"
+        language: Cherry.Instance.language()
       }
       |> then(fn body -> if callback, do: Map.put(body, :callback, callback), else: body end)
 

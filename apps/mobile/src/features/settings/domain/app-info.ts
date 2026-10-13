@@ -8,6 +8,16 @@ export function normalizeSourceUrl(value: unknown): string | null {
   return /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed) ? trimmed : null;
 }
 
+/** Un correo con forma de correo (para el enlace `mailto:` de la instancia), o `null`. */
+export function normalizeContactEmail(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed) ? trimmed : null;
+}
+
 /**
  * URL del repositorio para el enlace «Ver el código». Primero `extra.sourceUrl` de la config de
  * Expo y, si no, `EXPO_PUBLIC_SOURCE_URL`. Sin URL configurada no se enseña enlace.

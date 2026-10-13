@@ -215,7 +215,7 @@ defmodule Cherry.Dating.Profiles do
 
   defp valid_age?(%Profile{} = profile) do
     case Profile.age(profile) do
-      age when is_integer(age) -> age >= 18
+      age when is_integer(age) -> age >= AgeVerifications.minimum_age()
       _age -> false
     end
   end

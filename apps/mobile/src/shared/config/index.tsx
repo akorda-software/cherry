@@ -2,7 +2,13 @@ import { type PropsWithChildren, useEffect } from "react";
 
 import { useRuntimeConfigStore } from "./runtime-config-store";
 
-export { useRuntimeConfig, useFeatureFlag } from "./runtime-config-store";
+export {
+  DEFAULT_MINIMUM_AGE,
+  useFeatureFlag,
+  useInstanceInfo,
+  useMinimumAge,
+  useRuntimeConfig
+} from "./runtime-config-store";
 
 export function RuntimeConfigProvider({
   children,

@@ -2,6 +2,8 @@ import { usePathname } from "expo-router";
 import type { PropsWithChildren, ReactElement } from "react";
 import { render } from "@testing-library/react";
 
+import type { BootstrapConfig } from "@cherry/contracts";
+
 import {
   AppBootstrapProvider,
   type AppBootstrapService,
@@ -20,10 +22,14 @@ interface RenderRouteOptions {
   initialPath?: string;
   services?: Partial<SessionShellServices>;
   featureFlags?: Record<string, boolean>;
+  /** Lo que devolvería `GET /api/config` (instancia, edad mínima); por defecto, sin datos. */
+  bootstrapConfig?: BootstrapConfig;
   onboardingRequired?: boolean;
   /** Bootstrap propio (p. ej. para reflejar una pausa); por defecto, el mock según `onboardingRequired`. */
   appBootstrapService?: AppBootstrapService;
 }
+
+const EMPTY_BOOTSTRAP_CONFIG: BootstrapConfig = { features: {} };
 
 function PathProbe() {
   return <output data-testid="pathname">{usePathname()}</output>;
@@ -34,6 +40,7 @@ function TestProviders({
   initialPath,
   services,
   featureFlags = {},
+  bootstrapConfig,
   onboardingRequired = false,
   appBootstrapService
 }: PropsWithChildren<RenderRouteOptions>) {
@@ -48,7 +55,7 @@ function TestProviders({
       <ThemeProvider>
         <RuntimeConfigProvider
           apiBaseUrl="http://localhost:4000"
-          bootstrapConfig={{ features: {} }}
+          bootstrapConfig={bootstrapConfig ?? EMPTY_BOOTSTRAP_CONFIG}
           reader={reader}
           loading={false}
         >
@@ -80,6 +87,7 @@ export function renderRoute(route: ReactElement, options: RenderRouteOptions = {
       initialPath={options.initialPath}
       services={options.services}
       featureFlags={options.featureFlags}
+      bootstrapConfig={options.bootstrapConfig}
       onboardingRequired={options.onboardingRequired}
       appBootstrapService={options.appBootstrapService}
     >

@@ -70,6 +70,38 @@ defmodule Cherry.Identity.Document.TrustStoreTest do
     assert der_b == b.der
   end
 
+  test "countries pick folders of the bundled priv/csca, added to paths", %{dir: dir} do
+    bundled = Application.app_dir(:cherry, "priv/csca")
+
+    spain =
+      bundled |> Path.join("es") |> TrustStore.files() |> Enum.flat_map(&TrustStore.read_file/1)
+
+    assert spain != []
+
+    Application.put_env(:cherry, TrustStore, countries: ["es"])
+    assert TrustStore.reload() |> Enum.map(& &1.der) |> Enum.sort() == Enum.sort(spain)
+
+    Application.put_env(:cherry, TrustStore, countries: ["zz"])
+    assert TrustStore.reload() == []
+
+    extra = PKI.csca(cn: "CSCA EXTRA")
+    File.write!(Path.join(dir, "extra.der"), extra.der)
+    Application.put_env(:cherry, TrustStore, paths: [dir], countries: ["es"])
+
+    assert TrustStore.reload() |> Enum.map(& &1.der) |> Enum.sort() ==
+             Enum.sort([extra.der | spain])
+  end
+
+  test "without paths nor countries the whole bundled priv/csca is trusted" do
+    Application.put_env(:cherry, TrustStore, certificates: [])
+    bundled = Application.app_dir(:cherry, "priv/csca")
+
+    expected =
+      bundled |> TrustStore.files() |> Enum.flat_map(&TrustStore.read_file/1) |> Enum.uniq()
+
+    assert TrustStore.reload() |> Enum.map(& &1.der) |> Enum.sort() == Enum.sort(expected)
+  end
+
   test "the CSCA directory shipped with the app parses completely" do
     Application.put_env(:cherry, TrustStore, paths: [Application.app_dir(:cherry, "priv/csca")])
     shipped = TrustStore.files(Application.app_dir(:cherry, "priv/csca"))

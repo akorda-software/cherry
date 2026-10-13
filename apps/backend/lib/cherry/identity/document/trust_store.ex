@@ -7,10 +7,13 @@ defmodule Cherry.Identity.Document.TrustStore do
 
       config :cherry, Cherry.Identity.Document.TrustStore,
         paths: ["/path/to/csca"],   # directories or files (.pem, .crt, .cer, .der)
+        countries: ["es"],          # country folders of the bundled priv/csca
         certificates: []            # DER binaries (tests)
 
-  `paths` defaults to `priv/csca` of the release; `CSCA_PATHS` (comma
-  separated) replaces it at runtime. Directories are read recursively. A PEM
+  Without `paths` nor `countries` the whole `priv/csca` of the release is
+  trusted. `paths` (`CSCA_PATHS`, comma separated) replaces it; `countries`
+  (`CSCA_COUNTRIES`) trusts only those folders of `priv/csca` (`es` is Spain),
+  added to `paths` when both are set. Directories are read recursively. A PEM
   file may contain several certificates. Files that do not parse are skipped
   with a warning (never fatal: a broken file must not take the API down).
 
@@ -61,7 +64,17 @@ defmodule Cherry.Identity.Document.TrustStore do
 
   defp config do
     config = Application.get_env(:cherry, __MODULE__, [])
-    {Keyword.get(config, :paths, [default_path()]), Keyword.get(config, :certificates, [])}
+    {sources(config), Keyword.get(config, :certificates, [])}
+  end
+
+  defp sources(config) do
+    bundled =
+      case Keyword.get(config, :countries) do
+        nil -> if Keyword.has_key?(config, :paths), do: [], else: [default_path()]
+        countries -> Enum.map(countries, &Path.join(default_path(), &1))
+      end
+
+    Keyword.get(config, :paths, []) ++ bundled
   end
 
   defp default_path, do: Application.app_dir(:cherry, "priv/csca")
@@ -84,6 +97,7 @@ defmodule Cherry.Identity.Document.TrustStore do
   end
 
   defp safe_files(path) do
+    unless File.exists?(path), do: Logger.warning("CSCA trust store: #{path} does not exist")
     files(path)
   rescue
     error ->

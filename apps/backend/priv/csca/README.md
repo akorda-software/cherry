@@ -2,7 +2,9 @@
 
 Raíces de confianza de la autenticación pasiva de documentos (`Cherry.Identity.Document.TrustStore`).
 Se leen todos los `.pem`, `.crt`, `.cer` y `.der` de esta carpeta y sus subcarpetas.
-`CSCA_PATHS` sustituye esta carpeta por otras rutas.
+`CSCA_PATHS` sustituye esta carpeta por otras rutas y `CSCA_COUNTRIES` (p. ej. `es,fr`) confía solo en
+esas subcarpetas de país (una por país, con su código ISO alfa-2 en minúsculas); ver
+`docs/12-self-hosting.md` §4 y §10.
 
 Un CSCA (Country Signing CA) es la raíz con la que un Estado firma los certificados de los
 firmantes de documentos, que a su vez firman el SOD de cada DNI o pasaporte. Son certificados

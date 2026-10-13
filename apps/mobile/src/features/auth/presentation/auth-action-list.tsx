@@ -83,7 +83,7 @@ export function AuthActionList({
       ) : null}
       {/* `__DEV__` y `EXPO_PUBLIC_*` son literales: el empaquetador los sustituye y elimina
           este bloque en producción salvo en builds internas con EXPO_PUBLIC_TEST_LOGIN=true
-          (el backend solo acepta el acceso de prueba si tiene DEV_AUTH_MOCK). */}
+          (el backend solo acepta el acceso de prueba si corre en desarrollo, MIX_ENV=dev). */}
       {(__DEV__ || process.env.EXPO_PUBLIC_TEST_LOGIN === "true") && onTest ? (
         <DevSignIn busy={busyProvider === "test"} disabled={locked} onTest={onTest} />
       ) : null}

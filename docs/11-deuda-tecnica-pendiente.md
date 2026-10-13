@@ -11,7 +11,7 @@ Huecos conocidos entre producto, contratos, documentación y código a 2026-09-2
 5. **Expo Go no sirve para entrar.** En Expo Go no se crean servicios de login y la app se queda en la pantalla de carga (deducido del código). Hace falta un build de desarrollo, Expo Web con el login de desarrollo o `EXPO_PUBLIC_MOCK_AUTH=true`.
 6. **«Continuar con Apple» también se muestra en web**, donde Sign in with Apple nativo no está disponible (la condición es `Platform.OS !== "android"`).
 7. **Sin tests de renderizado de las pantallas de producto** (onboarding, Descubrir, Likes, Chats, Yo): se prueban dominio, stores y componentes del sistema de diseño.
-8. **Acerca de no menciona la licencia del software (AGPL-3.0)**, solo la de las fuentes; el enlace «Ver el código» depende de compilar con `EXPO_PUBLIC_SOURCE_URL`.
+8. El enlace «Ver el código» de «Acerca de» solo aparece si se compila con `EXPO_PUBLIC_SOURCE_URL` o el servidor define `INSTANCE_SOURCE_URL`.
 9. El selector de edad de Filtros llega a 99; el backend admite hasta 100.
 10. **Lectura NFC del DNI sin probar en hardware** (`modules/document-nfc`, rama `feat/dni-nfc`). Android compila; iOS no se ha compilado nunca. Pendientes y guía: `compliance/02-mayoria-de-edad.md` («Estado del prototipo») y `compliance/02-nfc-pruebas-manana.md`.
 
@@ -28,6 +28,21 @@ Huecos conocidos entre producto, contratos, documentación y código a 2026-09-2
 9. **Una sola réplica.** Sin clúster de Erlang (libcluster) el PubSub del chat no cruza nodos: no se puede escalar horizontalmente el backend.
 10. **Fotos sin moderación.** Se verifican existencia, tamaño, MIME y cabecera binaria; no hay decodificación completa ni moderación de contenido.
 11. **Verificación de edad sin hacer obligatoria del todo.** `AGE_VERIFICATION_REQUIRED` bloquea la API REST social, pero no excluye de los feeds a los perfiles sin verificar ni se comprueba en el WebSocket del chat; tampoco se consulta la CRL de la Policía. Detalle en `compliance/02-mayoria-de-edad.md`.
+
+## Instancias en otros países
+
+Lo que depende de la infraestructura y de la instancia ya se configura con variables de entorno (`12-self-hosting.md` §4, §8 y §10). Queda en el código:
+
+1. **App solo en español, sin i18n.** Todos los textos están escritos en los componentes (no hay catálogo de traducciones ni `expo-localization`), con formato de fecha español (`chat/domain/time-format.ts`, 24 h) y comparaciones con `"es"` (`localeCompare`, `Intl.Segmenter`). `INSTANCE_LOCALE` solo cambia el idioma del flujo de Didit. Traducir exige extraer los textos primero.
+2. **Textos del backend en español.** Notificaciones push (`Cherry.Notifications`), etiquetas de distancia del feed («Cerca de ti», «A unos 15 km», `CherryWeb.ProfileCardJSON`) y los nombres del catálogo de etiquetas (`Cherry.Dating.TagCatalog`). Van con la traducción de la app.
+3. **Verificación con textos españoles.** La app habla de DNI, TIE y CAN («Con tu DNI y el NFC del móvil», dibujos del DNI) y los textos de permisos de NFC nombran el DNI. Los mensajes de documento no admitido siguen ofreciendo DNI, TIE y pasaporte aunque `AGE_VERIFICATION_DOCUMENTS` excluya alguno, y la app no oculta la opción «Tengo pasaporte». En otro país hay que adaptarlos con la traducción.
+4. **La edad mínima solo llega a parte de la app.** `AGE_VERIFICATION_MINIMUM_AGE` la aplica el backend (documento y perfil) y la app la usa en el paso de la fecha de nacimiento, pero varios textos dicen «18 años» (verificación, motivos de reporte) y los selectores de edad de preferencias y filtros empiezan en 18 (el backend también acepta 18 como mínimo del filtro). Con un mínimo mayor el resultado es correcto (nadie por debajo puede completar el perfil), pero esos textos y rangos no lo reflejan.
+5. **Huella de documento con regla solo española.** El número estable (DNI/NIE) solo se usa para tarjetas emitidas por España (`Mrz.personal_number/3`, `Fingerprint`). Las tarjetas de otros países usan el número de la tarjeta, que en muchos cambia al renovarse: con una tarjeta nueva, la misma persona podría abrir otra cuenta. Añadir la regla de cada país es código (no configuración) y no se puede cambiar después de abrir.
+6. **`INSTANCE_COUNTRY` es informativo.** No restringe registros por país (la ubicación no se comprueba contra él) ni qué Estados emisores se aceptan; eso último lo deciden los CSCA de confianza (NFC) y el workflow de Didit.
+7. **Sin zona horaria de instancia.** El backend calcula edades y fechas en UTC y la app formatea con la zona del dispositivo; una variable de zona horaria no tendría a quién aplicarse. Efecto conocido: cerca de la medianoche del cumpleaños, la edad puede ir unas horas por detrás de la hora local (el mismo criterio en app y backend).
+8. **Unidades y límites fijos.** Distancias en km (`DiscoveryPreference`: 10, 25, 50, 100 o sin límite), caducidad de matches (30 días, `:match_expiry_days` en `config.exs`), límites de subida de fotos (4 vivas, 20 por hora) e intentos de verificación (5/hora, 10/día, `:attempt_limits`). No se han expuesto como variables porque no dependen del país; se cambian en `config.exs` o en el módulo.
+9. **Legal y tiendas, fuera del código.** Los textos legales no viven en el repositorio (solo sus URLs, `INSTANCE_PRIVACY_URL` e `INSTANCE_TERMS_URL`); la app aún no los enlaza durante el registro, solo en «Acerca de». El país de distribución se elige en cada tienda. La pantalla web de Phoenix (`/`) sigue siendo la de ejemplo de Phoenix.
+10. **Datos de demo en Madrid.** `DEMO_CENTER` traslada las coordenadas, pero bios y conversaciones hablan de Madrid.
 
 ## Documentación e infraestructura
 

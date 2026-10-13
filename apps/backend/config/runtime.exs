@@ -319,12 +319,114 @@ message_cipher_key =
 
 config :cherry, :message_cipher, key: message_cipher_key
 
+optional_env = fn name ->
+  case System.get_env(name, "") |> String.trim() do
+    "" -> nil
+    value -> value
+  end
+end
+
+# ── Instance identity (one Cherry per country) ─────────────────────────
+# Public data served by GET /api/config so one app build can show who runs the
+# instance it talks to. Defaults keep the Spanish instance; operator, contact
+# and legal URLs have none (each instance states its own, see TRADEMARKS.md).
+http_url_env = fn name ->
+  case optional_env.(name) do
+    nil ->
+      nil
+
+    value ->
+      case URI.parse(value) do
+        %URI{scheme: scheme, host: host}
+        when scheme in ["http", "https"] and host not in [nil, ""] ->
+          value
+
+        _invalid ->
+          raise "#{name} must be an http(s) URL, got #{inspect(value)}"
+      end
+  end
+end
+
+instance_country = (optional_env.("INSTANCE_COUNTRY") || "ES") |> String.upcase()
+
+unless Regex.match?(~r/\A[A-Z]{2}\z/, instance_country) do
+  raise "INSTANCE_COUNTRY must be an ISO 3166-1 alpha-2 code (e.g. ES, FR), got #{inspect(instance_country)}"
+end
+
+instance_locale = optional_env.("INSTANCE_LOCALE") || "es-ES"
+
+unless Regex.match?(~r/\A[a-z]{2,3}(-[A-Z]{2})?\z/, instance_locale) do
+  raise "INSTANCE_LOCALE must be a language tag such as es-ES or fr-FR, got #{inspect(instance_locale)}"
+end
+
+instance_contact_email = optional_env.("INSTANCE_CONTACT_EMAIL")
+
+if instance_contact_email &&
+     not Regex.match?(~r/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/, instance_contact_email) do
+  raise "INSTANCE_CONTACT_EMAIL must be an email address, got #{inspect(instance_contact_email)}"
+end
+
+config :cherry, :instance,
+  name: optional_env.("INSTANCE_NAME") || "Cherry",
+  country: instance_country,
+  locale: instance_locale,
+  operator: optional_env.("INSTANCE_OPERATOR"),
+  contact_email: instance_contact_email,
+  privacy_url: http_url_env.("INSTANCE_PRIVACY_URL"),
+  terms_url: http_url_env.("INSTANCE_TERMS_URL"),
+  source_url: http_url_env.("INSTANCE_SOURCE_URL")
+
 # ── Verificación de edad (D-2026-10-09) ────────────────────────────────
 # DOCUMENT_FINGERPRINT_KEY: clave HMAC de la huella del documento (una persona,
 # una cuenta). Sin ella, POST /api/me/verification/nfc responde 503. No se puede
 # rotar: cambiarla deja huérfanas todas las huellas guardadas.
 # AGE_VERIFICATION_REQUIRED=true hace obligatoria la verificación (desactivada
 # por defecto). CSCA_PATHS: rutas separadas por comas con los CSCA de confianza.
+# CSCA_COUNTRIES: country folders of the bundled priv/csca to trust (e.g. es).
+# AGE_VERIFICATION_MINIMUM_AGE (18): also the minimum age of a profile.
+# AGE_VERIFICATION_DOCUMENTS: id_card and/or passport (both by default).
+minimum_age =
+  case Integer.parse(optional_env.("AGE_VERIFICATION_MINIMUM_AGE") || "18") do
+    {age, ""} when age in 18..99 -> age
+    _invalid -> raise "AGE_VERIFICATION_MINIMUM_AGE must be an integer between 18 and 99"
+  end
+
+accepted_documents =
+  case split_csv_env.("AGE_VERIFICATION_DOCUMENTS", "id_card,passport") do
+    [] ->
+      raise "AGE_VERIFICATION_DOCUMENTS must list id_card and/or passport"
+
+    documents ->
+      Enum.map(documents, fn
+        "id_card" ->
+          :id_card
+
+        "passport" ->
+          :passport
+
+        other ->
+          raise "invalid AGE_VERIFICATION_DOCUMENTS entry #{inspect(other)}: expected id_card or passport"
+      end)
+      |> Enum.uniq()
+  end
+
+csca_countries =
+  case split_csv_env.("CSCA_COUNTRIES", nil) do
+    [] ->
+      nil
+
+    countries ->
+      countries = Enum.map(countries, &String.downcase/1)
+
+      Enum.each(countries, fn country ->
+        unless Regex.match?(~r/\A[a-z]{2}\z/, country) do
+          raise "invalid CSCA_COUNTRIES entry #{inspect(country)}: expected a folder of priv/csca such as es"
+        end
+      end)
+
+      countries
+  end
+
 fingerprint_key = System.get_env("DOCUMENT_FINGERPRINT_KEY", "") |> String.trim()
 
 age_verification_required =
@@ -367,25 +469,25 @@ end
 # Sin ellas, POST /api/me/verification/provider responde 503. DIDIT_WEBHOOK_SECRET
 # aún no se usa (en dev se consulta la decisión; producción necesitará el webhook
 # para las sesiones «In Review»).
-didit_env = fn name ->
-  case System.get_env(name, "") |> String.trim() do
-    "" -> nil
-    value -> value
-  end
-end
-
 if config_env() != :test do
-  config :cherry, :age_verification, fingerprint_key: fingerprint_key
+  config :cherry, :age_verification,
+    fingerprint_key: fingerprint_key,
+    minimum_age: minimum_age,
+    accepted_documents: accepted_documents
 
   config :cherry, :didit,
-    api_key: didit_env.("DIDIT_API_KEY"),
-    workflow_id: didit_env.("DIDIT_WORKFLOW_ID")
+    api_key: optional_env.("DIDIT_API_KEY"),
+    workflow_id: optional_env.("DIDIT_WORKFLOW_ID")
 
   config :cherry, :features, age_verification_required: age_verification_required
 
   case split_csv_env.("CSCA_PATHS", nil) do
     [] -> :ok
     paths -> config :cherry, Cherry.Identity.Document.TrustStore, paths: paths
+  end
+
+  if csca_countries do
+    config :cherry, Cherry.Identity.Document.TrustStore, countries: csca_countries
   end
 end
 

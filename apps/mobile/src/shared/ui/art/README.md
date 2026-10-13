@@ -34,7 +34,7 @@ cada ~4 s; en `celebrate` da saltitos con anticipación y aterrizaje. Con «redu
 ## Logo
 
 `<Logo height? variant? fill? heart? accessibilityLabel? style? testID? />`
-La palabra «cherry» en Mochiy convertida a trazados (`wordmark-path.ts`, no depende de la fuente): pegatina con
+La palabra «cherry» en Rubik Black convertida a trazados, con las dos erres acabadas en cerezas (`wordmark-path.ts`, no depende de la fuente): pegatina con
 troquelado blanco, contorno y sombra dura, y un corazón. `variant="plain"`: solo letras. `fill="fresa"`: letras
 pastel con contorno (portadas). `height` es el alto total; el ancho sale de la proporción.
 

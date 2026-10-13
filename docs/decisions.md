@@ -6,6 +6,16 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-10-13 — Licencias abiertas para todo, permiso para las tiendas, DCO y nombre compartido
+
+- **Contexto:** Cherry se va a publicar como proyecto abierto para que cualquiera monte su instancia en su país (Cherry España es la de Akorda Software). Las condiciones de las tiendas de apps (sobre todo la App Store) añaden restricciones que la AGPL no permite añadir: sin un permiso explícito, en cuanto hubiera código de otras personas nadie podría publicar la app en la tienda. La AGPL tampoco cubre el nombre ni la imagen.
+- **Decisión:** Se mantiene la **AGPL-3.0 únicamente**, con un **permiso adicional (sección 7) para distribuir en tiendas de apps** (`LICENSE-EXCEPTION.md`). Las contribuciones se aceptan con el **DCO** (`git commit -s`), sin CLA: nadie cede derechos y todos son dueños de su código. Dibujos (logo, mascota, ilustraciones) con doble licencia, también **CC BY-SA 4.0**; documentación en CC BY-SA 4.0. Titular: **Akorda Software** y las personas que contribuyen (pasará a la cooperativa cuando se constituya). El nombre «Cherry» **no se registra**: lo puede usar cualquier instancia que cumpla unas condiciones mínimas (`TRADEMARKS.md`).
+- **Motivación:** El permiso para las tiendas vale igual para todas las instancias, no solo para la oficial. El DCO es lo más ligero y respeta que el código sea de quien lo hace; a cambio, cambiar de licencia requeriría el permiso de todos, algo que no se prevé. Las condiciones del nombre protegen que «Cherry» signifique lo mismo en todos los países.
+- **Sustituye:** amplía D-2026-09-29 (licencia AGPL-3.0).
+- **Referencias:** `LICENSE`, `LICENSE-EXCEPTION.md`, `COPYRIGHT.md`, `TRADEMARKS.md`, `CONTRIBUTING.md`, `DCO`.
+
+---
+
 ## D-2026-10-09 — Verificación de edad obligatoria: DNI por NFC primero
 
 - **Contexto:** Pedir solo la fecha de nacimiento ya no se considera verificación válida (directrices del art. 28 de la DSA) y la ley española de menores en entornos digitales apunta a exigir la edad real. Verificar a todos con un proveedor externo costaría ~20.000–25.000 $ por cada 100.000 usuarios, inasumible sin monetización.

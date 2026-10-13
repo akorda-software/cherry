@@ -122,6 +122,7 @@ Un proveedor sin audiencias rechaza todos sus logins; el backend lo avisa en el 
 | `EXPO_PUSH_BASE_URL` / `EXPO_PUSH_RECEIVE_TIMEOUT_MS` | `https://exp.host` / `5000` | Proveedor de push y timeout de respuesta (1–15000 ms); para carga, usar el simulador de `infra/load` |
 | `APP_VERSION` | `dev` | Versión que devuelve `/healthz` (la imagen la hornea en el build) |
 | `DOCUMENT_FINGERPRINT_KEY` | vacío | Clave HMAC (≥ 32 caracteres) de la huella del documento en la verificación de edad («una persona, una cuenta»). Sin ella, `POST /api/me/verification/nfc` responde 503. **No se puede cambiar después**: las huellas guardadas dejarían de casar. Guárdala con tus backups, fuera de la base de datos |
+| `DIDIT_API_KEY` / `DIDIT_WORKFLOW_ID` | vacío | Verificación de edad con selfie + documento (Didit). Sin ellas (o sin `DOCUMENT_FINGERPRINT_KEY`), `POST /api/me/verification/provider` responde 503 y la app no ofrece el método. En producción solo se aceptan decisiones del entorno *live* de Didit. `DIDIT_WEBHOOK_SECRET` aún no se usa |
 | `AGE_VERIFICATION_REQUIRED` | `false` | `true` exige verificarse para usar la parte social (necesita `DOCUMENT_FINGERPRINT_KEY`). Ver `docs/compliance/02-mayoria-de-edad.md` |
 | `CSCA_PATHS` | `priv/csca` del release | Ficheros o carpetas (separados por comas) con los certificados CSCA de confianza para la autenticación pasiva. Por defecto, los CSCA españoles incluidos en el código (`apps/backend/priv/csca/README.md`) |
 

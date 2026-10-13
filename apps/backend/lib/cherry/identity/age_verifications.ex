@@ -16,6 +16,13 @@ defmodule Cherry.Identity.AgeVerifications do
   (`allows_discovery?/1`, used by `Cherry.Dating.Profiles`), and a successful
   verification makes it discoverable again unless the user paused it.
 
+  `start_provider/3` and `check_provider/3` are the second method: a selfie
+  and a photo of the document in Didit's hosted flow (`Cherry.Identity.Didit`).
+  The app opens the session's URL and then asks for the decision; the outcome
+  is stored exactly as with NFC (method `provider`) and the fingerprint is the
+  same one NFC computes for that document, so one document is one account
+  whatever the method. Didit's session is erased after a final decision.
+
   A minor's document is answered with `{:error, :underage}`; the caller erases
   the whole account (`Cherry.Accounts.purge_account/1`).
   """
@@ -26,7 +33,7 @@ defmodule Cherry.Identity.AgeVerifications do
 
   alias Cherry.Accounts.User
   alias Cherry.Dating.Profile
-  alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt}
+  alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt, Didit}
   alias Cherry.Identity.Document.{Fingerprint, Mrz, PassiveAuth}
   alias Cherry.Repo
 
@@ -41,6 +48,21 @@ defmodule Cherry.Identity.AgeVerifications do
           | :verification_revoked
           | :internal_error
 
+  @type provider_error ::
+          :unavailable
+          | {:too_many_attempts, retry_after_seconds :: pos_integer()}
+          | :already_verified
+          | :verification_revoked
+          | :session_not_found
+          | :session_expired
+          | :verification_declined
+          | :unsupported_document
+          | :underage
+          | :document_expired
+          | :document_already_used
+          | :provider_error
+          | :internal_error
+
   @default_attempt_limits [{5, 3600}, {10, 86_400}]
 
   @doc "Whether verification is mandatory to use the social features (off by default)."
@@ -48,6 +70,9 @@ defmodule Cherry.Identity.AgeVerifications do
 
   @doc "Whether NFC verification can run (a fingerprint key is configured)."
   def available?, do: Fingerprint.configured?()
+
+  @doc "Whether verification through the external provider (Didit) can run."
+  def provider_available?, do: Fingerprint.configured?() and Didit.configured?()
 
   @doc "The user's verification, if any."
   @spec get(Ecto.UUID.t()) :: AgeVerification.t() | nil
@@ -112,6 +137,249 @@ defmodule Cherry.Identity.AgeVerifications do
         error
     end
   end
+
+  @doc """
+  Starts a verification with the external provider: a Didit session the app
+  opens in a browser. `callback` is the URL Didit sends the user back to.
+  Counts as an attempt (same limits as NFC); asking for the decision does not.
+  """
+  @spec start_provider(User.t(), String.t() | nil, keyword()) ::
+          {:ok, %{session_id: String.t(), url: String.t()}} | {:error, provider_error()}
+  def start_provider(%User{id: user_id}, callback, opts \\ []) do
+    now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0) |> DateTime.truncate(:second)
+
+    with :ok <- check_provider_available(),
+         :ok <- check_unverified(user_id),
+         :ok <- register_attempt(user_id, now) do
+      Didit.create_session(user_id, callback)
+    end
+  end
+
+  @doc """
+  Reads the decision of a provider session started by `start_provider/3` and,
+  when approved, records the user as an adult (method `provider`).
+
+  `{:pending, :in_progress}` while the user has not finished, `{:pending,
+  :in_review}` while Didit reviews it manually. A session of another user is
+  `:session_not_found`. Option: `:now` (`DateTime`).
+  """
+  @spec check_provider(User.t(), String.t(), keyword()) ::
+          {:ok, AgeVerification.t()}
+          | {:pending, :in_progress | :in_review}
+          | {:error, provider_error()}
+  def check_provider(%User{id: user_id}, session_id, opts \\ []) do
+    now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0) |> DateTime.truncate(:second)
+
+    with :ok <- check_provider_available(),
+         {:ok, session_id} <- cast_session_id(session_id),
+         {:ok, decision} <- fetch_decision(session_id),
+         :ok <- check_owner(decision, user_id) do
+      decide(decision, user_id, session_id, now)
+    end
+    |> tap(&log_provider_outcome/1)
+  end
+
+  defp check_provider_available do
+    if provider_available?(), do: :ok, else: {:error, :unavailable}
+  end
+
+  defp check_unverified(user_id) do
+    case get(user_id) do
+      nil -> :ok
+      %AgeVerification{status: "verified"} -> {:error, :already_verified}
+      %AgeVerification{} -> {:error, :verification_revoked}
+    end
+  end
+
+  defp cast_session_id(session_id) do
+    case Ecto.UUID.cast(session_id) do
+      {:ok, uuid} -> {:ok, uuid}
+      :error -> {:error, :session_not_found}
+    end
+  end
+
+  defp fetch_decision(session_id) do
+    case Didit.get_decision(session_id) do
+      {:ok, decision} -> {:ok, decision}
+      {:error, :not_found} -> {:error, :session_not_found}
+      {:error, _} -> {:error, :provider_error}
+    end
+  end
+
+  # vendor_data is the user id set when the session was created: nobody can
+  # claim the session (the document) of another user.
+  defp check_owner(%{vendor_data: user_id}, user_id), do: :ok
+  defp check_owner(_decision, _user_id), do: {:error, :session_not_found}
+
+  @in_progress ["not started", "in progress", "awaiting user", "resubmitted"]
+  @ended ["expired", "kyc expired", "abandoned"]
+
+  defp decide(%{status: status} = decision, user_id, session_id, now) do
+    case status && String.downcase(status) do
+      status when status in @in_progress ->
+        {:pending, :in_progress}
+
+      "in review" ->
+        {:pending, :in_review}
+
+      status when status in @ended ->
+        erase_session(session_id)
+        {:error, :session_expired}
+
+      "declined" ->
+        erase_session(session_id)
+
+        if declined_minor?(decision, now),
+          do: {:error, :underage},
+          else: {:error, :verification_declined}
+
+      "approved" ->
+        result = approved(decision, user_id, now)
+        erase_session(session_id)
+        result
+
+      _unknown ->
+        Logger.warning("age verification (provider): unexpected session status")
+        {:error, :provider_error}
+    end
+  end
+
+  # A declined session may still have read a birth date: a minor is treated
+  # as with any other method.
+  defp declined_minor?(%{id_verifications: idvs}, now) do
+    Enum.any?(idvs, fn idv ->
+      case parse_date(idv.date_of_birth) do
+        {:ok, birth} -> not adult?(birth, now)
+        :error -> false
+      end
+    end)
+  end
+
+  defp approved(%{environment: environment, id_verifications: idvs}, user_id, now) do
+    with :ok <- check_environment(environment),
+         [idv | _] <- idvs,
+         {:ok, code_letter} <- document_kind(idv.document_type),
+         {:ok, birth} <- parse_date(idv.date_of_birth) |> or_declined(),
+         :ok <- if(adult?(birth, now), do: :ok, else: {:error, :underage}),
+         :ok <- check_provider_in_force(idv.expiration_date, now),
+         {:ok, fingerprint} <- provider_fingerprint(idv, code_letter) do
+      store(user_id, "provider", fingerprint, now)
+    else
+      [] -> {:error, :verification_declined}
+      {:error, _} = error -> error
+    end
+  end
+
+  # Sandbox decisions are made up by whoever runs the flow: only accepted
+  # where configured (dev and test).
+  defp check_environment("live"), do: :ok
+
+  defp check_environment(_sandbox) do
+    if Application.get_env(:cherry, :didit, [])[:allow_sandbox] do
+      :ok
+    else
+      Logger.warning("age verification (provider): sandbox decision refused")
+      {:error, :provider_error}
+    end
+  end
+
+  # Code letter of the MRZ for each accepted kind of document (see
+  # `Fingerprint`). A driving licence does not prove identity for this.
+  defp document_kind(type) do
+    case type && String.downcase(type) do
+      "identity card" -> {:ok, "I"}
+      "residence permit" -> {:ok, "I"}
+      "passport" -> {:ok, "P"}
+      _other -> {:error, :unsupported_document}
+    end
+  end
+
+  defp or_declined({:ok, _} = ok), do: ok
+  defp or_declined(:error), do: {:error, :verification_declined}
+
+  defp parse_date(value) when is_binary(value) do
+    case Date.from_iso8601(value) do
+      {:ok, date} -> {:ok, date}
+      {:error, _} -> :error
+    end
+  end
+
+  defp parse_date(_value), do: :error
+
+  # Same rule as NFC: expired documents are refused, no expiry date is fine.
+  defp check_provider_in_force(nil, _now), do: :ok
+
+  defp check_provider_in_force(expiration, now) do
+    case parse_date(expiration) do
+      {:ok, expiry} ->
+        if Date.compare(expiry, DateTime.to_date(now)) == :lt,
+          do: {:error, :document_expired},
+          else: :ok
+
+      :error ->
+        {:error, :verification_declined}
+    end
+  end
+
+  # The same input NFC builds from the MRZ: the DNI/NIE for Spanish identity
+  # cards and residence permits (whichever of the two numbers holds it), else
+  # issuing state, kind and document number.
+  defp provider_fingerprint(idv, code_letter) do
+    state = idv.issuing_state |> normalize() |> icao_state()
+    number = normalize(idv.document_number)
+
+    spanish_id =
+      if state == "ESP" and code_letter == "I" do
+        Enum.find([normalize(idv.personal_number), number], &Mrz.valid_spanish_id?/1)
+      end
+
+    cond do
+      spanish_id != nil ->
+        Fingerprint.compute_fields("ESP", "I", "", spanish_id)
+
+      state == "" or number == "" ->
+        {:error, :verification_declined}
+
+      true ->
+        Fingerprint.compute_fields(state, code_letter, number, nil)
+    end
+    |> case do
+      {:ok, fingerprint} -> {:ok, fingerprint}
+      {:error, :not_configured} -> {:error, :unavailable}
+      {:error, _} = error -> error
+    end
+  end
+
+  defp normalize(nil), do: ""
+  defp normalize(value), do: value |> String.upcase() |> String.replace(~r/[^A-Z0-9]/, "")
+
+  # ICAO 9303 writes Germany as "D", not its ISO alpha-3 code.
+  defp icao_state("DEU"), do: "D"
+  defp icao_state(state), do: state
+
+  # After a final decision Didit must not keep the photos, the selfie nor the
+  # data it read. A failure does not undo the user's verification.
+  defp erase_session(session_id) do
+    case Didit.delete_session(session_id) do
+      :ok ->
+        :ok
+
+      {:error, status} ->
+        Logger.warning("age verification (provider): session erasure failed (#{status})")
+        :error
+    end
+  end
+
+  defp log_provider_outcome({:ok, _}),
+    do: Logger.info("age verification (provider): verified")
+
+  defp log_provider_outcome({:pending, _}), do: :ok
+
+  defp log_provider_outcome({:error, :underage}),
+    do: Logger.info("age verification (provider): not eligible")
+
+  defp log_provider_outcome({:error, reason}),
+    do: Logger.info("age verification (provider): rejected (#{reason})")
 
   @passive_auth_errors [
     :malformed_sod,
@@ -248,10 +516,10 @@ defmodule Cherry.Identity.AgeVerifications do
   defp check_in_force(%Mrz{}, _now), do: :ok
 
   defp check_adult(%Mrz{birth_date: birth}, now) do
-    if Mrz.age(birth, DateTime.to_date(now)) >= minimum_age(),
-      do: :ok,
-      else: {:error, :underage}
+    if adult?(birth, now), do: :ok, else: {:error, :underage}
   end
+
+  defp adult?(birth, now), do: Mrz.age(birth, DateTime.to_date(now)) >= minimum_age()
 
   defp minimum_age do
     Application.get_env(:cherry, :age_verification, []) |> Keyword.get(:minimum_age, 18)

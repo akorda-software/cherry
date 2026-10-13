@@ -98,3 +98,12 @@ config :cherry, :age_verification,
   fingerprint_key: "test-document-fingerprint-key-0123456789",
   minimum_age: 18,
   attempt_limits: [{5, 3600}, {10, 86_400}]
+
+# Didit (provider age verification): fake credentials; tests stub the HTTP
+# layer with Req.Test (no network).
+config :cherry, :didit,
+  api_key: "test-didit-api-key",
+  workflow_id: "test-didit-workflow",
+  base_url: "https://didit.test",
+  allow_sandbox: true,
+  req_options: [plug: {Req.Test, Cherry.Identity.Didit}]

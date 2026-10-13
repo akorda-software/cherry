@@ -39,7 +39,8 @@ defmodule CherryWeb.Controllers.Api.BootstrapController do
       profile: profile_state,
       ageVerification: %{
         required: AgeVerifications.required?(),
-        status: AgeVerifications.status(user.id)
+        status: AgeVerifications.status(user.id),
+        providerAvailable: AgeVerifications.provider_available?()
       }
     })
   end

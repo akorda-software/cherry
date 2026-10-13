@@ -61,6 +61,17 @@ config :cherry, :age_verification,
   minimum_age: 18,
   attempt_limits: [{5, 3600}, {10, 86_400}]
 
+# External age verification method: selfie + document with Didit
+# (Cherry.Identity.Didit). api_key/workflow_id: DIDIT_API_KEY and
+# DIDIT_WORKFLOW_ID (runtime); without them POST /api/me/verification/provider
+# answers 503. allow_sandbox: accept decisions of Didit's sandbox (made-up
+# documents); only dev and test.
+config :cherry, :didit,
+  api_key: nil,
+  workflow_id: nil,
+  base_url: "https://verification.didit.me",
+  allow_sandbox: false
+
 # Trusted CSCA certificates for passive authentication. `paths` defaults to the
 # release's priv/csca (Spanish CSCAs); CSCA_PATHS replaces it at runtime.
 config :cherry, Cherry.Identity.Document.TrustStore, certificates: []

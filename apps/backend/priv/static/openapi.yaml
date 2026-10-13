@@ -714,6 +714,152 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/me/verification/provider:
+    post:
+      tags: [Verification]
+      summary: Start a selfie + document verification with the external provider (Didit).
+      description: |
+        Creates a Didit session for the current user and returns the URL of
+        Didit's hosted flow (selfie and photo of an identity card, residence
+        permit or passport), which the app opens in a browser. `callback` is
+        where Didit sends the browser back when the flow ends: the app's own
+        scheme (`cherry://...`) or `https://`; plain `http`, `file`,
+        `javascript`, `data` are refused. Didit returns the same session while
+        it has not started. Counts against the same attempt limit as NFC (5 per
+        hour, 10 per day). Then poll `POST /api/me/verification/provider/check`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderSessionRequest'
+      responses:
+        '201':
+          description: Session created (or reused).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`verification_revoked`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`already_verified`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`invalid_payload` (bad `callback`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`too_many_attempts`; `retryAfter` (seconds) and the `Retry-After` header.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: '`provider_error` (Didit failed or is unreachable).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: '`age_verification_unavailable` (no Didit credentials or no DOCUMENT_FINGERPRINT_KEY).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/me/verification/provider/check:
+    post:
+      tags: [Verification]
+      summary: Read the decision of a provider session.
+      description: |
+        Asks Didit for the decision of a session started by the current user
+        (another user's session is `session_not_found`). Not counted as an
+        attempt. `pending`: the user has not finished; `in_review`: Didit is
+        reviewing it manually (ask again later). When approved the server
+        checks the document kind (identity card, residence permit or
+        passport), that it is in force and that the holder is 18 or older, and
+        stores the same as NFC (method `provider`) with the same document
+        fingerprint, so one document is one account whatever the method. After
+        a final decision the session is erased at Didit (photos, selfie and
+        extracted data). A minor erases the whole account, as with NFC.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderCheckRequest'
+      responses:
+        '200':
+          description: Verified, pending or in review.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderCheckResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`verification_revoked`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`session_not_found` (unknown, erased or of another user).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`document_already_used` (another account) or `already_verified` (with another document).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            `invalid_payload` (`sessionId` is not a UUID); `underage` with
+            `accountDeleted` (the account was erased; the app must log out);
+            `document_expired`; `verification_declined` (Didit declined it);
+            `session_expired` (expired or abandoned: start a new one);
+            `unsupported_document` (not an identity card, residence permit or
+            passport).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: '`verification_error`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: '`provider_error` (Didit failed or is unreachable).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: '`age_verification_unavailable`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/discovery/feed:
     get:
       tags: [Discovery]
@@ -1180,6 +1326,48 @@ components:
         required:
           type: boolean
           description: Whether verification is mandatory on this instance.
+        providerAvailable:
+          type: boolean
+          description: |
+            Whether selfie + document verification (Didit) is configured. Only in
+            `GET /api/me/verification`.
+    ProviderSessionRequest:
+      type: object
+      properties:
+        callback:
+          type: string
+          maxLength: 200
+          description: Where Didit sends the browser back (custom scheme or https).
+          example: cherry://verify/selfie
+    ProviderSessionResponse:
+      type: object
+      required: [sessionId, url]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        url:
+          type: string
+          description: Didit's hosted verification flow, to open in a browser.
+    ProviderCheckRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+    ProviderCheckResponse:
+      type: object
+      required: [result]
+      properties:
+        result:
+          type: string
+          enum: [verified, pending, in_review]
+        verification:
+          $ref: '#/components/schemas/AgeVerification'
+        required:
+          type: boolean
+          description: Only with `verified`.
     NfcVerificationRequest:
       type: object
       required: [dg1, dg2, sod]
@@ -1313,7 +1501,7 @@ components:
           $ref: '#/components/schemas/AgeVerificationState'
     AgeVerificationState:
       type: object
-      required: [required, status]
+      required: [required, status, providerAvailable]
       description: |
         While `required` is true and `status` is not `verified`, the profile is
         pending verification: it can be edited but is not discoverable
@@ -1326,6 +1514,9 @@ components:
         status:
           type: string
           enum: [unverified, verified, revoked]
+        providerAvailable:
+          type: boolean
+          description: Whether selfie + document verification (Didit) is configured.
     ProfileState:
       type: object
       required: [exists, isComplete, isDiscoverable, isPaused, onboardingRequired]

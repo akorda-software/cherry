@@ -35,4 +35,25 @@ describe("createVerificationApi", () => {
       sod: "c29k"
     });
   });
+
+  it("opens a provider session with the callback", async () => {
+    const http = createMockHttpClient();
+    const session = { sessionId: "8aff9c52-07cf-432c-9712-bac4a6048da5", url: "https://verify.example/s/abc" };
+    vi.mocked(http.post).mockResolvedValueOnce(session);
+
+    await expect(createVerificationApi(http).startProvider("cherry://verify/selfie")).resolves.toEqual(session);
+    expect(http.post).toHaveBeenCalledWith("/api/me/verification/provider", { callback: "cherry://verify/selfie" });
+  });
+
+  it("checks a provider session by id", async () => {
+    const http = createMockHttpClient();
+    vi.mocked(http.post).mockResolvedValueOnce({ result: "pending" });
+
+    await expect(createVerificationApi(http).checkProvider("8aff9c52-07cf-432c-9712-bac4a6048da5")).resolves.toEqual({
+      result: "pending"
+    });
+    expect(http.post).toHaveBeenCalledWith("/api/me/verification/provider/check", {
+      sessionId: "8aff9c52-07cf-432c-9712-bac4a6048da5"
+    });
+  });
 });

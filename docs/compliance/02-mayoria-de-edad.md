@@ -62,6 +62,16 @@ La fricción se asume como rasgo de marca: un sitio donde todo el mundo está ve
 
 Para quien no tenga móvil con NFC, tenga un documento sin chip o falle la lectura. Selfie con prueba de vida y estimación de edad; si la edad estimada queda cerca del límite, documento. Candidatos y precios en `08`. Con el NFC como vía principal, el proveedor solo lo usa una minoría, así que el coste es asumible (sobre todo dentro de las 500 gratis al mes de Didit).
 
+### Selfie + documento con Didit (backend hecho, 2026-10-13)
+
+- **Flujo:** la app pide `POST /api/me/verification/provider` (cuenta como intento, mismos límites que el NFC), abre en el navegador la URL de Didit (selfie y foto del DNI, TIE/permiso de residencia o pasaporte) y, al volver, pregunta `POST /api/me/verification/provider/check` con el `sessionId`. El servidor lee la decisión de Didit (API v3) y solo acepta sesiones creadas para ese usuario (`vendor_data`).
+- **Qué se comprueba:** decisión aprobada, tipo de documento (no carné de conducir), mayor de 18 por la fecha de nacimiento, documento en vigor. Un menor (también en una sesión rechazada) borra la cuenta entera, como con el NFC.
+- **Qué se guarda:** lo mismo que con el NFC (estado, método `provider`, fecha y huella). La huella es **la misma que calcula el NFC** para ese documento (DNI/NIE en DNI y TIE; número en pasaportes y documentos extranjeros), así que un DNI es una cuenta aunque se use otro método.
+- **En Didit no queda nada:** tras una decisión final (aprobada, rechazada, caducada o abandonada) el servidor borra la sesión (`privacy_erasure`: fotos, selfie y datos leídos). Si el borrado falla, la verificación vale igual y queda un aviso en el log solo con el código HTTP.
+- **Logs:** solo el resultado y códigos HTTP; ni usuario, ni sesión, ni datos del documento.
+- **Configuración:** `DIDIT_API_KEY` y `DIDIT_WORKFLOW_ID`; sin ellas el endpoint responde 503 y `providerAvailable` (en el bootstrap y en `GET /api/me/verification`) es `false`. Las decisiones del entorno *sandbox* de Didit solo se aceptan en dev y test.
+- **Pendiente para producción:** el webhook de Didit (`DIDIT_WEBHOOK_SECRET`) para las sesiones que quedan «In Review» (revisión manual): hoy solo se consulta cuando la app pregunta, así que si el usuario no vuelve a preguntar, la decisión no se recoge ni se borra la sesión. Revisar también el DPA con Didit y la EIPD (`06`).
+
 ## 3. App europea de verificación de edad
 
 La Comisión presentó en abril de 2026 una app gratuita y de código abierto que confirma «mayor de edad: sí/no» sin revelar ningún otro dato. España está entre los países piloto (con la Cartera Digital Beta) y la Comisión pide que esté disponible en todos los países a finales de 2026 o en enero de 2027. Es gratis también para las plataformas.
@@ -80,7 +90,7 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 3. [ ] Comparación de caras selfie ↔ DG2 con modelo de código abierto en el servidor. *Investigación hecha ([resumen](#investigación-selfie--dg2-y-prueba-de-vida-sin-construir)); sin construir.*
 4. [x] Modelo de datos: estado de verificación del perfil + huella del documento; borrado inmediato del resto.
 5. [x] Pantallas de verificación tras el onboarding (antes de que el perfil sea visible). *Decisión del 2026-10-13: el onboarding no cambia; al terminarlo, el perfil queda «pendiente de verificar» (ver [abajo](#perfil-pendiente-de-verificar)).*
-6. [ ] Integración del proveedor de respaldo.
+6. [~] Integración del proveedor de respaldo. *Backend con Didit hecho (selfie + documento, por consulta); falta el webhook para producción.*
 7. [ ] Integración de la app europea cuando esté disponible en España.
 
 ## Perfil pendiente de verificar
@@ -125,7 +135,7 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 - **Datos**:
   - `age_verifications`: estado, método `nfc_dni | nfc_passport | provider | eu_wallet`, fecha y huella, con índice único (un documento, una cuenta).
   - `age_verification_attempts`: solo fechas, para el límite de intentos.
-- **API**: `GET /api/me/verification` y `POST /api/me/verification/nfc`.
+- **API**: `GET /api/me/verification`, `POST /api/me/verification/nfc` y, con Didit, `POST /api/me/verification/provider` y `POST /api/me/verification/provider/check` (ver [Selfie + documento con Didit](#selfie--documento-con-didit-backend-hecho-2026-10-13)).
   - Límite de 5 intentos por hora y 10 al día.
   - Errores tipados: `document_not_verified` + `reason`, `underage`, `document_already_used`, `too_many_attempts`…
   - Documentado en OpenAPI, `docs/06` y `packages/contracts/src/verification.ts`.

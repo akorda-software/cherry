@@ -83,6 +83,7 @@ export default function PrivateLayoutRoute() {
         <Stack.Screen name="verify/index" />
         <Stack.Screen name="verify/methods" />
         <Stack.Screen name="verify/document" />
+        <Stack.Screen name="verify/selfie" />
         {optionalStackScreens.map((screen) => (
           <Stack.Screen key={screen.name} name={screen.name} options={{ title: screen.title }} />
         ))}

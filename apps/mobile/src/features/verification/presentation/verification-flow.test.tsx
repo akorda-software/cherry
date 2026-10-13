@@ -40,7 +40,7 @@ describe("age verification flow", () => {
     expect(screen.getByTestId("pathname")).toHaveTextContent(verificationRoutes.methods);
   });
 
-  it("recommends the DNI and marks the other methods as coming later", async () => {
+  it("recommends the DNI and, without a provider, marks the other methods as coming later", async () => {
     renderRoute(<VerificationMethodsScreen />, { initialPath: verificationRoutes.methods });
 
     const nfc = await screen.findByTestId("verify-method-nfc");
@@ -53,6 +53,23 @@ describe("age verification flow", () => {
 
     fireEvent.click(nfc);
     expect(screen.getByTestId("pathname")).toHaveTextContent(verificationRoutes.document);
+  });
+
+  it("offers the selfie when the server has a provider", async () => {
+    stubBackend(() => ({ status: 404, body: {} }));
+    renderRoute(<VerificationMethodsScreen />, {
+      initialPath: verificationRoutes.methods,
+      services: { bootstrapSession: { execute: async () => sessionFixture } },
+      appBootstrapService: bootstrapWith({ required: true, status: "unverified", providerAvailable: true })
+    });
+
+    await vi.waitFor(() =>
+      expect(within(screen.getByTestId("verify-method-selfie_provider")).queryByText("Próximamente")).not.toBeInTheDocument()
+    );
+    expect(within(screen.getByTestId("verify-method-eu_wallet")).getByText("Próximamente")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("verify-method-selfie_provider"));
+    expect(screen.getByTestId("pathname")).toHaveTextContent(verificationRoutes.selfie);
   });
 
   it("an unverified account sees the pending state instead of its likes", async () => {

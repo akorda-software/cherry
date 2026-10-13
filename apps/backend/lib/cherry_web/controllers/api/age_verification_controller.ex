@@ -5,9 +5,13 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
   The NFC body carries DG1, DG2 and EF.SOD in base64 (`dg1`, `dg2`, `sod`).
   They are filtered from the request logs (`:filter_parameters`) and dropped
   after the response; see `Cherry.Identity.AgeVerifications`.
+
+  A minor's document erases the whole account (`Cherry.Accounts.purge_account/1`)
+  and answers 422 `{"error": "underage", "accountDeleted": true}`.
   """
   use CherryWeb, :controller
 
+  alias Cherry.Accounts
   alias Cherry.Identity.{AgeVerification, AgeVerifications}
 
   # Generous bounds for real chips: DG1 is ~100 bytes, DG2 a 10–60 KB JPEG or
@@ -38,11 +42,18 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
   end
 
   def create_nfc(conn, params) do
+    user = conn.assigns.current_user
+
     with {:ok, document} <- decode(params),
-         {:ok, verification} <- AgeVerifications.verify_nfc(conn.assigns.current_user, document) do
+         {:ok, verification} <- AgeVerifications.verify_nfc(user, document) do
       json(conn, %{verification: serialize(verification), required: AgeVerifications.required?()})
     else
-      {:error, reason} -> error(conn, reason)
+      {:error, :underage} ->
+        deleted = match?({:ok, _}, Accounts.purge_account(user))
+        send_error(conn, 422, "underage", %{accountDeleted: deleted})
+
+      {:error, reason} ->
+        error(conn, reason)
     end
   end
 
@@ -73,7 +84,6 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
   defp error(conn, reason) when reason in @not_authentic,
     do: send_error(conn, 422, "document_not_verified", %{reason: Atom.to_string(reason)})
 
-  defp error(conn, :underage), do: send_error(conn, 422, "underage")
   defp error(conn, :document_expired), do: send_error(conn, 422, "document_expired")
   defp error(conn, :document_already_used), do: send_error(conn, 409, "document_already_used")
   defp error(conn, :already_verified), do: send_error(conn, 409, "already_verified")

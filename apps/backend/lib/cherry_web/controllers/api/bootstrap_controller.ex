@@ -1,6 +1,8 @@
 defmodule CherryWeb.Controllers.Api.BootstrapController do
   use CherryWeb, :controller
 
+  alias Cherry.Identity.AgeVerifications
+
   def show(conn, _params) do
     user = conn.assigns.current_user
     profile = conn.assigns.current_profile
@@ -34,7 +36,11 @@ defmodule CherryWeb.Controllers.Api.BootstrapController do
         email: user.email,
         displayName: user.display_name
       },
-      profile: profile_state
+      profile: profile_state,
+      ageVerification: %{
+        required: AgeVerifications.required?(),
+        status: AgeVerifications.status(user.id)
+      }
     })
   end
 end

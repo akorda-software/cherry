@@ -1,8 +1,16 @@
 defmodule Cherry.Dating.Profiles do
-  @moduledoc "Profile lifecycle, onboarding completeness and visibility state."
+  @moduledoc """
+  Profile lifecycle, onboarding completeness and visibility state.
+
+  `is_discoverable` (shown to others) requires a complete profile, not paused
+  by its owner, not deleted and, while age verification is mandatory, a valid
+  verification (`Cherry.Identity.AgeVerifications.allows_discovery?/1`). An
+  unverified profile is then "pending verification", which is not a pause.
+  """
 
   alias Cherry.Repo
   alias Cherry.Dating.Profile
+  alias Cherry.Identity.AgeVerifications
 
   # ── Profiles ──────────────────────────────────────────────────────────
 
@@ -129,7 +137,7 @@ defmodule Cherry.Dating.Profiles do
     profile
     |> Profile.system_changeset(%{
       is_complete: complete,
-      is_discoverable: complete and !profile.is_paused and is_nil(profile.deleted_at)
+      is_discoverable: complete and discoverable?(profile)
     })
     |> Repo.update()
   end
@@ -141,7 +149,7 @@ defmodule Cherry.Dating.Profiles do
       profile
       |> Profile.system_changeset(%{
         is_complete: true,
-        is_discoverable: !profile.is_paused and is_nil(profile.deleted_at),
+        is_discoverable: discoverable?(profile),
         # First completion only: drives the discovery newcomer boost.
         completed_at: profile.completed_at || now()
       })
@@ -178,6 +186,13 @@ defmodule Cherry.Dating.Profiles do
     profile
     |> Profile.system_changeset(%{is_paused: false})
     |> Repo.update()
+  end
+
+  # Everything but completeness; the verification is only looked up when the
+  # rest already holds.
+  defp discoverable?(%Profile{} = profile) do
+    !profile.is_paused and is_nil(profile.deleted_at) and
+      AgeVerifications.allows_discovery?(profile.user_id)
   end
 
   defp put_user_id(attrs, user_id) when is_map(attrs) do

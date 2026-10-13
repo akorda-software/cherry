@@ -201,6 +201,31 @@ defmodule CherryWeb.Controllers.Api.UploadControllerTest do
     refute File.exists?(Path.join(dir, key))
   end
 
+  test "purging the account removes photo files, pending uploads and every row", %{
+    profile: profile,
+    dir: dir
+  } do
+    {path, key} = local_intent(profile)
+    assert conn_put(path, @jpeg).status == 200
+    assert {:ok, _photo} = Dating.complete_photo_upload(profile, %{"storageKey" => key})
+
+    # An upload sent but never completed: only its pending object exists.
+    {pending_path, pending_key} = local_intent(profile)
+    assert conn_put(pending_path, @jpeg).status == 200
+    pending = Path.join(dir, "pending/" <> pending_key)
+    assert File.exists?(pending)
+
+    user = Accounts.get_user!(profile.user_id)
+    assert {:ok, :purged} = Accounts.purge_account(user)
+
+    refute File.exists?(Path.join(dir, key))
+    refute File.exists?(pending)
+    refute Repo.get(Accounts.User, user.id)
+    refute Repo.get(Dating.Profile, profile.id)
+    assert Repo.aggregate(Dating.ProfilePhoto, :count) == 0
+    assert Repo.aggregate(Dating.ProfilePhotoUploadIntent, :count) == 0
+  end
+
   test "the sweeper deletes abandoned uploads once the intent expires", %{
     profile: profile,
     dir: dir

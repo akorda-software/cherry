@@ -7,6 +7,7 @@ defmodule CherryWeb.Controllers.Api.SafetySettingsBootstrapTest do
   alias Cherry.Dating
   alias Cherry.Dating.Report
   alias Cherry.Dating.UserBlock
+  alias Cherry.Identity.AgeVerification
   alias Cherry.Repo
 
   setup do
@@ -242,8 +243,66 @@ defmodule CherryWeb.Controllers.Api.SafetySettingsBootstrapTest do
                  "isPaused" => false,
                  "onboardingRequired" => false,
                  "nextOnboardingStep" => nil
-               }
+               },
+               "ageVerification" => %{"required" => false, "status" => "unverified"}
              } = ctx.conn |> get("/api/bootstrap") |> json_response(200)
+    end
+
+    test "age verification: required with the flag on, pending profile until verified" do
+      previous = Application.get_env(:cherry, :features)
+
+      on_exit(fn ->
+        if previous,
+          do: Application.put_env(:cherry, :features, previous),
+          else: Application.delete_env(:cherry, :features)
+      end)
+
+      Application.put_env(:cherry, :features, age_verification_required: true)
+      user = user_fixture()
+      conn = authed_conn_for_user(user)
+
+      assert %{
+               "profile" => %{"exists" => false},
+               "ageVerification" => %{"required" => true, "status" => "unverified"}
+             } = conn |> get("/api/bootstrap") |> json_response(200)
+
+      complete_profile_fixture(user)
+
+      assert %{
+               "profile" => %{
+                 "isComplete" => true,
+                 "isDiscoverable" => false,
+                 "isPaused" => false,
+                 "onboardingRequired" => false
+               },
+               "ageVerification" => %{"required" => true, "status" => "unverified"}
+             } = conn |> get("/api/bootstrap") |> json_response(200)
+    end
+
+    test "age verification status comes from the user's verification", ctx do
+      user = user_fixture()
+
+      verification =
+        Repo.insert!(%AgeVerification{
+          user_id: user.id,
+          status: "verified",
+          method: "nfc_dni",
+          verified_at: DateTime.utc_now() |> DateTime.truncate(:second),
+          document_fingerprint: :crypto.strong_rand_bytes(32)
+        })
+
+      conn = authed_conn_for_user(user)
+
+      assert %{"ageVerification" => %{"required" => false, "status" => "verified"}} =
+               conn |> get("/api/bootstrap") |> json_response(200)
+
+      Repo.update!(Ecto.Changeset.change(verification, status: "revoked"))
+
+      assert %{"ageVerification" => %{"status" => "revoked"}} =
+               conn |> get("/api/bootstrap") |> json_response(200)
+
+      assert %{"ageVerification" => %{"status" => "unverified"}} =
+               ctx.conn |> get("/api/bootstrap") |> json_response(200)
     end
 
     test "requires authentication" do

@@ -2,6 +2,23 @@
 
 Runbook operativo del despliegue de `apps/backend`. Arquitectura completa: [`../arquitectura.md`](../arquitectura.md) · Decisión de arquitectura: `docs/decisions.md` **D-2026-09-04**. Objetivo actual: primer despliegue y pruebas en el servidor propio. El acuerdo operativo vigente del 2026-09-05 acepta downtime de segundos o minutos, backups locales + R2 pendientes y ausencia de failover externo.
 
+## Estado (2026-10-13)
+
+**Primer despliegue hecho, solo en LAN.** `http://192.168.0.126` sirve la API (`/healthz`, `/readyz`, `/api/config`), sin dominio público todavía. Cambio respecto al plan original (D-2026-10-13b en `docs/decisions.md`): **el panel es el Dokploy de nipogi** (`nipogi-dokploy`, 192.168.0.121, v0.30.8) y cherry-backend es un *servidor remoto* suyo. En la VM solo corren Docker, Swarm de un nodo y Traefik; sin panel ni su PostgreSQL.
+
+| Pieza | Estado |
+|---|---|
+| cherry-db | Rol `cherry`, `cherry_prod` (postgis, pg_stat_statements, pgcrypto, uuid-ossp), `conf.d/10-cherry.conf` (listen LAN, 4 GB shared_buffers), `pg_hba` solo `.126`. nftables: 22 desde LAN/VPN, 5432 solo desde `.126` |
+| cherry-backend | Docker 28.5 + Swarm + Traefik 3.6 (Setup Server de Dokploy). Root por SSH solo desde 192.168.0.121 con su clave (`sshd_config.d/05-dokploy.conf`, `from=` en `authorized_keys`). `daemon.json` con rotación de logs, `cron.weekly/docker-image-prune`. Snapshot Proxmox `antes-dokploy`. nftables (tabla `inet cherry_fw`, no toca las de Docker): 22 desde LAN/VPN; 80 desde Caddy **y la LAN** (quitar la LAN al publicar); 443 y puertos de Swarm cerrados |
+| Dokploy | Proyecto `cherry` → entorno `production` → app `backend` (`cherry-backend-mkeaem`): imagen pública `ghcr.io/akorda-software/cherry-backend:<sha>`, 1 réplica, `stop-first`, rollback, healthcheck `/healthz`, bind `/var/lib/cherry/uploads`, dominio `192.168.0.126` sin HTTPS |
+| Env | Fase LAN: `PHX_HOST=192.168.0.126`, `PHX_URL_SCHEME=http`, `FORCE_SSL=false`, `PUBLIC_BASE_URL=http://192.168.0.126`. Secretos en `~/.config/cherry-deploy/prod-secrets.env` (Olares) → pasar a Bitwarden |
+
+Pendiente:
+- Google sin `GOOGLE_*_CLIENT_ID`.
+- Swarm se anuncia con la IP pública (79.117.30.255) porque así la detecta el instalador. Da igual con un nodo y sus puertos están cerrados.
+- El panel de nipogi es accesible en `https://dokploynipogi.akorda.es` (el plan pedía solo VPN).
+- CI `deploy` sigue pausado.
+
 ## Antes de empezar
 
 Esperar al ventilador dedicado del PM1735 (ya pedido), instalarlo y comprobar temperaturas en reposo y con carga gradual. El despliegue y las pruebas sostenidas quedan para después de esta comprobación. La documentación fija la configuración objetivo; todavía hay pasos de CI/Dokploy pendientes.
@@ -22,7 +39,7 @@ cherry-backend → PostgreSQL 192.168.0.142:5432 · fotos → volumen local (UPL
 | VM | IP | Contenido |
 |---|---|---|
 | caddy (VM 100) | 192.168.30.21 | Debian 13 + Caddy (systemd) |
-| cherry-backend (VM 101) | 192.168.0.126 | Debian 13 + Docker + Swarm 1 nodo + Dokploy + Traefik + cherry |
+| cherry-backend (VM 101) | 192.168.0.126 | Debian 13 + Docker + Swarm 1 nodo + Traefik + cherry (servidor remoto del Dokploy de nipogi) |
 | cherry-db (VM 102) | 192.168.0.142 | Debian 13 + PostgreSQL 17 + PostGIS, PGDATA en PM1735 (raw block scsi1, ext4 noatime) |
 
 ## 1. Base de datos (cherry-db)
@@ -47,11 +64,13 @@ sudo -u postgres psql -c 'REVOKE ALL ON DATABASE cherry_prod FROM PUBLIC;'
 
 **LUKS en PGDATA: decisión pendiente** (recomendado mientras la DB está vacía; GDPR art. 9). Coste: desbloqueo manual por SSH tras reboot.
 
-## 2. Dokploy en cherry-backend (VM 101)
+## 2. cherry-backend como servidor remoto de Dokploy (nipogi)
 
-```bash
-curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nodo + Dokploy + Traefik
-```
+1. Clave SSH propia en Dokploy (Settings → SSH Keys, `cherry-backend`); su pública en `/root/.ssh/authorized_keys` con `from="192.168.0.121"`, y `sshd_config.d/05-dokploy.conf` con `PermitRootLogin prohibit-password` + `AllowUsers root@192.168.0.121` (antes de `10-akorda-hardening`).
+2. Remote Servers → crear (`root@192.168.0.126`, tipo deploy) → **Setup Server** (Docker, Swarm, red `dokploy-network`, Traefik).
+3. Snapshot de la VM antes del Setup Server y antes de cada actualización.
+
+Plan original, ya descartado: instalar Dokploy completo en la VM (`curl -sSL https://dokploy.com/install.sh | bash`).
 
 - Panel (`:3000`) **solo por VPN** + 2FA TOTP. Nunca proxyficado, `/api/*` tampoco.
 - Registry en Settings → Registry: bot de GitHub con PAT `read:packages` (rotación anual).

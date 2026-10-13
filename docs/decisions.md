@@ -6,6 +6,15 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-10-13b — El backend se gestiona desde el Dokploy de nipogi
+
+- **Contexto:** D-2026-09-04 preveía instalar Dokploy completo (panel, su PostgreSQL y Traefik) en la VM cherry-backend. En casa ya hay un Dokploy en nipogi (`nipogi-dokploy`) que gestiona el resto de servicios.
+- **Decisión:** cherry-backend es un **servidor remoto** del Dokploy de nipogi. En la VM solo corren Docker, Swarm de un nodo y Traefik. Dokploy entra como root solo desde 192.168.0.121 y con su propia clave. La imagen de GHCR es pública, porque el repositorio también lo es, así que no hace falta token de registro.
+- **Motivación:** un solo panel para todo y 1–2 GB menos en la VM. Si nipogi cae, el backend sigue sirviendo y solo se pierde la capacidad de desplegar. Coste: Dokploy no muestra métricas de los servidores remotos.
+- **Sustituye** a la parte de D-2026-09-04 que instalaba Dokploy en la VM; el resto de la arquitectura (Caddy → Traefik → contenedor, `stop-first`, 1 réplica) se mantiene.
+
+---
+
 ## D-2026-10-13 — Licencias abiertas para todo, permiso para las tiendas, DCO y nombre compartido
 
 - **Contexto:** Cherry se va a publicar como proyecto abierto para que cualquiera monte su instancia en su país (Cherry España es la de Akorda Software). Las condiciones de las tiendas de apps (sobre todo la App Store) añaden restricciones que la AGPL no permite añadir: sin un permiso explícito, en cuanto hubiera código de otras personas nadie podría publicar la app en la tienda. La AGPL tampoco cubre el nombre ni la imagen.

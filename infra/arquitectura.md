@@ -34,7 +34,7 @@ Arquitectura acordada para Cherry en el servidor propio: hardware, VMs, red, run
 | Cloudflare | Externo | DNS proxified, TLS edge, absorbe DDoS. CNAME → `home.akorda.es` (A maestro DDNS, IP dinámica) |
 | UCG-Fiber | Router casa | Firewall stateful; 80/443 solo desde rangos Cloudflare; WireGuard 10.77.0.0/24 = acceso admin |
 | VM 100 caddy | DMZ, Debian 13 | Única entrada web pública; enruta por Host a Traefik |
-| VM 101 cherry-backend | LAN .126, Debian 13 | Docker + Swarm 1 nodo + Dokploy (panel) + Traefik + contenedor cherry |
+| VM 101 cherry-backend | LAN .126, Debian 13 | Docker + Swarm 1 nodo + Traefik + contenedor cherry; servidor remoto del Dokploy de nipogi (D-2026-10-13b) |
 | VM 102 cherry-db | LAN .142, Debian 13 | PostgreSQL 17 + PostGIS nativos, PGDATA en PM1735 |
 | GitHub Actions + GHCR | GitHub | CI, build de imágenes inmutables, orquestación de deploy |
 

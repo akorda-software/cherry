@@ -6,10 +6,12 @@ import { createVerificationApi } from "@cherry/mobile-shared";
 
 import * as DocumentNfc from "../../../../modules/document-nfc";
 import {
+  appShellRoutes,
   Button,
   Icon,
   LoadingDots,
   Mascot,
+  ProgressBar,
   Screen,
   Stack,
   Surface,
@@ -17,17 +19,22 @@ import {
   TextField,
   TopBar
 } from "../../../shared/ui";
-import { useAuthedApi } from "../../auth/presentation";
+import { refreshBootstrap } from "../../app-bootstrap";
+import { useAuthedApi, useLogoutAction } from "../../auth/presentation";
 import { type DocumentVerificationDeps, useDocumentVerification } from "../application/use-document-verification";
 import {
   DATA_SUMMARY,
   holdInstruction,
+  NFC_REQUIREMENTS,
+  placementSteps,
   READ_STEP_COPY,
+  READ_STEP_PROGRESS,
   sanitizeCan,
   sanitizeDocumentNumber,
   toMrzDate
 } from "../domain/verification-copy";
 import { CanLocationArt } from "./can-location-art";
+import { NfcPlacementArt } from "./nfc-placement-art";
 
 const READ_MESSAGES = {
   prompt: "Acerca la parte de arriba del iPhone a tu documento y no lo muevas.",
@@ -47,18 +54,21 @@ function useVerificationDeps(): DocumentVerificationDeps {
       openNfcSettings: DocumentNfc.openNfcSettings,
       addReadProgressListener: DocumentNfc.addReadProgressListener,
       verify: (request) => callApi((api) => api.verifyNfc(request)),
-      readMessages: READ_MESSAGES
+      readMessages: READ_MESSAGES,
+      // Activa el perfil: el bootstrap deja de estar «pendiente de verificar».
+      onVerified: refreshBootstrap
     }),
     [callApi]
   );
 }
 
 /**
- * Verificación de edad con el DNI (o pasaporte) por NFC. De momento solo se llega desde la
- * ruta de desarrollo `(dev)/verify-document`; todavía no forma parte del onboarding.
+ * Verificación de edad con el DNI (o pasaporte) por NFC, paso a paso: qué hace falta → CAN →
+ * cómo colocarlo → lectura → resultado. Se llega desde «Comprobar tu edad» (`/verify`).
  */
 export function DocumentVerificationScreen() {
   const router = useRouter();
+  const logout = useLogoutAction();
   const flow = useDocumentVerification(useVerificationDeps());
   const { phase, kind, step, error } = flow.state;
   const [can, setCan] = useState("");
@@ -81,11 +91,20 @@ export function DocumentVerificationScreen() {
     }
   }, [can, flow, kind, passportKey]);
 
-  const done = useCallback(() => {
+  const clear = useCallback(() => {
     setCan("");
     setPassport({ number: "", birth: "", expiry: "" });
+  }, []);
+
+  const done = useCallback(() => {
+    clear();
     router.back();
-  }, [router]);
+  }, [clear, router]);
+
+  const finish = useCallback(() => {
+    clear();
+    router.replace(appShellRoutes.discover);
+  }, [clear, router]);
 
   const footer = (() => {
     switch (phase) {
@@ -105,7 +124,7 @@ export function DocumentVerificationScreen() {
               size="lg"
               testID="verify-read"
             >
-              {kind === "passport" ? "Leer el pasaporte" : "Leer el DNI"}
+              Continuar
             </Button>
             <Button
               onPress={() => flow.setKind(kind === "passport" ? "id_card" : "passport")}
@@ -113,6 +132,17 @@ export function DocumentVerificationScreen() {
               variant="ghost"
             >
               {kind === "passport" ? "Usar el DNI" : "Tengo pasaporte"}
+            </Button>
+          </Stack>
+        );
+      case "guide":
+        return (
+          <Stack gap="sm">
+            <Button fullWidth icon="play" onPress={() => void flow.beginRead()} size="lg" testID="verify-begin-read">
+              Empezar a leer
+            </Button>
+            <Button onPress={flow.editKey} testID="verify-back-to-key" variant="ghost">
+              {kind === "passport" ? "Revisar los datos" : "Cambiar el CAN"}
             </Button>
           </Stack>
         );
@@ -124,8 +154,8 @@ export function DocumentVerificationScreen() {
         );
       case "success":
         return (
-          <Button fullWidth onPress={done} size="lg" testID="verify-done">
-            Volver
+          <Button fullWidth onPress={finish} size="lg" testID="verify-done">
+            Empezar a usar Cherry
           </Button>
         );
       case "error":
@@ -146,7 +176,11 @@ export function DocumentVerificationScreen() {
                 Abrir ajustes
               </Button>
             ) : null}
-            {error.action === "settings" ? (
+            {error.action === "sign_out" ? (
+              <Button fullWidth onPress={() => void logout()} size="lg" testID="verify-sign-out">
+                Salir
+              </Button>
+            ) : error.action === "settings" ? (
               <Button onPress={() => void flow.start()} variant="ghost">
                 Ya lo he activado
               </Button>
@@ -175,9 +209,22 @@ export function DocumentVerificationScreen() {
               Con tu DNI y el NFC del móvil
             </Text>
             <Text color="muted">
-              Leemos el chip de tu documento para comprobar que tienes 18 años o más. Tarda unos segundos.
+              Leemos el chip de tu documento para comprobar que tienes 18 años o más. Tarda menos de un minuto.
             </Text>
           </Stack>
+          <Surface color="limonada" padding="md" radius="lg" soft>
+            <Stack gap="sm">
+              <Text variant="bodyStrong">Qué necesitas</Text>
+              {NFC_REQUIREMENTS.map((item) => (
+                <View key={item.text} style={styles.requirement}>
+                  <Icon name={item.icon} size={18} />
+                  <Text style={styles.flex} variant="callout">
+                    {item.text}
+                  </Text>
+                </View>
+              ))}
+            </Stack>
+          </Surface>
           {DATA_SUMMARY.map((item) => (
             <View key={item.title} style={styles.row}>
               <Surface color="limonada" elevation="sm" padding="sm" radius="pill" soft border="thin">
@@ -253,15 +300,52 @@ export function DocumentVerificationScreen() {
         </Stack>
       ) : null}
 
+      {phase === "guide" ? (
+        <Stack gap="lg">
+          <Stack gap="sm">
+            <Text accessibilityRole="header" variant="title1">
+              Cómo colocarlo
+            </Text>
+            <Text color="muted">El chip está dentro de la tarjeta y el lector del móvil, junto a la cámara.</Text>
+          </Stack>
+          <NfcPlacementArt mode="guide" />
+          <Stack gap="sm" testID="verify-guide-steps">
+            {placementSteps(Platform.OS, kind).map((text, index) => (
+              <View key={text} style={styles.step}>
+                <Surface color="cielo" elevation="sm" padding={0} radius="pill" border="thin" style={styles.stepNumber}>
+                  <Text align="center" variant="label">
+                    {String(index + 1)}
+                  </Text>
+                </Surface>
+                <Text style={styles.flex} variant="callout">
+                  {text}
+                </Text>
+              </View>
+            ))}
+          </Stack>
+        </Stack>
+      ) : null}
+
       {phase === "reading" ? (
         <Stack align="center" gap="lg" style={styles.centered}>
-          <Mascot animated color="cielo" mood="thinking" size={132} />
+          <NfcPlacementArt mode="reading" />
           <Text accessibilityRole="header" align="center" variant="title2">
-            {kind === "passport" ? "Acerca el pasaporte al móvil" : "Acerca el DNI al móvil"}
+            {step === "waiting" || step === null
+              ? kind === "passport"
+                ? "Acerca el pasaporte al móvil"
+                : "Acerca el DNI al móvil"
+              : "No lo muevas"}
           </Text>
           <Text align="center" color="muted">
             {holdInstruction(Platform.OS, kind)}
           </Text>
+          <ProgressBar
+            accessibilityLabel="Progreso de la lectura"
+            color={step === "retrying" ? "melocoton" : "menta"}
+            style={styles.progress}
+            testID="verify-progress"
+            value={READ_STEP_PROGRESS[step ?? "waiting"]}
+          />
           <Text accessibilityLiveRegion="polite" align="center" testID="verify-step" variant="label">
             {READ_STEP_COPY[step ?? "waiting"]}
           </Text>
@@ -282,10 +366,11 @@ export function DocumentVerificationScreen() {
         <Stack align="center" gap="lg" style={styles.centered}>
           <Mascot animated color="menta" mood="celebrate" size={148} />
           <Text accessibilityRole="header" align="center" testID="verify-success" variant="title1">
-            Hecho: eres mayor de edad
+            Listo: tu perfil ya está activo
           </Text>
           <Text align="center" color="muted">
-            Hemos guardado solo eso, la fecha y la huella cifrada del documento. Lo demás se ha borrado.
+            Hemos guardado solo que eres mayor de edad, la fecha y la huella cifrada del documento. Lo demás se ha
+            borrado.
           </Text>
         </Stack>
       ) : null}
@@ -312,5 +397,10 @@ export function DocumentVerificationScreen() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 16, alignItems: "flex-start" },
-  centered: { paddingTop: 24 }
+  requirement: { flexDirection: "row", gap: 10, alignItems: "center" },
+  step: { flexDirection: "row", gap: 12, alignItems: "center" },
+  stepNumber: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
+  progress: { alignSelf: "stretch" },
+  flex: { flex: 1 },
+  centered: { paddingTop: 8 }
 });

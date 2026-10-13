@@ -52,14 +52,17 @@ export type DocumentNotVerifiedReason = (typeof DOCUMENT_NOT_VERIFIED_REASONS)[n
 
 /**
  * Errores de verificación (`error` del cuerpo):
- * - 422 `invalid_payload` | `underage` | `document_expired` | `document_not_verified` (+ `reason`)
+ * - 422 `invalid_payload` | `underage` (+ `accountDeleted`: la cuenta se ha borrado entera) |
+ *   `document_expired` | `document_not_verified` (+ `reason`)
  * - 409 `document_already_used` (otra cuenta) | `already_verified` (con otro documento)
  * - 403 `verification_revoked`
  * - 429 `too_many_attempts` (+ `retryAfter` en segundos y cabecera `Retry-After`)
  * - 503 `age_verification_unavailable` (la instancia no tiene clave de huella)
  * - 500 `verification_error`
  *
- * Con la verificación obligatoria, la API social responde 403 `age_verification_required`.
+ * Con la verificación obligatoria, la API social responde 403 `age_verification_required` y el perfil
+ * queda «pendiente de verificar» (invisible) hasta comprobar la edad; `GET /api/bootstrap` lo indica en
+ * `ageVerification`.
  */
 export type AgeVerificationErrorCode =
   | "invalid_payload"

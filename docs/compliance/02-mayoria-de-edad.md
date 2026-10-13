@@ -1,6 +1,6 @@
 # Mayoría de edad
 
-**Estado:** prototipo en la rama `feat/dni-nfc` (ver [Estado del prototipo](#estado-del-prototipo)). Autenticación pasiva en el servidor, modelo de datos, API y módulo NFC construidos; falta probarlo con un DNI real ([guía](./02-nfc-pruebas-manana.md)). La verificación todavía no es obligatoria: el registro sigue pidiendo solo la fecha de nacimiento y exige 18+.
+**Estado:** prototipo en la rama `feat/dni-nfc` (ver [Estado del prototipo](#estado-del-prototipo)). Autenticación pasiva en el servidor, modelo de datos, API, módulo NFC y flujo de la app construidos. Probado el 2026-10-13 con un DNI real en Android: lectura, firma del Estado, mayoría de edad y bloqueo de un segundo uso del mismo DNI funcionan. iPhone sin probar. La obligatoriedad (`AGE_VERIFICATION_REQUIRED`) sigue desactivada por defecto ([perfil pendiente de verificar](#perfil-pendiente-de-verificar)).
 
 ## Por qué
 
@@ -79,9 +79,27 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 2. [x] Autenticación pasiva en el backend con los certificados CSCA españoles. *Probada con PKI sintética y fixtures de OpenSSL; falta un SOD español real.*
 3. [ ] Comparación de caras selfie ↔ DG2 con modelo de código abierto en el servidor. *Investigación hecha ([resumen](#investigación-selfie--dg2-y-prueba-de-vida-sin-construir)); sin construir.*
 4. [x] Modelo de datos: estado de verificación del perfil + huella del documento; borrado inmediato del resto.
-5. [~] Pantallas de verificación en el onboarding (antes de que el perfil sea visible). *Hay una pantalla de prueba en la ruta de desarrollo; no está en el onboarding.*
+5. [x] Pantallas de verificación tras el onboarding (antes de que el perfil sea visible). *Decisión del 2026-10-13: el onboarding no cambia; al terminarlo, el perfil queda «pendiente de verificar» (ver [abajo](#perfil-pendiente-de-verificar)).*
 6. [ ] Integración del proveedor de respaldo.
 7. [ ] Integración de la app europea cuando esté disponible en España.
+
+## Perfil pendiente de verificar
+
+*Decidido el 2026-10-13.* Con `AGE_VERIFICATION_REQUIRED=true`:
+
+- **El onboarding no cambia.** Al terminarlo entras en la app, pero el perfil queda **pendiente de verificar**, un estado distinto de «pausado por mí».
+- **Sin verificar puedes editar y gestionar tu perfil, pero no ves a nadie ni nadie te ve:** el perfil no es descubrible y Descubrir, Likes y Chats muestran «Comprueba tu edad para empezar». El servidor ya bloqueaba la API social (403 `age_verification_required`); ahora `GET /api/bootstrap` devuelve `ageVerification: {required, status}` para que la app lo sepa.
+- **Al verificarte, el perfil se activa solo,** salvo que lo hubieras pausado tú.
+- **Si el documento es de un menor, se borra la cuenta entera** (fotos, perfil, sesiones y usuario) y la app cierra la sesión. Se avisa antes de empezar.
+- **Flujo en la app (`/verify`):**
+  - **Por qué se pide:** la ley, frenar bots y perfiles falsos, una persona una cuenta, y que el documento no se guarda.
+  - **Elegir método:** DNI por NFC (recomendado), selfie con proveedor externo (próximamente) y cartera digital europea (próximamente).
+  - **DNI:** qué necesitas, el CAN, cómo colocarlo (animación y pasos) y la lectura, con barra de progreso.
+- **Lectura más robusta en Android:** si el chip deja de responder (documento algo desplazado de la antena: le llega energía para lo sencillo, no para el cálculo de PACE), el lector espera 5 s en vez de 10 y vuelve a empezar solo hasta 3 veces sin salir de la pantalla. Visto en la primera prueba con un DNI real: 3 de 5 lecturas fallaban justo en ese paso.
+- **Pendiente:**
+  - borrar las cuentas que nunca se verifican pasado un plazo;
+  - recalcular la visibilidad de los perfiles existentes al activar el flag (hoy solo se recalcula al editar, despausar o verificarse);
+  - integrar los proveedores de respaldo.
 
 ## Estado del prototipo
 
@@ -177,7 +195,7 @@ Una revisión adversarial independiente no encontró forma de falsificar ni alte
 - **Un DNI y un pasaporte en vigor de la misma persona** dan dos huellas, así que caben dos cuentas. Alternativas:
   - guardar varias huellas por verificación;
   - derivar la del DNI desde el pasaporte cuando el titular ya tenía 14 años al expedirlo.
-- **Intento con resultado `underage`:** hoy no se guarda nada. Se podría marcar la cuenta, sin datos del documento, para frenar el «pruebo con el de mi madre» justo después.
+- **Intento con resultado `underage`:** se borra la cuenta entera (decisión del 2026-10-13) y no se guarda nada del documento. Quien lo intente con el DNI de su madre justo después tiene que volver a registrarse desde cero; frenarlo del todo exige la comparación con el selfie.
 - **Límite de cuerpo:** el JSON se parsea con el límite general de Phoenix (8 MB) antes de los límites del controlador. El límite de 5 intentos por hora acota el abuso; un límite por ruta sería mejor.
 - **SHA-1 y SOD sin atributos firmados** se aceptan por compatibilidad con documentos antiguos. No es explotable, pero se pueden restringir a SHA-2 si los DNI españoles reales lo usan siempre.
 

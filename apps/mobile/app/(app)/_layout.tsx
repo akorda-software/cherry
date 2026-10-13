@@ -80,6 +80,9 @@ export default function PrivateLayoutRoute() {
         <Stack.Screen name="edit/basics" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="about" />
+        <Stack.Screen name="verify/index" />
+        <Stack.Screen name="verify/methods" />
+        <Stack.Screen name="verify/document" />
         {optionalStackScreens.map((screen) => (
           <Stack.Screen key={screen.name} name={screen.name} options={{ title: screen.title }} />
         ))}

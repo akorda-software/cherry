@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   holdInstruction,
+  placementSteps,
+  READ_STEP_COPY,
+  READ_STEP_PROGRESS,
   readErrorCopy,
   sanitizeCan,
   sanitizeDocumentNumber,
@@ -33,20 +36,36 @@ describe("verification copy", () => {
     expect(holdInstruction("android", "passport")).toContain("Apoya el pasaporte");
   });
 
+  it("explains where to place the document, step by step", () => {
+    expect(placementSteps("android", "id_card")).toEqual(
+      expect.arrayContaining([expect.stringContaining("a la altura de la cámara"), expect.stringContaining("funda")])
+    );
+    expect(placementSteps("ios", "passport")[0]).toContain("abierto por la página de la foto");
+  });
+
+  it("covers every read step, including the automatic retry", () => {
+    expect(READ_STEP_COPY.retrying).toContain("lo intentamos otra vez");
+    expect(READ_STEP_PROGRESS.done).toBe(1);
+    expect(READ_STEP_PROGRESS.waiting).toBe(0);
+  });
+
   it("maps NFC errors to an action", () => {
     expect(readErrorCopy("ACCESS_DENIED", "id_card")).toMatchObject({ title: "El CAN no coincide", action: "edit_key" });
     expect(readErrorCopy("ACCESS_DENIED", "passport").action).toBe("edit_key");
     expect(readErrorCopy("NFC_DISABLED", "id_card").action).toBe("settings");
     expect(readErrorCopy("NFC_UNAVAILABLE", "id_card").action).toBe("none");
-    expect(readErrorCopy("TAG_LOST", "id_card").message).toContain("Deja el DNI quieto");
+    // No culpa a la persona de moverlo: lo habitual es que el DNI no quede sobre la antena.
+    expect(readErrorCopy("TAG_LOST", "id_card")).toMatchObject({ title: "Se ha cortado la conexión con el chip", action: "retry" });
+    expect(readErrorCopy("TAG_LOST", "id_card").message).toContain("a la altura de la cámara");
     for (const code of ["UNSUPPORTED_DOCUMENT", "TIMEOUT", "BUSY", "UNKNOWN"] as const) {
       expect(readErrorCopy(code, "id_card").action).toBe("retry");
     }
   });
 
   it("maps server errors without blaming the person", () => {
-    expect(serverErrorCopy("underage")).toMatchObject({ action: "none" });
-    expect(serverErrorCopy("underage").message).toContain("No hemos guardado nada");
+    // La cuenta ya no existe: solo queda cerrar la sesión.
+    expect(serverErrorCopy("underage")).toMatchObject({ action: "sign_out" });
+    expect(serverErrorCopy("underage").message).toContain("Hemos borrado tu cuenta");
     expect(serverErrorCopy("document_already_used").title).toContain("otra cuenta");
     expect(serverErrorCopy("too_many_attempts", { retryAfterSeconds: 61 }).message).toBe("Vuelve a probar dentro de 2 minutos.");
     expect(serverErrorCopy("too_many_attempts", { retryAfterSeconds: 30 }).message).toBe("Vuelve a probar dentro de 1 minuto.");

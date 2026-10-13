@@ -200,6 +200,7 @@ export function DocumentVerificationScreen() {
     <Screen
       footer={footer}
       header={<TopBar left="close" testID="verify-top-bar" title="Comprobar tu edad" />}
+      scroll
       testID="document-verification-screen"
     >
       {phase === "intro" ? (
@@ -249,7 +250,6 @@ export function DocumentVerificationScreen() {
             </Text>
             <Text color="muted">Está impreso en tu DNI, en la cara de la foto. Sirve para abrir el chip.</Text>
           </Stack>
-          <CanLocationArt />
           <TextField
             autoComplete="off"
             inputMode="numeric"
@@ -262,6 +262,7 @@ export function DocumentVerificationScreen() {
             testID="verify-can"
             value={can}
           />
+          <CanLocationArt />
         </Stack>
       ) : null}
 

@@ -1,8 +1,10 @@
 import type { PropsWithChildren } from "react";
 
-import { Card } from "../composites/card";
+import { TopBar } from "../composites/top-bar";
 import { Screen } from "../primitives/screen";
+import { Text } from "../primitives/text";
 
+/** @deprecated usa `Screen` + `TopBar`. Pantalla sencilla con cabecera y texto. */
 export function PlaceholderScreen({
   testId,
   title,
@@ -10,10 +12,9 @@ export function PlaceholderScreen({
   children
 }: PropsWithChildren<{ testId: string; title: string; description: string }>) {
   return (
-    <Screen testId={testId}>
-      <Card description={description} title={title}>
-        {children}
-      </Card>
+    <Screen header={<TopBar left="back" title={title} />} scroll testID={testId}>
+      {description ? <Text color="muted">{description}</Text> : null}
+      {children}
     </Screen>
   );
 }

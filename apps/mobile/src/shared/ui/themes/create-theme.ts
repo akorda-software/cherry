@@ -14,6 +14,8 @@ export function createTheme({ name, semantic }: CreateThemeInput): AppTheme {
       border: { ...lightTheme.semantic.border, ...semantic?.border },
       action: { ...lightTheme.semantic.action, ...semantic?.action },
       state: { ...lightTheme.semantic.state, ...semantic?.state },
+      tag: { ...lightTheme.semantic.tag, ...semantic?.tag },
+      category: { ...lightTheme.semantic.category, ...semantic?.category },
       layout: { ...lightTheme.semantic.layout, ...semantic?.layout }
     }
   };

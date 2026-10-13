@@ -19,13 +19,24 @@ defmodule CherryWeb.Controllers.Api.ProfileControllerTest do
       Keyword.put(config, :request_options, plug: {Req.Test, Cherry.Storage.R2})
     )
 
+    test_pid = self()
+
     Req.Test.stub(Cherry.Storage.R2, fn conn ->
       conn =
         conn
         |> Plug.Conn.put_resp_header("content-type", "image/jpeg")
         |> Plug.Conn.put_resp_header("etag", "\"test-object\"")
 
+      send(test_pid, {:r2_request, conn.method, conn.request_path, conn.req_headers})
+
       case conn.method do
+        # CopyObject (publish from pending/) and DeleteObject.
+        "PUT" ->
+          Plug.Conn.send_resp(conn, 200, "<CopyObjectResult/>")
+
+        "DELETE" ->
+          Plug.Conn.send_resp(conn, 204, "")
+
         "HEAD" ->
           conn
           |> Plug.Conn.put_resp_header("content-length", "420000")
@@ -47,7 +58,7 @@ defmodule CherryWeb.Controllers.Api.ProfileControllerTest do
         display_name: "Test User",
         birth_date: ~D[1995-01-15],
         gender: "man",
-        what_i_am_looking_for: "relationship",
+        looking_for: ["relationship"],
         bio: "This is a test bio that is long enough to pass validation rules."
       })
 
@@ -106,6 +117,32 @@ defmodule CherryWeb.Controllers.Api.ProfileControllerTest do
     test "rejects invalid fields", %{authed_conn: conn} do
       conn = put(conn, "/api/me/profile", %{"bio" => "short"})
       assert conn.status == 422
+    end
+
+    test "accepts several intents and returns them as lookingFor", %{authed_conn: conn} do
+      conn =
+        put(conn, "/api/me/profile", %{"looking_for" => ["meet_people", "relationship"]})
+
+      assert %{
+               "profile" => %{
+                 "lookingFor" => ["relationship", "meet_people"],
+                 "whatIAmLookingFor" => "relationship"
+               }
+             } = json_response(conn, 200)
+    end
+
+    test "accepts the old single what_i_am_looking_for string", %{authed_conn: conn} do
+      conn = put(conn, "/api/me/profile", %{"what_i_am_looking_for" => "casual"})
+
+      assert %{"profile" => %{"lookingFor" => ["casual"], "whatIAmLookingFor" => "casual"}} =
+               json_response(conn, 200)
+    end
+
+    test "rejects an empty or duplicated intent list", %{authed_conn: conn} do
+      for value <- [[], ["casual", "casual"], ["friends"]] do
+        response = conn |> put("/api/me/profile", %{"looking_for" => value}) |> json_response(422)
+        assert %{"errors" => %{"looking_for" => [_ | _]}} = response
+      end
     end
   end
 
@@ -185,6 +222,60 @@ defmodule CherryWeb.Controllers.Api.ProfileControllerTest do
       assert location.accuracy_meters == 25
     end
 
+    test "only accepts latitude/longitude, never a raw geometry", %{
+      authed_conn: conn,
+      profile: profile
+    } do
+      polygon = %{
+        "type" => "Polygon",
+        "coordinates" => [[[-3.7, 40.4], [-3.6, 40.4], [-3.6, 40.5], [-3.7, 40.4]]]
+      }
+
+      assert conn |> post("/api/me/location", %{"coordinates" => polygon}) |> json_response(422)
+      assert Dating.get_location(profile.id) == nil
+
+      # A precise point next to latitude/longitude is ignored: the grid always applies.
+      assert %{"ok" => true} =
+               conn
+               |> post("/api/me/location", %{
+                 "latitude" => 40.4168,
+                 "longitude" => -3.7038,
+                 "coordinates" => %{"type" => "Point", "coordinates" => [2.1734, 41.3851]}
+               })
+               |> json_response(200)
+
+      assert %Geo.Point{coordinates: {longitude, latitude}} =
+               Dating.get_location(profile.id).coordinates
+
+      assert abs(latitude - 40.4168) < 0.01 and latitude != 40.4168
+      assert abs(longitude - -3.7038) < 0.01
+    end
+
+    test "ignores updates closer than 60 s to the previous one", %{
+      authed_conn: conn,
+      profile: profile
+    } do
+      madrid = %{"latitude" => 40.4168, "longitude" => -3.7038}
+      barcelona = %{"latitude" => 41.3851, "longitude" => 2.1734}
+
+      assert %{"ok" => true} = conn |> post("/api/me/location", madrid) |> json_response(200)
+      assert %{"ok" => true} = conn |> post("/api/me/location", barcelona) |> json_response(200)
+      assert %Geo.Point{coordinates: {lng, _lat}} = Dating.get_location(profile.id).coordinates
+      assert lng < 0
+
+      a_minute_ago =
+        DateTime.utc_now() |> DateTime.add(-61, :second) |> DateTime.truncate(:second)
+
+      Repo.query!("UPDATE profile_locations SET updated_at = $1 WHERE profile_id = $2", [
+        a_minute_ago,
+        Ecto.UUID.dump!(profile.id)
+      ])
+
+      assert %{"ok" => true} = conn |> post("/api/me/location", barcelona) |> json_response(200)
+      assert %Geo.Point{coordinates: {lng, _lat}} = Dating.get_location(profile.id).coordinates
+      assert lng > 0
+    end
+
     test "rejects invalid coordinates", %{authed_conn: conn} do
       conn =
         post(conn, "/api/me/location", %{
@@ -214,9 +305,15 @@ defmodule CherryWeb.Controllers.Api.ProfileControllerTest do
                "maxBytes" => 2_000_000
              } = json_response(conn, 200)
 
-      assert String.starts_with?(storage_key, "profiles/#{profile.id}/")
+      assert String.starts_with?(storage_key, "photos/")
+      refute String.contains?(storage_key, profile.id)
       assert String.ends_with?(storage_key, ".jpg")
-      assert String.contains?(upload_url, "test-account.r2.cloudflarestorage.com/test-bucket/")
+      # The PUT goes to the pending area; the public URL is the final key.
+      assert String.contains?(
+               upload_url,
+               "test-account.r2.cloudflarestorage.com/test-bucket/pending/#{storage_key}?"
+             )
+
       assert String.contains?(upload_url, "X-Amz-Signature=")
 
       assert URI.decode_query(URI.parse(upload_url).query)["X-Amz-SignedHeaders"] ==
@@ -305,6 +402,14 @@ defmodule CherryWeb.Controllers.Api.ProfileControllerTest do
 
       assert storage_key == upload.storage_key
       assert public_url == upload.public_url
+
+      # Published with a server-side copy out of pending/, then the copy source is deleted.
+      assert_received {:r2_request, "PUT", copy_path, copy_headers}
+      assert copy_path == "/test-bucket/#{storage_key}"
+
+      assert {"x-amz-copy-source", "/test-bucket/pending/#{storage_key}"} in copy_headers
+      assert_received {:r2_request, "DELETE", delete_path, _headers}
+      assert delete_path == "/test-bucket/pending/#{storage_key}"
 
       assert Repo.get_by!(Dating.ProfilePhoto, storage_key: upload.storage_key).profile_id ==
                profile.id

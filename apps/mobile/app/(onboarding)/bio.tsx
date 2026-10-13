@@ -1,5 +1,5 @@
-import { BioStepScreen } from "../../src/features/onboarding";
+import { BioStep } from "../../src/features/onboarding";
 
-export default function OnboardingBioRoute() {
-  return <BioStepScreen />;
+export default function OnboardingBioStepRoute() {
+  return <BioStep />;
 }

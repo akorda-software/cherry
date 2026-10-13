@@ -1,0 +1,627 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-29T14:44:09.883525+00:00",
+  "title": "Design System: Cherry",
+  "extensions": {
+    "colorMeta": {
+      "fresa": {
+        "role": "primary",
+        "displayName": "Fresa",
+        "canonical": "#FF9EC7",
+        "tonalRamp": [
+          "#B0154F",
+          "#FF9EC7",
+          "#FFD6E8"
+        ]
+      },
+      "fresaSoft": {
+        "role": "primary",
+        "displayName": "Fresa suave",
+        "canonical": "#FFD6E8",
+        "tonalRamp": [
+          "#B0154F",
+          "#FF9EC7",
+          "#FFD6E8"
+        ]
+      },
+      "fresaDeep": {
+        "role": "primary",
+        "displayName": "Fresa honda",
+        "canonical": "#B0154F",
+        "tonalRamp": [
+          "#B0154F",
+          "#FF9EC7",
+          "#FFD6E8"
+        ]
+      },
+      "lavanda": {
+        "role": "secondary",
+        "displayName": "Lavanda",
+        "canonical": "#C3B1FF",
+        "tonalRamp": [
+          "#5B3FC4",
+          "#C3B1FF",
+          "#E8E0FF"
+        ]
+      },
+      "lavandaSoft": {
+        "role": "secondary",
+        "displayName": "Lavanda suave",
+        "canonical": "#E8E0FF",
+        "tonalRamp": [
+          "#5B3FC4",
+          "#C3B1FF",
+          "#E8E0FF"
+        ]
+      },
+      "lavandaDeep": {
+        "role": "secondary",
+        "displayName": "Lavanda honda",
+        "canonical": "#5B3FC4",
+        "tonalRamp": [
+          "#5B3FC4",
+          "#C3B1FF",
+          "#E8E0FF"
+        ]
+      },
+      "limonada": {
+        "role": "secondary",
+        "displayName": "Limonada",
+        "canonical": "#FFE680",
+        "tonalRamp": [
+          "#7A5800",
+          "#FFE680",
+          "#FFF5C7"
+        ]
+      },
+      "limonadaSoft": {
+        "role": "secondary",
+        "displayName": "Limonada suave",
+        "canonical": "#FFF5C7",
+        "tonalRamp": [
+          "#7A5800",
+          "#FFE680",
+          "#FFF5C7"
+        ]
+      },
+      "limonadaDeep": {
+        "role": "secondary",
+        "displayName": "Limonada honda",
+        "canonical": "#7A5800",
+        "tonalRamp": [
+          "#7A5800",
+          "#FFE680",
+          "#FFF5C7"
+        ]
+      },
+      "menta": {
+        "role": "secondary",
+        "displayName": "Menta",
+        "canonical": "#8FE3C0",
+        "tonalRamp": [
+          "#136E4D",
+          "#8FE3C0",
+          "#D2F6E7"
+        ]
+      },
+      "mentaSoft": {
+        "role": "secondary",
+        "displayName": "Menta suave",
+        "canonical": "#D2F6E7",
+        "tonalRamp": [
+          "#136E4D",
+          "#8FE3C0",
+          "#D2F6E7"
+        ]
+      },
+      "mentaDeep": {
+        "role": "secondary",
+        "displayName": "Menta honda",
+        "canonical": "#136E4D",
+        "tonalRamp": [
+          "#136E4D",
+          "#8FE3C0",
+          "#D2F6E7"
+        ]
+      },
+      "cielo": {
+        "role": "tertiary",
+        "displayName": "Cielo",
+        "canonical": "#9FD3FF",
+        "tonalRamp": [
+          "#1A62A0",
+          "#9FD3FF",
+          "#DCEFFF"
+        ]
+      },
+      "cieloSoft": {
+        "role": "tertiary",
+        "displayName": "Cielo suave",
+        "canonical": "#DCEFFF",
+        "tonalRamp": [
+          "#1A62A0",
+          "#9FD3FF",
+          "#DCEFFF"
+        ]
+      },
+      "cieloDeep": {
+        "role": "tertiary",
+        "displayName": "Cielo honda",
+        "canonical": "#1A62A0",
+        "tonalRamp": [
+          "#1A62A0",
+          "#9FD3FF",
+          "#DCEFFF"
+        ]
+      },
+      "melocoton": {
+        "role": "tertiary",
+        "displayName": "Melocotón",
+        "canonical": "#FFBE98",
+        "tonalRamp": [
+          "#9E4018",
+          "#FFBE98",
+          "#FFE5D6"
+        ]
+      },
+      "melocotonSoft": {
+        "role": "tertiary",
+        "displayName": "Melocotón suave",
+        "canonical": "#FFE5D6",
+        "tonalRamp": [
+          "#9E4018",
+          "#FFBE98",
+          "#FFE5D6"
+        ]
+      },
+      "melocotonDeep": {
+        "role": "tertiary",
+        "displayName": "Melocotón honda",
+        "canonical": "#9E4018",
+        "tonalRamp": [
+          "#9E4018",
+          "#FFBE98",
+          "#FFE5D6"
+        ]
+      },
+      "tomate": {
+        "role": "tertiary",
+        "displayName": "Tomate",
+        "canonical": "#FF8A7A",
+        "tonalRamp": [
+          "#B3261E",
+          "#FF8A7A",
+          "#FFD9D3"
+        ]
+      },
+      "tomateSoft": {
+        "role": "tertiary",
+        "displayName": "Tomate suave",
+        "canonical": "#FFD9D3",
+        "tonalRamp": [
+          "#B3261E",
+          "#FF8A7A",
+          "#FFD9D3"
+        ]
+      },
+      "tomateDeep": {
+        "role": "tertiary",
+        "displayName": "Tomate honda",
+        "canonical": "#B3261E",
+        "tonalRamp": [
+          "#B3261E",
+          "#FF8A7A",
+          "#FFD9D3"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta ciruela",
+        "canonical": "#2B1938",
+        "tonalRamp": [
+          "#2B1938",
+          "#6B5680",
+          "#7A6690",
+          "#E9D5EC",
+          "#FBE9F3",
+          "#FFF6FB",
+          "#FFFFFF"
+        ]
+      },
+      "inkSoft": {
+        "role": "neutral",
+        "displayName": "Tinta suave",
+        "canonical": "#6B5680",
+        "tonalRamp": [
+          "#2B1938",
+          "#6B5680",
+          "#7A6690",
+          "#E9D5EC",
+          "#FBE9F3",
+          "#FFF6FB",
+          "#FFFFFF"
+        ]
+      },
+      "inkFaint": {
+        "role": "neutral",
+        "displayName": "Tinta tenue",
+        "canonical": "#7A6690",
+        "tonalRamp": [
+          "#2B1938",
+          "#6B5680",
+          "#7A6690",
+          "#E9D5EC",
+          "#FBE9F3",
+          "#FFF6FB",
+          "#FFFFFF"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Papel rosado",
+        "canonical": "#FFF6FB",
+        "tonalRamp": [
+          "#2B1938",
+          "#6B5680",
+          "#7A6690",
+          "#E9D5EC",
+          "#FBE9F3",
+          "#FFF6FB",
+          "#FFFFFF"
+        ]
+      },
+      "paperDeep": {
+        "role": "neutral",
+        "displayName": "Papel hondo",
+        "canonical": "#FBE9F3",
+        "tonalRamp": [
+          "#2B1938",
+          "#6B5680",
+          "#7A6690",
+          "#E9D5EC",
+          "#FBE9F3",
+          "#FFF6FB",
+          "#FFFFFF"
+        ]
+      },
+      "dot": {
+        "role": "neutral",
+        "displayName": "Punto de libreta",
+        "canonical": "#E9D5EC",
+        "tonalRamp": [
+          "#2B1938",
+          "#6B5680",
+          "#7A6690",
+          "#E9D5EC",
+          "#FBE9F3",
+          "#FFF6FB",
+          "#FFFFFF"
+        ]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "Blanco",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#2B1938",
+          "#6B5680",
+          "#7A6690",
+          "#E9D5EC",
+          "#FBE9F3",
+          "#FFF6FB",
+          "#FFFFFF"
+        ]
+      },
+      "scrim": {
+        "role": "neutral",
+        "displayName": "Velo de tinta",
+        "canonical": "rgba(43, 25, 56, 0.45)"
+      }
+    },
+    "typographyMeta": {
+      "hero": {
+        "displayName": "Hero",
+        "purpose": "Momentos de marca, una vez por pantalla (login, match)."
+      },
+      "title1": {
+        "displayName": "Title 1",
+        "purpose": "Título de pestaña y preguntas del onboarding."
+      },
+      "title2": {
+        "displayName": "Title 2",
+        "purpose": "Secciones grandes; nombre y edad en la pegatina de la polaroid."
+      },
+      "title3": {
+        "displayName": "Title 3",
+        "purpose": "Encabezados de sección y categoría; título de TopBar normal."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "Contadores grandes (0/8)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto corrido y mensajes de chat."
+      },
+      "bodyStrong": {
+        "displayName": "Body Strong",
+        "purpose": "Etiquetas de filas, mensajes de toast, énfasis."
+      },
+      "callout": {
+        "displayName": "Callout",
+        "purpose": "Subtítulos, valores de filas, avisos."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Pegatinas, segmentos, rótulos de campo."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Descripciones de filas, contadores, notas al pie."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Texto de botones md/lg."
+      },
+      "buttonSmall": {
+        "displayName": "Button Small",
+        "purpose": "Texto de botones sm."
+      },
+      "hand": {
+        "displayName": "Hand (Yomogi)",
+        "purpose": "Notas manuscritas (bio en nota adhesiva, pies de polaroid); nunca < 18."
+      },
+      "stamp": {
+        "displayName": "Stamp",
+        "purpose": "Solo dentro de sellos de goma, en mayúsculas."
+      }
+    },
+    "shadows": [
+      {
+        "name": "xs",
+        "value": "1px 1px 0px #2B1938",
+        "purpose": "Roce: insignias Pill y detalles diminutos."
+      },
+      {
+        "name": "sm",
+        "value": "2px 2px 0px #2B1938",
+        "purpose": "Pegada: pegatinas sm/md, botones sm, segmentado, pestaña activa, campos en reposo."
+      },
+      {
+        "name": "md",
+        "value": "4px 4px 0px #2B1938",
+        "purpose": "Tarjeta: tarjetas, botones md/lg, botones de icono md/lg, barra de pestañas, campo enfocado."
+      },
+      {
+        "name": "lg",
+        "value": "6px 6px 0px #2B1938",
+        "purpose": "Protagonista: polaroid de Descubrir/perfil, botón de me gusta xl."
+      },
+      {
+        "name": "pressed",
+        "value": "transform: translate(offset, offset); sombra tapada",
+        "purpose": "Al pulsar, la cara se desplaza su offset hacia la sombra (spring.snappy) y vuelve al soltar."
+      }
+    ],
+    "motion": [
+      {
+        "name": "quick",
+        "value": "120ms",
+        "purpose": "Fundidos cortos, sustituto con reducir movimiento."
+      },
+      {
+        "name": "calm",
+        "value": "220ms",
+        "purpose": "Transiciones de estado por tiempo."
+      },
+      {
+        "name": "slow",
+        "value": "360ms",
+        "purpose": "Entradas de papel más largas."
+      },
+      {
+        "name": "celebrate",
+        "value": "900ms",
+        "purpose": "Estallido de corazones y estrellas."
+      },
+      {
+        "name": "spring-pop",
+        "value": "damping 12, stiffness 260, mass 0.9",
+        "purpose": "Pegatinas, sellos, chips al seleccionarse (1.12 → 1 con giro)."
+      },
+      {
+        "name": "spring-soft",
+        "value": "damping 18, stiffness 180, mass 1",
+        "purpose": "Tarjetas y hojas que se asientan."
+      },
+      {
+        "name": "spring-snappy",
+        "value": "damping 22, stiffness 420, mass 0.8",
+        "purpose": "Botones: pulsar y soltar."
+      },
+      {
+        "name": "spring-wobbly",
+        "value": "damping 8, stiffness 200, mass 1",
+        "purpose": "Mochi y celebraciones."
+      },
+      {
+        "name": "ease-outQuint",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Salidas suaves."
+      },
+      {
+        "name": "ease-outBack",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "purpose": "Entradas con rebote leve."
+      },
+      {
+        "name": "ease-inOut",
+        "value": "cubic-bezier(0.65, 0, 0.35, 1)",
+        "purpose": "Desplazamientos simétricos."
+      }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "CTA principal: pastilla fresa, contorno y sombra dura de tinta; se hunde al pulsar.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#2B1938\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 20.25C7.4 17.4 3 13.9 3 9.2 3 6.3 5.2 4 8 4c1.7 0 3.1.9 4 2.4.9-1.5 2.3-2.4 4-2.4 2.8 0 5 2.3 5 5.2 0 4.7-4.4 8.2-9 11.05Z\"/></svg>Empezar</button>",
+      "css": ".ds-btn-primary { background: #FF9EC7; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 800; font-size: 17px; line-height: 22px; color: #2B1938; border: 2.5px solid #2B1938; border-radius: 999px; height: 52px; padding: 0 22px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 4px 4px 0 #2B1938; transition: transform 120ms cubic-bezier(0.22,1,0.36,1), box-shadow 120ms cubic-bezier(0.22,1,0.36,1); } .ds-btn-primary:hover { transform: translate(1px,1px); box-shadow: 3px 3px 0 #2B1938; } .ds-btn-primary:active { transform: translate(4px,4px); box-shadow: 0 0 0 #2B1938; } .ds-btn-primary:focus-visible { outline: 3px solid #5B3FC4; outline-offset: 3px; }"
+    },
+    {
+      "name": "Botón secundario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Acción alternativa: cara blanca con el mismo contorno y sombra.",
+      "html": "<button class=\"ds-btn-secondary\">Seguir mirando</button>",
+      "css": ".ds-btn-secondary { background: #FFFFFF; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 800; font-size: 17px; line-height: 22px; color: #2B1938; border: 2.5px solid #2B1938; border-radius: 999px; height: 52px; padding: 0 22px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 4px 4px 0 #2B1938; transition: transform 120ms cubic-bezier(0.22,1,0.36,1), box-shadow 120ms cubic-bezier(0.22,1,0.36,1); } .ds-btn-secondary:hover { transform: translate(1px,1px); box-shadow: 3px 3px 0 #2B1938; } .ds-btn-secondary:active { transform: translate(4px,4px); box-shadow: 0 0 0 #2B1938; } .ds-btn-secondary:focus-visible { outline: 3px solid #5B3FC4; outline-offset: 3px; }"
+    },
+    {
+      "name": "Botón fantasma",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Acción terciaria: solo texto tinta subrayado, sin contorno ni sombra.",
+      "html": "<button class=\"ds-btn-ghost\">Ahora no</button>",
+      "css": ".ds-btn-ghost { background: transparent; border: none; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 800; font-size: 17px; color: #2B1938; text-decoration: underline; height: 52px; padding: 0 13px; cursor: pointer; } .ds-btn-ghost:hover { color: #B0154F; } .ds-btn-ghost:focus-visible { outline: 3px solid #5B3FC4; outline-offset: 3px; border-radius: 999px; }"
+    },
+    {
+      "name": "Botones de decisión",
+      "kind": "button",
+      "refersTo": "icon-button-like",
+      "description": "✕ lavanda (64) y ♥ fresa (76) circulares con contorno 3 y sombra dura; se hunden y rebotan.",
+      "html": "<div class=\"ds-decide\"><button class=\"ds-icbtn ds-icbtn-pass\" aria-label=\"Paso\"><svg width=\"30\" height=\"30\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#2B1938\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 6l12 12M18 6 6 18\"/></svg></button><button class=\"ds-icbtn ds-icbtn-like\" aria-label=\"Me gusta\"><svg width=\"36\" height=\"36\" viewBox=\"0 0 24 24\" fill=\"#FFFFFF\" stroke=\"#2B1938\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 20.25C7.4 17.4 3 13.9 3 9.2 3 6.3 5.2 4 8 4c1.7 0 3.1.9 4 2.4.9-1.5 2.3-2.4 4-2.4 2.8 0 5 2.3 5 5.2 0 4.7-4.4 8.2-9 11.05Z\"/></svg></button></div>",
+      "css": ".ds-decide { display: flex; gap: 20px; align-items: center; } .ds-icbtn { border: 3px solid #2B1938; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 120ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 120ms; } .ds-icbtn-pass { width: 64px; height: 64px; background: #C3B1FF; box-shadow: 4px 4px 0 #2B1938; } .ds-icbtn-like { width: 76px; height: 76px; background: #FF9EC7; box-shadow: 6px 6px 0 #2B1938; } .ds-icbtn-pass:active { transform: translate(4px,4px) scale(0.94); box-shadow: none; } .ds-icbtn-like:active { transform: translate(6px,6px) scale(0.94); box-shadow: none; } .ds-icbtn:hover { transform: translate(1px,1px); } .ds-icbtn:focus-visible { outline: 3px solid #5B3FC4; outline-offset: 3px; }"
+    },
+    {
+      "name": "Pegatina de etiqueta",
+      "kind": "chip",
+      "refersTo": "tag-sticker-neutral",
+      "description": "TagSticker troquelada: contorno tinta + anillo blanco + impresión pastel + sombra dura. Neutral con «+», elegida menta con ♥, en común limonada con destello.",
+      "html": "<div class=\"ds-tags\"><button class=\"ds-tag\" aria-pressed=\"false\"><span class=\"ds-tag-print ds-tag-neutral\">🎵 Música <span aria-hidden=\"true\">+</span></span></button><button class=\"ds-tag\" aria-pressed=\"true\"><span class=\"ds-tag-print ds-tag-selected\">✈️ Viajar <svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"#FF9EC7\" stroke=\"#2B1938\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 20.25C7.4 17.4 3 13.9 3 9.2 3 6.3 5.2 4 8 4c1.7 0 3.1.9 4 2.4.9-1.5 2.3-2.4 4-2.4 2.8 0 5 2.3 5 5.2 0 4.7-4.4 8.2-9 11.05Z\"/></svg></span></button><span class=\"ds-tag\"><span class=\"ds-tag-print ds-tag-shared\">🍳 Cocinar <svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"#FFFFFF\" stroke=\"#2B1938\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 2.75Q13.7 10.3 21.25 12Q13.7 13.7 12 21.25Q10.3 13.7 2.75 12Q10.3 10.3 12 2.75Z\"/></svg></span></span></div>",
+      "css": ".ds-tags { display: flex; flex-wrap: wrap; gap: 8px; } .ds-tag { display: inline-flex; padding: 4px; background: #FFFFFF; border: 2.5px solid #2B1938; border-radius: 999px; box-shadow: 2px 2px 0 #2B1938; cursor: pointer; font: inherit; transition: transform 220ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 120ms; } .ds-tag:hover { transform: rotate(-2deg) scale(1.04); } .ds-tag:active { transform: translate(2px,2px); box-shadow: none; } .ds-tag:focus-visible { outline: 3px solid #5B3FC4; outline-offset: 3px; } .ds-tag-print { display: inline-flex; align-items: center; gap: 6px; height: 27px; padding: 0 8px; border-radius: 999px; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 800; font-size: 15px; color: #2B1938; } .ds-tag-neutral { background: #DCEFFF; } .ds-tag-selected { background: #8FE3C0; } .ds-tag-shared { background: #FFE680; }"
+    },
+    {
+      "name": "Insignia",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "Pill del vocabulario cerrado (Nuevo · Te dio like · En común · Un poco más lejos): contorno fino y sombra de roce.",
+      "html": "<span class=\"ds-pill ds-pill-fresa\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"#2B1938\" stroke=\"#2B1938\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 20.25C7.4 17.4 3 13.9 3 9.2 3 6.3 5.2 4 8 4c1.7 0 3.1.9 4 2.4.9-1.5 2.3-2.4 4-2.4 2.8 0 5 2.3 5 5.2 0 4.7-4.4 8.2-9 11.05Z\"/></svg>Te dio like</span>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border: 2px solid #2B1938; border-radius: 999px; box-shadow: 1px 1px 0 #2B1938; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 800; font-size: 13px; color: #2B1938; } .ds-pill-fresa { background: #FF9EC7; }"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "text-field",
+      "description": "Contorno tinta 2.5, radio 16, sombra 2; al enfocar se resalta en limonada suave y la sombra crece a 4.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Tu nombre</span><input class=\"ds-input\" placeholder=\"¿Cómo te llamas?\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; font-family: 'M PLUS Rounded 1c', sans-serif; } .ds-field-label { font-weight: 800; font-size: 15px; color: #2B1938; } .ds-input { height: 52px; padding: 0 16px; background: #FFFFFF; border: 2.5px solid #2B1938; border-radius: 16px; box-shadow: 2px 2px 0 #2B1938; font: 500 16px/23px 'M PLUS Rounded 1c', sans-serif; color: #2B1938; outline: none; transition: background 220ms, box-shadow 220ms cubic-bezier(0.22,1,0.36,1); } .ds-input::placeholder { color: #7A6690; } .ds-input:hover { background: #FFFDF3; } .ds-input:focus-visible { background: #FFF5C7; box-shadow: 4px 4px 0 #2B1938; }"
+    },
+    {
+      "name": "Tarjeta",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Card: cara blanca, contorno 3, radio 22, sombra md; nunca anidada.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Lo que no hacemos</h3><p class=\"ds-card-body\">Sin anuncios, suscripciones, boosts ni super likes.</p></div>",
+      "css": ".ds-card { background: #FFFFFF; border: 3px solid #2B1938; border-radius: 22px; box-shadow: 4px 4px 0 #2B1938; padding: 20px; max-width: 320px; } .ds-card-title { margin: 0 0 8px; font-family: 'Mochiy Pop One', sans-serif; font-weight: 400; font-size: 19px; line-height: 25px; color: #2B1938; } .ds-card-body { margin: 0; font: 500 16px/23px 'M PLUS Rounded 1c', sans-serif; color: #6B5680; }"
+    },
+    {
+      "name": "Barra de pestañas",
+      "kind": "nav",
+      "refersTo": "tab-bar",
+      "description": "Pastilla flotante blanca; la pestaña activa es una pegatina pastel con contorno y sombra sm.",
+      "html": "<nav class=\"ds-tabbar\"><a class=\"ds-tab ds-tab-active\" href=\"#\" aria-current=\"page\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#2B1938\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 5h10v14H5z\"/></svg><span>Descubrir</span></a><a class=\"ds-tab\" href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#2B1938\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 20.25C7.4 17.4 3 13.9 3 9.2 3 6.3 5.2 4 8 4c1.7 0 3.1.9 4 2.4.9-1.5 2.3-2.4 4-2.4 2.8 0 5 2.3 5 5.2 0 4.7-4.4 8.2-9 11.05Z\"/></svg><span>Likes</span></a><a class=\"ds-tab\" href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#2B1938\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 5h16v11H9l-5 4z\"/></svg><span>Chats</span></a></nav>",
+      "css": ".ds-tabbar { display: flex; align-items: center; gap: 4px; height: 72px; padding: 0 5px; background: #FFFFFF; border: 3px solid #2B1938; border-radius: 999px; box-shadow: 4px 4px 0 #2B1938; max-width: 360px; box-sizing: border-box; } .ds-tab { flex: 1; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: #2B1938; font: 700 11px 'M PLUS Rounded 1c', sans-serif; border-radius: 18px; transition: transform 220ms cubic-bezier(0.34,1.56,0.64,1); } .ds-tab:hover { transform: translateY(-1px); } .ds-tab:focus-visible { outline: 3px solid #5B3FC4; outline-offset: 2px; } .ds-tab-active { background: #FF9EC7; border: 2.5px solid #2B1938; box-shadow: 2px 2px 0 #2B1938; font-weight: 800; transform: rotate(-3deg); }"
+    },
+    {
+      "name": "Sello de goma",
+      "kind": "custom",
+      "refersTo": "stamp",
+      "description": "Stamp: doble borde (interior discontinuo), Mochiy en mayúsculas, color Deep del pastel; cae de golpe (1.6 → 1).",
+      "html": "<span class=\"ds-stamp\"><span class=\"ds-stamp-inner\">¡ME GUSTA!</span></span>",
+      "css": ".ds-stamp { display: inline-block; padding: 3px; border: 3.5px solid #B0154F; border-radius: 10px; background: rgba(255,255,255,0.8); transform: rotate(-8deg); } .ds-stamp-inner { display: block; padding: 3px 12px; border: 2px dashed #B0154F; border-radius: 6px; font-family: 'Mochiy Pop One', sans-serif; font-size: 26px; line-height: 31px; letter-spacing: 1px; text-transform: uppercase; color: #B0154F; } .ds-stamp:hover { transform: rotate(-8deg) scale(1.04); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La libreta kawaii",
+    "overview": "Cherry es una libreta de papelería japonesa en la que cada perfil es una página de scrapbook: fotos pegadas con washi tape dentro de marcos polaroid, etiquetas convertidas en pegatinas troqueladas, notas adhesivas con la bio escrita a mano y un sello «¡ME GUSTA!» que cae de golpe. El mundo es neobrutalismo kawaii: papel de puntos rosado, tinta ciruela para contornos, texto y sombras duras sin desenfoque, y rellenos pastel muy vivos que siempre llevan tinta encima. La app tiene que sentirse física: las cosas se despegan, se pegan, se sellan y se hunden en su sombra al pulsarlas.\n\nLa densidad es de app móvil tranquila: una columna, márgenes de 24, grupos separados por aire y por líneas discontinuas de libreta, nunca por cajas dentro de cajas. La decoración (washi, destellos, Mochi, pegatinas) vive en los bordes de las piezas y jamás tapa caras ni texto. Cada pantalla tiene como mucho un momento de autor (un sello, una celebración, una nota girada); el resto es movimiento de sistema.\n\nSe rechaza de forma explícita el arquetipo del sector: foto a sangre con degradado oscuro encima e interfaz blanca genérica. La foto siempre va enmarcada (polaroid, recorte con contorno), nunca a sangre. El documento de marca en prosa, con la voz y los principios completos, está en [`docs/08-identidad-visual.md`](../../docs/08-identidad-visual.md); este fichero es el registro canónico de tokens y reglas visuales. La API de cada pieza vive en `src/shared/ui/DS_READY.md` y `src/shared/ui/art/README.md`.",
+    "keyCharacteristics": [
+      "Papel de puntos rosado a pantalla completa como fondo de todo (teñido con el `Soft` de un pastel en cada paso del onboarding).",
+      "Contorno de tinta de 2–3 px en todo lo que es una pieza; sombra dura de tinta desplazada hacia abajo a la derecha.",
+      "Pastel de relleno, tinta de texto: nunca texto blanco sobre pastel.",
+      "Tres voces tipográficas: Mochiy Pop One (titulares), M PLUS Rounded 1c (interfaz), Yomogi (notas a mano).",
+      "Pegatinas, washi, sellos, notas adhesivas y polaroids como gramática de componentes, no como adorno suelto.",
+      "Mochi, la mascota, acompaña vacíos, esperas, errores y celebraciones."
+    ],
+    "rules": [
+      {
+        "name": "The Tinta Encima Rule",
+        "body": "Sobre cualquier relleno pastel el texto y los iconos son `ink` (o el `Deep` del mismo pastel). Nunca texto blanco sobre pastel. El único texto blanco del sistema va sobre `ink`.",
+        "section": "colors"
+      },
+      {
+        "name": "The Three Tones Rule",
+        "body": "Un pastel se usa en sus tres tonos con papel fijo: base = relleno de piezas, `Soft` = fondos y estados suaves, `Deep` = texto de acento. No se inventan tonos intermedios salvo el tinte neutral de las pegatinas de categoría (mezcla 45 % entre `Soft` y base, calculada en el componente).",
+        "section": "colors"
+      },
+      {
+        "name": "The Color Is Never Alone Rule",
+        "body": "El estado nunca depende solo del color: la pegatina elegida lleva ♥, la bloqueada rayas + ✕ + tachado, la compartida un destello, la no disponible contorno a trazos; los errores sacuden el campo y se anuncian.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tokens Only Rule",
+        "body": "Todo color sale de `useTheme()`. Los únicos hex sueltos admitidos son las marcas de terceros (el logotipo de Google y el botón de Apple en el login).",
+        "section": "colors"
+      },
+      {
+        "name": "The Family Is The Weight Rule",
+        "body": "Nunca `fontWeight` con estas fuentes: en Android cada peso es otra familia. Se elige la variante de `<Text variant=…>` (o la familia del peso); el `fontWeight` del frontmatter es solo descriptivo.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mochiy Speaks Once Rule",
+        "body": "Mochiy es para titulares, números y sellos. El texto de interfaz, los botones y las pegatinas van en M PLUS Rounded; Yomogi se reserva para lo que «escribe a mano» una persona.",
+        "section": "typography"
+      },
+      {
+        "name": "The No Kicker Rule",
+        "body": "No hay antetítulos en versalitas encima de los titulares: una sección se encabeza con su título en Mochiy (y, en categorías, con su tira de washi del pastel de la categoría), nunca con una etiqueta gris en mayúsculas.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Elevation Rule",
+        "body": "Una pieza, una sombra dura. Nunca se suma una sombra difusa, un brillo o un segundo contorno para «levantar» algo más.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Sink Into Shadow Rule",
+        "body": "Todo lo pulsable con sombra se hunde hacia ella al tocarlo (`PressableScale` o los componentes del sistema); no se reinventa el feedback de pulsación con opacidad.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** poner tinta (`ink`) encima de cualquier pastel y reservar el texto blanco para el botón `ink`.",
+      "**Do** dar a cada pieza un contorno de tinta de 2, 2.5 o 3 según su tamaño y una única sombra dura de `xs` a `lg`.",
+      "**Do** hundir hacia la sombra todo lo pulsable (`PressableScale`, `Button`, `IconButton`, `Surface onPress`).",
+      "**Do** enmarcar las fotos (polaroid o recorte con contorno) y dejar la decoración en los bordes.",
+      "**Do** usar solo el set SVG de `Icon`; el emoji aparece únicamente como contenido de las etiquetas y del texto que escribe la gente.",
+      "**Do** acompañar cada estado de color con forma, icono o trazo (♥, ✕ + rayas, destello, trazo discontinuo).",
+      "**Do** usar `<Text variant=…>` para todo texto y Yomogi solo a 18 o más.",
+      "**Do** diseñar siempre carga, vacío (con Mochi), error (qué pasó + reintentar), deshabilitado y pulsado."
+    ],
+    "donts": [
+      "**Don't** usar foto a sangre con degradado oscuro encima ni interfaz blanca genérica: es el arquetipo del sector que Cherry rechaza.",
+      "**Don't** poner texto blanco sobre pastel.",
+      "**Don't** usar sombras difusas, glassmorphism decorativo, texto con degradado o una segunda elevación sobre una pieza.",
+      "**Don't** poner antetítulos en versalitas grises encima de los titulares.",
+      "**Don't** anidar tarjetas ni usar pastillas para contenedores: la pastilla es de botones, pegatinas e insignias.",
+      "**Don't** usar emoji como iconos de interfaz ni fuentes de iconos.",
+      "**Don't** escribir hex sueltos ni `fontWeight`; todo sale de `useTheme()` y de las variantes de texto.",
+      "**Don't** dibujar ilustración con trazo «sketch», garabatos o texturas de ruido: la ilustración es geométrica y nítida.",
+      "**Don't** repartir efectos por toda la pantalla: un momento de autor por pantalla."
+    ]
+  }
+}

@@ -16,7 +16,7 @@ Internet → Cloudflare (proxied, Full strict)
         → contenedor cherry (:4000, nunca publicado directo)
 
 GitHub Actions → tests → imagen ghcr.io/<repo>-backend:<sha> → API Dokploy (solo VPN)
-cherry-backend → PostgreSQL 192.168.0.142:5432 · fotos → R2 (UE)
+cherry-backend → PostgreSQL 192.168.0.142:5432 · fotos → volumen local (UPLOADS_DIR) o R2 (UE)
 ```
 
 | VM | IP | Contenido |
@@ -63,10 +63,27 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 
 - Aplicación tipo Docker, imagen `ghcr.io/<repo>-backend:<sha>` (nunca `latest`).
 - Env del servicio (variables obligatorias en prod; el release no arranca sin ellas):
-  `SECRET_KEY_BASE`, `AUTH_ACCESS_TOKEN_SALT`, `AUTH_REFRESH_TOKEN_SALT`, `MESSAGE_ENCRYPTION_KEY`, `DATABASE_URL` (`ecto://cherry:…@192.168.0.142/cherry_prod`), `PHX_HOST`, y `DATABASE_SSL=false`, `POOL_SIZE=20`. Secretos generados con `openssl rand -base64 48` y guardados en Bitwarden.
+  `SECRET_KEY_BASE`, `AUTH_ACCESS_TOKEN_SALT`, `AUTH_REFRESH_TOKEN_SALT`, `MESSAGE_ENCRYPTION_KEY`, `DATABASE_URL` (`ecto://cherry:…@192.168.0.142/cherry_prod`), `PHX_HOST`, `STORAGE_ADAPTER` (+ `UPLOADS_DIR` si es `local`), y `DATABASE_SSL=false`, `POOL_SIZE=20`, `PUBLIC_BASE_URL=https://<dominio>`. Secretos generados con `openssl rand -base64 48` y guardados en Bitwarden. Plantilla: [`env.example`](env.example).
 - **Swarm (Advanced → Swarm)**: health check `curl -fsS localhost:4000/healthz`; UpdateConfig `order: stop-first`, `Parallelism 1`, `FailureAction rollback`, `Monitor 30s`; RollbackConfig también `order: stop-first` y `Parallelism 1`; `RestartPolicy on-failure`. **1 réplica**, sin distribución Erlang. Se acepta downtime de segundos o minutos y reconexión de los clientes; no se solapan versiones atendiendo chats.
-- Comando/entrypoint objetivo: `sh -c "bin/migrate && exec bin/server"` (migraciones al arrancar, lock activo). Verificar el override en Dokploy: el CMD actual de la imagen solo ejecuta `/app/bin/server`.
+- Comando por defecto de la imagen: `sh -c "/app/bin/migrate && exec /app/bin/server"` (migraciones + catálogo de etiquetas idempotente al arrancar, lock activo; `bin/seed` solo sincroniza el catálogo). No hace falta override en Dokploy; si había uno con solo `/app/bin/server`, quitarlo. Healthcheck en `${PORT:-4000}` con 60 s de arranque.
 - Dominio en Dokploy con HTTPS **desactivado** (TLS termina en Cloudflare/Caddy; Traefik escucha HTTP).
+
+### 3.1 Almacenamiento de fotos (D-2026-09-29)
+
+`STORAGE_ADAPTER` es obligatorio en prod (el release no arranca sin él). El contrato del móvil es el mismo con ambos.
+
+**`local` (sin S3, recomendado para las primeras pruebas):**
+
+- La subida es un `PUT /api/uploads/<token>` firmado que escribe en `UPLOADS_DIR/pending/` (no público); al completarla la foto pasa a `UPLOADS_DIR/photos/<clave aleatoria>.<ext>` (sin id de perfil) y Phoenix la sirve en `https://<dominio>/uploads/...` con `Cache-Control: public, max-age=86400` (Cloudflare la cachea por extensión). Las fotos antiguas en `profiles/` se siguen sirviendo. No hace falta abrir nada más que el propio backend.
+- `UPLOADS_DIR` debe ser un **volumen persistente** (no el sistema de ficheros del contenedor: se perdería en cada despliegue). En Dokploy: *Advanced → Volumes* → bind mount del host `/var/lib/cherry/uploads` en el contenedor en la misma ruta. El contenedor corre como `nobody`:
+  ```bash
+  sudo mkdir -p /var/lib/cherry/uploads && sudo chown 65534:65534 /var/lib/cherry/uploads
+  ```
+- Definir `PUBLIC_BASE_URL=https://<dominio>` para que las URLs absolutas no dependan de las cabeceras `Host` que lleguen tras Caddy/Traefik.
+- Tamaño: máx. 2 MB por foto (`UPLOAD_MAX_BYTES`) × 4 fotos por perfil; vigilar el disco de 40 GB de la VM o montar un disco/volumen dedicado. Ni Caddy ni Traefik limitan el cuerpo por defecto; Cloudflare (plan gratuito) admite hasta 100 MB.
+- Backups: `UPLOADS_DIR` forma parte del estado junto con PostgreSQL (ver §8). Borrar una foto o la cuenta borra el fichero; un barrido cada 10 min elimina subidas abandonadas. Como la caché es de un día, una foto borrada puede seguir en la CDN hasta 24 h (purgar en Cloudflare si urge).
+
+**`r2` (Cloudflare R2 o S3 compatible):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL_BASE` y `R2_ACCOUNT_ID` (R2) o `S3_ENDPOINT` + `S3_REGION` (MinIO, Garage…, direccionamiento path-style). El CORS del bucket debe permitir `PUT` con `Content-Type` e `If-None-Match`. Sin credenciales, `upload-intent` responde 503 `storage_not_configured`. Cambiar de `local` a `r2` no migra fotos: las antiguas siguen sirviéndose desde `/uploads` mientras exista el directorio. Las credenciales R2/S3 necesitan lectura, escritura **y borrado** de objetos: `complete` copia `pending/<key>` a `<key>` y borra el original, y el barrido (`Cherry.Dating.PhotoStorageSweeper`, cada 10 min) borra fotos borradas y subidas abandonadas. Con bucket público, añade una regla de ciclo de vida que borre el prefijo `pending/` a 1 día (defensa en profundidad: esas claves son aleatorias y el barrido ya las borra). Con `local` en prod, `PUBLIC_BASE_URL` es obligatoria (las URLs de fotos no se construyen con la cabecera `Host`).
 
 ## 4. Publicación: cadena de confianza de IP real
 
@@ -96,6 +113,7 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 ## 6. Migraciones: reglas
 
 - Lock de migraciones **siempre activo**; para índices concurrentes solo `@disable_ddl_transaction true` (nunca `@disable_migration_lock true`).
+- **Índices sobre `swipe_actions` (sin `CONCURRENTLY`, decisión consciente):** `20260929113715_discovery_ranking_v2` (`swipe_actions_likes_received_index`) y `20260929154521_add_dislikes_received_index` (`swipe_actions_dislikes_received_index`) crean índices normales, que bloquean escrituras en `swipe_actions` mientras se construyen. Con el lock de migraciones por tabla (el de Ecto por defecto), `CREATE INDEX CONCURRENTLY` espera a la transacción que sostiene el lock y se queda colgado, y desactivar el lock está prohibido arriba; además el primero va mezclado con otro DDL en la misma migración. En el primer despliegue la tabla está vacía o es pequeña y, con `stop-first`, nadie escribe durante la migración, así que el coste es nulo. **Si algún día hace falta un índice sobre una tabla grande ya en producción:** cambiar el repo a `migration_lock: :pg_advisory_lock` (el lock sigue activo, pero sin transacción abierta) y crear el índice en su propia migración con `@disable_ddl_transaction true` y `concurrently: true`; si se interrumpe, borrar el índice `INVALID` y reintentar.
 - Expand/contract sin excepciones: nullable → dual-write → backfill por lotes → NOT NULL/índice → quitar lectura vieja → drop en el release siguiente. Nunca rename/DROP en el mismo release.
 - Con `stop-first`, primero se detiene la app anterior y después se migra y arranca la nueva. El downtime incluye migraciones y arranque. Un fallo puede prolongarlo hasta el rollback de imagen o la intervención manual; no se garantiza servicio durante una migración fallida. Mantener compatibilidad con N−1.
 - Incluir en el primer despliegue las migraciones `20260905170000` (desactivar cuentas ya borradas) y `20260905170100` (caducar intents de fotos antiguos pendientes). El rollback de imagen no deshace sus cambios de datos.
@@ -113,6 +131,7 @@ curl -sSL https://dokploy.com/install.sh | bash   # instala Docker + Swarm 1 nod
 Las primeras pruebas con datos ficticios regenerables pueden empezar con los backups y R2 todavía pendientes. Antes de conservar datos reales:
 
 - [ ] Configurar backup consistente de PostgreSQL al SATA de ~1 TB. **PGDATA tiene `backup=0` y no entra en vzdump**; copiar solo la VM es insuficiente.
+- [ ] Con `STORAGE_ADAPTER=local`, incluir `UPLOADS_DIR` (`/var/lib/cherry/uploads`) en los mismos destinos de backup que PostgreSQL.
 - [ ] Configurar también destino R2 como copia externa. Objetivo: una copia/punto recuperable cada hora o cada varias horas, reteniendo unas diez recientes. Fijar intervalo y política final según volumen/duración; no hay un cron ni una retención implementados todavía.
 - [ ] Definir con pgBackRest la combinación de completas, diferenciales/incrementales y WAL. Mantener todas las dependencias de cada punto recuperable; diez puntos no equivalen a diez objetos S3. Diez copias horarias cubren aproximadamente diez horas.
 - [ ] Guardar claves de backups y `MESSAGE_ENCRYPTION_KEY` fuera del servidor; comprobar una restauración desde la copia local y otra desde R2.

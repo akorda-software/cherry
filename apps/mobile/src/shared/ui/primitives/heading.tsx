@@ -1,27 +1,30 @@
-import type { PropsWithChildren } from "react";
-import { StyleSheet, Text as RNText } from "react-native";
+import type { ReactNode } from "react";
+import type { StyleProp, TextStyle } from "react-native";
 
-import { useTheme } from "../providers/theme-provider";
+import type { TextVariant } from "../tokens/primitives/typography";
+import { Text, type TextProps } from "./text";
 
-interface HeadingProps extends PropsWithChildren {
+const variantByLevel: Record<1 | 2 | 3 | 4, TextVariant> = {
+  1: "title1",
+  2: "title2",
+  3: "title3",
+  4: "bodyStrong"
+};
+
+export interface HeadingProps extends Omit<TextProps, "variant" | "role"> {
+  /** 1 → title1, 2 → title2, 3 → title3, 4 → bodyStrong. */
   level?: 1 | 2 | 3 | 4;
-  style?: any;
+  /** Fuerza una variante concreta manteniendo el rol de encabezado. */
+  variant?: TextVariant;
+  style?: StyleProp<TextStyle>;
+  children?: ReactNode;
 }
 
-export function Heading({ children, level = 2, style, ...props }: HeadingProps) {
-  const theme = useTheme();
-
-  const styles = StyleSheet.create({
-    heading: {
-      color: theme.semantic.text.default,
-      fontSize: level === 1 ? theme.primitives.typography.title.fontSize : theme.primitives.typography.subtitle.fontSize,
-      fontWeight: (level === 1 ? theme.primitives.typography.title.fontWeight : theme.primitives.typography.subtitle.fontWeight) as any,
-    },
-  });
-
+/** Encabezado accesible (rol heading + nivel) sobre las variantes de título. */
+export function Heading({ children, level = 2, variant, ...props }: HeadingProps) {
   return (
-    <RNText role="heading" aria-level={level} style={[styles.heading, style]} {...props}>
+    <Text role="heading" aria-level={level} variant={variant ?? variantByLevel[level]} {...props}>
       {children}
-    </RNText>
+    </Text>
   );
 }

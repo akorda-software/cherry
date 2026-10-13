@@ -5,7 +5,7 @@ defmodule CherryWeb.Controllers.Api.DiscoveryPaginationTest do
 
   test "pages traverse equal timestamps without duplicates or missing candidates" do
     user = user_fixture()
-    complete_profile_fixture(user)
+    viewer = complete_profile_fixture(user)
     candidates = for _ <- 1..7, do: complete_profile_fixture(user_fixture())
     timestamp = DateTime.utc_now() |> DateTime.truncate(:second)
 
@@ -23,8 +23,10 @@ defmodule CherryWeb.Controllers.Api.DiscoveryPaginationTest do
     assert length(ids) == 7
     assert MapSet.new(ids) == MapSet.new(candidates, & &1.id)
 
-    assert Enum.map(profiles, & &1["score"]) ==
-             Enum.sort(Enum.map(profiles, & &1["score"]), :desc)
+    # Ranking order (the score itself is never exposed: it leaks private signals).
+    refute Enum.any?(profiles, &Map.has_key?(&1, "score"))
+    {:ok, %{profiles: rows}} = Dating.discovery_feed(viewer.id, limit: 100)
+    assert ids == Enum.map(rows, & &1.id)
   end
 
   test "a cursor cannot be reused by another viewer" do

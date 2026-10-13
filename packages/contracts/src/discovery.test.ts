@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DISCOVERY_UNDO_WINDOW_MINUTES,
   type DiscoveryActionResponse,
   type DiscoveryFeedPage,
   type DiscoveryProfileCard,
+  type DiscoveryUndoResponse,
   createDiscoveryFeedPage,
   createDiscoveryProfileCard
 } from "./discovery";
@@ -14,13 +16,39 @@ const card: DiscoveryProfileCard = {
   age: 30,
   bio: "Hello world",
   gender: "woman",
-  whatIAmLookingFor: "relationship",
+  lookingFor: ["relationship"],
   distanceLabel: "Cerca de ti",
   distanceKmApprox: 2,
-  score: 88,
   sharedTagsCount: 3,
   photoUrl: "https://example.com/photo1.jpg",
-  photoCount: 2
+  photoCount: 2,
+  photos: [
+    { id: "photo-1", url: "https://example.com/photo1.jpg", position: 1 },
+    { id: "photo-2", url: "https://example.com/photo2.jpg", position: 2 }
+  ],
+  tags: [
+    {
+      id: "tag-1",
+      slug: "hiking",
+      label: "Senderismo",
+      category: "active",
+      sortOrder: 1,
+      emoji: "🥾",
+      shared: true
+    },
+    {
+      id: "tag-2",
+      slug: "cats",
+      label: "Gatos",
+      category: "pets",
+      sortOrder: 2,
+      emoji: null,
+      shared: false
+    }
+  ],
+  likedYou: false,
+  isNewcomer: true,
+  beyondPreferredDistance: false
 };
 
 describe("createDiscoveryProfileCard", () => {
@@ -29,6 +57,23 @@ describe("createDiscoveryProfileCard", () => {
 
     expect(copy).toEqual(card);
     expect(copy).not.toBe(card);
+  });
+
+  it("deep-copies photos and tags so callers can mutate them safely", () => {
+    const copy = createDiscoveryProfileCard(card);
+
+    expect(copy.photos).toEqual(card.photos);
+    expect(copy.photos).not.toBe(card.photos);
+    expect(copy.photos[0]).not.toBe(card.photos[0]);
+    expect(copy.tags[0]).not.toBe(card.tags[0]);
+    expect(copy.tags.filter((tag) => tag.shared)).toHaveLength(1);
+  });
+
+  it("allows cards without distance outside the feed", () => {
+    const copy = createDiscoveryProfileCard({ ...card, distanceLabel: null, distanceKmApprox: null });
+
+    expect(copy.distanceLabel).toBeNull();
+    expect(copy.distanceKmApprox).toBeNull();
   });
 
   it("keeps null photo urls for profiles without a photo", () => {
@@ -69,13 +114,34 @@ describe("DiscoveryActionResponse", () => {
       matchCreated: true,
       match: {
         id: "match-1",
+        conversationId: "conversation-1",
         matchedAt: "2026-06-17T00:00:00Z",
-        expiresAt: "2026-06-24T00:00:00Z",
-        otherProfile: { id: "profile-2", displayName: "Ada", age: 30 }
+        expiresAt: "2026-07-17T00:00:00Z",
+        otherProfile: {
+          id: "profile-2",
+          displayName: "Ada",
+          age: 30,
+          photoUrl: "https://example.com/photo1.jpg"
+        }
       }
     };
 
     expect(noMatch.matchCreated).toBe(false);
     expect(match.matchCreated).toBe(true);
+
+    if (match.matchCreated) {
+      expect(match.match.conversationId).toBe("conversation-1");
+      expect(match.match.otherProfile.photoUrl).toContain("https://");
+    }
+  });
+});
+
+describe("DiscoveryUndoResponse", () => {
+  it("returns the restored card", () => {
+    const response: DiscoveryUndoResponse = { undone: true, profile: card };
+
+    expect(response.undone).toBe(true);
+    expect(response.profile.id).toBe("profile-1");
+    expect(DISCOVERY_UNDO_WINDOW_MINUTES).toBe(10);
   });
 });

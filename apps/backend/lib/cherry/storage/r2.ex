@@ -1,13 +1,38 @@
 defmodule Cherry.Storage.R2 do
-  @moduledoc false
+  @moduledoc """
+  Almacenamiento en Cloudflare R2 o en cualquier servicio S3 compatible
+  (MinIO, Garage, Ceph RGW...).
+
+  El móvil sube directamente al bucket con una URL SigV4 prefirmada (path-style)
+  que firma `Content-Type` e `If-None-Match: *`, de modo que no puede
+  sobrescribir un objeto ya subido. `verify_upload/1` consulta el objeto por la
+  API autenticada (HEAD + lectura parcial condicionada por ETag); `promote/2`
+  lo copia de la zona de espera (`pending/`) a su clave definitiva y
+  `delete_object/1` borra objetos (fotos borradas, cuentas borradas, subidas
+  abandonadas).
+
+  Un bucket con acceso público expone también `pending/`: las claves son
+  aleatorias y el barrido las borra al caducar el intent, pero conviene añadir
+  una regla de ciclo de vida que borre `pending/` a 1 día (ver
+  `infra/deploy/README.md`).
+
+  Sin `:endpoint` se usa R2 (`https://<account_id>.r2.cloudflarestorage.com`,
+  región `auto`). Con `:endpoint` (env `S3_ENDPOINT`, p. ej.
+  `http://minio.lan:9000`) se usa ese servicio y `:region` (env `S3_REGION`).
+  """
+
+  @behaviour Cherry.Storage
+
+  alias Cherry.Storage
 
   @config_key __MODULE__
   @algorithm "AWS4-HMAC-SHA256"
-  @region "auto"
+  @default_region "auto"
   @service "s3"
   @signed_headers "content-type;host;if-none-match"
   @payload_hash "UNSIGNED-PAYLOAD"
 
+  @impl Cherry.Storage
   def upload_config(now \\ DateTime.utc_now()) do
     with {:ok, config} <- config(),
          {:ok, expires_at} <- expires_at(config, now) do
@@ -21,21 +46,20 @@ defmodule Cherry.Storage.R2 do
     end
   end
 
+  @impl Cherry.Storage
   def presign_put(storage_key, content_type, now \\ DateTime.utc_now()) do
     with {:ok, config} <- config(),
          {:ok, expires_at} <- expires_at(config, now) do
-      account_id = Keyword.fetch!(config, :account_id)
-      bucket_name = Keyword.fetch!(config, :bucket_name)
       access_key_id = Keyword.fetch!(config, :access_key_id)
       secret_access_key = Keyword.fetch!(config, :secret_access_key)
-      public_url_base = Keyword.fetch!(config, :public_url_base)
       ttl_seconds = Keyword.fetch!(config, :upload_url_ttl_seconds)
+      region = region(config)
+      endpoint = endpoint(config)
 
-      host = "#{account_id}.r2.cloudflarestorage.com"
-      canonical_uri = "/#{encode_path(bucket_name)}/#{encode_path(storage_key)}"
+      canonical_uri = object_path(config, endpoint, storage_key)
       amz_date = Calendar.strftime(now, "%Y%m%dT%H%M%SZ")
       date_scope = Calendar.strftime(now, "%Y%m%d")
-      credential_scope = "#{date_scope}/#{@region}/#{@service}/aws4_request"
+      credential_scope = "#{date_scope}/#{region}/#{@service}/aws4_request"
 
       query = [
         {"X-Amz-Algorithm", @algorithm},
@@ -46,7 +70,9 @@ defmodule Cherry.Storage.R2 do
       ]
 
       canonical_query = canonical_query_string(query)
-      canonical_headers = "content-type:#{content_type}\nhost:#{host}\nif-none-match:*\n"
+
+      canonical_headers =
+        "content-type:#{content_type}\nhost:#{endpoint.host_header}\nif-none-match:*\n"
 
       canonical_request =
         ["PUT", canonical_uri, canonical_query, canonical_headers, @signed_headers, @payload_hash]
@@ -58,18 +84,18 @@ defmodule Cherry.Storage.R2 do
 
       signature =
         secret_access_key
-        |> signing_key(date_scope)
+        |> signing_key(date_scope, region)
         |> hmac(string_to_sign)
         |> Base.encode16(case: :lower)
 
       upload_url =
-        "https://#{host}#{canonical_uri}?#{canonical_query}&X-Amz-Signature=#{signature}"
+        "#{endpoint.origin}#{canonical_uri}?#{canonical_query}&X-Amz-Signature=#{signature}"
 
       {:ok,
        %{
          storage_key: storage_key,
          upload_url: upload_url,
-         public_url: public_url(public_url_base, storage_key),
+         public_url: build_public_url(Keyword.fetch!(config, :public_url_base), storage_key),
          method: "PUT",
          headers: %{"Content-Type" => content_type, "If-None-Match" => "*"},
          expires_at: expires_at,
@@ -79,6 +105,7 @@ defmodule Cherry.Storage.R2 do
   end
 
   @doc "Checks the stored object's size, declared MIME and image signature before publishing it."
+  @impl Cherry.Storage
   def verify_upload(intent) do
     with {:ok, config} <- config(),
          {:ok, head} <- object_request(config, intent.storage_key, :head),
@@ -86,10 +113,14 @@ defmodule Cherry.Storage.R2 do
          [etag] <- Req.Response.get_header(head, "etag"),
          {:ok, sample} <-
            object_request(config, intent.storage_key, :get,
-             headers: [{"range", "bytes=0-31"}, {"if-match", etag}],
+             headers: [
+               {"range", "bytes=0-#{Storage.signature_sample_bytes() - 1}"},
+               {"if-match", etag}
+             ],
              into: &collect_sample/2
            ),
-         true <- sample.status == 206 and image_signature?(sample.body, intent.content_type) do
+         true <-
+           sample.status == 206 and Storage.image_signature?(sample.body, intent.content_type) do
       :ok
     else
       {:error, reason} -> {:error, reason}
@@ -98,15 +129,54 @@ defmodule Cherry.Storage.R2 do
     end
   end
 
+  @impl Cherry.Storage
+  def public_url(storage_key) do
+    with {:ok, config} <- config() do
+      {:ok, build_public_url(Keyword.fetch!(config, :public_url_base), storage_key)}
+    end
+  end
+
+  @doc "Server-side copy (`x-amz-copy-source`) followed by a delete of the source."
+  @impl Cherry.Storage
+  def promote(from_key, to_key) do
+    with {:ok, config} <- config(),
+         {:ok, _copy} <-
+           object_request(config, to_key, :put,
+             headers: [
+               {"x-amz-copy-source",
+                "/#{encode_path(config[:bucket_name])}/#{encode_path(from_key)}"}
+             ]
+           ) do
+      case object_request(config, from_key, :delete) do
+        {:ok, _deleted} -> :ok
+        # The copy is published; the sweeper removes the leftover later.
+        {:error, :upload_object_not_found} -> :ok
+        {:error, _reason} -> :ok
+      end
+    end
+  end
+
+  @impl Cherry.Storage
+  def delete_object(storage_key) do
+    with {:ok, config} <- config() do
+      case object_request(config, storage_key, :delete) do
+        {:ok, _response} -> :ok
+        {:error, :upload_object_not_found} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
   defp object_request(config, storage_key, method, opts \\ []) do
+    endpoint = endpoint(config)
+
     options = [
       method: method,
-      url:
-        "https://#{config[:account_id]}.r2.cloudflarestorage.com/#{encode_path(config[:bucket_name])}/#{encode_path(storage_key)}",
+      url: endpoint.origin <> object_path(config, endpoint, storage_key),
       aws_sigv4: [
         access_key_id: config[:access_key_id],
         secret_access_key: config[:secret_access_key],
-        region: @region,
+        region: region(config),
         service: @service
       ],
       retry: false,
@@ -121,7 +191,7 @@ defmodule Cherry.Storage.R2 do
            |> Keyword.merge(opts)
            |> Keyword.merge(Keyword.get(config, :request_options, []))
          ) do
-      {:ok, %{status: status} = response} when status in [200, 206] -> {:ok, response}
+      {:ok, %{status: status} = response} when status in [200, 204, 206] -> {:ok, response}
       {:ok, %{status: 404}} -> {:error, :upload_object_not_found}
       {:ok, %{status: 412}} -> {:error, :upload_object_changed}
       _ -> {:error, :storage_unavailable}
@@ -158,30 +228,20 @@ defmodule Cherry.Storage.R2 do
   defp collect_sample({:data, data}, {request, response}) do
     body = (response.body || "") <> data
 
-    if byte_size(body) <= 32 do
+    if byte_size(body) <= Storage.signature_sample_bytes() do
       {:cont, {request, %{response | body: body}}}
     else
       {:halt, {request, %{response | body: nil}}}
     end
   end
 
-  defp image_signature?(<<255, 216, 255, _::binary>>, "image/jpeg"), do: true
-  defp image_signature?(<<137, 80, 78, 71, 13, 10, 26, 10, _::binary>>, "image/png"), do: true
-
-  defp image_signature?(
-         <<"RIFF", _::binary-size(4), "WEBP", chunk::binary-size(4), _::binary>>,
-         "image/webp"
-       ),
-       do: chunk in ["VP8 ", "VP8L", "VP8X"]
-
-  defp image_signature?(_, _), do: false
-
   defp config do
     config = Application.get_env(:cherry, @config_key, [])
 
-    required = [:account_id, :access_key_id, :secret_access_key, :bucket_name, :public_url_base]
+    required = [:access_key_id, :secret_access_key, :bucket_name, :public_url_base]
 
-    if Enum.all?(required, &configured?(Keyword.get(config, &1))) do
+    if Enum.all?(required, &configured?(Keyword.get(config, &1))) and
+         (configured?(Keyword.get(config, :account_id)) or valid_endpoint?(config[:endpoint])) do
       {:ok,
        Keyword.merge(
          [
@@ -198,16 +258,57 @@ defmodule Cherry.Storage.R2 do
 
   defp configured?(value), do: is_binary(value) and String.trim(value) != ""
 
+  defp valid_endpoint?(value) do
+    configured?(value) and
+      match?(
+        %URI{scheme: scheme, host: host}
+        when scheme in ["http", "https"] and host not in [nil, ""],
+        URI.parse(String.trim(value))
+      )
+  end
+
+  # Base URL, Host header value and optional path prefix of the S3 API.
+  defp endpoint(config) do
+    if valid_endpoint?(config[:endpoint]) do
+      uri = URI.parse(String.trim(config[:endpoint]))
+      default_port = if uri.scheme == "http", do: 80, else: 443
+
+      host_header =
+        if uri.port in [nil, default_port], do: uri.host, else: "#{uri.host}:#{uri.port}"
+
+      %{
+        origin: "#{uri.scheme}://#{host_header}",
+        host_header: host_header,
+        base_path: String.trim_trailing(uri.path || "", "/")
+      }
+    else
+      host = "#{config[:account_id]}.r2.cloudflarestorage.com"
+      %{origin: "https://#{host}", host_header: host, base_path: ""}
+    end
+  end
+
+  defp region(config) do
+    case Keyword.get(config, :region) do
+      region when is_binary(region) and region != "" -> String.trim(region)
+      _unset -> @default_region
+    end
+  end
+
+  # Path-style addressing (`/<bucket>/<key>`) works on R2, MinIO and Garage.
+  defp object_path(config, endpoint, storage_key) do
+    "#{endpoint.base_path}/#{encode_path(config[:bucket_name])}/#{encode_path(storage_key)}"
+  end
+
   defp expires_at(config, now) do
     {:ok, DateTime.add(now, Keyword.fetch!(config, :upload_url_ttl_seconds), :second)}
   rescue
     _error -> {:error, :storage_not_configured}
   end
 
-  defp signing_key(secret_access_key, date_scope) do
+  defp signing_key(secret_access_key, date_scope, region) do
     ("AWS4" <> secret_access_key)
     |> hmac(date_scope)
-    |> hmac(@region)
+    |> hmac(region)
     |> hmac(@service)
     |> hmac("aws4_request")
   end
@@ -229,7 +330,7 @@ defmodule Cherry.Storage.R2 do
 
   defp uri_encode(value), do: URI.encode(to_string(value), &URI.char_unreserved?/1)
 
-  defp public_url(base, storage_key) do
+  defp build_public_url(base, storage_key) do
     String.trim_trailing(base, "/") <> "/" <> encode_path(storage_key)
   end
 end

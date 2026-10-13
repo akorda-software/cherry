@@ -29,7 +29,7 @@ defmodule Cherry.TestSupport.DatingFixtures do
             display_name: "Test User",
             birth_date: ~D[1995-01-15],
             gender: "man",
-            what_i_am_looking_for: "relationship",
+            looking_for: ["relationship"],
             bio: "This is a test bio that is long enough to pass validation rules.",
             is_complete: false,
             is_discoverable: true

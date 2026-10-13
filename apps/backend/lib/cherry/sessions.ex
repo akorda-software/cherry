@@ -47,12 +47,43 @@ defmodule Cherry.Sessions do
   end
 
   def refresh_session(plain_refresh_token) when is_binary(plain_refresh_token) do
-    token = get_refresh_token(plain_refresh_token)
+    token_hash = hash_refresh_token(plain_refresh_token)
 
+    Repo.transaction(fn ->
+      case Repo.one(
+             from(t in RefreshToken,
+               where: t.token_hash == ^token_hash,
+               select: %{id: t.id, session_family_id: t.session_family_id}
+             )
+           ) do
+        nil ->
+          {:error, :invalid_refresh_token}
+
+        token ->
+          # All rotations and revocations lock the family before touching its
+          # tokens. Re-read after waiting: another refresh may have rotated this
+          # token, or logout/account deletion may have revoked the family.
+          family =
+            Repo.one!(
+              from(s in SessionFamily,
+                where: s.id == ^token.session_family_id,
+                lock: "FOR UPDATE",
+                preload: [:user]
+              )
+            )
+
+          token = Repo.get!(RefreshToken, token.id)
+          refresh_locked_token(%{token | session_family: family})
+      end
+    end)
+    |> case do
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp refresh_locked_token(token) do
     cond do
-      is_nil(token) ->
-        {:error, :invalid_refresh_token}
-
       token.session_family.user.deleted_at != nil ->
         revoke_family(token.session_family_id)
         {:error, :account_deleted}
@@ -64,7 +95,7 @@ defmodule Cherry.Sessions do
       token.status == "revoked" or token.session_family.revoked_at != nil ->
         {:error, :session_revoked}
 
-      DateTime.compare(token.expires_at, now()) == :lt ->
+      DateTime.compare(token.expires_at, now()) != :gt ->
         revoke_family(token.session_family_id)
         {:error, :session_revoked}
 
@@ -202,11 +233,9 @@ defmodule Cherry.Sessions do
     Multi.new()
     |> Multi.update(
       :rotated_token,
-      RefreshToken.changeset(token, %{
+      Ecto.Changeset.change(token, %{
         status: "rotated",
-        rotated_at: current_time,
-        session_family: token.session_family,
-        parent_token: token.parent_token
+        rotated_at: current_time
       })
     )
     |> Multi.run(:replacement_token, fn repo, _changes ->
@@ -300,17 +329,25 @@ defmodule Cherry.Sessions do
   end
 
   defp revoke_family(session_family_id) do
-    revoked_at = now()
+    Repo.transaction(fn ->
+      revoked_at = now()
 
-    from(session_family in SessionFamily, where: session_family.id == ^session_family_id)
-    |> Repo.update_all(set: [revoked_at: revoked_at])
+      # The UPDATE takes the same family lock as refresh_session/1. Keeping both
+      # updates in this transaction prevents a replacement from escaping logout.
+      from(session_family in SessionFamily, where: session_family.id == ^session_family_id)
+      |> Repo.update_all(set: [revoked_at: revoked_at])
 
-    from(refresh_token in RefreshToken,
-      where: refresh_token.session_family_id == ^session_family_id
-    )
-    |> Repo.update_all(set: [status: "revoked", revoked_at: revoked_at])
+      from(refresh_token in RefreshToken,
+        where: refresh_token.session_family_id == ^session_family_id
+      )
+      |> Repo.update_all(set: [status: "revoked", revoked_at: revoked_at])
 
-    :ok
+      :ok
+    end)
+    |> case do
+      {:ok, :ok} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp hash_refresh_token(plain_refresh_token) do

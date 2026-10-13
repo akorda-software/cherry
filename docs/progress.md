@@ -33,30 +33,27 @@ Registro de avance del proyecto. Convención: una entrada por unidad de trabajo,
 - [x] Ubicación JSON lat/lng normalizada a rejilla 500 m
 - [x] Contratos de fotos upload-intent/complete, push-token, chat WS documentados
 
-## Fase 4 — App móvil dating (~ en curso)
+## Fase 4 — App móvil dating ✅ (2026-09-29)
 
 - [x] Bootstrap routing real contra `GET /api/bootstrap` (signed-out / onboarding / app)
-- [x] Onboarding parcial: perfil (nombre+fecha+género+intent), preferencias (interested-in+edad+distancia), bio, tags (+bloqueados) con stepper
-- [x] Discovery feed: grilla de cards, like/dislike optimista con rollback, modal de match
-- [x] Cliente API perfil/discovery en `mobile-shared` + DTOs en `contracts`
-- [ ] **Paso location**: permiso expo-location, `POST /api/me/location`, pantalla de remediación *(bloqueante: sin esto el onboarding no puede completarse)*
-- [ ] **Paso photos**: picker, compresión, upload-intent/complete a R2 *(bloqueante: ídem)*
-- [ ] Pantalla review + `POST /api/me/profile/complete`
-- [ ] Corregir resolver `nextOnboardingStep` → ruta (hoy mapea photos→bio y location→preferences)
-- [ ] Alinear payload de ubicación del cliente al contrato vigente
-- [ ] Matches: lista, expiración, unmatch
-- [ ] Chat: historial REST + WebSocket en vivo
-- [ ] Safety: block/report desde el feed; settings: pause/unpause/delete account
-- [ ] Tab matches + renombrar `home.tsx` → `discover.tsx`
+- [x] Sistema de diseño «Libreta kawaii» (tokens v2, fuentes, arte, movimiento) y armazón con pestañas Descubrir · Likes · Chats · Yo
+- [x] Onboarding en 11 pasos (nombre, cumpleaños, género, a quién, intención, fotos, etiquetas, bloqueadas, bio, ubicación, listo) con reanudación
+- [x] Descubrir en modo swipe y feed, perfil completo, filtros, deshacer y celebración de match
+- [x] Likes recibidos gratis con match al instante
+- [x] Chats: lista con matches nuevos, conversación REST + WebSocket con reconexión y lectura
+- [x] Seguridad: bloquear y reportar desde el perfil y el chat; deshacer match
+- [x] Yo y Ajustes: edición del perfil, pausa, cierre de sesión, borrado de cuenta y Acerca de
+- [x] Clientes API en `mobile-shared` + DTOs en `contracts` para toda la API social
 
 ## Fase 5 — Endurecimiento previo a lanzamiento [ ]
 
-- [ ] Push notifications (new match / new message) sobre el contrato ya implementado
+- [ ] Pruebas en dispositivo real (Android/iOS): login nativo, cámara, ubicación, hápticos, teclado, WebSocket
+- [ ] Push notifications en móvil (registro de token y recepción) sobre el envío ya implementado
+- [ ] Refresco y cambio de ubicación después del onboarding
 - [ ] Métricas de producto sobre `analytics_events`
-- [ ] Anti-abuso: rate limits de swipes y patrones de creación de cuentas
+- [ ] Anti-abuso: rate limits de swipes, login y creación de cuentas
 - [ ] Admin: revisión de reportes/usuarios (hoy solo funciones de contexto, sin rutas)
-- [ ] Decidir destino del campo `discovery_mode` (huérfano: migrado pero sin uso en el feed)
-- [ ] Pruebas E2E en dispositivo real (auth nativa, location, R2, WebSocket)
+- [ ] Purga de datos al borrar la cuenta
 
 ---
 
@@ -91,4 +88,11 @@ Referencia vigente: [arquitectura del servidor propio](../infra/arquitectura.md)
 - **2026-09-05** — Corregidos bloqueo en chat REST/WS (incluidos broadcasts pendientes), historial REST, desactivación de cuenta con revocación de sesiones/push y desconexión de sockets, paginación estable de discovery con scoring/límite SQL, y verificación de fotos en R2 con PUT condicional. Retirado el endpoint legacy de metadatos. Corregidos también reanudación del perfil y filtros/conteo de tags con UUID. Añadidas dos migraciones (desactivación de cuentas y caducidad de intents antiguos). Verificado en PostgreSQL/PostGIS local del proyecto, puerto 5510: **248 tests backend, 0 fallos**, **18 tests de contratos**, formato global y OpenAPI YAML válidos. Las pruebas HTTP de R2 usan respuestas simuladas; no se ha realizado despliegue ni prueba contra un bucket real.
 
 - **2026-09-05 — Infraestructura:** actualizada documentación con los acuerdos de operación inicial: `stop-first`, downtime aceptado, backups local + R2 pendientes (frecuencia de una a varias horas y unas diez copias como objetivo), ausencia de failover externo y espera al ventilador del PM1735 antes del despliegue/pruebas. Diferenciados los componentes existentes y los pasos de CI/Dokploy pendientes. No se han modificado servicios remotos ni configurado backups.
+
+- **2026-09-29** — Rediseño y ampliación completos (rama `feat/kawaii-overhaul`):
+  - **Backend:** ranking de discovery v2 (afinidad IDF, matriz de intención simétrica, filtros duros en ambas direcciones, ampliación de distancia, cursor estable), API social (likes recibidos, perfil público, resumen para contadores, estado de lectura), caducidad de match a 30 días, deshacer el último «no», almacenamiento local de fotos para self-hosting con zona de espera y borrado físico, catálogo de 52 etiquetas con emoji y datos de demo (`demo_seeds.exs`).
+  - **Seguridad y self-hosting:** una sola regla de visibilidad para feed, likes, perfil público y swipe; la puntuación ya no sale del servidor; ubicación solo lat/lng con límite de una por minuto; mensajes con orden estable al microsegundo; arranque de producción que rechaza configuración incompleta o secretos débiles; `bin/migrate` sincroniza el catálogo y `bin/seed`; dependencias actualizadas.
+  - **Móvil:** sistema de diseño «Libreta kawaii», onboarding en 11 pasos, Descubrir con swipe y feed, Likes, Chats en tiempo real, Yo, Ajustes y Acerca de; sesión robusta ante carreras entre cuentas; copy revisado.
+  - **Proyecto:** licencia AGPL-3.0 y guía de self-hosting (`docs/12-self-hosting.md`); documentación alineada con el código.
+  - Verificado: **384 tests backend**, **678 tests móvil**, **43 mobile-shared** y **23 contracts**, 0 fallos, typecheck limpio. Verificación manual solo en Expo Web; queda probar en dispositivo real (ver `11-deuda-tecnica-pendiente.md`).
 

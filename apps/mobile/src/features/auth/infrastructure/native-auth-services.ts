@@ -1,17 +1,18 @@
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Application from "expo-application";
-import * as SecureStore from "expo-secure-store";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import * as AppleAuthentication from "expo-apple-authentication";
 
 import { createAuthApi, createSessionApi, type HttpClient } from "@cherry/mobile-shared";
 import { createSecureSessionStorage } from "@cherry/mobile-shared";
+import { resolveSecureStore } from "../../../shared/storage";
 import { createGoogleNativeAdapter } from "../infrastructure/google-native-adapter";
 import { createAppleNativeAdapter } from "../infrastructure/apple-native-adapter";
 import { assembleAuthServices } from "../infrastructure/auth-assembly";
 import { createNativeDevice } from "../infrastructure/native-device";
 import type { SessionShellServices } from "../presentation";
+import { useSessionStore } from "../presentation/session-store";
 import type { DevicePlatform } from "@cherry/contracts";
 
 interface CreateNativeAuthServicesOptions {
@@ -77,7 +78,7 @@ export function createNativeAuthServices({
   const resolvedGoogleIosClientId = googleIosClientId ?? extra.googleIosClientId;
 
   const storage = createSecureSessionStorage({
-    secureStore: SecureStore,
+    secureStore: resolveSecureStore(),
     config: apiBaseUrl ? { apiBaseUrl } : undefined
   });
 
@@ -112,7 +113,12 @@ export function createNativeAuthServices({
     nativeApple,
     navigation: {
       goToSignedOut() {
-        // Navigation is handled by expo-router guards in the layout
+        // La sesión guardada ya no vale: cerramos sesión de verdad (dispara `onSignOut` y los
+        // guardas de expo-router llevan al login). Sin esto quedaría una sesión zombi.
+        const session = useSessionStore.getState();
+        if (session.status === "signed-in") {
+          void session.signOut();
+        }
       }
     }
   });

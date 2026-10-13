@@ -17,6 +17,7 @@ tags:
   - name: Safety
   - name: Settings
   - name: Push Notifications
+  - name: Verification
 paths:
   /api/auth/{provider}/callback:
     post:
@@ -44,6 +45,62 @@ paths:
                 $ref: '#/components/schemas/SessionResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/auth/dev/test-login:
+    post:
+      tags: [Auth]
+      summary: Dev-only login without native providers.
+      description: |
+        Only when `:enable_dev_test_login` is on (dev). An empty body logs in as the
+        shared test user; `email` logs in as that persona, creating it on first use
+        (`displayName` is only used on creation). `device` is optional and may be partial.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: demo@cherry.dev
+                displayName:
+                  type: string
+                  example: Lucía
+                device:
+                  type: object
+                  properties:
+                    installationId:
+                      type: string
+                    platform:
+                      type: string
+                      enum: [ios, android]
+                    deviceName:
+                      type: string
+      responses:
+        '201':
+          description: Session issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '403':
+          description: The account was deleted (`account_deleted`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Dev login disabled (`dev_test_login_disabled`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Invalid email (`invalid_email`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/session/refresh:
     post:
       tags: [Auth]
@@ -231,7 +288,11 @@ paths:
   /api/me/photos/upload-intent:
     post:
       tags: [Profile]
-      summary: Create a direct-to-R2 profile photo upload intent.
+      summary: Create a single-use profile photo upload intent.
+      description: |
+        `uploadUrl` depends on STORAGE_ADAPTER: local storage → `PUT /api/uploads/{token}`
+        (signed token, no bearer); R2/S3 → SigV4 presigned URL. Upload the raw body with
+        every returned header. All URLs are absolute.
       security:
         - bearerAuth: []
       requestBody:
@@ -248,7 +309,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PhotoUploadIntentResponse'
         '503':
-          description: R2 storage is not configured.
+          description: Photo storage is not configured (`storage_not_configured`).
           content:
             application/json:
               schema:
@@ -281,6 +342,100 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/me/photos/order:
+    put:
+      tags: [Profile]
+      summary: Reorder the active photos.
+      description: '`photoIds` must list every active photo exactly once; positions become 1..n.'
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [photoIds]
+              properties:
+                photoIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Active photos in their new order.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  photos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Photo'
+        '422':
+          description: Not a permutation of the active photos (`invalid_photo_ids`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/uploads/{token}:
+    put:
+      tags: [Profile]
+      summary: Local storage upload target (the `uploadUrl` of an intent).
+      description: |
+        Only with STORAGE_ADAPTER=local. No bearer: the signed token authorises one
+        storage key, content type, maximum size and expiry. Raw body (not multipart),
+        `Content-Type` must match the intent; objects are never overwritten.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+            example: '*'
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/webp:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '403':
+          description: Invalid or expired token (`upload_token_invalid`, `upload_token_expired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The instance does not use local storage.
+        '412':
+          description: The object already exists (`upload_already_exists`).
+        '413':
+          description: Body larger than the signed maximum (`upload_too_large`).
+        '415':
+          description: Content-Type differs from the intent (`upload_content_type_mismatch`).
+        '422':
+          description: Not a JPEG/PNG/WebP of the declared type (`upload_invalid_image`).
+        '503':
+          description: Storage unavailable (`storage_unavailable`).
   /api/me/photos/{id}:
     delete:
       tags: [Profile]
@@ -336,7 +491,7 @@ paths:
                     items:
                       $ref: '#/components/schemas/Tag'
         '422':
-          $ref: '#/components/responses/ValidationError'
+          $ref: '#/components/responses/TagSelectionError'
   /api/me/blocked-tags:
     get:
       tags: [Profile]
@@ -379,7 +534,7 @@ paths:
                     items:
                       $ref: '#/components/schemas/Tag'
         '422':
-          $ref: '#/components/responses/ValidationError'
+          $ref: '#/components/responses/TagSelectionError'
   /api/me/location:
     post:
       tags: [Profile]
@@ -447,6 +602,264 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/Ok'
+  /api/me/summary:
+    get:
+      tags: [Social]
+      summary: Badge counters (pending received likes, unseen new matches, unread conversations).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Activity summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitySummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/me/verification:
+    get:
+      tags: [Verification]
+      summary: Age verification status of the current user.
+      description: |
+        `required` mirrors the `age_verification_required` feature flag
+        (`AGE_VERIFICATION_REQUIRED`, off by default). When it is on, the social
+        API (discovery, profiles, likes, matches, conversations) answers 403
+        `age_verification_required` until the user is verified, and the profile
+        is not discoverable (pending verification, not paused). The same state is
+        in `GET /api/bootstrap` (`ageVerification`).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Verification status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgeVerificationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/me/verification/nfc:
+    post:
+      tags: [Verification]
+      summary: Verify age with an identity document read by NFC (DNI, TIE or passport).
+      description: |
+        The app reads DG1, DG2 and EF.SOD from the chip (PACE with the CAN, or
+        BAC/PACE with the MRZ for passports) and sends them in base64. The server
+        performs passive authentication against the trusted CSCA certificates,
+        checks the holder is 18 or older and stores only status, method, date and
+        a keyed fingerprint of the document (one document, one account). The data
+        groups are never stored nor logged. Limit: 5 attempts per hour and 10 per
+        day per user. A successful verification makes a pending profile
+        discoverable again unless the user paused it. A minor's document erases
+        the whole account (profile, photos, matches, messages, sessions and
+        attempts); nothing about the document is kept.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NfcVerificationRequest'
+      responses:
+        '200':
+          description: Verified (also when repeating with the same document).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgeVerificationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`verification_revoked`: a previous verification was revoked.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`document_already_used` (another account) or `already_verified` (with another document).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            `invalid_payload`; `underage` with `accountDeleted` (true: the account,
+            its profile, photos and sessions were erased; the app must log out);
+            `document_expired`; or `document_not_verified` with `reason`:
+            `malformed_sod`, `unsupported_algorithm`, `missing_document_signer`,
+            `invalid_signature`, `untrusted_certificate`, `certificate_expired`,
+            `data_group_mismatch`, `malformed_dg1`, `invalid_check_digit`,
+            `unsupported_document`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`too_many_attempts`; `retryAfter` (seconds) and the `Retry-After` header.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: '`verification_error` (unexpected server error; the document is not logged).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: '`age_verification_unavailable` (no DOCUMENT_FINGERPRINT_KEY configured).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/me/verification/provider:
+    post:
+      tags: [Verification]
+      summary: Start a selfie + document verification with the external provider (Didit).
+      description: |
+        Creates a Didit session for the current user and returns the URL of
+        Didit's hosted flow (selfie and photo of an identity card, residence
+        permit or passport), which the app opens in a browser. `callback` is
+        where Didit sends the browser back when the flow ends: the app's own
+        scheme (`cherry://...`) or `https://`; plain `http`, `file`,
+        `javascript`, `data` are refused. Didit returns the same session while
+        it has not started. Counts against the same attempt limit as NFC (5 per
+        hour, 10 per day). Then poll `POST /api/me/verification/provider/check`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderSessionRequest'
+      responses:
+        '201':
+          description: Session created (or reused).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`verification_revoked`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`already_verified`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`invalid_payload` (bad `callback`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`too_many_attempts`; `retryAfter` (seconds) and the `Retry-After` header.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: '`provider_error` (Didit failed or is unreachable).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: '`age_verification_unavailable` (no Didit credentials or no DOCUMENT_FINGERPRINT_KEY).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/me/verification/provider/check:
+    post:
+      tags: [Verification]
+      summary: Read the decision of a provider session.
+      description: |
+        Asks Didit for the decision of a session started by the current user
+        (another user's session is `session_not_found`). Not counted as an
+        attempt. `pending`: the user has not finished; `in_review`: Didit is
+        reviewing it manually (ask again later). When approved the server
+        checks the document kind (identity card, residence permit or
+        passport), that it is in force and that the holder is 18 or older, and
+        stores the same as NFC (method `provider`) with the same document
+        fingerprint, so one document is one account whatever the method. After
+        a final decision the session is erased at Didit (photos, selfie and
+        extracted data). A minor erases the whole account, as with NFC.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderCheckRequest'
+      responses:
+        '200':
+          description: Verified, pending or in review.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderCheckResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`verification_revoked`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`session_not_found` (unknown, erased or of another user).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`document_already_used` (another account) or `already_verified` (with another document).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: |
+            `invalid_payload` (`sessionId` is not a UUID); `underage` with
+            `accountDeleted` (the account was erased; the app must log out);
+            `document_expired`; `verification_declined` (Didit declined it);
+            `session_expired` (expired or abandoned: start a new one);
+            `unsupported_document` (not an identity card, residence permit or
+            passport).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: '`verification_error`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: '`provider_error` (Didit failed or is unreachable).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: '`age_verification_unavailable`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/discovery/feed:
     get:
       tags: [Discovery]
@@ -478,7 +891,11 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: Profile incomplete (onboarding hints) or paused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryForbiddenResponse'
   /api/discovery/actions:
     post:
       tags: [Discovery]
@@ -498,26 +915,117 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SwipeActionResponse'
+        '404':
+          description: Target does not exist or is not visible (`profile_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The viewer already swiped this profile (`already_swiped`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           $ref: '#/components/responses/ValidationError'
-  /api/matches:
-    get:
-      tags: [Matches]
-      summary: List active matches for the current profile.
+  /api/discovery/undo:
+    post:
+      tags: [Discovery]
+      summary: Undo the most recent swipe if it was a dislike less than 10 minutes old.
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Active matches.
+          description: The restored card.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UndoResponse'
+        '422':
+          description: Nothing to undo (`nothing_to_undo`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/profiles/{id}:
+    get:
+      tags: [Social]
+      summary: Public profile of another person (never coordinates).
+      description: Visible when there is no block in either direction, neither account is deleted and the profile is discoverable, has a live match with the viewer, or liked the viewer.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Public profile.
           content:
             application/json:
               schema:
                 type: object
                 properties:
+                  profile:
+                    $ref: '#/components/schemas/PublicProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/likes/received:
+    get:
+      tags: [Social]
+      summary: Pending likes received (free and visible), most recent first.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+            maximum: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Opaque signed cursor from nextCursor, scoped to the viewer, valid for 24 hours.
+      responses:
+        '200':
+          description: Received likes page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivedLikesPage'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/matches:
+    get:
+      tags: [Matches]
+      summary: List visible matches (active, not expired, no blocks, live accounts) by recent activity.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InboxLimit'
+        - $ref: '#/components/parameters/InboxCursor'
+      responses:
+        '200':
+          description: Visible matches with last message and unread count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [matches, nextCursor]
+                properties:
                   matches:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Match'
+                      $ref: '#/components/schemas/MatchSummary'
+                  nextCursor:
+                    type: string
+                    nullable: true
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/matches/{id}/unmatch:
     post:
       tags: [Matches]
@@ -531,12 +1039,17 @@ paths:
           $ref: '#/components/responses/Ok'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/conversations:
     get:
       tags: [Chat]
-      summary: List conversations for active matches.
+      summary: List conversations of visible matches (same rules and data as /api/matches).
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InboxLimit'
+        - $ref: '#/components/parameters/InboxCursor'
       responses:
         '200':
           description: Conversations.
@@ -544,11 +1057,38 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [conversations, nextCursor]
                 properties:
                   conversations:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Conversation'
+                      $ref: '#/components/schemas/ConversationSummary'
+                  nextCursor:
+                    type: string
+                    nullable: true
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/conversations/{id}/match:
+    get:
+      tags: [Matches, Chat]
+      summary: Get a visible match directly when opening its conversation from a notification.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Match and conversation header, with the same current visibility rules as the inbox.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [match]
+                properties:
+                  match:
+                    $ref: '#/components/schemas/MatchSummary'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/conversations/{id}/messages:
     get:
       tags: [Chat]
@@ -568,10 +1108,10 @@ paths:
           required: false
           schema:
             type: string
-            format: date-time
+            description: Opaque cursor from nextCursor (an ISO 8601 instant is still accepted).
       responses:
         '200':
-          description: Message history.
+          description: Message history, newest first.
           content:
             application/json:
               schema:
@@ -581,8 +1121,17 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Message'
+                  nextCursor:
+                    type: string
+                    nullable: true
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: Not a participant, or the conversation is no longer active.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     post:
       tags: [Chat]
       summary: Send a message via REST.
@@ -610,6 +1159,19 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/conversations/{id}/read:
+    post:
+      tags: [Chat]
+      summary: Mark the conversation as read up to now (participants only).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/users/{profile_id}/block:
     post:
       tags: [Safety]
@@ -626,6 +1188,8 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/Ok'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
   /api/users/{profile_id}/report:
@@ -654,6 +1218,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
 components:
@@ -663,6 +1229,20 @@ components:
       scheme: bearer
       bearerFormat: Phoenix.Token
   parameters:
+    InboxLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 100
+    InboxCursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+        description: Signed nextCursor scoped to the viewer, valid for one hour. Activity ordering uses the first page's reference instant; visibility is rechecked on every page.
     Id:
       name: id
       in: path
@@ -703,7 +1283,107 @@ components:
             oneOf:
               - $ref: '#/components/schemas/ErrorResponse'
               - $ref: '#/components/schemas/ValidationErrorResponse'
+    TagSelectionError:
+      description: |
+        `too_many_tags` / `too_many_blocked_tags`; `invalid_tags` (unknown, malformed or
+        inactive IDs) or `tag_conflict` (tag both positive and blocked), both with `tagIds`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: string
+                enum: [too_many_tags, too_many_blocked_tags, invalid_tags, tag_conflict]
+              tagIds:
+                type: array
+                items:
+                  type: string
   schemas:
+    AgeVerification:
+      type: object
+      required: [status, method, verifiedAt]
+      properties:
+        status:
+          type: string
+          enum: [unverified, verified, revoked]
+        method:
+          type: string
+          nullable: true
+          enum: [nfc_dni, nfc_passport, provider, eu_wallet, null]
+          description: '`nfc_dni` covers identity cards (DNI, and TIE/NIE).'
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+    AgeVerificationResponse:
+      type: object
+      required: [verification, required]
+      properties:
+        verification:
+          $ref: '#/components/schemas/AgeVerification'
+        required:
+          type: boolean
+          description: Whether verification is mandatory on this instance.
+        providerAvailable:
+          type: boolean
+          description: |
+            Whether selfie + document verification (Didit) is configured. Only in
+            `GET /api/me/verification`.
+    ProviderSessionRequest:
+      type: object
+      properties:
+        callback:
+          type: string
+          maxLength: 200
+          description: Where Didit sends the browser back (custom scheme or https).
+          example: cherry://verify/selfie
+    ProviderSessionResponse:
+      type: object
+      required: [sessionId, url]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        url:
+          type: string
+          description: Didit's hosted verification flow, to open in a browser.
+    ProviderCheckRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+    ProviderCheckResponse:
+      type: object
+      required: [result]
+      properties:
+        result:
+          type: string
+          enum: [verified, pending, in_review]
+        verification:
+          $ref: '#/components/schemas/AgeVerification'
+        required:
+          type: boolean
+          description: Only with `verified`.
+    NfcVerificationRequest:
+      type: object
+      required: [dg1, dg2, sod]
+      properties:
+        dg1:
+          type: string
+          format: byte
+          description: DG1 (MRZ) as read from the chip, base64. Max 1 KB decoded.
+        dg2:
+          type: string
+          format: byte
+          description: DG2 (facial image) as read from the chip, base64. Max 256 KB decoded.
+        sod:
+          type: string
+          format: byte
+          description: EF.SOD (Document Security Object), base64. Max 32 KB decoded.
     OkResponse:
       type: object
       required: [ok]
@@ -720,6 +1400,12 @@ components:
           example: profile_not_found
         reason:
           type: string
+        retryAfter:
+          type: integer
+          description: Seconds to wait (only with `too_many_attempts`).
+        accountDeleted:
+          type: boolean
+          description: Only with `underage`; true when the account was erased.
     ValidationErrorResponse:
       type: object
       required: [errors]
@@ -805,12 +1491,32 @@ components:
                 type: boolean
     BootstrapResponse:
       type: object
-      required: [user, profile]
+      required: [user, profile, ageVerification]
       properties:
         user:
           $ref: '#/components/schemas/User'
         profile:
           $ref: '#/components/schemas/ProfileState'
+        ageVerification:
+          $ref: '#/components/schemas/AgeVerificationState'
+    AgeVerificationState:
+      type: object
+      required: [required, status, providerAvailable]
+      description: |
+        While `required` is true and `status` is not `verified`, the profile is
+        pending verification: it can be edited but is not discoverable
+        (`isDiscoverable` false, distinct from `isPaused`) and the social API
+        answers 403 `age_verification_required`.
+      properties:
+        required:
+          type: boolean
+          description: Mirrors the `age_verification_required` feature flag (`AGE_VERIFICATION_REQUIRED`).
+        status:
+          type: string
+          enum: [unverified, verified, revoked]
+        providerAvailable:
+          type: boolean
+          description: Whether selfie + document verification (Didit) is configured.
     ProfileState:
       type: object
       required: [exists, isComplete, isDiscoverable, isPaused, onboardingRequired]
@@ -821,8 +1527,12 @@ components:
           type: boolean
         isDiscoverable:
           type: boolean
+          description: |
+            Shown to others: complete, not paused, not deleted and, while age
+            verification is required, verified.
         isPaused:
           type: boolean
+          description: Paused by the user (not set by a pending age verification).
         onboardingRequired:
           type: boolean
         nextOnboardingStep:
@@ -839,6 +1549,22 @@ components:
             - discovery_preferences
             - tags
             - location
+    RelationshipIntent:
+      type: string
+      enum: [relationship, casual, meet_people, go_with_the_flow]
+    LookingFor:
+      type: array
+      description: >-
+        «¿Qué buscas?»: intenciones elegidas, sin repetir y en orden canónico
+        (relationship, casual, meet_people, go_with_the_flow). Vacía solo en un
+        borrador sin contestar. Compatibilidad: dos personas encajan si algún
+        par (mía, suya) es compatible (cada intención con ella misma y con
+        go_with_the_flow, que encaja con todas; relationship y casual nunca se
+        cruzan). Simétrico.
+      maxItems: 4
+      uniqueItems: true
+      items:
+        $ref: '#/components/schemas/RelationshipIntent'
     Profile:
       type: object
       properties:
@@ -858,10 +1584,16 @@ components:
           type: string
           nullable: true
           enum: [man, woman, non_binary]
+        lookingFor:
+          $ref: '#/components/schemas/LookingFor'
         whatIAmLookingFor:
+          deprecated: true
           type: string
           nullable: true
           enum: [relationship, casual, meet_people, go_with_the_flow]
+          description: >-
+            Obsoleto: primera intención de `lookingFor` (orden canónico) o null.
+            Solo para versiones de la app anteriores a la elección múltiple.
         bio:
           type: string
           nullable: true
@@ -906,9 +1638,25 @@ components:
         gender:
           type: string
           enum: [man, woman, non_binary]
+        looking_for:
+          description: >-
+            «¿Qué buscas?»: 1–4 intenciones sin repetir (se guardan en orden
+            canónico). Por compatibilidad se acepta también una sola cadena
+            (lista de un elemento) y las claves antiguas `what_i_am_looking_for`
+            / `whatIAmLookingFor`. `null` deja el borrador sin contestar.
+          oneOf:
+            - type: array
+              minItems: 1
+              maxItems: 4
+              uniqueItems: true
+              items:
+                $ref: '#/components/schemas/RelationshipIntent'
+            - $ref: '#/components/schemas/RelationshipIntent'
+          nullable: true
         what_i_am_looking_for:
-          type: string
-          enum: [relationship, casual, meet_people, go_with_the_flow]
+          deprecated: true
+          description: Alias antiguo de `looking_for` (una sola intención).
+          $ref: '#/components/schemas/RelationshipIntent'
         bio:
           type: string
           minLength: 20
@@ -947,16 +1695,26 @@ components:
           type: boolean
         compatibleOnly:
           type: boolean
+        expandDistance:
+          type: boolean
+          description: Adds a later distance tier up to min(2×radius, radius+100 km) when the preferred radius runs dry.
     DiscoveryPreferenceRequest:
       type: object
+      description: Partial updates allowed; the merged result is validated (422 per field on error).
       required: [age_min, age_max, distance_km]
       properties:
         age_min:
           type: integer
+          minimum: 18
+          maximum: 100
         age_max:
           type: integer
+          minimum: 18
+          maximum: 100
+          description: Must be greater than or equal to age_min.
         distance_km:
           type: integer
+          enum: [10, 25, 50, 100, 999999]
         show_men:
           type: boolean
         show_women:
@@ -965,6 +1723,9 @@ components:
           type: boolean
         compatible_only:
           type: boolean
+        expand_distance:
+          type: boolean
+          default: true
     Photo:
       type: object
       properties:
@@ -1058,6 +1819,12 @@ components:
           type: string
         category:
           type: string
+        sortOrder:
+          type: integer
+        emoji:
+          type: string
+          nullable: true
+          example: 🎵
     TagIdsRequest:
       type: object
       required: [tag_ids]
@@ -1143,16 +1910,218 @@ components:
           type: string
         gender:
           type: string
+        lookingFor:
+          $ref: '#/components/schemas/LookingFor'
         whatIAmLookingFor:
+          deprecated: true
           type: string
+          nullable: true
+          description: Obsoleto, primera intención de `lookingFor`.
         distanceLabel:
           type: string
+          nullable: true
         distanceKmApprox:
           type: integer
+          nullable: true
         score:
           type: number
         sharedTagsCount:
           type: integer
+        photoUrl:
+          type: string
+          format: uri
+          nullable: true
+        photoCount:
+          type: integer
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhotoSummary'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfileTag'
+        likedYou:
+          type: boolean
+        isNewcomer:
+          type: boolean
+        beyondPreferredDistance:
+          type: boolean
+    PhotoSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        position:
+          type: integer
+    ProfileTag:
+      allOf:
+        - $ref: '#/components/schemas/Tag'
+        - type: object
+          properties:
+            emoji:
+              type: string
+              nullable: true
+            sortOrder:
+              type: integer
+            shared:
+              type: boolean
+              description: The viewer also has this positive tag.
+    DiscoveryForbiddenResponse:
+      type: object
+      required: [error, onboardingRequired]
+      properties:
+        error:
+          type: string
+          enum: [profile_incomplete, profile_paused]
+        reason:
+          type: string
+        onboardingRequired:
+          type: boolean
+        nextOnboardingStep:
+          type: string
+          nullable: true
+    UndoResponse:
+      type: object
+      properties:
+        undone:
+          type: boolean
+        profile:
+          $ref: '#/components/schemas/DiscoveryCard'
+    PublicProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        age:
+          type: integer
+        bio:
+          type: string
+          nullable: true
+        gender:
+          type: string
+        lookingFor:
+          $ref: '#/components/schemas/LookingFor'
+        whatIAmLookingFor:
+          deprecated: true
+          type: string
+          nullable: true
+          description: Obsoleto, primera intención de `lookingFor`.
+        distanceLabel:
+          type: string
+          nullable: true
+        distanceKmApprox:
+          type: integer
+          nullable: true
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhotoSummary'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfileTag'
+        likedYou:
+          type: boolean
+        youLiked:
+          type: boolean
+        matchId:
+          type: string
+          format: uuid
+          nullable: true
+        conversationId:
+          type: string
+          format: uuid
+          nullable: true
+        isNewcomer:
+          type: boolean
+    ReceivedLikesPage:
+      type: object
+      properties:
+        likes:
+          type: array
+          items:
+            type: object
+            properties:
+              likedAt:
+                type: string
+                format: date-time
+              profile:
+                $ref: '#/components/schemas/DiscoveryCard'
+        nextCursor:
+          type: string
+          nullable: true
+    ActivitySummary:
+      type: object
+      properties:
+        receivedLikesCount:
+          type: integer
+        newMatchesCount:
+          type: integer
+        unreadConversationsCount:
+          type: integer
+    MatchSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        matchedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        firstMessageAt:
+          type: string
+          format: date-time
+          nullable: true
+        otherProfile:
+          $ref: '#/components/schemas/ProfileSummary'
+        lastMessage:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Message'
+        unreadCount:
+          type: integer
+    ConversationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        matchedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        otherProfile:
+          $ref: '#/components/schemas/ProfileSummary'
+        lastMessage:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Message'
+        unreadCount:
+          type: integer
+        insertedAt:
+          type: string
+          format: date-time
     SwipeActionRequest:
       type: object
       required: [target_profile_id, action_type]
@@ -1179,6 +2148,9 @@ components:
         id:
           type: string
           format: uuid
+        conversationId:
+          type: string
+          format: uuid
         matchedAt:
           type: string
           format: date-time
@@ -1203,6 +2175,10 @@ components:
           nullable: true
         age:
           type: integer
+          nullable: true
+        photoUrl:
+          type: string
+          format: uri
           nullable: true
     Conversation:
       type: object
@@ -1249,9 +2225,11 @@ components:
       properties:
         reason:
           type: string
+          enum: [fake_profile, inappropriate_photos, harassment, spam, underage, offensive_bio, other]
         details:
           type: string
           nullable: true
+          maxLength: 1000
     ReportResponse:
       type: object
       properties:

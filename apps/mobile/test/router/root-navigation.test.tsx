@@ -13,7 +13,7 @@ describe("root navigation", () => {
     expect(await screen.findByText("redirect:/(public)/login")).toBeInTheDocument();
   });
 
-  it("redirects signed-in users from index to the canonical home tab", async () => {
+  it("redirects signed-in users from index to the canonical discover tab", async () => {
     renderRoute(<IndexRoute />, {
       services: {
         bootstrapSession: {
@@ -22,7 +22,7 @@ describe("root navigation", () => {
       }
     });
 
-    expect(await screen.findByText("redirect:/(app)/(tabs)/home")).toBeInTheDocument();
+    expect(await screen.findByText("redirect:/(app)/(tabs)/discover")).toBeInTheDocument();
   });
 
   it("redirects signed-in users with incomplete profiles to onboarding", async () => {

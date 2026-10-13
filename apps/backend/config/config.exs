@@ -11,6 +11,12 @@ config :cherry,
   ecto_repos: [Cherry.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+# Serialize index migrations across release replicas without wrapping concurrent
+# index creation in a transaction or taking an exclusive table lock.
+config :cherry, Cherry.Repo,
+  migration_lock: :pg_advisory_lock,
+  types: Cherry.PostgresTypes
+
 config :cherry, Cherry.Auth,
   access_token_ttl_seconds: 900,
   refresh_token_ttl_days: 30,
@@ -21,8 +27,20 @@ config :cherry, Cherry.Auth,
     apple: Cherry.Identity.Providers.Apple
   }
 
+# Photo storage (D-2026-09-29). The adapter is chosen per environment:
+# dev → local disk, test → R2 (tests stub it), prod → STORAGE_ADAPTER (required).
+config :cherry, Cherry.Storage, adapter: nil
+
+config :cherry, Cherry.Storage.Local,
+  uploads_dir: nil,
+  allowed_content_types: ["image/jpeg", "image/png", "image/webp"],
+  max_upload_bytes: 2_000_000,
+  upload_url_ttl_seconds: 600
+
 config :cherry, Cherry.Storage.R2,
   account_id: nil,
+  endpoint: nil,
+  region: nil,
   access_key_id: nil,
   secret_access_key: nil,
   bucket_name: nil,
@@ -31,10 +49,48 @@ config :cherry, Cherry.Storage.R2,
   max_upload_bytes: 2_000_000,
   upload_url_ttl_seconds: 600
 
+# Absolute base for media URLs stored as relative paths (local storage). Unset ⇒
+# the host of each request is used (runtime env PUBLIC_BASE_URL).
+config :cherry, :public_base_url, nil
+
+# Age verification (D-2026-10-09, docs/compliance/02-mayoria-de-edad.md).
+# fingerprint_key: DOCUMENT_FINGERPRINT_KEY (runtime). Without it the NFC
+# verification endpoint answers 503. Attempt limits: {max, window in seconds}.
+config :cherry, :age_verification,
+  fingerprint_key: nil,
+  minimum_age: 18,
+  attempt_limits: [{5, 3600}, {10, 86_400}]
+
+# External age verification method: selfie + document with Didit
+# (Cherry.Identity.Didit). api_key/workflow_id: DIDIT_API_KEY and
+# DIDIT_WORKFLOW_ID (runtime); without them POST /api/me/verification/provider
+# answers 503. allow_sandbox: accept decisions of Didit's sandbox (made-up
+# documents); only dev and test.
+config :cherry, :didit,
+  api_key: nil,
+  workflow_id: nil,
+  base_url: "https://verification.didit.me",
+  allow_sandbox: false
+
+# Trusted CSCA certificates for passive authentication. `paths` defaults to the
+# release's priv/csca (Spanish CSCAs); CSCA_PATHS replaces it at runtime.
+config :cherry, Cherry.Identity.Document.TrustStore, certificates: []
+
+# A match without messages expires after this many days (D-2026-09-29).
+config :cherry, :match_expiry_days, 30
+
 config :cherry, :expo_push,
   base_url: "https://exp.host",
   access_token: nil,
   receive_timeout_ms: 5_000
+
+config :cherry, Oban,
+  repo: Cherry.Repo,
+  queues: [push: 4],
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 86_400},
+    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(5)}
+  ]
 
 # Configure the endpoint
 config :cherry, CherryWeb.Endpoint,
@@ -51,6 +107,10 @@ config :cherry, CherryWeb.Endpoint,
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
+
+# Never log identity documents (age verification) nor credentials. Keys that
+# contain any of these strings are replaced by [FILTERED] in request logs.
+config :phoenix, :filter_parameters, ["password", "dg1", "dg2", "sod", "can", "mrz"]
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason

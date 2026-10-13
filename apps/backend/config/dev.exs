@@ -3,9 +3,14 @@ import Config
 # Enable dev-only endpoints (test login, etc.)
 config :cherry, :enable_dev_test_login, true
 
-# Relax profile completeness rules in dev so onboarding can finish without
-# uploading photos or setting a location (those features are not wired yet).
-config :cherry, :strict_profile_completion, false
+# Same completeness rules as production: photos (local storage) and location
+# work in dev, so onboarding must prove them end to end.
+config :cherry, :strict_profile_completion, true
+
+# Photos on local disk, served at /uploads (override with STORAGE_ADAPTER /
+# UPLOADS_DIR). The directory is gitignored.
+config :cherry, Cherry.Storage, adapter: Cherry.Storage.Local
+config :cherry, Cherry.Storage.Local, uploads_dir: Path.expand("../priv/uploads", __DIR__)
 
 # Configure your database
 config :cherry, Cherry.Repo,
@@ -91,3 +96,10 @@ config :phoenix_live_view,
   debug_attributes: true,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
+
+# Age verification: log public metadata of the Document Signer certificate when
+# a real document is rejected (never document data). See AgeVerifications.
+config :cherry, :age_verification, diagnostics: true
+
+# Didit's sandbox keys are used in development: accept its made-up decisions.
+config :cherry, :didit, allow_sandbox: true

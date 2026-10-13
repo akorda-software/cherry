@@ -13,7 +13,7 @@ Base modules:
 - Runtime config bootstrap from backend
 - Feature flags consumed inside the mobile tree
 
-The routes under `apps/mobile/app/(app)` — `home`, `user`, `settings` — are intentional placeholders: empty scaffolds that exercise the shell, navigation, and session wiring. Replace them with product-specific screens when building on top of the starter.
+In this repo the routes under `apps/mobile/app/(app)` are Cherry's product screens (Descubrir, Likes, Chats, Yo, settings…; see `docs/07-flujos-usuario.md`). When building another app on top of the starter, replace them with your own product screens.
 
 ## Production Readiness
 
@@ -21,12 +21,12 @@ This repo is a robust reusable starter, not a turnkey production deploy.
 
 Before shipping a real app on top of it, you still need to decide and wire:
 
-- CORS policy (no plug wired by default — native-only apps may not need it; web builds do)
-- Rate limiting on `/api/auth/:provider/callback` and `/api/session/refresh`
+- CORS policy (`CherryWeb.Plugs.Cors`, driven by `CORS_ALLOWED_ORIGINS`: any origin in dev, none elsewhere unless listed — native-only apps do not need it; web builds do)
+- Rate limiting on `/api/auth/:provider/callback` and `/api/session/refresh` (not implemented)
 - A real TLS termination story (the Endpoint forces SSL in prod; your infra needs to actually terminate it)
 - Real values for every env var flagged in the "Auth Setup Notes" section
 
-Runtime config refuses to boot in prod when required env vars are missing, so you'll get a loud failure rather than a silent fall-through to test credentials.
+Runtime config refuses to boot in prod when required env vars are missing or secrets are weak, so you'll get a loud failure rather than a silent fall-through to test credentials. Full self-hosting guide (Spanish): `docs/12-self-hosting.md`.
 
 ## Architecture Rules
 

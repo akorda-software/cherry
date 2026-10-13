@@ -117,6 +117,34 @@ defmodule CherryWeb.ChatChannelTest do
   end
 
   describe "send_message event" do
+    test "denied typing bursts also bound database permission checks", ctx do
+      {:ok, _, socket} = connect_and_join(ctx.token_a, ctx.conversation.id)
+
+      {:ok, _} =
+        Dating.block_profile(%{
+          actor_profile_id: ctx.profile_a.id,
+          target_profile_id: ctx.profile_b.id
+        })
+
+      handler_id = {__MODULE__, self()}
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:cherry, :repo, :query],
+          &__MODULE__.count_channel_query/4,
+          {self(), socket.channel_pid}
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      for _ <- 1..10, do: push(socket, "typing", %{})
+      :sys.get_state(socket.channel_pid)
+      assert_receive :channel_query
+      refute_receive :channel_query
+      refute_receive %Phoenix.Socket.Message{event: "typing"}
+    end
+
     test "an existing socket cannot send or type after either participant blocks", ctx do
       {:ok, _, socket_a} = connect_and_join(ctx.token_a, ctx.conversation.id)
       {:ok, _, socket_b} = connect_and_join(ctx.token_b, ctx.conversation.id)
@@ -235,6 +263,14 @@ defmodule CherryWeb.ChatChannelTest do
   end
 
   describe "typing event" do
+    test "bursts of typing are broadcast at most once per second", ctx do
+      {:ok, _, socket} = connect_and_join(ctx.token_a, ctx.conversation.id)
+      CherryWeb.Endpoint.subscribe("chat:#{ctx.conversation.id}")
+      for _ <- 1..10, do: push(socket, "typing", %{})
+      assert_receive %Phoenix.Socket.Broadcast{event: "typing"}
+      refute_receive %Phoenix.Socket.Broadcast{event: "typing"}
+    end
+
     test "broadcasts typing indicator to other participant", %{
       conversation: conversation,
       token_a: token_a,
@@ -255,6 +291,10 @@ defmodule CherryWeb.ChatChannelTest do
     end
   end
 
+  def count_channel_query(_event, _measurements, _metadata, {owner, channel_pid}) do
+    if self() == channel_pid, do: send(owner, :channel_query)
+  end
+
   defp connect_and_join(token, conversation_id) do
     {:ok, socket} = connect(UserSocket, %{"token" => "Bearer #{token}"})
     join(socket, "chat:#{conversation_id}")
@@ -269,7 +309,7 @@ defmodule CherryWeb.ChatChannelTest do
         display_name: "Test",
         birth_date: ~D[1995-01-15],
         gender: "man",
-        what_i_am_looking_for: "relationship",
+        looking_for: ["relationship"],
         bio: "This is a test bio that is long enough to pass validation rules.",
         is_discoverable: true
       })

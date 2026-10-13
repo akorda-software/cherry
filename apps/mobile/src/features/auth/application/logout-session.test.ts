@@ -55,4 +55,20 @@ describe("createLogoutSession", () => {
     expect(clear).toHaveBeenCalledOnce();
     expect(revoke).not.toHaveBeenCalled();
   });
+
+  it("revokes the rotated refresh token that is stored, not the stale one in memory", async () => {
+    const revoke = vi.fn(async () => undefined);
+    const service = createLogoutSession({
+      storage: {
+        read: async () => ({ ...session, refreshToken: "rotated-refresh" }),
+        write: async () => undefined,
+        clear: async () => undefined
+      },
+      sessionApi: { revoke }
+    });
+
+    await service.execute(session);
+
+    expect(revoke).toHaveBeenCalledWith("rotated-refresh");
+  });
 });

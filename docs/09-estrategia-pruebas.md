@@ -2,41 +2,75 @@
 
 ## Suites
 
-| Suite | Comando | Estado |
+Cifras de la última ejecución (2026-09-29), todas en verde:
+
+| Suite | Comando | Tests |
 |---|---|---|
-| Backend (ExUnit) | `pnpm test:backend` → `mix test` en `apps/backend` | 215 tests verdes |
-| Móvil (vitest + jsdom) | `pnpm --filter @cherry/mobile test` | 131 tests verdes |
-| Mobile-shared (vitest) | `pnpm --filter @cherry/mobile-shared test` | incluido en `test:mobile` |
-| Contracts (vitest) | `pnpm test:contracts` | 18 tests verdes |
+| Backend (ExUnit) | `pnpm test:backend` → `mix test` en `apps/backend` | 384 |
+| Móvil (vitest + jsdom) | `pnpm --filter @cherry/mobile test` | 678 (95 ficheros) |
+| Mobile-shared (vitest) | `pnpm --filter @cherry/mobile-shared test` | 43 |
+| Contracts (vitest) | `pnpm test:contracts` | 23 |
 
 `pnpm test:mobile` ejecuta: typecheck de mobile y mobile-shared → tests mobile-shared → tests mobile → tests contracts. `pnpm test` = móvil + backend.
 
 ## Entorno del backend
 
-Los tests requieren **PostgreSQL 17 + PostGIS** en `localhost:5432` (usuario/pass `postgres`, DB `cherry_test`; ver `config/test.exs`). El compose de `infra/` expone dev en el puerto 5510; para tests, levantar una instancia PostGIS en 5432 o ajustar config. `mix test` crea y migra la DB automáticamente.
+Sin variables, los tests usan **PostgreSQL 17 + PostGIS** en `localhost:5432` (usuario/pass `postgres`, DB `cherry_test`; ver `config/test.exs`). Con el PostGIS del compose de `infra/` (puerto 5510):
 
-Cobertura: umbral 90% configurado en `mix.exs`.
+```bash
+cd apps/backend
+TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_test mix test
+```
+
+`DATABASE_URL` solo se usa en tests si el nombre de la BD contiene `_test` (p. ej. `cherry_test_fix` para una copia aislada); si apunta a otra (p. ej. `cherry_dev` exportado en la shell), `mix test` se niega a arrancar en vez de machacarla. `mix test` crea y migra la DB automáticamente. Para correr la suite en paralelo con un servidor de desarrollo, usa otra BD y otro directorio de build: `TEST_DATABASE_URL=…/cherry_test_x MIX_BUILD_ROOT=_build_x mix test`.
+
+En CI (`.github/workflows/ci.yml`) el backend se prueba contra un servicio `postgis/postgis:17-3.5` en el puerto 5432.
+
+Cobertura: umbral 90 % configurado en `mix.exs` (`mix test --cover`).
 
 ## Qué se prueba
 
 ### Backend
-- Dominio dating completo (`dating_test.exs`): perfiles draft, completitud, discovery con filtros/scoring, swipes, matches, conversaciones.
-- Controllers API: profile, discovery, chat REST, push-token, tags.
-- Canal de chat: join rules, envío, broadcasts.
-- Auth: validación/expiración de tokens REST y WS, rotación y revocación por reuso.
+- Dominio dating (`dating_test.exs`, `discovery_test.exs`): perfiles draft, completitud, ranking v2 con sus filtros duros y puntuación, swipes, matches, conversaciones, caducidad.
+- Concurrencia real: dos likes simultáneos crean exactamente un match (`swipe_concurrency_test.exs`).
+- Controllers API: auth y login de desarrollo, sesión, config, bootstrap/safety/settings, perfil, fotos y etiquetas, subidas locales, discovery (paginación, ranking, deshacer), API social y visibilidad, matches y chat, push-token, etiquetas.
+- Canal de chat: reglas de join, envío, lectura y broadcasts.
+- Auth: validación/expiración de tokens REST y WS, rotación y revocación por reuso; proveedores Google/Apple.
+- Almacenamiento (local y R2 con respuestas simuladas), cifrado de mensajes, configuración de runtime y `Cherry.Release.seed/0`.
+- Verificación de edad: autenticación pasiva con una PKI sintética generada en los tests (`test/support/document_pki.ex`: CSCA → firmante → SOD, DG1/DG2 falsos) y con SOD firmados por `openssl cms` (`test/fixtures/document/`, regenerables con `generate.sh`): RSA PKCS#1 v1.5, RSASSA-PSS, ECDSA con curva nombrada y brainpool con parámetros explícitos, firma inválida, DG manipulado, cadena rota, certificados caducados, extensiones críticas, MRZ TD1/TD3 con dígitos de control (especímenes de ICAO 9303), menores, huella, límite de intentos, API y que los DG no salen en los logs. Los CSCA españoles de `priv/csca` se parsean y autoverifican. Nunca datos de documentos reales.
 
 ### Móvil
-- Routing: root navigation, private shell, onboarding resolver, runtime config.
-- Features: session manager (refresh/retry), auth providers y callbacks, discovery feed hook (optimismo + rollback), tag selection.
-- UI: contrato de tokens/tema, componentes.
+- Routing: navegación raíz, zona privada, cierre de sesión y runtime config (`test/router/*`).
+- Features (`src/features/**/*.test.ts`): sesión (refresh/retry), proveedores y callbacks de auth, onboarding (pasos, reanudación, preferencias, fecha de nacimiento), cola de discovery (optimismo, rollback, deshacer), likes, matches, chat (sesión de socket, mensajes), fotos, ubicación, seguridad, ajustes y pestaña Yo.
+- UI (`test/ui/*`): contrato de tokens/tema y componentes (botones, pegatinas, conmutador, campos, hojas, avisos, barra de pestañas).
+
+- Verificación (`src/features/verification`, `modules/document-nfc`): API JS del módulo NFC con el nativo simulado, máquina de estados del flujo y la pantalla de prueba con backend falso. La lectura real por NFC no se puede probar sin documento y móvil (`docs/compliance/02-nfc-pruebas-manana.md`).
 
 ### Contracts
-- Serialización/forma de los DTOs compartidos (session, auth, discovery).
+- Forma de los DTOs compartidos (session, auth, config, discovery y social).
 
 ## Mocks nativos
 
-`apps/mobile/test/mocks/` simula los módulos nativos usados (15 mocks) para jsdom: expo-secure-store, google-signin, expo-apple-authentication, datetimepicker, expo-image, flash-list, react-native, react-native-svg, expo-router (+drawer), expo-application, expo-device, expo-constants, expo-crypto, react-native-safe-area-context. Setup central en `test/setup.ts`.
+`apps/mobile/test/mocks/` simula los módulos nativos usados para jsdom (23 mocks): expo (sin módulos nativos: `requireOptionalNativeModule` devuelve `null`, como en web), expo-apple-authentication, expo-application, expo-constants, expo-crypto, expo-device, expo-font, expo-haptics, expo-image, expo-linear-gradient, expo-router (+drawer), expo-secure-store, expo-splash-screen, expo-status-bar, expo-system-ui, flash-list, google-signin, react-native, react-native-gesture-handler, react-native-reanimated, react-native-safe-area-context y react-native-svg. Setup central en `test/setup.ts`.
+
+## Verificación manual
+
+La app solo se ha verificado a mano en **Expo Web** (con capturas en `.impeccable/review/`, fuera de git). Los hápticos, la cámara, el teclado de Android, el login nativo con Google/Apple y el permiso de ubicación nativo no se han probado en un dispositivo real (ver `11-deuda-tecnica-pendiente.md`).
+
+## Datos de demo (solo dev)
+
+`mix run priv/repo/demo_seeds.exs` (con el PostGIS del compose: `DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_dev`; se niega a correr fuera de `MIX_ENV=dev` o contra una BD cuyo nombre no termine en `_dev`) crea un escenario realista para probar y capturar todas las pantallas: 53 perfiles sintéticos completos alrededor de Madrid (1–40 km, 20–45 años, hombres, mujeres y personas no binarias, intenciones y etiquetas variadas, 2–4 fotos) más dos cuentas principales:
+
+| Cuenta | Para qué |
+|---|---|
+| `demo@cherry.dev` (Lucía, 29, relación) | Feed con candidatos, 8 likes recibidos sin responder, 5 matches (2 sin mensajes, 3 conversaciones; dos con mensajes sin leer) y swipes hechos |
+| `demo2@cherry.dev` (Hugo, 33, «a ver qué pasa») | Perfil limpio sin interacciones: probar un match en directo entre dos sesiones (Lucía y Hugo se ven en el feed) |
+
+Se entra con `POST /api/auth/dev/test-login` y `{"email": "demo@cherry.dev"}`; cualquier persona sintética también (`<nombre>@demo.cherry.dev`). El script se niega a ejecutarse fuera de `MIX_ENV=dev`, es idempotente (re-ejecutarlo restaura el escenario: fotos, etiquetas e interacciones de las cuentas demo) y crea los mensajes con `Cherry.Dating.send_message/1`, así que quedan cifrados en reposo. Las fotos son URLs externas (retratos de i.pravatar.cc elegidos por género aparente y fotos de ambiente de picsum.photos); hace falta conexión para verlas.
 
 ## Huecos conocidos
 
-Sin tests de controller dedicados para bootstrap/safety/settings/match; sin tests de las pantallas de onboarding ni del resolver `stepToRoute`. Detalle en `11-deuda-tecnica-pendiente.md`.
+- Sin tests de renderizado de las pantallas de producto (onboarding, Descubrir, Likes, Chats, Yo): se prueban su dominio y sus stores, no las pantallas.
+- Sin pruebas E2E ni en dispositivo real.
+
+Detalle en `11-deuda-tecnica-pendiente.md`.

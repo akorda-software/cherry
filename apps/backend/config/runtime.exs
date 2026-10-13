@@ -48,7 +48,91 @@ end
 
 config :cherry, :app_version, System.get_env("APP_VERSION", "dev")
 
-config :cherry, CherryWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+config :cherry, :metrics_token, System.get_env("METRICS_TOKEN")
+
+positive_env = fn name, default, maximum ->
+  case Integer.parse(System.get_env(name, to_string(default))) do
+    {value, ""} when value > 0 and value <= maximum -> value
+    _ -> raise "#{name} must be an integer between 1 and #{maximum}"
+  end
+end
+
+# Concurrency is per node. Keep HTTP and database capacity available when Expo
+# slows down; increasing this requires measuring both its queue and the DB pool.
+config :cherry, Oban, queues: [push: positive_env.("PUSH_CONCURRENCY", 4, 32)]
+
+# The feed is an OLTP query. Its estimates can trigger tens of milliseconds of
+# JIT compilation for a shorter execution; keep this scoped to our connections.
+database_jit =
+  case System.get_env("DB_JIT", "false") do
+    "false" -> "off"
+    "true" -> "on"
+    _ -> raise "DB_JIT must be true or false"
+  end
+
+config :cherry, Cherry.Repo, parameters: [jit: database_jit]
+
+# En dev, DATABASE_URL (shell o .env) tiene prioridad sobre config/dev.exs para
+# poder apuntar al PostGIS del compose (localhost:5510) sin tocar código.
+if config_env() == :dev do
+  case System.get_env("DATABASE_URL") do
+    url when is_binary(url) and url != "" -> config :cherry, Cherry.Repo, url: url
+    _url -> :ok
+  end
+end
+
+port =
+  case Integer.parse(System.get_env("PORT", "4000") |> String.trim()) do
+    {port, ""} when port in 1..65_535 ->
+      port
+
+    _invalid ->
+      raise """
+      environment variable PORT is invalid: #{inspect(System.get_env("PORT"))}.
+      Use an integer between 1 and 65535 (default 4000).
+      """
+  end
+
+config :cherry, CherryWeb.Endpoint, http: [port: port]
+
+# Prod: every missing or weak required variable in a single error, so a fresh
+# install is fixed in one pass instead of one restart per variable.
+if config_env() == :prod do
+  env = fn name -> System.get_env(name, "") |> String.trim() end
+
+  placeholder? = fn value ->
+    String.downcase(value) in ["cambiar", "change", "changeme", "change_me"]
+  end
+
+  missing =
+    ~w(DATABASE_URL SECRET_KEY_BASE AUTH_ACCESS_TOKEN_SALT AUTH_REFRESH_TOKEN_SALT
+       MESSAGE_ENCRYPTION_KEY PHX_HOST STORAGE_ADAPTER)
+    |> Enum.filter(&(env.(&1) == ""))
+
+  weak =
+    [
+      {"SECRET_KEY_BASE", 64},
+      {"MESSAGE_ENCRYPTION_KEY", 32},
+      {"AUTH_ACCESS_TOKEN_SALT", 32},
+      {"AUTH_REFRESH_TOKEN_SALT", 32}
+    ]
+    |> Enum.reject(fn {name, _min} -> name in missing end)
+    |> Enum.filter(fn {name, min} ->
+      value = env.(name)
+      String.length(value) < min or placeholder?.(value)
+    end)
+
+  if missing != [] or weak != [] do
+    raise """
+    invalid production configuration.
+    #{Enum.map_join(missing, "", &"\n  - #{&1} is missing")}#{Enum.map_join(weak, "", fn {name, min} -> "\n  - #{name} is too weak (placeholder or shorter than #{min} characters)" end)}
+
+    Generate each secret with `mix phx.gen.secret` (64 characters) or
+    `openssl rand -base64 48`. PHX_HOST is the public host name of the API
+    (e.g. api.cherry.example); STORAGE_ADAPTER is local or r2.
+    """
+  end
+end
 
 split_csv_env = fn var, fallback ->
   System.get_env(var, fallback)
@@ -63,6 +147,17 @@ split_csv_env = fn var, fallback ->
       |> Enum.reject(&(&1 == ""))
   end
 end
+
+# CORS: solo para clientes web (Expo Web en dev, instancias self-hosted con web).
+# En dev se permite cualquier origen; fuera de dev, lista explícita separada por comas.
+cors_allowed_origins =
+  case System.get_env("CORS_ALLOWED_ORIGINS") do
+    nil -> if config_env() == :dev, do: :any, else: []
+    "*" -> :any
+    _value -> split_csv_env.("CORS_ALLOWED_ORIGINS", nil)
+  end
+
+config :cherry, :cors_allowed_origins, cors_allowed_origins
 
 if config_env() != :test do
   google_web_client_id = System.get_env("GOOGLE_WEB_CLIENT_ID")
@@ -105,20 +200,99 @@ config :cherry, Cherry.Identity.Providers.GoogleJwksCache,
 config :cherry, Cherry.Identity.Providers.AppleJwksCache,
   ttl_ms: String.to_integer(System.get_env("APPLE_JWKS_CACHE_TTL_MS", "600000"))
 
+# ── Almacenamiento de fotos (D-2026-09-29) ─────────────────────────────
+# STORAGE_ADAPTER=local|r2 (`s3` es alias de `r2`). dev: `local` por defecto
+# (config/dev.exs); test: lo fijan config/test.exs y los tests; prod: obligatorio.
+storage_adapter = System.get_env("STORAGE_ADAPTER", "") |> String.trim() |> String.downcase()
+uploads_dir = System.get_env("UPLOADS_DIR", "") |> String.trim()
+public_base_url = System.get_env("PUBLIC_BASE_URL", "") |> String.trim()
+
+if config_env() != :test do
+  case storage_adapter do
+    "" ->
+      if config_env() == :prod do
+        raise """
+        environment variable STORAGE_ADAPTER is missing.
+        Use "local" (photos on disk under UPLOADS_DIR, served at /uploads) or
+        "r2" (Cloudflare R2 or any S3-compatible service via S3_ENDPOINT).
+        """
+      end
+
+    "local" ->
+      config :cherry, Cherry.Storage, adapter: Cherry.Storage.Local
+
+    adapter when adapter in ["r2", "s3"] ->
+      config :cherry, Cherry.Storage, adapter: Cherry.Storage.R2
+
+    other ->
+      raise "invalid STORAGE_ADAPTER #{inspect(other)}: expected local, r2 or s3"
+  end
+
+  cond do
+    uploads_dir != "" ->
+      config :cherry, Cherry.Storage.Local, uploads_dir: uploads_dir
+
+    config_env() == :prod and storage_adapter == "local" ->
+      raise """
+      environment variable UPLOADS_DIR is required with STORAGE_ADAPTER=local.
+      Point it to a persistent volume (e.g. /var/lib/cherry/uploads) and back it up.
+      """
+
+    true ->
+      :ok
+  end
+
+  config :cherry, Cherry.Storage.Local,
+    max_upload_bytes: String.to_integer(System.get_env("UPLOAD_MAX_BYTES", "2000000")),
+    upload_url_ttl_seconds: String.to_integer(System.get_env("UPLOAD_URL_TTL_SECONDS", "600"))
+
+  # Base absoluta de las URLs de medios relativas (almacenamiento local), p. ej.
+  # https://api.cherry.example. Sin definir ⇒ se usa el host de cada petición,
+  # que el cliente controla (cabecera Host): en prod con `local` es obligatoria.
+  if config_env() == :prod and storage_adapter == "local" do
+    case URI.parse(public_base_url) do
+      %URI{scheme: scheme, host: host}
+      when scheme in ["http", "https"] and host not in [nil, ""] ->
+        :ok
+
+      _invalid ->
+        raise """
+        environment variable PUBLIC_BASE_URL is required with STORAGE_ADAPTER=local.
+        Set it to the public origin of the API (e.g. https://api.cherry.example):
+        upload and photo URLs are built from it instead of the request Host header.
+        """
+    end
+  end
+
+  if public_base_url != "", do: config(:cherry, :public_base_url, public_base_url)
+end
+
+s3_endpoint = System.get_env("S3_ENDPOINT", "") |> String.trim()
+
 config :cherry, Cherry.Storage.R2,
   account_id: System.get_env("R2_ACCOUNT_ID"),
+  # Endpoint S3 genérico (MinIO, Garage...). Vacío ⇒ R2 (<account_id>.r2.cloudflarestorage.com).
+  endpoint: if(s3_endpoint != "", do: s3_endpoint),
+  region: System.get_env("S3_REGION") || if(s3_endpoint != "", do: "us-east-1"),
   access_key_id: System.get_env("R2_ACCESS_KEY_ID"),
   secret_access_key: System.get_env("R2_SECRET_ACCESS_KEY"),
   bucket_name: System.get_env("R2_BUCKET_NAME"),
   public_url_base: System.get_env("R2_PUBLIC_URL_BASE"),
   allowed_content_types: ["image/jpeg", "image/png", "image/webp"],
-  max_upload_bytes: String.to_integer(System.get_env("R2_MAX_UPLOAD_BYTES", "2000000")),
-  upload_url_ttl_seconds: String.to_integer(System.get_env("R2_UPLOAD_URL_TTL_SECONDS", "600"))
+  max_upload_bytes:
+    String.to_integer(
+      System.get_env("R2_MAX_UPLOAD_BYTES") || System.get_env("UPLOAD_MAX_BYTES", "2000000")
+    ),
+  upload_url_ttl_seconds:
+    String.to_integer(
+      System.get_env("R2_UPLOAD_URL_TTL_SECONDS") ||
+        System.get_env("UPLOAD_URL_TTL_SECONDS", "600")
+    )
 
 config :cherry, :expo_push,
   base_url: System.get_env("EXPO_PUSH_BASE_URL", "https://exp.host"),
   access_token: System.get_env("EXPO_PUSH_ACCESS_TOKEN"),
-  receive_timeout_ms: String.to_integer(System.get_env("EXPO_PUSH_RECEIVE_TIMEOUT_MS", "5000"))
+  receive_timeout_ms: positive_env.("EXPO_PUSH_RECEIVE_TIMEOUT_MS", 5000, 15_000)
 
 # Cifrado en reposo de mensajes (D-2026-08-21).
 #
@@ -144,6 +318,76 @@ message_cipher_key =
   end
 
 config :cherry, :message_cipher, key: message_cipher_key
+
+# ── Verificación de edad (D-2026-10-09) ────────────────────────────────
+# DOCUMENT_FINGERPRINT_KEY: clave HMAC de la huella del documento (una persona,
+# una cuenta). Sin ella, POST /api/me/verification/nfc responde 503. No se puede
+# rotar: cambiarla deja huérfanas todas las huellas guardadas.
+# AGE_VERIFICATION_REQUIRED=true hace obligatoria la verificación (desactivada
+# por defecto). CSCA_PATHS: rutas separadas por comas con los CSCA de confianza.
+fingerprint_key = System.get_env("DOCUMENT_FINGERPRINT_KEY", "") |> String.trim()
+
+age_verification_required =
+  case System.get_env("AGE_VERIFICATION_REQUIRED", "false") |> String.trim() do
+    "true" -> true
+    "false" -> false
+    "" -> false
+    other -> raise "AGE_VERIFICATION_REQUIRED must be true or false, got #{inspect(other)}"
+  end
+
+fingerprint_key =
+  cond do
+    fingerprint_key != "" -> fingerprint_key
+    config_env() == :dev -> "__DEV_DOCUMENT_FINGERPRINT_KEY__"
+    true -> nil
+  end
+
+if config_env() == :prod do
+  cond do
+    fingerprint_key != nil and
+        (String.length(fingerprint_key) < 32 or
+           String.downcase(fingerprint_key) in ["cambiar", "change", "changeme", "change_me"]) ->
+      raise """
+      environment variable DOCUMENT_FINGERPRINT_KEY is too weak (placeholder or
+      shorter than 32 characters). Generate one with: mix phx.gen.secret
+      """
+
+    age_verification_required and fingerprint_key == nil ->
+      raise """
+      AGE_VERIFICATION_REQUIRED=true needs DOCUMENT_FINGERPRINT_KEY.
+      Generate one with: mix phx.gen.secret (and never change it afterwards).
+      """
+
+    true ->
+      :ok
+  end
+end
+
+# DIDIT_API_KEY y DIDIT_WORKFLOW_ID: verificación con selfie y documento (Didit).
+# Sin ellas, POST /api/me/verification/provider responde 503. DIDIT_WEBHOOK_SECRET
+# aún no se usa (en dev se consulta la decisión; producción necesitará el webhook
+# para las sesiones «In Review»).
+didit_env = fn name ->
+  case System.get_env(name, "") |> String.trim() do
+    "" -> nil
+    value -> value
+  end
+end
+
+if config_env() != :test do
+  config :cherry, :age_verification, fingerprint_key: fingerprint_key
+
+  config :cherry, :didit,
+    api_key: didit_env.("DIDIT_API_KEY"),
+    workflow_id: didit_env.("DIDIT_WORKFLOW_ID")
+
+  config :cherry, :features, age_verification_required: age_verification_required
+
+  case split_csv_env.("CSCA_PATHS", nil) do
+    [] -> :ok
+    paths -> config :cherry, Cherry.Identity.Document.TrustStore, paths: paths
+  end
+end
 
 if config_env() == :prod do
   access_token_salt =
@@ -178,7 +422,10 @@ if config_env() == :prod do
   config :cherry, Cherry.Repo,
     ssl: System.get_env("DATABASE_SSL", "true") == "true",
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+    pool_size: positive_env.("POOL_SIZE", 10, 1000),
+    queue_target: positive_env.("DB_QUEUE_TARGET_MS", 50, 60_000),
+    queue_interval: positive_env.("DB_QUEUE_INTERVAL_MS", 1000, 60_000),
+    timeout: positive_env.("DB_QUERY_TIMEOUT_MS", 15_000, 120_000),
     # For machines with several cores, consider starting multiple pools of `pool_size`
     # pool_count: 4,
     socket_options: maybe_ipv6
@@ -195,7 +442,10 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  # Required (checked above): URLs and force_ssl redirects are built from it.
+  host =
+    System.get_env("PHX_HOST") ||
+      raise "environment variable PHX_HOST is missing (e.g. api.cherry.example)"
 
   config :cherry, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 

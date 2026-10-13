@@ -1,51 +1,54 @@
-import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { Redirect } from "expo-router";
+import { useEffect, useRef } from "react";
+import { useNavigation } from "expo-router";
 
 import { useAppBootstrap } from "../../src/features/app-bootstrap";
+import {
+  loadProfileDraft,
+  loadTagCatalog,
+  type OnboardingStepKey,
+  resolveResumeStep,
+  stepsBefore,
+  useAccountIdentity,
+  useProfileCallApi
+} from "../../src/features/onboarding";
+import { LoadingScreen } from "../../src/shared/ui";
 
-function stepToRoute(step: string | null | undefined): string {
-  switch (step) {
-    case "name":
-    case "birth_date":
-    case "gender":
-    case "intent":
-      return "/(onboarding)/profile";
-    case "bio":
-    case "photos":
-      return "/(onboarding)/bio";
-    case "interested_in":
-    case "discovery_preferences":
-    case "location":
-      return "/(onboarding)/preferences";
-    case "tags":
-      return "/(onboarding)/tags";
-    default:
-      return "/(app)/(tabs)/home";
-  }
-}
-
+/**
+ * Reanudar: calcula el primer paso sin contestar a partir de `GET /api/me/profile`
+ * (fallback: `nextOnboardingStep` del bootstrap) y monta la pila con los pasos
+ * anteriores debajo, para que «atrás» funcione desde el primer momento.
+ */
 export default function OnboardingIndexRoute() {
+  const navigation = useNavigation();
+  const callApi = useProfileCallApi();
   const { state } = useAppBootstrap();
+  const { userId } = useAccountIdentity();
+  const started = useRef(false);
+  const hint = state.status === "ready" ? state.bootstrap.profile.nextOnboardingStep : null;
 
-  if (state.status === "loading" || state.status === "idle") {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (!userId || started.current) {
+      return;
+    }
 
-  if (state.status === "error") {
-    return <Redirect href="/(public)/login" />;
-  }
+    started.current = true;
+    // El catálogo de etiquetas se precarga en paralelo: el paso 7 aparece ya lleno.
+    void loadTagCatalog(callApi).catch(() => undefined);
 
-  if (!state.bootstrap.profile.onboardingRequired) {
-    return <Redirect href="/(app)/(tabs)/home" />;
-  }
+    void (async () => {
+      let target: OnboardingStepKey;
 
-  return <Redirect href={stepToRoute(state.bootstrap.profile.nextOnboardingStep)} />;
+      try {
+        const profile = await loadProfileDraft(callApi, userId, { force: true });
+        target = resolveResumeStep({ source: "profile", profile });
+      } catch {
+        target = resolveResumeStep({ source: "bootstrap", nextOnboardingStep: hint });
+      }
+
+      const routes = [...stepsBefore(target), target].map((name) => ({ name }));
+      navigation.reset({ index: routes.length - 1, routes } as never);
+    })();
+  }, [callApi, hint, navigation, userId]);
+
+  return <LoadingScreen message="Abriendo tu libreta…" testID="onboarding-resolving" />;
 }
-
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" }
-});

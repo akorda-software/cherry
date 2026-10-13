@@ -17,12 +17,23 @@ defmodule CherryWeb.Router do
   pipeline :authenticated_api do
     plug(:accepts, ["json"])
     plug(CherryWeb.Plugs.Authenticate)
+    plug(CherryWeb.Plugs.TrackActivity)
+  end
+
+  # Social surfaces: with AGE_VERIFICATION_REQUIRED=true (off by default) they
+  # need a verified age. Blocking and reporting stay outside on purpose.
+  pipeline :age_verified do
+    plug(CherryWeb.Plugs.RequireAgeVerification)
   end
 
   scope "/", CherryWeb do
     pipe_through(:browser)
 
     get("/", PageController, :home)
+  end
+
+  scope "/", CherryWeb do
+    get("/metrics", MetricsController, :show)
   end
 
   scope "/", CherryWeb do
@@ -43,6 +54,12 @@ defmodule CherryWeb.Router do
     get("/config", ConfigController, :show)
   end
 
+  # Local photo storage upload target: raw body, no Bearer (the signed token
+  # issued by the upload intent authorises the write). See Cherry.Storage.Local.
+  scope "/api", CherryWeb.Controllers.Api do
+    put("/uploads/:token", UploadController, :create)
+  end
+
   scope "/api", CherryWeb.Controllers.Api do
     pipe_through(:authenticated_api)
 
@@ -56,33 +73,54 @@ defmodule CherryWeb.Router do
     put("/profile", ProfileController, :update)
     post("/profile/complete", ProfileController, :complete)
 
-    get("/discovery-preferences", ProfileController, :show_discovery_preferences)
-    put("/discovery-preferences", ProfileController, :update_discovery_preferences)
+    get("/discovery-preferences", DiscoveryPreferenceController, :show)
+    put("/discovery-preferences", DiscoveryPreferenceController, :update)
 
-    get("/photos", ProfileController, :list_photos)
-    post("/photos/upload-intent", ProfileController, :create_photo_upload_intent)
-    post("/photos/complete", ProfileController, :complete_photo_upload)
-    delete("/photos/:id", ProfileController, :delete_photo)
+    get("/photos", ProfilePhotoController, :index)
+    post("/photos/upload-intent", ProfilePhotoController, :create_upload_intent)
+    post("/photos/complete", ProfilePhotoController, :complete_upload)
+    put("/photos/order", ProfilePhotoController, :reorder)
+    delete("/photos/:id", ProfilePhotoController, :delete)
 
-    get("/tags", ProfileController, :get_tags)
-    put("/tags", ProfileController, :set_tags)
+    get("/tags", ProfileTagController, :get_tags)
+    put("/tags", ProfileTagController, :set_tags)
 
-    get("/blocked-tags", ProfileController, :get_blocked_tags)
-    put("/blocked-tags", ProfileController, :set_blocked_tags)
+    get("/blocked-tags", ProfileTagController, :get_blocked_tags)
+    put("/blocked-tags", ProfileTagController, :set_blocked_tags)
 
-    post("/location", ProfileController, :update_location)
+    post("/location", ProfileLocationController, :update)
     post("/push-token", PushTokenController, :create)
 
     post("/pause", SettingsController, :pause)
     post("/unpause", SettingsController, :unpause)
     delete("/account", SettingsController, :delete_account)
+
+    get("/summary", ActivityController, :summary)
+
+    get("/verification", AgeVerificationController, :show)
+    post("/verification/nfc", AgeVerificationController, :create_nfc)
+    post("/verification/provider", AgeVerificationController, :create_provider)
+    post("/verification/provider/check", AgeVerificationController, :check_provider)
   end
 
   scope "/api/discovery", CherryWeb.Controllers.Api do
-    pipe_through(:authenticated_api)
+    pipe_through([:authenticated_api, :age_verified])
 
     get("/feed", DiscoveryController, :feed)
     post("/actions", DiscoveryController, :create_action)
+    post("/undo", DiscoveryController, :undo)
+  end
+
+  scope "/api/profiles", CherryWeb.Controllers.Api do
+    pipe_through([:authenticated_api, :age_verified])
+
+    get("/:id", PublicProfileController, :show)
+  end
+
+  scope "/api/likes", CherryWeb.Controllers.Api do
+    pipe_through([:authenticated_api, :age_verified])
+
+    get("/received", LikesController, :received)
   end
 
   scope "/api/tags", CherryWeb.Controllers.Api do
@@ -92,18 +130,20 @@ defmodule CherryWeb.Router do
   end
 
   scope "/api/matches", CherryWeb.Controllers.Api do
-    pipe_through(:authenticated_api)
+    pipe_through([:authenticated_api, :age_verified])
 
     get("/", MatchController, :index)
     post("/:id/unmatch", MatchController, :unmatch)
   end
 
   scope "/api/conversations", CherryWeb.Controllers.Api do
-    pipe_through(:authenticated_api)
+    pipe_through([:authenticated_api, :age_verified])
 
     get("/", ChatController, :index)
+    get("/:id/match", MatchController, :for_conversation)
     get("/:id/messages", ChatController, :messages)
     post("/:id/messages", ChatController, :create_message)
+    post("/:id/read", ChatController, :read)
   end
 
   scope "/api/users/:profile_id", CherryWeb.Controllers.Api do

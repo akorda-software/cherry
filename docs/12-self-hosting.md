@@ -155,6 +155,9 @@ Sin CSCA del país del documento, la autenticación pasiva NFC lo rechaza (`untr
 | Variable | Por defecto | Qué es |
 |---|---|---|
 | `PORT` | `4000` | Puerto HTTP de Phoenix (1–65535; el healthcheck de la imagen lo usa) |
+| `FORCE_SSL` | `true` | Redirige a HTTPS y manda HSTS (con `X-Forwarded-Proto` del proxy). `false` solo para probar la API por HTTP en una red privada |
+| `PHX_URL_SCHEME` | `https` | Esquema de la URL pública de la API (`http` o `https`) |
+| `PHX_URL_PORT` | `443` con https, `80` con http | Puerto de la URL pública de la API |
 | `PHX_SERVER` | — | `true` arranca el servidor HTTP en un release (`bin/server` ya la pone) |
 | `DATABASE_SSL` | `true` en prod | TLS hacia PostgreSQL; `false` en red privada sin TLS (§2) |
 | `ECTO_IPV6` | `false` | `true` si llegas a PostgreSQL por IPv6 |

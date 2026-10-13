@@ -1,6 +1,9 @@
 defmodule CherryWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :cherry
 
+  # First, like Phoenix's own `force_ssl`, but switchable at runtime (FORCE_SSL).
+  plug(CherryWeb.Plugs.ForceSSL)
+
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.

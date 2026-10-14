@@ -21,6 +21,7 @@ Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): 
 | 2026-10-14 | `cd3226e` | NFC con los CSCA de 129 países (638 certificados), tarjetas sin CAN, edad antes que caducidad |
 | 2026-10-14 | `cd3226e` | Mismo código: dominio público `cherry.akorda.es` y login con Google |
 | 2026-10-14 | `cd3226e` | Mismo código: client ID web del proyecto Cherry y verificación de edad obligatoria |
+| 2026-10-14 | `2e92a5e` | Volver a registrarse tras borrar la propia cuenta (`users.deletion_reason`); purgada a mano la única cuenta, ya borrada |
 
 Pendiente:
 - `FORCE_SSL=false`: Traefik aún no confía en el `X-Forwarded-Proto` de Caddy (falta `forwardedHeaders.trustedIPs: [192.168.30.21/32]` en el entrypoint `web` de `/etc/dokploy/traefik/traefik.yml` y reiniciar Traefik); con `FORCE_SSL` activo antes, bucle de redirecciones. Desde fuera ya solo se entra por HTTPS (Caddy redirige); falta HSTS.

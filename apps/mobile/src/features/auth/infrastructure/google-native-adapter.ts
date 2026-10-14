@@ -14,6 +14,7 @@ interface GoogleSignInModule {
     | { type: "cancelled"; data: null }
   >;
   hasPlayServices(params?: { showPlayServicesUpdateDialog: boolean }): Promise<boolean>;
+  signOut(): Promise<unknown>;
 }
 
 interface CreateGoogleNativeAdapterOptions {
@@ -42,6 +43,11 @@ export function createGoogleNativeAdapter({
       if (!hasPlayServices) {
         throw new Error("Google Play Services is required but not available");
       }
+
+      // Google recuerda la última cuenta elegida y la reutiliza sin preguntar. Olvidarla antes
+      // de cada login hace que salga siempre el selector, para poder entrar con otra cuenta.
+      // Cherry no usa la sesión de Google después del login (el backend emite la suya).
+      await module.signOut().catch(() => undefined);
 
       const response = await module.signIn();
 

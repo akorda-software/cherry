@@ -16,6 +16,7 @@ import { createConfigApi, createFeatureFlagReader, type FeatureFlagReader } from
 
 import {
   AppBootstrapProvider,
+  BootSplashGate,
   createBackendAppBootstrapService,
   createMockAppBootstrapService,
   type AppBootstrapService
@@ -25,7 +26,8 @@ import { createJsonHttpClient } from "../src/shared/api";
 import { RuntimeConfigProvider } from "../src/shared/config";
 import { fontFamilies, lightTheme, ThemeProvider, ToastHost } from "../src/shared/ui";
 
-// El splash nativo se queda hasta que las fuentes de la libreta estén listas.
+// El splash nativo se queda hasta que las fuentes de la libreta estén listas; luego lo releva
+// `BootSplashGate` (mismo amarillo y mismo logo, con la animación de entrada).
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 SplashScreen.setOptions({ duration: 220, fade: true });
 
@@ -65,7 +67,8 @@ export function RootLayout({
   apiBaseUrl,
   bootstrapConfig,
   featureFlagReader,
-  featureFlagLoading = false
+  featureFlagLoading = false,
+  bootSplash = false
 }: PropsWithChildren<{
   services?: SessionShellServices;
   apiBaseUrl: string;
@@ -73,6 +76,8 @@ export function RootLayout({
   featureFlagReader: FeatureFlagReader | null;
   featureFlagLoading?: boolean;
   appBootstrapService?: AppBootstrapService;
+  /** Splash animado sobre la app mientras arranca (solo en la app real, no en los tests). */
+  bootSplash?: boolean;
 }>) {
   const resolvedAppBootstrapService = useMemo(
     () => appBootstrapService ?? createBackendAppBootstrapService(apiBaseUrl),
@@ -95,6 +100,7 @@ export function RootLayout({
                 <AppBootstrapProvider service={resolvedAppBootstrapService}>
                   {children ?? <Slot />}
                   <ToastHost />
+                  {bootSplash ? <BootSplashGate /> : null}
                 </AppBootstrapProvider>
               </SessionShellProvider>
             </RuntimeConfigProvider>
@@ -228,6 +234,7 @@ export default function RootLayoutRoute() {
       bootstrapConfig={bootstrapConfig}
       featureFlagReader={featureFlagReader}
       featureFlagLoading={featureFlagLoading}
+      bootSplash
     />
   );
 }

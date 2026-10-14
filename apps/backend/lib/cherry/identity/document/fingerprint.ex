@@ -12,7 +12,9 @@ defmodule Cherry.Identity.Document.Fingerprint do
       The DNI number survives renewals and is the same in every card.
     * Any other document: `v1|<issuing state>|<code letter>|<document number>`.
       Passports change number on renewal (see `Mrz` for why their personal
-      number field is not used).
+      number field is not used). Every card (TD1 and TD2, whose code may start
+      with `I`, `A` or `C`) uses `I`, as Didit's identity cards and residence
+      permits do, so a card gives the same fingerprint with either method.
 
   The key must never change: rotating it orphans every stored fingerprint
   (they could only be recomputed by reading each document again).
@@ -23,13 +25,11 @@ defmodule Cherry.Identity.Document.Fingerprint do
   @doc "Fingerprint of the document, or `{:error, :not_configured}` without a key."
   @spec compute(Mrz.t()) :: {:ok, binary()} | {:error, :not_configured}
   def compute(%Mrz{} = mrz) do
-    compute_fields(
-      mrz.issuing_state,
-      String.first(mrz.document_code),
-      mrz.document_number,
-      mrz.personal_number
-    )
+    compute_fields(mrz.issuing_state, code_letter(mrz), mrz.document_number, mrz.personal_number)
   end
+
+  defp code_letter(%Mrz{format: :td3, document_code: code}), do: String.first(code)
+  defp code_letter(%Mrz{}), do: "I"
 
   @doc """
   Fingerprint from the fields of a document, for methods that do not read the
@@ -63,13 +63,7 @@ defmodule Cherry.Identity.Document.Fingerprint do
 
   @doc false
   def input(%Mrz{} = mrz),
-    do:
-      input(
-        mrz.issuing_state,
-        String.first(mrz.document_code),
-        mrz.document_number,
-        mrz.personal_number
-      )
+    do: input(mrz.issuing_state, code_letter(mrz), mrz.document_number, mrz.personal_number)
 
   # Only Spanish identity cards set a personal number (`Mrz` never sets it for
   # passports), so the DNI/NIE case needs no check of the document code.

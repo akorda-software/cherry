@@ -71,6 +71,18 @@ defmodule Cherry.Identity.AgeVerificationsTest do
       assert fingerprint == hmac("v1|ESP|P|ZZ7654321")
     end
 
+    test "a foreign card uses I as its code letter, whatever its MRZ says", ctx do
+      for code <- ["ID", "AC", "C<"] do
+        doc = document(ctx, state: "XXA", code: code, document_number: "ZZ1234567")
+
+        assert {:ok, %{method: "nfc_dni", document_fingerprint: fingerprint}} =
+                 verify(user_fixture(), doc)
+
+        assert fingerprint == hmac("v1|XXA|I|ZZ1234567")
+        Repo.delete_all(AgeVerification)
+      end
+    end
+
     test "minors are rejected and nothing about them is stored", ctx do
       user = user_fixture()
       doc = document(ctx, birth: ~D[2010-03-01])

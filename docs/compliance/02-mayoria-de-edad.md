@@ -165,6 +165,8 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 - **Pantalla de prueba** `(dev)/verify-document`, también desde Ajustes → Pruebas, solo en `__DEV__`.
   - Explica qué se lee, qué se guarda y qué se borra.
   - Pide el CAN con un dibujo de dónde está, o los datos del pasaporte.
+  - **Tarjetas sin CAN** (algunos documentos de identidad extranjeros): «Mi documento no tiene CAN» abre el chip con los datos de la MRZ (número del documento y fechas de nacimiento y caducidad). Si el CAN falla o el chip no lo admite, el error ofrece «Probar con los datos del documento».
+  - En Android, si el chip anuncia varias variantes de PACE, se prueban todas antes de dar la clave por incorrecta o pasar a BAC.
   - Muestra los estados de lectura, envío, éxito y error con su acción.
 
 ### Decisiones tomadas esta noche (revisables)
@@ -172,7 +174,7 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 1. **Parser DER/X.509 propio en vez de `:public_key`.** OTP 28 falla con los certificados EC de parámetros explícitos, que son habituales en eMRTD (172 de 609 en la master list alemana). El parser es pequeño, no depende de módulos ASN.1 internos de OTP y está probado contra certificados reales.
 2. **La huella sigue a la persona en DNI y TIE.**
    - En tarjetas españolas se calcula con el número de DNI/NIE de los datos opcionales de la MRZ (`v1|ESP|ID|<número>`), que no cambia al renovar.
-   - En pasaportes y documentos extranjeros se calcula con el número del documento.
+   - En pasaportes y documentos extranjeros se calcula con el número del documento. Todas las tarjetas (TD1 y TD2, con código `I`, `A` o `C`) usan la letra `I`, igual que Didit, para que una tarjeta dé la misma huella por los dos métodos.
    - **No se usa el «número personal» del pasaporte**: en pasaportes de menores sin DNI puede llevar el DNI de un progenitor (sin verificar del todo; ver fuentes del informe), y eso bloquearía a una persona por otra.
    - Consecuencia: un DNI y un pasaporte de la misma persona dan huellas distintas, así que podría haber dos cuentas.
 3. **Validez a fecha de hoy.**
@@ -228,7 +230,7 @@ Una revisión adversarial independiente no encontró forma de falsificar ni alte
   - excluir de los feeds a los perfiles no verificados;
   - comprobarlo en el WebSocket del chat;
   - el paso de verificación en el onboarding.
-- **Documentos extranjeros por NFC:** se aceptan los de los países de `priv/csca` (unos 130). Sin probar con documentos reales de otros países. Los documentos de identidad sin CAN impreso solo se leen con los datos de la MRZ, por la opción «Tengo pasaporte» de la app, cuyo texto habla solo de pasaportes. La huella usa el número del documento, así que cambia al renovarlo (como con los pasaportes).
+- **Documentos extranjeros por NFC:** se aceptan los de los países de `priv/csca` (unos 130). Sin probar con documentos reales de otros países. La huella usa el número del documento, así que cambia al renovarlo (como con los pasaportes).
 - **Cobertura del backend:** `mix test --cover` ya estaba por debajo del umbral del 90 % antes de esta rama (86,9 % en `feat/kawaii-overhaul`). No es una regresión; se deja anotado.
 
 ## Investigación: selfie ↔ DG2 y prueba de vida (sin construir)

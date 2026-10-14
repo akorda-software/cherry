@@ -56,6 +56,25 @@ pnpm --dir apps/mobile start        # servidor de Expo
 - **iOS** (macOS con Xcode): `pnpm --dir apps/mobile ios` (`expo run:ios`).
 - Build de desarrollo ya instalado: `pnpm --dir apps/mobile start:dev-client`.
 
+### APK de pruebas contra producción
+
+Un APK release con la identidad de Cherry (`app.cherry.mobile`, el paquete registrado en el cliente OAuth Android de Google) que habla con `https://cherry.akorda.es`. Se instala junto al de desarrollo, que tiene otro paquete. Como `android/` se genera con la identidad del entorno, se aparta el de desarrollo y se recupera al terminar:
+
+```bash
+cd apps/mobile
+mv android /tmp/android-dev
+export EXPO_APP_NAME=Cherry EXPO_APP_SLUG=cherry EXPO_APP_SCHEME=cherry \
+  EXPO_ANDROID_PACKAGE=app.cherry.mobile EXPO_IOS_BUNDLE_IDENTIFIER=app.cherry.mobile \
+  EXPO_PUBLIC_API_BASE_URL_ANDROID=https://cherry.akorda.es EXPO_PUBLIC_TEST_LOGIN=false \
+  EXPO_PUBLIC_MOCK_AUTH=false NODE_ENV=production   # el resto (client IDs de Google) sale de .env
+npx expo prebuild --platform android --no-install
+(cd android && ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a)
+cp android/app/build/outputs/apk/release/app-release.apk ~/cherry-prod.apk
+rm -rf android && mv /tmp/android-dev android
+```
+
+Se firma con la clave de depuración (SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`), la que tiene registrada el cliente OAuth Android. Para Google Play habrá que registrar también la SHA-1 de la clave de firma de Play.
+
 ### Cuentas demo en desarrollo
 
 Con `__DEV__`, la bienvenida muestra la caja «Solo en desarrollo», que usa `POST /api/auth/dev/test-login` del backend (solo activo en dev):

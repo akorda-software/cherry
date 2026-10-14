@@ -33,13 +33,12 @@ cada ~4 s; en `celebrate` da saltitos con anticipación y aterrizaje. Con «redu
 
 ## Logo
 
-`<CherryMark size? tone? decorative? accessibilityLabel? style? testID? />` — el logo: un par de cerezas cuyas hojas
-son dos corazones, plano (sin contornos ni sombras). `size` es el alto (el ancho sale de la proporción, 614 × 800);
-`tone`: `color` (def.), `ink` o `white` (de una tinta, sin brillos). Trazados en `cherry-mark-geometry.ts`, iguales
-que `assets/brand/cherry-logo.svg`; `CherryMarkShapes` pinta partes sueltas (la animación de arranque las mueve).
+El logo es, por ahora, Mochi con `mood="love"`. `<Logo height? wordmark? accessibilityLabel? style? testID? />` —
+logotipo: Mochi enamorada, quieta, y la palabra «cherry» en Rubik Black al lado (`wordmark={false}`: solo Mochi). Es
+una sola imagen para el lector de pantalla.
 
-`<Logo height? wordmark? tone? accessibilityLabel? style? testID? />` — logotipo: las cerezas y la palabra «cherry» en
-Rubik Black al lado (`wordmark={false}`: solo las cerezas). Es una sola imagen para el lector de pantalla.
+Para animar Mochi por piezas (el splash de arranque), `mascot.tsx` exporta `MascotBody` (cuerpo y cara, con
+`withoutLoveEyes` para sacar los corazones), `MascotLoveEye`, `MASCOT_EYES`, `useMascotPalette` y `mascotStroke`.
 
 ## Papelería
 
@@ -82,10 +81,10 @@ const burst = useRef<HeartBurstHandle>(null);
 
 ## Recursos de marca
 
-Fuente: `assets/brand/cherry-logo.svg` (el logo) y `assets/brand/cherry-icon.svg` (el icono con su fondo). Desde
-ellos, rasterizados a 1024 px: `assets/images/icon.png` (cerezas sobre amarillo, opaco), `adaptive-icon.png`
-(cerezas dentro del círculo seguro de 66 dp) + `adaptive-icon-background.png` (amarillo) +
-`adaptive-icon-monochrome.png` (blanco con los brillos calados, icono temático de Android 13), `splash-icon.png`
-(cerezas sobre transparente, dentro del círculo de 192 dp del splash de Android 12; el fondo amarillo lo pone
-`app.config.ts`) y `favicon.png` (48 px, rabitos más gruesos). Si cambian el dibujo o `imageWidth` del splash,
-revisa `SPLASH_IMAGE_WIDTH` en `composites/boot-splash.tsx`.
+Fuente: `assets/brand/mochi-love.svg` (Mochi `love` exportada del componente, lienzo 120 y trazo 3,5; un test
+comprueba que coincide con `Mascot`) y `assets/brand/app-icon.svg` (el icono con su fondo). Desde ellos, rasterizados
+a 1024 px: `assets/images/icon.png` (Mochi sobre amarillo, opaco), `adaptive-icon.png` (dentro del círculo seguro de
+66 dp) + `adaptive-icon-background.png` (amarillo) + `adaptive-icon-monochrome.png` (silueta blanca con la cara
+calada y sin sombra, icono temático de Android 13), `splash-icon.png` (sobre transparente, dentro del círculo de
+192 dp del splash de Android 12; el fondo amarillo lo pone `app.config.ts`) y `favicon.png` (48 px). Si cambian el
+dibujo o `imageWidth` del splash, revisa `SPLASH_IMAGE_WIDTH` y la escala en `composites/boot-splash.tsx`.

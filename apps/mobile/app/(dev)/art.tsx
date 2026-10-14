@@ -4,7 +4,6 @@ import { type PropsWithChildren, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
-  CherryMark,
   Confetti,
   Deco,
   decoKinds,
@@ -62,7 +61,7 @@ function ArtShowcase() {
     return (
       <View style={styles.canvas}>
         <View testID="logo-canvas">
-          <CherryMark size={Number(params.size ?? 400)} />
+          <Mascot animated={false} mood="love" size={Number(params.size ?? 400)} />
         </View>
       </View>
     );
@@ -111,10 +110,7 @@ function LogoSection() {
         <Logo height={20} />
       </View>
       <View style={styles.row}>
-        <CherryMark size={96} />
-        <CherryMark size={48} />
-        <CherryMark size={24} />
-        <CherryMark size={48} tone="ink" />
+        <Logo height={40} wordmark={false} />
       </View>
     </Section>
   );

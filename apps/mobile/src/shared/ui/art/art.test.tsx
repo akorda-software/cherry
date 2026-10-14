@@ -10,16 +10,7 @@ import { lightTheme } from "../themes/light-theme";
 import { mixHex, svgSafeId, withAlpha } from "./color-utils";
 import { Deco, decoKinds, Sparkle } from "./deco";
 import { Confetti, createBurstParticles, HeartBurst, type HeartBurstHandle, MAX_BURST_PARTICLES } from "./heart-burst";
-import { CherryMark } from "./cherry-mark";
-import {
-  CHERRY_MARK_BIG_HEART_PATH,
-  CHERRY_MARK_CHERRIES,
-  CHERRY_MARK_HEIGHT,
-  CHERRY_MARK_SMALL_HEART_PATH,
-  CHERRY_MARK_STALK_PATH,
-  CHERRY_MARK_STEMS_PATH,
-  CHERRY_MARK_WIDTH
-} from "./cherry-mark-geometry";
+import { HEART } from "./icon-paths";
 import { Logo } from "./logo";
 import { Mascot, mascotMoods } from "./mascot";
 import { PolaroidFrame } from "./polaroid-frame";
@@ -53,64 +44,51 @@ describe("Mascot (Mochi)", () => {
   });
 });
 
-describe("CherryMark", () => {
-  it("is an image named Cherry, taller than wide", () => {
-    const { getByRole } = render(<CherryMark size={80} />);
-    const mark = getByRole("img");
-    expect(mark.getAttribute("aria-label")).toBe("Cherry");
-    expect(mark.style.height).toBe("80px");
-    expect(Number.parseFloat(mark.style.width)).toBeCloseTo((80 * CHERRY_MARK_WIDTH) / CHERRY_MARK_HEIGHT, 3);
-  });
-
-  it("draws two cherries and two heart-shaped leaves in brand colours", () => {
-    const { container } = render(<CherryMark />);
-    const circles = Array.from(container.querySelectorAll("circle"));
-    expect(circles).toHaveLength(2);
-    expect(circles.every((circle) => circle.getAttribute("fill") === lightTheme.primitives.pastel.fresa.fill)).toBe(true);
-    const leaves = Array.from(container.querySelectorAll("path")).filter(
-      (path) => path.getAttribute("fill") === lightTheme.primitives.pastel.menta.deep
-    );
-    expect(leaves.map((leaf) => leaf.getAttribute("d"))).toEqual([CHERRY_MARK_BIG_HEART_PATH, CHERRY_MARK_SMALL_HEART_PATH]);
-  });
-
-  it("goes single-ink without shines, and hides from screen readers when decorative", () => {
-    const { container } = render(<CherryMark decorative tone="white" />);
-    const fills = Array.from(container.querySelectorAll("path, circle"))
-      .map((node) => node.getAttribute("fill") ?? node.getAttribute("stroke"))
-      .filter((color) => color !== "none");
-    expect(new Set(fills)).toEqual(new Set([lightTheme.primitives.color.white]));
-    // Rabitos, rabito común y dos hojas: sin los dos brillos.
-    expect(container.querySelectorAll("path")).toHaveLength(4);
-    expect(container.querySelector("[role=img]")).toBeNull();
-    expect(container.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
-  });
-
-  it("matches the brand SVG source", () => {
-    const svg = readFileSync(path.resolve(__dirname, "../../../../assets/brand/cherry-logo.svg"), "utf8");
-    for (const d of [CHERRY_MARK_STEMS_PATH, CHERRY_MARK_STALK_PATH, CHERRY_MARK_BIG_HEART_PATH, CHERRY_MARK_SMALL_HEART_PATH]) {
-      expect(svg).toContain(d);
-    }
-    for (const cherry of CHERRY_MARK_CHERRIES) {
-      expect(svg).toContain(`cx="${cherry.cx}" cy="${cherry.cy}" r="${cherry.r}"`);
-      expect(svg).toContain(cherry.shine);
-    }
-  });
-});
-
 describe("Logo", () => {
-  it("is one image named Cherry: the mark and the word", () => {
-    const { getAllByRole, getByText } = render(<Logo height={40} />);
+  it("is one image named Cherry: Mochi in love and the word", () => {
+    const { getAllByRole, getByText, container } = render(<Logo height={40} />);
     const images = getAllByRole("img");
     expect(images).toHaveLength(1);
     expect(images[0].getAttribute("aria-label")).toBe("Cherry");
     expect(images[0].style.height).toBe("40px");
     expect(getByText("cherry")).toBeInTheDocument();
+    // Ojos de corazón: los cuatro con el trazado del corazón.
+    expect(Array.from(container.querySelectorAll("path")).filter((p) => p.getAttribute("d") === HEART)).toHaveLength(4);
   });
 
-  it("can drop the word and keep only the cherries", () => {
+  it("can drop the word and keep only Mochi", () => {
     const { queryByText, container } = render(<Logo wordmark={false} />);
     expect(queryByText("cherry")).toBeNull();
-    expect(container.querySelectorAll("circle")).toHaveLength(2);
+    expect(container.querySelectorAll("circle").length).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe("Brand SVG", () => {
+  /** Etiqueta y atributos de cada trazo, en orden, para comparar dibujo con dibujo. */
+  function shapes(root: ParentNode) {
+    return Array.from(root.querySelectorAll("path, circle")).map((node) =>
+      [node.tagName.toLowerCase(), ...Array.from(node.attributes).map((a) => `${a.name}=${a.value}`).sort()].join(" ")
+    );
+  }
+
+  it("assets/brand/mochi-love.svg is exactly the Mascot component in love", () => {
+    const { container } = render(<Mascot animated={false} mood="love" size={120} />);
+    const svg = readFileSync(path.resolve(__dirname, "../../../../assets/brand/mochi-love.svg"), "utf8");
+    const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+    expect(shapes(doc)).toEqual(shapes(container.querySelector("svg") as SVGSVGElement));
+  });
+
+  it("the app icon draws the same Mochi on the brand yellow", () => {
+    const logo = new DOMParser().parseFromString(
+      readFileSync(path.resolve(__dirname, "../../../../assets/brand/mochi-love.svg"), "utf8"),
+      "image/svg+xml"
+    );
+    const icon = new DOMParser().parseFromString(
+      readFileSync(path.resolve(__dirname, "../../../../assets/brand/app-icon.svg"), "utf8"),
+      "image/svg+xml"
+    );
+    expect(shapes(icon)).toEqual(shapes(logo));
+    expect(icon.querySelector("rect")?.getAttribute("fill")).toBe(lightTheme.primitives.color.limonada);
   });
 });
 

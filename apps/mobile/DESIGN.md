@@ -349,7 +349,7 @@ Cada categoría del catálogo de etiquetas tiene su color fijo (`semantic.catego
 
 **The Tokens Only Rule.** Todo color sale de `useTheme()`. Los únicos hex sueltos admitidos son las marcas de terceros (el logotipo de Google y el botón de Apple en el login).
 
-**The Welcome Exception.** El login es la única pantalla sin neobrutalismo: fondo amarillo (`limonada`) con una luz suave, hoja blanca abajo, botones de proveedor con sombras suaves y sin contornos de tinta. El resto de la app sigue la libreta.
+**The Welcome Exception.** El login es la única pantalla sin neobrutalismo: fondo amarillo (`limonada`) con una luz suave detrás de Mochi enamorada (el logo), hoja blanca abajo, botones de proveedor con sombras suaves y sin contornos de tinta. El resto de la app sigue la libreta.
 
 ## Typography
 

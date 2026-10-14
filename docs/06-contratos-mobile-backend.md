@@ -39,7 +39,7 @@ Reglas de routing móvil:
 - Access token como `Authorization: Bearer <token>` en REST y `?token=` en WebSocket.
 - 401 REST ⇒ refrescar una vez con el refresh token, persistir nuevo bundle y reintentar una vez; si falla, limpiar secure storage y volver a signed-out.
 - Refresh rota siempre el token; el reuso de un refresh revoca la familia.
-- `DELETE /api/me/account` desactiva el usuario, oculta su perfil, revoca todas sus sesiones y tokens push y desconecta sus sockets. Funciona aunque no haya perfil. Es borrado lógico: conserva los registros; no permite iniciar nuevas sesiones con esa cuenta.
+- `DELETE /api/me/account` desactiva el usuario, oculta su perfil, revoca todas sus sesiones y tokens push y desconecta sus sockets. Funciona aunque no haya perfil. Es borrado lógico: conserva los registros y no admite nuevas sesiones con esa cuenta. Si la persona vuelve a entrar con la misma cuenta de Google/Apple, el callback de login borra del todo la cuenta anterior y crea una nueva desde cero (onboarding y verificación de edad incluidos).
 - En bootstrap, si el access token cacheado ya está expirado, refrescar antes de llamar.
 
 ## Onboarding draft

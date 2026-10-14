@@ -1,7 +1,9 @@
 defmodule Cherry.IdentityTest do
   use Cherry.DataCase, async: false
 
+  alias Cherry.Accounts
   alias Cherry.Identity
+  alias Cherry.Identity.AgeVerification
   alias Cherry.Accounts.User
   alias Cherry.Sessions
   alias Cherry.Sessions.RefreshToken
@@ -71,6 +73,81 @@ defmodule Cherry.IdentityTest do
 
       assert first_user.id == second_user.id
       assert Repo.aggregate(ProviderIdentity, :count, :id) == 1
+    end
+
+    test "starts a new account when the owner deleted the previous one", %{
+      provider_config: provider_config
+    } do
+      params = %{
+        provider_token:
+          ProviderTokenFactory.google_token!(provider_config.google_key, %{
+            "sub" => "google-back-again",
+            "email" => "google-back-again@google.cherry.test",
+            "name" => "Back Again"
+          })
+      }
+
+      assert {:ok, %{user: old_user}} = Identity.resolve_provider_login(:google, params)
+
+      Repo.insert!(%AgeVerification{
+        user_id: old_user.id,
+        status: "verified",
+        method: "nfc_dni",
+        verified_at: DateTime.utc_now() |> DateTime.truncate(:second),
+        document_fingerprint: :crypto.strong_rand_bytes(32)
+      })
+
+      {:ok, :deleted} = Accounts.delete_account(old_user)
+
+      assert {:ok, %{user: new_user, identity: identity}} =
+               Identity.resolve_provider_login(:google, params)
+
+      assert new_user.id != old_user.id
+      assert new_user.deleted_at == nil
+      assert new_user.email == "google-back-again@google.cherry.test"
+      assert identity.user_id == new_user.id
+      refute Repo.get(User, old_user.id)
+      assert Repo.aggregate(ProviderIdentity, :count, :id) == 1
+      # The old document fingerprint is gone, so the same document can verify the new account.
+      assert Repo.aggregate(AgeVerification, :count, :id) == 0
+
+      assert {:ok, _issued} =
+               Sessions.issue_session(new_user, %{
+                 installation_id: "device-3",
+                 platform: "android",
+                 device_name: "Pixel 9"
+               })
+    end
+
+    test "keeps the login blocked for an account deleted for any other reason", %{
+      provider_config: provider_config
+    } do
+      params = %{
+        provider_token:
+          ProviderTokenFactory.google_token!(provider_config.google_key, %{
+            "sub" => "google-removed",
+            "email" => "google-removed@google.cherry.test"
+          })
+      }
+
+      assert {:ok, %{user: user}} = Identity.resolve_provider_login(:google, params)
+
+      user
+      |> Ecto.Changeset.change(
+        deleted_at: DateTime.utc_now() |> DateTime.truncate(:second),
+        deletion_reason: "moderation"
+      )
+      |> Repo.update!()
+
+      assert {:ok, %{user: same_user}} = Identity.resolve_provider_login(:google, params)
+      assert same_user.id == user.id
+
+      assert {:error, :account_deleted} =
+               Sessions.issue_session(same_user, %{
+                 installation_id: "device-4",
+                 platform: "android",
+                 device_name: "Pixel 9"
+               })
     end
 
     test "rejects Google credentials with an invalid audience", %{

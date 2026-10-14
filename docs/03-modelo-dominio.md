@@ -24,7 +24,7 @@ Invariantes:
   2. *Draft* (`is_complete = false`, `is_discoverable = false`) → primer write de onboarding crea el borrador; campos core nullable; actualización incremental por pasos.
   3. *Completo* (`is_complete = true`) → solo tras `complete_profile` validando todos los requisitos server-side; pasa a `is_discoverable = true` salvo pausa/borrado.
   4. *Pausado* (`is_paused = true`) → no descubrible, conservando el perfil; tampoco puede hacer swipe ni deshacer, pero sigue viendo sus matches y chats.
-  5. *Borrado* (`deleted_at`) → soft-delete del perfil y de la cuenta (`users.deleted_at`): sesiones y tokens push revocados, sockets desconectados y fotos borradas físicamente del almacenamiento. El resto de registros se conserva.
+  5. *Borrado* (`deleted_at`) → soft-delete del perfil y de la cuenta (`users.deleted_at`): sesiones y tokens push revocados, sockets desconectados y fotos borradas físicamente del almacenamiento. El resto de registros se conserva. `users.deletion_reason` dice por qué: `user_request` si lo pidió la persona desde la app; con ese motivo, volver a entrar con la misma cuenta de Google/Apple borra del todo la anterior (`purge_account/1`) y empieza una cuenta nueva desde cero. Con cualquier otro motivo (moderación, cuando exista) el login sigue bloqueado.
 
 Invariantes: los drafts jamás aparecen en discovery; la completitud solo la valida el backend; `nextOnboardingStep` es conveniencia de UI, no frontera de seguridad.
 

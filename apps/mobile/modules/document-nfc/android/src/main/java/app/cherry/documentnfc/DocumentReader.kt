@@ -25,7 +25,8 @@ data class RawDocument(val dg1: ByteArray, val dg2: ByteArray, val sod: ByteArra
 
 /**
  * Reads DG1, DG2 and EF.SOD with JMRTD (ICAO 9303-11):
- * PACE with the CAN, or PACE/BAC with the MRZ for passports. No parsing and no
+ * PACE with the CAN, or PACE/BAC with the MRZ (passports and cards without CAN),
+ * trying each PACE variant the chip offers. No parsing and no
  * verification here: passive authentication happens on the server.
  *
  * Sequence based on tananaev/passport-reader (Apache-2.0) and
@@ -58,10 +59,12 @@ class DocumentReader(private val onStep: (String) -> Unit) {
         is AccessKey.Mrz -> BACKey(key.documentNumber, key.dateOfBirth, key.dateOfExpiry)
       }
 
-      val paceInfo = readPaceInfo(service, cardService)
+      val paceInfos = readPaceInfos(service, cardService)
       var paceSucceeded = false
+      var paceError: Exception? = null
 
-      if (paceInfo != null) {
+      // Some chips offer several PACE variants (mapping, curve): the first that works wins.
+      for (paceInfo in paceInfos) {
         try {
           service.doPACE(
             accessKey,
@@ -70,13 +73,17 @@ class DocumentReader(private val onStep: (String) -> Unit) {
             null
           )
           paceSucceeded = true
+          break
         } catch (e: Exception) {
           if (cardService.isConnectionLost(e)) throw lost(e)
-          // A CAN only works with PACE: a failure here means a wrong CAN.
-          if (key is AccessKey.Can) throw ReadException("ACCESS_DENIED", "PACE failed", e)
+          paceError = e
         }
-      } else if (key is AccessKey.Can) {
-        throw ReadException("UNSUPPORTED_DOCUMENT", "The chip does not offer PACE")
+      }
+
+      if (!paceSucceeded && key is AccessKey.Can) {
+        // A CAN only works with PACE: a failure here means a wrong CAN.
+        if (paceInfos.isEmpty()) throw ReadException("UNSUPPORTED_DOCUMENT", "The chip does not offer PACE")
+        throw ReadException("ACCESS_DENIED", "PACE failed", paceError)
       }
 
       service.sendSelectApplet(paceSucceeded)
@@ -114,13 +121,13 @@ class DocumentReader(private val onStep: (String) -> Unit) {
 
   // EF.CardAccess is readable without authentication and advertises PACE.
   // Passports without it only support BAC.
-  private fun readPaceInfo(service: PassportService, cardService: IsoDepCardService): PACEInfo? {
+  private fun readPaceInfos(service: PassportService, cardService: IsoDepCardService): List<PACEInfo> {
     return try {
       val stream = service.getInputStream(PassportService.EF_CARD_ACCESS, PassportService.DEFAULT_MAX_BLOCKSIZE)
-      CardAccessFile(stream).securityInfos.filterIsInstance<PACEInfo>().firstOrNull()
+      CardAccessFile(stream).securityInfos.filterIsInstance<PACEInfo>()
     } catch (e: Exception) {
       if (cardService.isConnectionLost(e)) throw lost(e)
-      null
+      emptyList()
     }
   }
 

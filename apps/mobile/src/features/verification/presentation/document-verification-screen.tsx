@@ -65,36 +65,48 @@ function useVerificationDeps(): DocumentVerificationDeps {
 /**
  * Verificación de edad con el DNI (o pasaporte) por NFC, paso a paso: qué hace falta → CAN →
  * cómo colocarlo → lectura → resultado. Se llega desde «Comprobar tu edad» (`/verify`).
+ *
+ * Lo normal es una tarjeta con CAN (DNI, TIE y casi todos los documentos de identidad europeos).
+ * Los casos raros quedan a un toque: «Tengo pasaporte» y «Mi documento no tiene CAN», que abren el
+ * chip con los datos de la MRZ; si el CAN falla, el error también ofrece probar con esos datos.
  */
 export function DocumentVerificationScreen() {
   const router = useRouter();
   const logout = useLogoutAction();
   const flow = useDocumentVerification(useVerificationDeps());
-  const { phase, kind, step, error } = flow.state;
+  const { phase, kind, access, step, error } = flow.state;
   const [can, setCan] = useState("");
-  const [passport, setPassport] = useState({ number: "", birth: "", expiry: "" });
+  const [mrz, setMrz] = useState({ number: "", birth: "", expiry: "" });
+  const isPassport = kind === "passport";
 
-  const passportKey = useMemo(() => {
-    const documentNumber = sanitizeDocumentNumber(passport.number);
-    const dateOfBirth = toMrzDate(passport.birth);
-    const dateOfExpiry = toMrzDate(passport.expiry);
+  const mrzKey = useMemo(() => {
+    const documentNumber = sanitizeDocumentNumber(mrz.number);
+    const dateOfBirth = toMrzDate(mrz.birth);
+    const dateOfExpiry = toMrzDate(mrz.expiry);
     return documentNumber && dateOfBirth && dateOfExpiry ? { documentNumber, dateOfBirth, dateOfExpiry } : null;
-  }, [passport]);
+  }, [mrz]);
 
   const submitKey = useCallback(() => {
-    if (kind === "passport") {
-      if (passportKey) {
-        void flow.submit({ mrz: passportKey });
+    if (access === "mrz") {
+      if (mrzKey) {
+        void flow.submit({ mrz: mrzKey });
       }
     } else if (can.length === 6) {
       void flow.submit({ can });
     }
-  }, [can, flow, kind, passportKey]);
+  }, [access, can, flow, mrzKey]);
+
+  const useMrzData = useCallback(() => {
+    flow.setAccess("mrz");
+    flow.editKey();
+  }, [flow]);
 
   const clear = useCallback(() => {
     setCan("");
-    setPassport({ number: "", birth: "", expiry: "" });
+    setMrz({ number: "", birth: "", expiry: "" });
   }, []);
+
+  const keyLabel = access === "mrz" ? "Revisar los datos" : "Cambiar el CAN";
 
   const done = useCallback(() => {
     clear();
@@ -118,7 +130,7 @@ export function DocumentVerificationScreen() {
         return (
           <Stack gap="sm">
             <Button
-              disabled={kind === "passport" ? !passportKey : can.length !== 6}
+              disabled={access === "mrz" ? !mrzKey : can.length !== 6}
               fullWidth
               onPress={submitKey}
               size="lg"
@@ -126,12 +138,21 @@ export function DocumentVerificationScreen() {
             >
               Continuar
             </Button>
+            {isPassport ? null : (
+              <Button
+                onPress={() => flow.setAccess(access === "mrz" ? "can" : "mrz")}
+                testID="verify-switch-access"
+                variant="ghost"
+              >
+                {access === "mrz" ? "Usar el CAN" : "Mi documento no tiene CAN"}
+              </Button>
+            )}
             <Button
-              onPress={() => flow.setKind(kind === "passport" ? "id_card" : "passport")}
+              onPress={() => flow.setKind(isPassport ? "id_card" : "passport")}
               testID="verify-switch-kind"
               variant="ghost"
             >
-              {kind === "passport" ? "Usar el DNI" : "Tengo pasaporte"}
+              {isPassport ? "Usar el DNI u otro documento de identidad" : "Tengo pasaporte"}
             </Button>
           </Stack>
         );
@@ -142,7 +163,7 @@ export function DocumentVerificationScreen() {
               Empezar a leer
             </Button>
             <Button onPress={flow.editKey} testID="verify-back-to-key" variant="ghost">
-              {kind === "passport" ? "Revisar los datos" : "Cambiar el CAN"}
+              {keyLabel}
             </Button>
           </Stack>
         );
@@ -168,7 +189,18 @@ export function DocumentVerificationScreen() {
             ) : null}
             {error.action === "edit_key" ? (
               <Button fullWidth onPress={flow.editKey} size="lg" testID="verify-edit-key">
-                {kind === "passport" ? "Revisar los datos" : "Cambiar el CAN"}
+                {keyLabel}
+              </Button>
+            ) : null}
+            {error.offerMrz ? (
+              <Button
+                fullWidth
+                onPress={useMrzData}
+                size="lg"
+                testID="verify-use-mrz"
+                variant={error.action === "edit_key" ? "secondary" : "primary"}
+              >
+                Probar con los datos del documento
               </Button>
             ) : null}
             {error.action === "settings" ? (
@@ -242,13 +274,16 @@ export function DocumentVerificationScreen() {
         </Stack>
       ) : null}
 
-      {phase === "key" && kind === "id_card" ? (
+      {phase === "key" && !isPassport && access === "can" ? (
         <Stack gap="lg">
           <Stack gap="sm">
             <Text accessibilityRole="header" variant="title1">
               El número CAN
             </Text>
-            <Text color="muted">Está impreso en tu DNI, en la cara de la foto. Sirve para abrir el chip.</Text>
+            <Text color="muted">
+              Son 6 cifras impresas en la cara de la foto y sirven para abrir el chip. En otros documentos de identidad
+              suele llevar al lado la palabra CAN.
+            </Text>
           </Stack>
           <TextField
             autoComplete="off"
@@ -266,37 +301,42 @@ export function DocumentVerificationScreen() {
         </Stack>
       ) : null}
 
-      {phase === "key" && kind === "passport" ? (
+      {phase === "key" && access === "mrz" ? (
         <Stack gap="lg">
           <Stack gap="sm">
             <Text accessibilityRole="header" variant="title1">
-              Datos del pasaporte
+              {isPassport ? "Datos del pasaporte" : "Datos del documento"}
             </Text>
-            <Text color="muted">Están en la página de la foto. El chip los usa como contraseña.</Text>
+            <Text color="muted">
+              {isPassport
+                ? "Están en la página de la foto. El chip los usa como contraseña."
+                : "Están en las líneas de letras y números de la tarjeta, normalmente en el reverso. El chip los usa como contraseña."}
+            </Text>
           </Stack>
           <TextField
             autoCapitalize="characters"
             autoComplete="off"
-            label="Número del pasaporte"
-            onChangeText={(number) => setPassport((current) => ({ ...current, number }))}
+            hint={isPassport ? undefined : "El de la tarjeta, no tu número personal"}
+            label={isPassport ? "Número del pasaporte" : "Número del documento"}
+            onChangeText={(number) => setMrz((current) => ({ ...current, number }))}
             testID="verify-passport-number"
-            value={passport.number}
+            value={mrz.number}
           />
           <TextField
             autoComplete="off"
             hint="DD/MM/AAAA"
             label="Fecha de nacimiento"
-            onChangeText={(birth) => setPassport((current) => ({ ...current, birth }))}
+            onChangeText={(birth) => setMrz((current) => ({ ...current, birth }))}
             testID="verify-passport-birth"
-            value={passport.birth}
+            value={mrz.birth}
           />
           <TextField
             autoComplete="off"
             hint="DD/MM/AAAA"
             label="Fecha de caducidad"
-            onChangeText={(expiry) => setPassport((current) => ({ ...current, expiry }))}
+            onChangeText={(expiry) => setMrz((current) => ({ ...current, expiry }))}
             testID="verify-passport-expiry"
-            value={passport.expiry}
+            value={mrz.expiry}
           />
         </Stack>
       ) : null}
@@ -332,9 +372,11 @@ export function DocumentVerificationScreen() {
           <NfcPlacementArt mode="reading" />
           <Text accessibilityRole="header" align="center" variant="title2">
             {step === "waiting" || step === null
-              ? kind === "passport"
+              ? isPassport
                 ? "Acerca el pasaporte al móvil"
-                : "Acerca el DNI al móvil"
+                : access === "mrz"
+                  ? "Acerca el documento al móvil"
+                  : "Acerca el DNI al móvil"
               : "No lo muevas"}
           </Text>
           <Text align="center" color="muted">

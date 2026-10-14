@@ -12,9 +12,22 @@ export interface VerificationErrorCopy {
   title: string;
   message: string;
   action: VerificationErrorAction;
+  /** Ofrecer abrir el chip con los datos de la MRZ (tarjetas que no se abren con el CAN). */
+  offerMrz?: boolean;
 }
 
 export type DocumentKind = "id_card" | "passport";
+
+/**
+ * Con qué se abre el chip: el CAN (DNI, TIE y la mayoría de documentos de identidad) o los datos
+ * de la MRZ (pasaportes y tarjetas sin CAN).
+ */
+export type DocumentAccess = "can" | "mrz";
+
+/** El CAN para las tarjetas y la MRZ para los pasaportes. */
+export function defaultAccess(kind: DocumentKind): DocumentAccess {
+  return kind === "passport" ? "mrz" : "can";
+}
 
 /** Por qué se pide (primera pantalla de la verificación). */
 export const WHY_REASONS = [
@@ -194,8 +207,12 @@ export function holdInstruction(platform: string, kind: DocumentKind): string {
 }
 
 /** Errores de la lectura NFC. `CANCELLED` no se muestra: se vuelve al paso anterior. */
-export function readErrorCopy(code: DocumentNfcErrorCode, kind: DocumentKind): VerificationErrorCopy {
-  const document = kind === "passport" ? "el pasaporte" : "el DNI";
+export function readErrorCopy(
+  code: DocumentNfcErrorCode,
+  kind: DocumentKind,
+  access: DocumentAccess = defaultAccess(kind)
+): VerificationErrorCopy {
+  const document = kind === "passport" ? "el pasaporte" : access === "mrz" ? "el documento" : "el DNI";
 
   switch (code) {
     case "NFC_UNAVAILABLE":
@@ -212,16 +229,26 @@ export function readErrorCopy(code: DocumentNfcErrorCode, kind: DocumentKind): V
       };
     case "ACCESS_DENIED":
     case "INVALID_KEY":
-      return kind === "passport"
+      if (kind === "passport") {
+        return {
+          title: "Los datos no coinciden",
+          message: "Revisa el número del pasaporte y las dos fechas, tal como aparecen en la página de la foto.",
+          action: "edit_key"
+        };
+      }
+      return access === "mrz"
         ? {
             title: "Los datos no coinciden",
-            message: "Revisa el número del pasaporte y las dos fechas, tal como aparecen en la página de la foto.",
+            message:
+              "Revisa el número del documento y las dos fechas, tal como aparecen en las líneas de letras y números de la tarjeta.",
             action: "edit_key"
           }
         : {
             title: "El CAN no coincide",
-            message: "Revisa las 6 cifras de la cara de la foto, abajo a la derecha.",
-            action: "edit_key"
+            message:
+              "Revisa las 6 cifras: en el DNI y el TIE están en la cara de la foto, abajo a la derecha. Si tu documento no tiene CAN, usa sus datos.",
+            action: "edit_key",
+            offerMrz: true
           };
     case "TAG_LOST":
       return {
@@ -230,6 +257,14 @@ export function readErrorCopy(code: DocumentNfcErrorCode, kind: DocumentKind): V
         action: "retry"
       };
     case "UNSUPPORTED_DOCUMENT":
+      if (kind === "id_card" && access === "can") {
+        return {
+          title: "Este chip no se abre con el CAN",
+          message: "Prueba con los datos del documento: su número y las fechas de nacimiento y caducidad.",
+          action: "none",
+          offerMrz: true
+        };
+      }
       return {
         title: "No podemos leer este documento",
         message:
@@ -370,7 +405,7 @@ export function toMrzDate(input: string): string | null {
   return `${String(year % 100).padStart(2, "0")}${String(month).padStart(2, "0")}${String(day).padStart(2, "0")}`;
 }
 
-/** Número del pasaporte tal como lo usa la MRZ: mayúsculas, sin espacios. */
+/** Número del documento tal como lo usa la MRZ: mayúsculas, sin espacios. */
 export function sanitizeDocumentNumber(input: string): string {
   return input.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }

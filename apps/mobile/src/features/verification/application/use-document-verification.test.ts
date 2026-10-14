@@ -128,14 +128,48 @@ describe("useDocumentVerification", () => {
     const { deps } = makeDeps({ readDocument: vi.fn().mockRejectedValue(new DocumentNfcError("CANCELLED")) });
     const { result } = renderHook(() => useDocumentVerification(deps));
 
+    act(() => result.current.setKind("passport"));
     await act(() => {
       result.current.submit({ mrz: { documentNumber: "ZZ1", dateOfBirth: "900517", dateOfExpiry: "310517" } });
       return result.current.beginRead();
     });
-    expect(result.current.state).toMatchObject({ phase: "key", kind: "passport", error: null });
+    expect(result.current.state).toMatchObject({ phase: "key", kind: "passport", access: "mrz", error: null });
 
     act(() => result.current.cancel());
     expect(deps.cancelRead).toHaveBeenCalled();
+  });
+
+  it("a card without CAN opens with the MRZ and stays a card", async () => {
+    const { deps } = makeDeps({ readDocument: vi.fn().mockRejectedValue(new DocumentNfcError("ACCESS_DENIED")) });
+    const { result } = renderHook(() => useDocumentVerification(deps));
+
+    expect(result.current.state).toMatchObject({ kind: "id_card", access: "can" });
+    act(() => result.current.setAccess("mrz"));
+    await act(() => {
+      result.current.submit({ mrz: { documentNumber: "ZZ1", dateOfBirth: "900517", dateOfExpiry: "310517" } });
+      return result.current.beginRead();
+    });
+
+    expect(result.current.state).toMatchObject({ phase: "error", kind: "id_card", access: "mrz" });
+    expect(result.current.state.error).toMatchObject({ title: "Los datos no coinciden", action: "edit_key" });
+    expect(result.current.state.error?.message).toContain("de la tarjeta");
+
+    act(() => result.current.setKind("passport"));
+    expect(result.current.state).toMatchObject({ kind: "passport", access: "mrz" });
+    act(() => result.current.setKind("id_card"));
+    expect(result.current.state).toMatchObject({ kind: "id_card", access: "can" });
+  });
+
+  it("a wrong CAN offers the MRZ data as the way out", async () => {
+    const { deps } = makeDeps({ readDocument: vi.fn().mockRejectedValue(new DocumentNfcError("UNSUPPORTED_DOCUMENT")) });
+    const { result } = renderHook(() => useDocumentVerification(deps));
+
+    await act(() => {
+      result.current.submit({ can: "123456" });
+      return result.current.beginRead();
+    });
+
+    expect(result.current.state.error).toMatchObject({ title: "Este chip no se abre con el CAN", offerMrz: true });
   });
 
   it("server errors keep the technical reason for development", async () => {

@@ -13,7 +13,7 @@ Diseño y estado: `docs/compliance/02-mayoria-de-edad.md`. Pruebas con documento
 ```ts
 getNfcStatus(): Promise<"unavailable" | "disabled" | "enabled">
 readDocument({ can: "123456" }): Promise<{ dg1, dg2, sod }>            // DNI / TIE
-readDocument({ mrz: { documentNumber, dateOfBirth, dateOfExpiry } })   // pasaportes (AAMMDD)
+readDocument({ mrz: { documentNumber, dateOfBirth, dateOfExpiry } })   // pasaportes y tarjetas sin CAN (AAMMDD)
 cancelRead(); openNfcSettings(); addReadProgressListener(fn)
 ```
 
@@ -33,7 +33,8 @@ El CAN y la MRZ solo viven en memoria durante la lectura; no se guardan ni se en
   bibliotecas independientes (AAR/JAR) se pueden sustituir.
 - Modo lector de NFC (`enableReaderMode`) mientras la app está en primer plano; la lectura va en un
   hilo propio. PACE con CAN (sin alternativa BAC: un CAN no sirve para BAC); con MRZ, PACE si el
-  chip lo anuncia en EF.CardAccess y si no BAC.
+  chip lo anuncia en EF.CardAccess y si no BAC. Si el chip anuncia varias variantes de PACE (mapeo o
+  curva), se prueban todas antes de dar el CAN por incorrecto o pasar a BAC.
 - No se toca el proveedor criptográfico global: JMRTD 0.8.9 usa su propia instancia de BouncyCastle.
 - Permiso `NFC` y `android.hardware.nfc` opcional en el `AndroidManifest.xml` del módulo.
   Exclusiones de `META-INF` duplicados de BouncyCastle: config plugin.

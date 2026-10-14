@@ -2,16 +2,16 @@
 
 Runbook operativo del despliegue de `apps/backend`. Arquitectura completa: [`../arquitectura.md`](../arquitectura.md) · Decisión de arquitectura: `docs/decisions.md` **D-2026-09-04**. Objetivo actual: primer despliegue y pruebas en el servidor propio. El acuerdo operativo vigente del 2026-09-05 acepta downtime de segundos o minutos, backups locales + R2 pendientes y ausencia de failover externo.
 
-## Estado (2026-10-13)
+## Estado (2026-10-14)
 
-**Primer despliegue hecho, solo en LAN.** `http://192.168.0.126` sirve la API (`/healthz`, `/readyz`, `/api/config`), sin dominio público todavía. Cambio respecto al plan original (D-2026-10-13b en `docs/decisions.md`): **el panel es el Dokploy de nipogi** (`nipogi-dokploy`, 192.168.0.121, v0.30.8) y cherry-backend es un *servidor remoto* suyo. En la VM solo corren Docker, Swarm de un nodo y Traefik; sin panel ni su PostgreSQL.
+**Publicado en `https://cherry.akorda.es`** (desde el 2026-10-14; antes solo LAN). Cadena: Cloudflare (CNAME proxificado a `home.akorda.es`) → Caddy (bloque `cherry.akorda.es { reverse_proxy 192.168.0.126:80 }`) → Traefik → contenedor. En el UCG-Fiber, la regla `DMZ-Caddy to cherry-backend 80` (192.168.30.21 → 192.168.0.126 TCP 80; la de vuelta la deriva UniFi). `http://192.168.0.126` sigue respondiendo desde la LAN. Cambio respecto al plan original (D-2026-10-13b en `docs/decisions.md`): **el panel es el Dokploy de nipogi** (`nipogi-dokploy`, 192.168.0.121, v0.30.8) y cherry-backend es un *servidor remoto* suyo. En la VM solo corren Docker, Swarm de un nodo y Traefik; sin panel ni su PostgreSQL.
 
 | Pieza | Estado |
 |---|---|
 | cherry-db | Rol `cherry`, `cherry_prod` (postgis, pg_stat_statements, pgcrypto, uuid-ossp), `conf.d/10-cherry.conf` (listen LAN, 4 GB shared_buffers), `pg_hba` solo `.126`. nftables: 22 desde LAN/VPN, 5432 solo desde `.126` |
 | cherry-backend | Docker 28.5 + Swarm + Traefik 3.6 (Setup Server de Dokploy). Root por SSH solo desde 192.168.0.121 con su clave (`sshd_config.d/05-dokploy.conf`, `from=` en `authorized_keys`). `daemon.json` con rotación de logs, `cron.weekly/docker-image-prune`. Snapshot Proxmox `antes-dokploy`. nftables (tabla `inet cherry_fw`, no toca las de Docker): 22 desde LAN/VPN; 80 desde Caddy **y la LAN** (quitar la LAN al publicar); 443 y puertos de Swarm cerrados |
-| Dokploy | Proyecto `cherry` → entorno `production` → app `backend` (`cherry-backend-mkeaem`): imagen pública `ghcr.io/akorda-software/cherry-backend:<sha>`, 1 réplica, `stop-first`, rollback, healthcheck `/healthz`, bind `/var/lib/cherry/uploads`, dominio `192.168.0.126` sin HTTPS |
-| Env | Fase LAN: `PHX_HOST=192.168.0.126`, `PHX_URL_SCHEME=http`, `FORCE_SSL=false`, `PUBLIC_BASE_URL=http://192.168.0.126`. Secretos en `~/.config/cherry-deploy/prod-secrets.env` (Olares) → pasar a Bitwarden |
+| Dokploy | Proyecto `cherry` → entorno `production` → app `backend` (`cherry-backend-mkeaem`): imagen pública `ghcr.io/akorda-software/cherry-backend:<sha>`, 1 réplica, `stop-first`, rollback, healthcheck `/healthz`, bind `/var/lib/cherry/uploads`, dominios `cherry.akorda.es` y `192.168.0.126`, ambos sin HTTPS en Traefik (TLS en Cloudflare/Caddy) |
+| Env | `PHX_HOST=cherry.akorda.es`, `PHX_URL_SCHEME=https`, `PUBLIC_BASE_URL=https://cherry.akorda.es`, `FORCE_SSL=false` (ver pendientes), `GOOGLE_WEB_CLIENT_ID`/`GOOGLE_IOS_CLIENT_ID` (los de la app). Secretos en `~/.config/cherry-deploy/prod-secrets.env` (Olares) → pasar a Bitwarden |
 
 Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): el CI publica la imagen `ghcr.io/akorda-software/cherry-backend:<sha>` en cada push a `main`; después, con la API de Dokploy de nipogi, `application.saveDockerProvider` con la imagen nueva y `application.deploy`. Comprobar con `curl http://192.168.0.126/healthz` (devuelve el `version` desplegado).
 
@@ -19,9 +19,12 @@ Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): 
 |---|---|---|
 | 2026-10-13 | `d6f9bc9` | Primer despliegue (LAN) |
 | 2026-10-14 | `cd3226e` | NFC con los CSCA de 129 países (638 certificados), tarjetas sin CAN, edad antes que caducidad |
+| 2026-10-14 | `cd3226e` | Mismo código: dominio público `cherry.akorda.es` y login con Google |
 
 Pendiente:
-- Google sin `GOOGLE_*_CLIENT_ID`.
+- `FORCE_SSL=false`: Traefik aún no confía en el `X-Forwarded-Proto` de Caddy (falta `forwardedHeaders.trustedIPs: [192.168.30.21/32]` en el entrypoint `web` de `/etc/dokploy/traefik/traefik.yml` y reiniciar Traefik); con `FORCE_SSL` activo antes, bucle de redirecciones. Desde fuera ya solo se entra por HTTPS (Caddy redirige); falta HSTS.
+- Quitar la LAN de `web_clients` en cherry-backend (ahora 80 abierto a 192.168.0.0/24) y el dominio `192.168.0.126` de Dokploy cuando no haga falta.
+- Sin backups de PostgreSQL ni de `/var/lib/cherry/uploads`.
 - Swarm se anuncia con la IP pública (79.117.30.255) porque así la detecta el instalador. Da igual con un nodo y sus puertos están cerrados.
 - El panel de nipogi es accesible en `https://dokploynipogi.akorda.es` (el plan pedía solo VPN).
 - CI `deploy` sigue pausado.

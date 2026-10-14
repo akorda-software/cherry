@@ -13,6 +13,8 @@ import {
 } from "../../../../modules/document-nfc";
 import { isApiError } from "../../../shared/api";
 import {
+  defaultAccess,
+  type DocumentAccess,
   type DocumentKind,
   readErrorCopy,
   serverErrorCopy,
@@ -29,6 +31,8 @@ export interface VerificationError extends VerificationErrorCopy {
 export interface VerificationState {
   phase: VerificationPhase;
   kind: DocumentKind;
+  /** Con qué se abre el chip: el CAN o los datos de la MRZ. */
+  access: DocumentAccess;
   step: DocumentReadStep | null;
   error: VerificationError | null;
   verification: AgeVerification | null;
@@ -48,10 +52,17 @@ export interface DocumentVerificationDeps {
   onVerified?(): Promise<void> | void;
 }
 
-const INITIAL: VerificationState = { phase: "intro", kind: "id_card", step: null, error: null, verification: null };
+const INITIAL: VerificationState = {
+  phase: "intro",
+  kind: "id_card",
+  access: "can",
+  step: null,
+  error: null,
+  verification: null
+};
 
 /**
- * Flujo de verificación: explicación → CAN (o datos del pasaporte) → cómo colocar el documento →
+ * Flujo de verificación: explicación → CAN (o datos de la MRZ) → cómo colocar el documento →
  * lectura NFC → envío al servidor → éxito o error. La clave de acceso solo vive en memoria
  * mientras dura el flujo.
  */
@@ -61,8 +72,10 @@ export function useDocumentVerification(deps: DocumentVerificationDeps) {
   const keyRef = useRef<DocumentAccessKey | null>(null);
   const runRef = useRef(0);
   const mountedRef = useRef(true);
+  const kindRef = useRef(state.kind);
 
   depsRef.current = deps;
+  kindRef.current = state.kind;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -103,14 +116,25 @@ export function useDocumentVerification(deps: DocumentVerificationDeps) {
     }
   }, [fail, update]);
 
-  const setKind = useCallback((kind: DocumentKind) => update({ kind }), [update]);
+  /** Tarjeta o pasaporte; cada uno con su clave por defecto (CAN o MRZ). */
+  const setKind = useCallback(
+    (kind: DocumentKind) => {
+      kindRef.current = kind;
+      update({ kind, access: defaultAccess(kind) });
+    },
+    [update]
+  );
+
+  /** Tarjetas sin CAN: abrir el chip con los datos de la MRZ (o volver al CAN). */
+  const setAccess = useCallback((access: DocumentAccess) => update({ access }), [update]);
 
   const run = useCallback(
     async (key: DocumentAccessKey) => {
       const runId = ++runRef.current;
-      const kind: DocumentKind = "can" in key ? "id_card" : "passport";
+      const kind = kindRef.current;
+      const access: DocumentAccess = "can" in key ? "can" : "mrz";
       keyRef.current = key;
-      update({ phase: "reading", kind, step: "waiting", error: null });
+      update({ phase: "reading", access, step: "waiting", error: null });
 
       let document: DocumentReadResult;
       try {
@@ -123,7 +147,7 @@ export function useDocumentVerification(deps: DocumentVerificationDeps) {
         if (code === "CANCELLED") {
           update({ phase: "key", step: null });
         } else {
-          fail(readErrorCopy(code, kind), code);
+          fail(readErrorCopy(code, kind, access), code);
         }
         return;
       }
@@ -164,7 +188,7 @@ export function useDocumentVerification(deps: DocumentVerificationDeps) {
   const submit = useCallback(
     (key: DocumentAccessKey) => {
       keyRef.current = key;
-      update({ phase: "guide", kind: "can" in key ? "id_card" : "passport", error: null });
+      update({ phase: "guide", access: "can" in key ? "can" : "mrz", error: null });
     },
     [update]
   );
@@ -205,5 +229,5 @@ export function useDocumentVerification(deps: DocumentVerificationDeps) {
     update(INITIAL);
   }, [update]);
 
-  return { state, start, setKind, submit, beginRead, retry, cancel, editKey, openSettings, reset };
+  return { state, start, setKind, setAccess, submit, beginRead, retry, cancel, editKey, openSettings, reset };
 }

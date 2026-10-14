@@ -52,14 +52,25 @@ describe("verification copy", () => {
   it("maps NFC errors to an action", () => {
     expect(readErrorCopy("ACCESS_DENIED", "id_card")).toMatchObject({ title: "El CAN no coincide", action: "edit_key" });
     expect(readErrorCopy("ACCESS_DENIED", "passport").action).toBe("edit_key");
+    expect(readErrorCopy("ACCESS_DENIED", "id_card").offerMrz).toBe(true);
+    expect(readErrorCopy("ACCESS_DENIED", "id_card", "mrz")).toMatchObject({
+      title: "Los datos no coinciden",
+      action: "edit_key"
+    });
+    expect(readErrorCopy("ACCESS_DENIED", "id_card", "mrz").offerMrz).toBeUndefined();
+    expect(readErrorCopy("UNSUPPORTED_DOCUMENT", "id_card")).toMatchObject({ action: "none", offerMrz: true });
+    expect(readErrorCopy("UNSUPPORTED_DOCUMENT", "id_card", "mrz").action).toBe("retry");
+    expect(readErrorCopy("TIMEOUT", "id_card", "mrz").message).toContain("el documento");
     expect(readErrorCopy("NFC_DISABLED", "id_card").action).toBe("settings");
     expect(readErrorCopy("NFC_UNAVAILABLE", "id_card").action).toBe("none");
     // No culpa a la persona de moverlo: lo habitual es que el DNI no quede sobre la antena.
     expect(readErrorCopy("TAG_LOST", "id_card")).toMatchObject({ title: "Se ha cortado la conexión con el chip", action: "retry" });
     expect(readErrorCopy("TAG_LOST", "id_card").message).toContain("a la altura de la cámara");
-    for (const code of ["UNSUPPORTED_DOCUMENT", "TIMEOUT", "BUSY", "UNKNOWN"] as const) {
+    for (const code of ["TIMEOUT", "BUSY", "UNKNOWN"] as const) {
       expect(readErrorCopy(code, "id_card").action).toBe("retry");
     }
+    // Con el CAN no tiene sentido repetir: se ofrecen los datos de la MRZ.
+    expect(readErrorCopy("UNSUPPORTED_DOCUMENT", "passport").action).toBe("retry");
   });
 
   it("maps server errors without blaming the person", () => {

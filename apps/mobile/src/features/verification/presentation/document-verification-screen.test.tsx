@@ -148,6 +148,59 @@ describe("DocumentVerificationScreen", () => {
     expect(screen.queryByTestId("verify-retry")).not.toBeInTheDocument();
   });
 
+  it("a card whose chip refuses the CAN can be read with its MRZ data", async () => {
+    stubBackend(({ path }) =>
+      path === "/api/me/verification/nfc"
+        ? { body: { verification: { status: "verified", method: "nfc_dni", verifiedAt: "2026-10-09T12:00:00Z" }, required: false } }
+        : { status: 404, body: {} }
+    );
+    native.current = fakeNative({
+      read: vi
+        .fn()
+        .mockRejectedValueOnce(Object.assign(new Error("PACE failed"), { code: "ACCESS_DENIED" }))
+        .mockResolvedValue({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k" })
+    });
+    renderScreen();
+    await enterCan("123456");
+    await readNow();
+
+    expect(await screen.findByTestId("verify-error-title")).toHaveTextContent("El CAN no coincide");
+    expect(screen.getByTestId("verify-edit-key")).toHaveTextContent("Cambiar el CAN");
+    fireEvent.click(screen.getByTestId("verify-use-mrz"));
+
+    expect(await screen.findByText("Datos del documento")).toBeInTheDocument();
+    expect(screen.getByTestId("verify-switch-access")).toHaveTextContent("Usar el CAN");
+    fireEvent.change(screen.getByTestId("verify-passport-number"), { target: { value: "ab 12345 6" } });
+    fireEvent.change(screen.getByTestId("verify-passport-birth"), { target: { value: "17/05/1990" } });
+    fireEvent.change(screen.getByTestId("verify-passport-expiry"), { target: { value: "17/05/2031" } });
+    await readNow();
+
+    await waitFor(() =>
+      expect(native.current?.read).toHaveBeenLastCalledWith(
+        { documentNumber: "AB123456", dateOfBirth: "900517", dateOfExpiry: "310517" },
+        expect.anything()
+      )
+    );
+    expect(await screen.findByTestId("verify-success")).toBeInTheDocument();
+  });
+
+  it("from the CAN step a card without CAN is one tap away", async () => {
+    stubBackend(() => ({ status: 404, body: {} }));
+    renderScreen();
+    fireEvent.click(await screen.findByTestId("verify-start"));
+
+    fireEvent.click(await screen.findByTestId("verify-switch-access"));
+    expect(screen.getByText("Datos del documento")).toBeInTheDocument();
+    expect(screen.getByTestId("verify-switch-kind")).toHaveTextContent("Tengo pasaporte");
+
+    fireEvent.click(screen.getByTestId("verify-switch-kind"));
+    expect(screen.getByText("Datos del pasaporte")).toBeInTheDocument();
+    expect(screen.queryByTestId("verify-switch-access")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("verify-switch-kind"));
+    expect(screen.getByTestId("verify-can")).toBeInTheDocument();
+  });
+
   it("passports use the MRZ data", async () => {
     stubBackend(({ path }) =>
       path === "/api/me/verification/nfc"

@@ -11,7 +11,7 @@ Runbook operativo del despliegue de `apps/backend`. Arquitectura completa: [`../
 | cherry-db | Rol `cherry`, `cherry_prod` (postgis, pg_stat_statements, pgcrypto, uuid-ossp), `conf.d/10-cherry.conf` (listen LAN, 4 GB shared_buffers), `pg_hba` solo `.126`. nftables: 22 desde LAN/VPN, 5432 solo desde `.126` |
 | cherry-backend | Docker 28.5 + Swarm + Traefik 3.6 (Setup Server de Dokploy). Root por SSH solo desde 192.168.0.121 con su clave (`sshd_config.d/05-dokploy.conf`, `from=` en `authorized_keys`). `daemon.json` con rotación de logs, `cron.weekly/docker-image-prune`. Snapshot Proxmox `antes-dokploy`. nftables (tabla `inet cherry_fw`, no toca las de Docker): 22 desde LAN/VPN; 80 desde Caddy **y la LAN** (quitar la LAN al publicar); 443 y puertos de Swarm cerrados |
 | Dokploy | Proyecto `cherry` → entorno `production` → app `backend` (`cherry-backend-mkeaem`): imagen pública `ghcr.io/akorda-software/cherry-backend:<sha>`, 1 réplica, `stop-first`, rollback, healthcheck `/healthz`, bind `/var/lib/cherry/uploads`, dominios `cherry.akorda.es` y `192.168.0.126`, ambos sin HTTPS en Traefik (TLS en Cloudflare/Caddy) |
-| Env | `PHX_HOST=cherry.akorda.es`, `PHX_URL_SCHEME=https`, `PUBLIC_BASE_URL=https://cherry.akorda.es`, `FORCE_SSL=false` (ver pendientes), `GOOGLE_WEB_CLIENT_ID`/`GOOGLE_IOS_CLIENT_ID` (los de la app). Secretos en `~/.config/cherry-deploy/prod-secrets.env` (Olares) → pasar a Bitwarden |
+| Env | `PHX_HOST=cherry.akorda.es`, `PHX_URL_SCHEME=https`, `PUBLIC_BASE_URL=https://cherry.akorda.es`, `FORCE_SSL=false` (ver pendientes), `GOOGLE_WEB_CLIENT_ID` (cliente web del proyecto Cherry de Google Cloud; `GOOGLE_IOS_CLIENT_ID` cuando haya cliente iOS), `AGE_VERIFICATION_REQUIRED=true` (sin ella la verificación de edad no es obligatoria). Secretos en `~/.config/cherry-deploy/prod-secrets.env` (Olares) → pasar a Bitwarden |
 
 Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): el CI publica la imagen `ghcr.io/akorda-software/cherry-backend:<sha>` en cada push a `main`; después, con la API de Dokploy de nipogi, `application.saveDockerProvider` con la imagen nueva y `application.deploy`. Comprobar con `curl http://192.168.0.126/healthz` (devuelve el `version` desplegado).
 
@@ -20,6 +20,7 @@ Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): 
 | 2026-10-13 | `d6f9bc9` | Primer despliegue (LAN) |
 | 2026-10-14 | `cd3226e` | NFC con los CSCA de 129 países (638 certificados), tarjetas sin CAN, edad antes que caducidad |
 | 2026-10-14 | `cd3226e` | Mismo código: dominio público `cherry.akorda.es` y login con Google |
+| 2026-10-14 | `cd3226e` | Mismo código: client ID web del proyecto Cherry y verificación de edad obligatoria |
 
 Pendiente:
 - `FORCE_SSL=false`: Traefik aún no confía en el `X-Forwarded-Proto` de Caddy (falta `forwardedHeaders.trustedIPs: [192.168.30.21/32]` en el entrypoint `web` de `/etc/dokploy/traefik/traefik.yml` y reiniciar Traefik); con `FORCE_SSL` activo antes, bucle de redirecciones. Desde fuera ya solo se entra por HTTPS (Caddy redirige); falta HSTS.

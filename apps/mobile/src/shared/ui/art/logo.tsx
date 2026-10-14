@@ -1,133 +1,76 @@
 import { memo } from "react";
-import { type StyleProp, View, type ViewStyle } from "react-native";
-import Svg, { G, Path } from "react-native-svg";
+import { Text as RNText, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 
 import { useTheme } from "../providers/theme-provider";
-import type { PastelName } from "../tokens/primitives/color";
-import { HEART } from "./icon-paths";
-import {
-  CHERRY_BALLS_PATH,
-  CHERRY_LEAF_PATH,
-  CHERRY_SHINE_PATH,
-  CHERRY_STEMS_GAP_PATH,
-  CHERRY_STEMS_PATH,
-  WORDMARK_PATH
-} from "./wordmark-path";
+import { CherryMark, type CherryMarkTone } from "./cherry-mark";
 
 export interface LogoProps {
-  /** Alto total en puntos, pegatina incluida (def. 40). */
+  /** Alto total en puntos (def. 40): el del dibujo de las cerezas. */
   height?: number;
-  /** `sticker`: troquelado blanco, contorno y sombra dura. `plain`: solo letras y cerezas. */
-  variant?: "sticker" | "plain";
-  /** Letras rellenas de un pastel con contorno de tinta (para portadas). Por defecto, tinta. */
-  fill?: PastelName;
-  /** Corazoncito pegado arriba a la derecha (def. no: ya están las cerezas). */
-  heart?: boolean;
+  /** Con la palabra «cherry» al lado (def. sí). Sin ella, solo las cerezas. */
+  wordmark?: boolean;
+  /** `ink` / `white`: todo de una tinta (sobre foto). Def. a color. */
+  tone?: CherryMarkTone;
   /** Def. «Cherry». */
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
 
-// Unidades de la caja de la palabra (≈ 1200 × 400, más rabitos arriba y la «y» abajo).
-const RIM = 39;
-const OUTLINE = 18;
-const SHADOW = 27;
-const LETTER_STROKE = 22;
-const STEM = 15;
-const LEAF_STROKE = 12;
-const CHERRY_STROKE = 14;
-const SHINE = 10;
-const HEART_SCALE = 6.3;
-const HEART_TRANSFORM = `translate(1080 -330) scale(${HEART_SCALE}) rotate(14 12 12)`;
-const VIEWBOX = {
-  sticker: { x: -65, y: -497, w: 1365, h: 693 },
-  plain: { x: -8, y: -440, w: 1224, h: 552 }
-} as const;
+/** Proporción de la palabra respecto al alto del dibujo. */
+const WORDMARK_SCALE = 0.56;
 
 /**
- * Logo «cherry»: la palabra en Fraunces Black, sola o como pegatina troquelada; las bolas de
- * las dos erres son un par de cerezas unidas por los rabitos y una hoja.
+ * Logotipo: las cerezas con hojas-corazón y, al lado, «cherry» en Rubik Black con el interletraje
+ * cerrado. La palabra va en tinta (o en blanco con `tone="white"`); las cerezas son el color.
  */
 export const Logo = memo(function Logo({
   height = 40,
-  variant = "sticker",
-  fill,
-  heart = false,
+  wordmark = true,
+  tone = "color",
   accessibilityLabel = "Cherry",
   style,
   testID
 }: LogoProps) {
   const theme = useTheme();
-  const c = theme.primitives.color;
-  const pastel = theme.primitives.pastel;
-  const box = VIEWBOX[variant];
-  const width = (height * box.w) / box.h;
-  const letterFill = fill ? pastel[fill].fill : c.ink;
-  const letterStroke = fill ? LETTER_STROKE : 0;
-  // Con letras fresa, las cerezas pasan a tomate para no confundirse con ellas.
-  const cherryFill = fill === "fresa" ? pastel.tomate.fill : pastel.fresa.fill;
-  const heartFill = fill === "fresa" ? pastel.limonada.fill : pastel.fresa.fill;
-  const outer = 2 * (RIM + OUTLINE);
-  const rim = 2 * RIM;
-
-  // Silueta completa (letras, cerezas, hoja, rabitos y el hueco entre ellos) con un grosor de trazo dado: sombra,
-  // contorno y troquel blanco de la pegatina.
-  const silhouette = (color: string, extra: number) => (
-    <>
-      <Path d={WORDMARK_PATH} fill={color} stroke={color} strokeWidth={letterStroke + extra} strokeLinejoin="round" />
-      <Path d={CHERRY_BALLS_PATH} fill={color} stroke={color} strokeWidth={CHERRY_STROKE + extra} strokeLinejoin="round" />
-      <Path d={CHERRY_LEAF_PATH} fill={color} stroke={color} strokeWidth={LEAF_STROKE + extra} strokeLinejoin="round" />
-      <Path d={CHERRY_STEMS_GAP_PATH} fill={color} stroke={color} strokeWidth={STEM + extra} strokeLinejoin="round" />
-      <Path d={CHERRY_STEMS_PATH} fill="none" stroke={color} strokeWidth={STEM + extra} strokeLinecap="round" />
-    </>
-  );
-
-  const heartLayers = (inner: { fill: string; stroke: string; width: number }) =>
-    variant === "sticker" ? (
-      <>
-        <Path d={HEART} transform={`translate(${SHADOW / HEART_SCALE} ${SHADOW / HEART_SCALE})`} fill={c.ink} stroke={c.ink} strokeWidth={(inner.width * HEART_SCALE + outer) / HEART_SCALE} strokeLinejoin="round" />
-        <Path d={HEART} fill={c.ink} stroke={c.ink} strokeWidth={(inner.width * HEART_SCALE + outer) / HEART_SCALE} strokeLinejoin="round" />
-        <Path d={HEART} fill={c.white} stroke={c.white} strokeWidth={(inner.width * HEART_SCALE + rim) / HEART_SCALE} strokeLinejoin="round" />
-        <Path d={HEART} fill={inner.fill} stroke={inner.stroke} strokeWidth={inner.width} strokeLinejoin="round" />
-      </>
-    ) : (
-      <Path d={HEART} fill={inner.fill} stroke={inner.stroke} strokeWidth={inner.width} strokeLinejoin="round" />
-    );
+  const fontSize = Math.round(height * WORDMARK_SCALE);
+  const wordColor = tone === "white" ? theme.primitives.color.white : theme.primitives.color.ink;
 
   return (
     <View
-      testID={testID}
-      style={[{ width, height }, style]}
       accessible
-      role="img"
       aria-label={accessibilityLabel}
+      role="img"
+      style={[styles.row, { height, gap: Math.round(height * 0.16) }, style]}
+      testID={testID}
     >
-      <Svg width={width} height={height} viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}>
-        {variant === "sticker" ? (
-          <>
-            <G transform={`translate(${SHADOW} ${SHADOW})`}>{silhouette(c.ink, outer)}</G>
-            {silhouette(c.ink, outer)}
-            {silhouette(c.white, rim)}
-          </>
-        ) : null}
-        <Path
-          d={WORDMARK_PATH}
-          fill={letterFill}
-          stroke={letterStroke ? c.ink : undefined}
-          strokeWidth={letterStroke || undefined}
-          strokeLinejoin="round"
-        />
-        <Path d={CHERRY_STEMS_PATH} fill="none" stroke={c.ink} strokeWidth={STEM} strokeLinecap="round" strokeLinejoin="round" />
-        <Path d={CHERRY_LEAF_PATH} fill={pastel.menta.fill} stroke={c.ink} strokeWidth={LEAF_STROKE} strokeLinejoin="round" />
-        <Path d={CHERRY_BALLS_PATH} fill={cherryFill} stroke={c.ink} strokeWidth={CHERRY_STROKE} />
-        <Path d={CHERRY_SHINE_PATH} fill="none" stroke={c.paper} strokeWidth={SHINE} strokeLinecap="round" />
-        {heart ? (
-          <G transform={HEART_TRANSFORM}>
-            {heartLayers({ fill: heartFill, stroke: c.ink, width: 7 / HEART_SCALE })}
-          </G>
-        ) : null}
-      </Svg>
+      <CherryMark decorative size={height} tone={tone} />
+      {wordmark ? (
+        <RNText
+          allowFontScaling={false}
+          aria-hidden
+          importantForAccessibility="no"
+          style={{
+            color: wordColor,
+            fontFamily: theme.primitives.fonts.display,
+            fontSize,
+            lineHeight: Math.round(fontSize * 1.2),
+            letterSpacing: -fontSize * 0.04,
+            // Las cerezas pesan abajo: la palabra baja un poco para alinearse con ellas.
+            marginTop: Math.round(height * 0.14)
+          }}
+        >
+          cherry
+        </RNText>
+      ) : null}
     </View>
   );
+});
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start"
+  }
 });

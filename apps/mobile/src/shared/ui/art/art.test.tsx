@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { act, render } from "@testing-library/react";
 import { createRef } from "react";
 import { Text } from "react-native";
@@ -7,6 +10,16 @@ import { lightTheme } from "../themes/light-theme";
 import { mixHex, svgSafeId, withAlpha } from "./color-utils";
 import { Deco, decoKinds, Sparkle } from "./deco";
 import { Confetti, createBurstParticles, HeartBurst, type HeartBurstHandle, MAX_BURST_PARTICLES } from "./heart-burst";
+import { CherryMark } from "./cherry-mark";
+import {
+  CHERRY_MARK_BIG_HEART_PATH,
+  CHERRY_MARK_CHERRIES,
+  CHERRY_MARK_HEIGHT,
+  CHERRY_MARK_SMALL_HEART_PATH,
+  CHERRY_MARK_STALK_PATH,
+  CHERRY_MARK_STEMS_PATH,
+  CHERRY_MARK_WIDTH
+} from "./cherry-mark-geometry";
 import { Logo } from "./logo";
 import { Mascot, mascotMoods } from "./mascot";
 import { PolaroidFrame } from "./polaroid-frame";
@@ -40,32 +53,64 @@ describe("Mascot (Mochi)", () => {
   });
 });
 
+describe("CherryMark", () => {
+  it("is an image named Cherry, taller than wide", () => {
+    const { getByRole } = render(<CherryMark size={80} />);
+    const mark = getByRole("img");
+    expect(mark.getAttribute("aria-label")).toBe("Cherry");
+    expect(mark.style.height).toBe("80px");
+    expect(Number.parseFloat(mark.style.width)).toBeCloseTo((80 * CHERRY_MARK_WIDTH) / CHERRY_MARK_HEIGHT, 3);
+  });
+
+  it("draws two cherries and two heart-shaped leaves in brand colours", () => {
+    const { container } = render(<CherryMark />);
+    const circles = Array.from(container.querySelectorAll("circle"));
+    expect(circles).toHaveLength(2);
+    expect(circles.every((circle) => circle.getAttribute("fill") === lightTheme.primitives.pastel.fresa.fill)).toBe(true);
+    const leaves = Array.from(container.querySelectorAll("path")).filter(
+      (path) => path.getAttribute("fill") === lightTheme.primitives.pastel.menta.deep
+    );
+    expect(leaves.map((leaf) => leaf.getAttribute("d"))).toEqual([CHERRY_MARK_BIG_HEART_PATH, CHERRY_MARK_SMALL_HEART_PATH]);
+  });
+
+  it("goes single-ink without shines, and hides from screen readers when decorative", () => {
+    const { container } = render(<CherryMark decorative tone="white" />);
+    const fills = Array.from(container.querySelectorAll("path, circle"))
+      .map((node) => node.getAttribute("fill") ?? node.getAttribute("stroke"))
+      .filter((color) => color !== "none");
+    expect(new Set(fills)).toEqual(new Set([lightTheme.primitives.color.white]));
+    // Rabitos, rabito común y dos hojas: sin los dos brillos.
+    expect(container.querySelectorAll("path")).toHaveLength(4);
+    expect(container.querySelector("[role=img]")).toBeNull();
+    expect(container.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("matches the brand SVG source", () => {
+    const svg = readFileSync(path.resolve(__dirname, "../../../../assets/brand/cherry-logo.svg"), "utf8");
+    for (const d of [CHERRY_MARK_STEMS_PATH, CHERRY_MARK_STALK_PATH, CHERRY_MARK_BIG_HEART_PATH, CHERRY_MARK_SMALL_HEART_PATH]) {
+      expect(svg).toContain(d);
+    }
+    for (const cherry of CHERRY_MARK_CHERRIES) {
+      expect(svg).toContain(`cx="${cherry.cx}" cy="${cherry.cy}" r="${cherry.r}"`);
+      expect(svg).toContain(cherry.shine);
+    }
+  });
+});
+
 describe("Logo", () => {
-  it("is an image named Cherry and keeps its aspect ratio", () => {
-    const { getByRole } = render(<Logo height={40} />);
-    const logo = getByRole("img");
-    expect(logo.getAttribute("aria-label")).toBe("Cherry");
-    expect(Number.parseFloat(logo.style.width)).toBeGreaterThan(70);
-    expect(logo.style.height).toBe("40px");
+  it("is one image named Cherry: the mark and the word", () => {
+    const { getAllByRole, getByText } = render(<Logo height={40} />);
+    const images = getAllByRole("img");
+    expect(images).toHaveLength(1);
+    expect(images[0].getAttribute("aria-label")).toBe("Cherry");
+    expect(images[0].style.height).toBe("40px");
+    expect(getByText("cherry")).toBeInTheDocument();
   });
 
-  it("supports the plain variant and pastel letters", () => {
-    // Letras, rabitos, hoja, cerezas y brillos; sin capas de pegatina.
-    const plain = render(<Logo variant="plain" />);
-    expect(plain.container.querySelectorAll("path").length).toBe(5);
-    plain.unmount();
-    const filled = render(<Logo fill="fresa" />);
-    const fills = Array.from(filled.container.querySelectorAll("path")).map((p) => p.getAttribute("fill"));
-    expect(fills).toContain(lightTheme.primitives.color.fresa);
-    // Las cerezas no se confunden con unas letras fresa.
-    expect(fills).toContain(lightTheme.primitives.pastel.tomate.fill);
-  });
-
-  it("the two r's end in cherries", () => {
-    const { container } = render(<Logo />);
-    const fills = Array.from(container.querySelectorAll("path")).map((p) => p.getAttribute("fill"));
-    expect(fills).toContain(lightTheme.primitives.pastel.fresa.fill);
-    expect(fills).toContain(lightTheme.primitives.pastel.menta.fill);
+  it("can drop the word and keep only the cherries", () => {
+    const { queryByText, container } = render(<Logo wordmark={false} />);
+    expect(queryByText("cherry")).toBeNull();
+    expect(container.querySelectorAll("circle")).toHaveLength(2);
   });
 });
 

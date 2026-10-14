@@ -19,6 +19,11 @@ function deferred<T>() {
 }
 
 const platform = Platform as { OS: string };
+
+const googlePayload = {
+  providerToken: "google-token",
+  device: { installationId: "device-1", platform: "android" as const, deviceName: "Pixel" }
+};
 const originalOS = platform.OS;
 
 describe("LoginScreen", () => {
@@ -134,14 +139,47 @@ describe("LoginScreen", () => {
     });
   });
 
-  it("hides «Continuar con Apple» where there is no supported flow (Android, web)", async () => {
+  it("shows «Continuar con Apple» disabled and marked «Próximamente» where there is no flow yet (Android, web)", async () => {
     for (const os of ["android", "web"]) {
       platform.OS = os;
-      const view = renderRoute(<LoginScreen />);
+      const appleAuthenticate = vi.fn(async () => {
+        throw new Error("unused");
+      });
+      const view = renderRoute(<LoginScreen />, {
+        services: {
+          authProviders: {
+            google: { authenticate: vi.fn(async () => ({ provider: "google" as const, payload: googlePayload })) },
+            apple: { authenticate: appleAuthenticate }
+          }
+        }
+      });
 
-      expect(await screen.findByRole("button", { name: "Continuar con Google" })).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Continuar con Apple" })).not.toBeInTheDocument();
+      const google = await screen.findByRole("button", { name: "Continuar con Google" });
+      const apple = screen.getByRole("button", { name: "Continuar con Apple" });
+      expect(google).not.toBeDisabled();
+      expect(apple).toBeDisabled();
+      expect(apple).toHaveAttribute("aria-disabled", "true");
+      expect(apple).toHaveTextContent("Próximamente");
+
+      fireEvent.click(apple);
+      expect(appleAuthenticate).not.toHaveBeenCalled();
       view.unmount();
+    }
+  });
+
+  it("keeps «Continuar con Apple» enabled on iOS, without «Próximamente»", async () => {
+    renderRoute(<LoginScreen />);
+
+    const apple = await screen.findByRole("button", { name: "Continuar con Apple" });
+    expect(apple).not.toBeDisabled();
+    expect(screen.queryByText("Próximamente")).not.toBeInTheDocument();
+  });
+
+  it("keeps the stable test ids of the providers and the development shortcuts", async () => {
+    renderRoute(<LoginScreen />, { services: { testSignIn: { execute: vi.fn(async () => sessionFixture) } } });
+
+    for (const id of ["login-screen", "login-google", "login-apple", "login-dev-tools", "login-dev-new", "login-dev-demo", "login-dev-demo2"]) {
+      expect(await screen.findByTestId(id)).toBeInTheDocument();
     }
   });
 

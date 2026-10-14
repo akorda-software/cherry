@@ -33,10 +33,13 @@ cada ~4 s; en `celebrate` da saltitos con anticipación y aterrizaje. Con «redu
 
 ## Logo
 
-`<Logo height? variant? fill? heart? accessibilityLabel? style? testID? />`
-La palabra «cherry» en Rubik Black convertida a trazados, con las dos erres acabadas en cerezas (`wordmark-path.ts`, no depende de la fuente): pegatina con
-troquelado blanco, contorno y sombra dura, y un corazón. `variant="plain"`: solo letras. `fill="fresa"`: letras
-pastel con contorno (portadas). `height` es el alto total; el ancho sale de la proporción.
+`<CherryMark size? tone? decorative? accessibilityLabel? style? testID? />` — el logo: un par de cerezas cuyas hojas
+son dos corazones, plano (sin contornos ni sombras). `size` es el alto (el ancho sale de la proporción, 614 × 800);
+`tone`: `color` (def.), `ink` o `white` (de una tinta, sin brillos). Trazados en `cherry-mark-geometry.ts`, iguales
+que `assets/brand/cherry-logo.svg`; `CherryMarkShapes` pinta partes sueltas (la animación de arranque las mueve).
+
+`<Logo height? wordmark? tone? accessibilityLabel? style? testID? />` — logotipo: las cerezas y la palabra «cherry» en
+Rubik Black al lado (`wordmark={false}`: solo las cerezas). Es una sola imagen para el lector de pantalla.
 
 ## Papelería
 
@@ -79,7 +82,10 @@ const burst = useRef<HeartBurstHandle>(null);
 
 ## Recursos de marca
 
-`assets/images/icon.png` (Mochi sobre lavanda punteada, opaco), `adaptive-icon.png` (primer plano con margen
-seguro) + `adaptive-icon-background.png` + `adaptive-icon-monochrome.png` (icono temático de Android 13),
-`splash-icon.png` (Mochi + logo, sobre papel) y `favicon.png`. Se generan desde el escaparate
-(`/art?only=mochi`, `/art?only=logo`) capturando los mismos vectores que usa la app.
+Fuente: `assets/brand/cherry-logo.svg` (el logo) y `assets/brand/cherry-icon.svg` (el icono con su fondo). Desde
+ellos, rasterizados a 1024 px: `assets/images/icon.png` (cerezas sobre amarillo, opaco), `adaptive-icon.png`
+(cerezas dentro del círculo seguro de 66 dp) + `adaptive-icon-background.png` (amarillo) +
+`adaptive-icon-monochrome.png` (blanco con los brillos calados, icono temático de Android 13), `splash-icon.png`
+(cerezas sobre transparente, dentro del círculo de 192 dp del splash de Android 12; el fondo amarillo lo pone
+`app.config.ts`) y `favicon.png` (48 px, rabitos más gruesos). Si cambian el dibujo o `imageWidth` del splash,
+revisa `SPLASH_IMAGE_WIDTH` en `composites/boot-splash.tsx`.

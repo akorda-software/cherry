@@ -41,9 +41,9 @@ Servicios de sesión según el entorno: build nativo → Google y Apple nativos;
 
 ## Bienvenida y login
 
-- Logo, Mochi saludando, titular «Ligar sin trucos.» y tres pegatinas: «Gratis. Para siempre.», «Sin muros de pago», «Código abierto».
-- **«Continuar con Google»** siempre; **«Continuar con Apple»** en todas las plataformas salvo Android.
-- Caja **«Solo en desarrollo»** (solo con `__DEV__`): «Entrar como usuario nuevo» (email desechable, onboarding desde cero) y «Entrar como Lucía (demo)» (`demo@cherry.dev`, de `demo_seeds.exs`). Ambos usan `POST /api/auth/dev/test-login`; si el servidor lo tiene desactivado: «El acceso de pruebas está desactivado en este servidor.».
+- Fondo amarillo de marca con una luz suave detrás del logo (las cerezas con hojas-corazón), la palabra «cherry» y el titular «Conoce gente cerca de ti.». Abajo, una hoja blanca con «Entra o crea tu cuenta» y los botones. Esta pantalla no es neobrutalista: sin contornos de tinta ni sombras duras.
+- **«Continuar con Google»** (la «G» de cuatro colores sobre blanco) y **«Continuar con Apple»** (negro): Apple funciona en iOS; en Android y en web se ve atenuado, deshabilitado y con «Próximamente».
+- Atajos de **«Pruebas»** (solo con `__DEV__` o `EXPO_PUBLIC_TEST_LOGIN=true`), discretos bajo los botones: «Nuevo» (email desechable, onboarding desde cero), «Lucía» (`demo@cherry.dev`) y «Hugo» (`demo2@cherry.dev`), de `demo_seeds.exs`. Usan `POST /api/auth/dev/test-login`; si el servidor lo tiene desactivado: «El acceso de pruebas está desactivado en este servidor.».
 - La credencial del proveedor viaja a `POST /api/auth/:provider/callback`; Phoenix emite la sesión, que se guarda en el almacenamiento seguro. Después se vuelve a `/` y el bootstrap decide.
 - Errores en una tarjeta con texto amable; cancelar la hoja del proveedor no muestra nada. Una cuenta borrada ve «Esta cuenta se borró y ya no se puede usar para entrar.».
 

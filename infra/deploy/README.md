@@ -13,6 +13,13 @@ Runbook operativo del despliegue de `apps/backend`. Arquitectura completa: [`../
 | Dokploy | Proyecto `cherry` → entorno `production` → app `backend` (`cherry-backend-mkeaem`): imagen pública `ghcr.io/akorda-software/cherry-backend:<sha>`, 1 réplica, `stop-first`, rollback, healthcheck `/healthz`, bind `/var/lib/cherry/uploads`, dominio `192.168.0.126` sin HTTPS |
 | Env | Fase LAN: `PHX_HOST=192.168.0.126`, `PHX_URL_SCHEME=http`, `FORCE_SSL=false`, `PUBLIC_BASE_URL=http://192.168.0.126`. Secretos en `~/.config/cherry-deploy/prod-secrets.env` (Olares) → pasar a Bitwarden |
 
+Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): el CI publica la imagen `ghcr.io/akorda-software/cherry-backend:<sha>` en cada push a `main`; después, con la API de Dokploy de nipogi, `application.saveDockerProvider` con la imagen nueva y `application.deploy`. Comprobar con `curl http://192.168.0.126/healthz` (devuelve el `version` desplegado).
+
+| Fecha | Imagen | Qué |
+|---|---|---|
+| 2026-10-13 | `d6f9bc9` | Primer despliegue (LAN) |
+| 2026-10-14 | `cd3226e` | NFC con los CSCA de 129 países (638 certificados), tarjetas sin CAN, edad antes que caducidad |
+
 Pendiente:
 - Google sin `GOOGLE_*_CLIENT_ID`.
 - Swarm se anuncia con la IP pública (79.117.30.255) porque así la detecta el instalador. Da igual con un nodo y sus puertos están cerrados.

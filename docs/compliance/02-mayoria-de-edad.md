@@ -29,7 +29,7 @@ La fricción se asume como rasgo de marca: un sitio donde todo el mundo está ve
 
 ## 1. Lectura NFC del documento
 
-**Qué documentos:** DNI 3.0 y 4.0 (desde 2015), NIE con chip y pasaportes electrónicos; también los pasaportes y documentos de identidad con chip de los unos 130 emisores de las listas maestras públicas (D-2026-10-14). Todos siguen el estándar ICAO 9303 (eMRTD). La app enseña la lista de países con la «i» del método NFC (`GET /api/me/verification/nfc/countries`).
+**Qué documentos:** DNI 3.0 y 4.0 (desde 2015), NIE con chip y pasaportes electrónicos; también los pasaportes y documentos de identidad con chip de los unos 129 emisores de las listas maestras públicas (D-2026-10-14). Todos siguen el estándar ICAO 9303 (eMRTD). La app enseña la lista de países con la «i» del método NFC (`GET /api/me/verification/nfc/countries`).
 
 **Cómo funciona:**
 
@@ -128,7 +128,7 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 - **Lector DER y X.509 propios** (`Der`, `Certificate`). OTP 28 (`:public_key`) no decodifica certificados EC con parámetros explícitos, que es lo que recomienda ICAO (OpenSSL 3 tampoco los valida por defecto). Firmas con `:crypto`.
   - Comprobado contra los **385 CSCA autofirmados reales** de la master list alemana: 279 RSA (también PSS) y 106 EC, la mayoría con parámetros explícitos. Todas las firmas verifican.
 - **Almacén de CSCA** (`TrustStore`): `priv/csca`, PEM/DER, `CSCA_PATHS`.
-  - Incluye los CSCA españoles 2, 3 y 4 (RSA-4096), con las huellas comprobadas contra la web de la Policía, y los de las listas maestras del BSI y de los Países Bajos (638 certificados de 130 emisores, 2026-10-14), importados solo tras comprobar la firma de cada lista.
+  - Incluye los CSCA españoles 2, 3 y 4 (RSA-4096), con las huellas comprobadas contra la web de la Policía, y los de las listas maestras del BSI y de los Países Bajos (638 certificados de 129 emisores, 2026-10-14), importados solo tras comprobar la firma de cada lista.
   - `mix cherry.csca` los lista y los extrae de una master list.
   - Procedencia y actualización: `apps/backend/priv/csca/README.md`.
 - **Huella** (`Fingerprint`): HMAC-SHA256 con `DOCUMENT_FINGERPRINT_KEY`.
@@ -230,7 +230,7 @@ Una revisión adversarial independiente no encontró forma de falsificar ni alte
   - excluir de los feeds a los perfiles no verificados;
   - comprobarlo en el WebSocket del chat;
   - el paso de verificación en el onboarding.
-- **Documentos extranjeros por NFC:** se aceptan los de los países de `priv/csca` (unos 130). Sin probar con documentos reales de otros países. La huella usa el número del documento, así que cambia al renovarlo (como con los pasaportes).
+- **Documentos extranjeros por NFC:** se aceptan los de los países de `priv/csca` (unos 129). Sin probar con documentos reales de otros países. La huella usa el número del documento, así que cambia al renovarlo (como con los pasaportes).
 - **Cobertura del backend:** `mix test --cover` ya estaba por debajo del umbral del 90 % antes de esta rama (86,9 % en `feat/kawaii-overhaul`). No es una regresión; se deja anotado.
 
 ## Investigación: selfie ↔ DG2 y prueba de vida (sin construir)

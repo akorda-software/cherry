@@ -16,12 +16,24 @@ defmodule Cherry.Accounts do
 
   def get_user!(id), do: Repo.get!(User, id)
 
-  @doc "Deactivates an account and all its credentials atomically; retains records for now."
+  @doc """
+  Deactivates an account and all its credentials atomically, at its owner's
+  request; retains records for now.
+
+  The reason (`user_request`) lets the same provider account sign up again:
+  the next login purges this account and starts a new one (`Cherry.Identity`).
+  """
   def delete_account(%User{id: user_id}) do
     Repo.transaction(fn ->
       user = Repo.one!(from u in User, where: u.id == ^user_id, lock: "FOR UPDATE")
       now = DateTime.utc_now() |> DateTime.truncate(:second)
-      Repo.update!(Ecto.Changeset.change(user, deleted_at: user.deleted_at || now))
+
+      Repo.update!(
+        Ecto.Changeset.change(user,
+          deleted_at: user.deleted_at || now,
+          deletion_reason: user.deletion_reason || "user_request"
+        )
+      )
 
       from(p in Cherry.Dating.Profile, where: p.user_id == ^user_id)
       |> Repo.update_all(set: [deleted_at: now, is_discoverable: false, is_paused: true])
@@ -41,8 +53,13 @@ defmodule Cherry.Accounts do
     end
   end
 
+  @doc "Whether the owner deleted the account and may sign up again with the same login."
+  def deleted_by_owner?(%User{deleted_at: %DateTime{}, deletion_reason: "user_request"}), do: true
+  def deleted_by_owner?(%User{}), do: false
+
   @doc """
-  Erases an account for good (a minor detected by the age verification).
+  Erases an account for good: a minor detected by the age verification, or an
+  account its owner deleted when they sign up again (`Cherry.Identity`).
 
   Sessions are revoked first (no new uploads), then the stored photo and
   upload objects are deleted while their rows still point to them, the user

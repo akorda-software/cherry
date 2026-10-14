@@ -11,6 +11,9 @@ defmodule Cherry.Accounts.User do
     field(:display_name, :string)
     field(:deleted_at, :utc_datetime)
 
+    # `user_request` when the person deleted the account from the app (`Cherry.Accounts.delete_account/1`).
+    field(:deletion_reason, :string)
+
     timestamps(type: :utc_datetime)
   end
 

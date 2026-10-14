@@ -16,7 +16,7 @@ Pipelines: `:api` (público), `:authenticated_api` (valida JWT + expiración + f
 
 | Ruta | Descripción |
 |---|---|
-| `POST /api/auth/:provider/callback` | Callback Google/Apple; valida credencial, resuelve/crea usuario, emite sesión |
+| `POST /api/auth/:provider/callback` | Callback Google/Apple; valida credencial, resuelve/crea usuario, emite sesión. Si la persona había borrado su cuenta, la borra del todo y crea una nueva; una cuenta borrada por otro motivo → 401 `account_deleted` |
 | `POST /api/auth/dev/test-login` | Solo dev (`:enable_dev_test_login`): login sin providers nativos. Body opcional: `{}` → usuario de prueba compartido; `{email, displayName?}` → entra como esa persona (la crea si no existe; así se usan las cuentas de `demo_seeds.exs`); `device` opcional y puede ser parcial. 422 `invalid_email`, 403 `account_deleted`, 404 si está desactivado |
 | `POST /api/session/refresh` | Rotación de refresh token; reuso revoca la familia |
 | `DELETE /api/session` | Logout device-scoped |

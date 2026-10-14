@@ -20,7 +20,16 @@ defmodule Cherry.Identity do
              )
            ) do
         %ProviderIdentity{} = identity ->
-          {:ok, %{user: identity.user, identity: identity, claims: claims}}
+          if Accounts.deleted_by_owner?(identity.user) do
+            # The person deleted this account and is back: a new account from
+            # scratch. The old one is purged first, which also frees its email,
+            # identity and document fingerprint for the new one.
+            with {:ok, :purged} <- Accounts.purge_account(identity.user) do
+              create_identity(provider, claims)
+            end
+          else
+            {:ok, %{user: identity.user, identity: identity, claims: claims}}
+          end
 
         nil ->
           create_identity(provider, claims)

@@ -63,6 +63,26 @@ defmodule Cherry.Identity.Document.Sod do
 
   def parse(_bin), do: {:error, :malformed_sod}
 
+  @doc """
+  Parses any CMS SignedData with encapsulated content (e.g. a CSCA master list,
+  ICAO 9303-12 §9) without interpreting the content: `hash_algorithm` and
+  `hashes` stay `nil`. The signers are checked with `PassiveAuth.verify_signed/3`.
+  """
+  @spec parse_signed_data(binary()) ::
+          {:ok, t()} | {:error, :malformed_sod | :unsupported_algorithm}
+  def parse_signed_data(bin) when is_binary(bin) do
+    with {:ok, content_info} <- unwrap(bin),
+         {:ok, [type, {{:context, true, 0}, explicit, _}]} <- Der.children(content_info),
+         {:ok, @signed_data} <- Der.oid(type),
+         {:ok, signed_data} <- Der.decode(explicit),
+         {:ok, sod} <- signed_data(signed_data) do
+      {:ok, sod}
+    else
+      {:error, :unsupported_algorithm} = error -> error
+      _ -> {:error, :malformed_sod}
+    end
+  end
+
   defp unwrap(bin) do
     case Der.decode(bin) do
       {:ok, {{:application, true, 23}, value, _}} -> Der.decode(value)

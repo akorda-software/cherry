@@ -102,6 +102,31 @@ defmodule Cherry.Identity.Document.TrustStoreTest do
     assert TrustStore.reload() |> Enum.map(& &1.der) |> Enum.sort() == Enum.sort(expected)
   end
 
+  test "countries come from the subjects of the usable CSCAs" do
+    pt = PKI.csca(cn: "CSCA PT", country: "PT")
+    es = PKI.csca(cn: "CSCA ES", country: "ES")
+    es_old = PKI.csca(cn: "CSCA ES OLD", country: "ES")
+    not_ca = PKI.csca(cn: "CSCA FR", country: "FR", key_usage: :signer)
+
+    Application.put_env(:cherry, TrustStore,
+      paths: [],
+      certificates: [pt.der, es.der, es_old.der, not_ca.der]
+    )
+
+    TrustStore.reload()
+    assert TrustStore.countries() == ["ES", "PT"]
+  end
+
+  test "the shipped CSCAs cover Spain and many other countries" do
+    Application.put_env(:cherry, TrustStore, certificates: [])
+    TrustStore.reload()
+    countries = TrustStore.countries()
+
+    assert "ES" in countries
+    assert Enum.all?(~w(DE FR IT PT NL GB US MA), &(&1 in countries))
+    assert length(countries) > 100
+  end
+
   test "the CSCA directory shipped with the app parses completely" do
     Application.put_env(:cherry, TrustStore, paths: [Application.app_dir(:cherry, "priv/csca")])
     shipped = TrustStore.files(Application.app_dir(:cherry, "priv/csca"))

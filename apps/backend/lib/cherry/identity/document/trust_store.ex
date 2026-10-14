@@ -44,6 +44,25 @@ defmodule Cherry.Identity.Document.TrustStore do
     end
   end
 
+  @doc """
+  Countries with a usable CSCA: ISO 3166-1 alpha-2 codes in upper case, sorted,
+  from the `C` of each certificate's subject. Also non-State issuers such as
+  `EU` and `UN` (laissez-passer) and `KS` (Kosovo).
+  """
+  @spec countries() :: [String.t()]
+  def countries do
+    anchors()
+    |> Enum.filter(&usable_anchor?/1)
+    |> Enum.flat_map(fn cert ->
+      case List.keyfind(cert.subject.normalized, "2.5.4.6", 0) do
+        {_, <<_, _>> = country} -> [String.upcase(country)]
+        _other -> []
+      end
+    end)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
   @doc "Re-reads the configured sources."
   @spec reload() :: [Certificate.t()]
   def reload do

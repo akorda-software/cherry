@@ -91,7 +91,8 @@ config :cherry, :didit,
   allow_sandbox: false
 
 # Trusted CSCA certificates for passive authentication. `paths` defaults to the
-# release's priv/csca (Spanish CSCAs); CSCA_PATHS replaces it and CSCA_COUNTRIES
+# release's priv/csca (every country of the public master lists, see its
+# README); CSCA_PATHS replaces it and CSCA_COUNTRIES
 # picks country folders of priv/csca at runtime (see TrustStore).
 config :cherry, Cherry.Identity.Document.TrustStore, certificates: []
 

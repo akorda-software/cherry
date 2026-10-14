@@ -79,6 +79,20 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
     end
   end
 
+  describe "GET /api/me/verification/nfc/countries" do
+    test "the countries of the trusted CSCAs", %{conn: conn} do
+      fr = PKI.csca(cn: "CSCA FR", country: "FR")
+      Application.put_env(:cherry, TrustStore, paths: [], certificates: [fr.der])
+
+      assert %{"countries" => ["FR"]} =
+               conn |> get("/api/me/verification/nfc/countries") |> json_response(200)
+    end
+
+    test "requires a session" do
+      assert build_conn() |> get("/api/me/verification/nfc/countries") |> json_response(401)
+    end
+  end
+
   describe "POST /api/me/verification/nfc" do
     test "verifies an adult's document", %{conn: conn} = ctx do
       response =

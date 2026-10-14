@@ -13,6 +13,9 @@ defmodule Cherry.Identity.Document.MrzTest do
               "7408122F1204159UTO<<<<<<<<<<<6" <>
               "ERIKSSON<<ANNA<MARIA<<<<<<<<<<"
 
+  @icao_td2 "I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<" <>
+              "D231458907UTO7408122F1204159<<<<<<<6"
+
   describe "check digits" do
     test "ICAO examples" do
       assert Mrz.check_digit("L898902C3") == 6
@@ -43,6 +46,23 @@ defmodule Cherry.Identity.Document.MrzTest do
       assert mrz.document_code == "I"
       assert mrz.document_number == "D23145890"
       assert mrz.birth_date == ~D[1974-08-12]
+    end
+
+    test "TD2" do
+      assert {:ok, mrz} = Mrz.parse(@icao_td2, @today)
+      assert mrz.format == :td2
+      assert mrz.document_code == "I"
+      assert mrz.issuing_state == "UTO"
+      assert mrz.document_number == "D23145890"
+      assert mrz.birth_date == ~D[1974-08-12]
+      assert mrz.expiry_date == ~D[2012-04-15]
+      assert mrz.personal_number == nil
+
+      # number, birth, expiry and composite check digits
+      for position <- [36 + 9, 36 + 19, 36 + 27, 36 + 35] do
+        assert {:error, :invalid_check_digit} = Mrz.parse(bump(@icao_td2, position), @today),
+               "position #{position}"
+      end
     end
 
     test "every check digit is verified" do
@@ -172,8 +192,13 @@ defmodule Cherry.Identity.Document.MrzTest do
   end
 
   describe "formats" do
-    test "TD2 is not supported and other lengths are malformed" do
-      assert {:error, :unsupported_document} = Mrz.parse(String.duplicate("<", 72), @today)
+    test "visas are refused and other lengths are malformed" do
+      assert {:error, :unsupported_document} =
+               Mrz.parse(String.replace(@icao_td2, "I<UTO", "V<UTO"), @today)
+
+      assert {:error, :unsupported_document} =
+               Mrz.parse(String.replace(@icao_td3, "P<UTO", "V<UTO"), @today)
+
       assert {:error, :malformed_dg1} = Mrz.parse(String.duplicate("<", 50), @today)
       assert {:error, :malformed_dg1} = Mrz.parse(String.replace(@icao_td3, "P<", "p<"), @today)
     end

@@ -70,6 +70,17 @@ defmodule Cherry.Identity.Document.PassiveAuth do
     end
   end
 
+  @doc """
+  Checks the signers of a CMS SignedData parsed with `Sod.parse_signed_data/1`
+  (a CSCA master list): the signer certificate must be in it, chain to one of
+  `anchors` and have signed the content. Returns the signer, its CSCA and
+  whether either is out of its validity period at `now`.
+  """
+  @spec verify_signed(Sod.t(), [Certificate.t()], DateTime.t()) ::
+          {:ok, Certificate.t(), Certificate.t(), boolean()} | {:error, error()}
+  def verify_signed(%Sod{} = signed_data, anchors, %DateTime{} = now),
+    do: verify_signers(signed_data, anchors, now)
+
   defp check_expired(true, false), do: {:error, :certificate_expired}
   defp check_expired(_expired, _allowed), do: :ok
 

@@ -68,6 +68,10 @@ defmodule Cherry.Identity.AgeVerifications do
   @doc "Whether verification is mandatory to use the social features (off by default)."
   def required?, do: Cherry.Features.enabled?(:age_verification_required)
 
+  @doc "Countries whose documents NFC can check (see `TrustStore.countries/0`)."
+  @spec nfc_countries() :: [String.t()]
+  def nfc_countries, do: Cherry.Identity.Document.TrustStore.countries()
+
   @doc "Whether NFC verification can run (a fingerprint key is configured)."
   def available?, do: Fingerprint.configured?()
 
@@ -118,8 +122,9 @@ defmodule Cherry.Identity.AgeVerifications do
            {:ok, %{mrz: mrz} = auth} <- passive_auth(document, nfc_auth_opts(opts, now)),
            # The age goes first: a minor's expired document is still a minor's.
            :ok <- check_adult(mrz, now),
-           :ok <- check_certificates_in_force(auth),
+           # An expired document usually has an expired signer too: say the former.
            :ok <- check_in_force(mrz, now),
+           :ok <- check_certificates_in_force(auth),
            :ok <- check_document_accepted(nfc_document_kind(mrz)),
            {:ok, fingerprint} <- Fingerprint.compute(mrz),
            {:ok, verification} <- store(user_id, method(mrz), fingerprint, now) do
@@ -554,10 +559,10 @@ defmodule Cherry.Identity.AgeVerifications do
     if kind in accepted, do: :ok, else: {:error, :unsupported_document}
   end
 
-  defp nfc_document_kind(%Mrz{format: :td1}), do: :id_card
+  defp nfc_document_kind(%Mrz{format: format}) when format in [:td1, :td2], do: :id_card
   defp nfc_document_kind(%Mrz{format: :td3}), do: :passport
 
-  defp method(%Mrz{format: :td1}), do: "nfc_dni"
+  defp method(%Mrz{format: format}) when format in [:td1, :td2], do: "nfc_dni"
   defp method(%Mrz{format: :td3}), do: "nfc_passport"
 
   defp store(user_id, method, fingerprint, now) do

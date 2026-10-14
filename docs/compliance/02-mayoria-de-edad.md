@@ -29,7 +29,7 @@ La fricción se asume como rasgo de marca: un sitio donde todo el mundo está ve
 
 ## 1. Lectura NFC del documento
 
-**Qué documentos:** DNI 3.0 y 4.0 (desde 2015), NIE con chip y pasaportes electrónicos. Todos siguen el estándar ICAO 9303 (eMRTD).
+**Qué documentos:** DNI 3.0 y 4.0 (desde 2015), NIE con chip y pasaportes electrónicos; también los pasaportes y documentos de identidad con chip de los unos 130 emisores de las listas maestras públicas (D-2026-10-14). Todos siguen el estándar ICAO 9303 (eMRTD). La app enseña la lista de países con la «i» del método NFC (`GET /api/me/verification/nfc/countries`).
 
 **Cómo funciona:**
 
@@ -55,7 +55,7 @@ La fricción se asume como rasgo de marca: un sitio donde todo el mundo está ve
 - iOS exige declarar los identificadores de aplicación del chip (ISO 7816) en `Info.plist`.
 - **Clonado del chip:** la autenticación pasiva prueba que los datos no se han alterado, no que el chip sea el original. La autenticación activa o de chip lo cubre, pero su resultado se comprueba en el móvil. Para verificar la edad el riesgo es bajo: un menor no gana nada clonando un chip si puede pedir prestado el documento, y eso lo cubre la comparación con el selfie.
 - **Prueba de vida casera más débil** que la de un proveedor certificado: se refuerza haciendo el selfie solo después de pasar App Attest / Play Integrity (ver `04`). Un deepfake inyectado bien hecho podría colarse.
-- Obtener y mantener al día los **certificados CSCA** españoles (y de otros países si se aceptan pasaportes extranjeros).
+- Obtener y mantener al día los **certificados CSCA**: los españoles y los de las listas maestras del BSI y de los Países Bajos (`apps/backend/priv/csca/README.md`).
 - **Dato biométrico y documento de identidad** → exige EIPD y consentimiento explícito (ver `06`).
 
 ## 2. Proveedor externo (respaldo)
@@ -123,12 +123,12 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
   - SOD (CMS SignedData + LDSSecurityObject): firma del SignerInfo con atributos firmados, comprobando `contentType` y `messageDigest`.
   - Certificado del firmante dentro del SOD, validado contra un CSCA de confianza: nombre, AKI/SKI, firma, validez de ambos, uso de clave, que no sea CA y que no tenga extensiones críticas desconocidas.
   - Hashes de DG1 y DG2.
-  - MRZ TD1 (DNI, TIE) y TD3 (pasaporte) con todos los dígitos de control.
+  - MRZ TD1 (DNI, TIE), TD2 (algunos documentos de identidad extranjeros) y TD3 (pasaporte) con todos los dígitos de control. Los visados (código `V`) se rechazan.
   - Algoritmos: RSA PKCS#1 v1.5, RSASSA-PSS, ECDSA (DER y *plain* de BSI) con curvas NIST y brainpool, también con parámetros explícitos; SHA-1/224/256/384/512.
 - **Lector DER y X.509 propios** (`Der`, `Certificate`). OTP 28 (`:public_key`) no decodifica certificados EC con parámetros explícitos, que es lo que recomienda ICAO (OpenSSL 3 tampoco los valida por defecto). Firmas con `:crypto`.
   - Comprobado contra los **385 CSCA autofirmados reales** de la master list alemana: 279 RSA (también PSS) y 106 EC, la mayoría con parámetros explícitos. Todas las firmas verifican.
 - **Almacén de CSCA** (`TrustStore`): `priv/csca`, PEM/DER, `CSCA_PATHS`.
-  - Incluye los CSCA españoles 2, 3 y 4 (RSA-4096), con las huellas comprobadas contra la web de la Policía.
+  - Incluye los CSCA españoles 2, 3 y 4 (RSA-4096), con las huellas comprobadas contra la web de la Policía, y los de las listas maestras del BSI y de los Países Bajos (638 certificados de 130 emisores, 2026-10-14), importados solo tras comprobar la firma de cada lista.
   - `mix cherry.csca` los lista y los extrae de una master list.
   - Procedencia y actualización: `apps/backend/priv/csca/README.md`.
 - **Huella** (`Fingerprint`): HMAC-SHA256 con `DOCUMENT_FINGERPRINT_KEY`.
@@ -228,7 +228,7 @@ Una revisión adversarial independiente no encontró forma de falsificar ni alte
   - excluir de los feeds a los perfiles no verificados;
   - comprobarlo en el WebSocket del chat;
   - el paso de verificación en el onboarding.
-- **Pasaportes extranjeros:** solo se aceptan documentos cuyo CSCA esté en `priv/csca` (hoy, España). Para aceptar otros países habría que importar sus CSCA (master list del BSI) y revisar la MRZ de cada uno.
+- **Documentos extranjeros por NFC:** se aceptan los de los países de `priv/csca` (unos 130). Sin probar con documentos reales de otros países. Los documentos de identidad sin CAN impreso solo se leen con los datos de la MRZ, por la opción «Tengo pasaporte» de la app, cuyo texto habla solo de pasaportes. La huella usa el número del documento, así que cambia al renovarlo (como con los pasaportes).
 - **Cobertura del backend:** `mix test --cover` ya estaba por debajo del umbral del 90 % antes de esta rama (86,9 % en `feat/kawaii-overhaul`). No es una regresión; se deja anotado.
 
 ## Investigación: selfie ↔ DG2 y prueba de vida (sin construir)

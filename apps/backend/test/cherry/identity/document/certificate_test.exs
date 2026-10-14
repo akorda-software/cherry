@@ -42,7 +42,7 @@ defmodule Cherry.Identity.Document.CertificateTest do
     end
 
     test "the Spanish CSCAs shipped in priv/csca (RSA-4096, self-signed)" do
-      for file <- Cherry.Identity.Document.TrustStore.files(@csca_dir),
+      for file <- Path.wildcard(Path.join(@csca_dir, "es/csca-spain-*.pem")),
           der <- Cherry.Identity.Document.TrustStore.read_file(file) do
         assert {:ok, cert} = Certificate.parse(der), file
         assert cert.ca?
@@ -51,6 +51,16 @@ defmodule Cherry.Identity.Document.CertificateTest do
         assert {:rsa, n, _e} = cert.public_key
         assert bit_size(n) == 4096
       end
+    end
+  end
+
+  test "every CSCA shipped in priv/csca parses and can anchor a chain" do
+    files = Cherry.Identity.Document.TrustStore.files(@csca_dir)
+    assert length(files) > 600
+
+    for file <- files, der <- Cherry.Identity.Document.TrustStore.read_file(file) do
+      assert {:ok, cert} = Certificate.parse(der), file
+      assert Cherry.Identity.Document.TrustStore.usable_anchor?(cert), file
     end
   end
 

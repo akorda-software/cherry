@@ -6,6 +6,15 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-10-14 — NFC con los documentos de todos los países con lista de CSCA pública
+
+- **Contexto:** la instancia oficial es solo para España, pero en España vive y viaja mucha gente sin DNI español. Con Didit (selfie + documento) ya pueden verificarse con cualquier pasaporte o documento de identidad; por NFC solo valían los documentos españoles, porque `priv/csca` solo traía los CSCA de España.
+- **Decisión:** `priv/csca` lleva **todos los CSCA de las listas maestras públicas** del BSI (Alemania) y de la NPKD (Países Bajos): 638 certificados de 130 emisores. Cada lista se importa solo si su firma cuadra con el CSCA del Estado que la publica, comprobado antes con la huella de su web oficial (`mix cherry.csca … --signed-by … --export-countries priv/csca`). La app enseña la lista de países en una hoja con buscador (la «i» del método NFC), que pide al servidor `GET /api/me/verification/nfc/countries`. La MRZ acepta también TD2; los visados se rechazan.
+- **Motivación:** confiar en un CSCA solo significa aceptar lo que ese Estado firma; no se consulta nada fuera ni sale ningún dato. El riesgo (que a un Estado le roben la clave o que emita documentos con datos falsos) es menor que el de la alternativa, el selfie, que se basa en fotos. La ICAO PKD no se usa: su licencia no permite redistribuirla.
+- **Mantenimiento:** las listas se renuevan cada 1–3 meses; hay que volver a importarlas (procedimiento en `apps/backend/priv/csca/README.md`). Sin actualizar, los documentos nuevos se rechazan, pero nunca se acepta uno falso por eso.
+
+---
+
 ## D-2026-10-13 — Licencias abiertas para todo, permiso para las tiendas, DCO y nombre compartido
 
 - **Contexto:** Cherry se va a publicar como proyecto abierto para que cualquiera monte su instancia en su país (Cherry España es la de Akorda Software). Las condiciones de las tiendas de apps (sobre todo la App Store) añaden restricciones que la AGPL no permite añadir: sin un permiso explícito, en cuanto hubiera código de otras personas nadie podría publicar la app en la tienda. La AGPL tampoco cubre el nombre ni la imagen.

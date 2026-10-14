@@ -12,20 +12,44 @@ defmodule Mix.Tasks.Cherry.Csca do
   (to compare with the fingerprints published by the issuing State) and
   whether passive authentication can use it as an anchor.
 
-  `.ml` files are CSCA master lists (ICAO 9303-12, CMS with eContentType
-  2.23.136.1.1.2). **Their signature is not verified here**: before adding an
-  extracted certificate, check its fingerprint against the official source
-  (procedure in `priv/csca/README.md`). `--export` writes one PEM per
-  certificate; nothing is added to the trust store automatically.
+  `.ml` and `.mls` files are CSCA master lists (ICAO 9303-12, CMS with
+  eContentType 2.23.136.1.1.2). Without `--signed-by` **their signature is not
+  verified**: before adding an extracted certificate, check its fingerprint
+  against the official source. `--export` writes one PEM per certificate.
+
+  To import a whole master list into the trust store:
+
+      mix cherry.csca GermanMasterList.ml --signed-by csca-germany.pem \
+        --export-countries priv/csca
+
+  `--signed-by` takes the CSCA of the State that publishes the list (checked
+  beforehand against its official fingerprint) and refuses the list unless its
+  signer certificate chains to it and signed it. `--export-countries` (only
+  with `--signed-by`) writes each certificate to `<dir>/<country>/`, by the
+  country of its subject, skipping the ones already in `<dir>`. Procedure in
+  `priv/csca/README.md`.
   """
 
   use Mix.Task
 
-  alias Cherry.Identity.Document.{Certificate, Der, TrustStore}
+  alias Cherry.Identity.Document.{Certificate, Der, PassiveAuth, Sod, TrustStore}
 
   @impl Mix.Task
   def run(args) do
-    {opts, paths, _} = OptionParser.parse(args, strict: [country: :string, export: :string])
+    {opts, paths, _} =
+      OptionParser.parse(args,
+        strict: [
+          country: :string,
+          export: :string,
+          signed_by: :string,
+          export_countries: :string
+        ]
+      )
+
+    if opts[:export_countries] && !opts[:signed_by],
+      do: Mix.raise("--export-countries needs --signed-by: only signed master lists are imported")
+
+    if signed_by = opts[:signed_by], do: Enum.each(paths, &verify_master_list!(&1, signed_by))
 
     certificates =
       case paths do
@@ -37,6 +61,14 @@ defmodule Mix.Tasks.Cherry.Csca do
           Enum.flat_map(paths, &read/1)
       end
 
+    if dir = opts[:export_countries] do
+      certificates |> Enum.uniq() |> Enum.flat_map(&parse/1) |> export_countries(dir)
+    else
+      list(certificates, opts)
+    end
+  end
+
+  defp list(certificates, opts) do
     certificates
     |> Enum.uniq()
     |> Enum.flat_map(&parse/1)
@@ -52,8 +84,87 @@ defmodule Mix.Tasks.Cherry.Csca do
   defp read(path) do
     cond do
       File.dir?(path) -> path |> TrustStore.files() |> Enum.flat_map(&TrustStore.read_file/1)
-      String.ends_with?(path, ".ml") -> master_list(File.read!(path))
+      master_list?(path) -> master_list(File.read!(path))
       true -> TrustStore.read_file(path)
+    end
+  end
+
+  defp master_list?(path), do: String.downcase(Path.extname(path)) in [".ml", ".mls"]
+
+  @master_list_type "2.23.136.1.1.2"
+
+  # The signer certificate travels inside the list; it must chain to the given
+  # CSCA (a CSCA of the publishing State) and have signed the list.
+  defp verify_master_list!(path, signed_by) do
+    unless master_list?(path), do: Mix.raise("--signed-by only applies to master lists: #{path}")
+
+    anchors = signed_by |> TrustStore.read_file() |> Enum.flat_map(&parse/1)
+    if anchors == [], do: Mix.raise("no certificate in #{signed_by}")
+
+    with {:ok, signed} <- Sod.parse_signed_data(File.read!(path)),
+         true <- signed.content_type == @master_list_type || {:error, :not_a_master_list},
+         {:ok, signer, csca, expired} <-
+           PassiveAuth.verify_signed(signed, anchors, DateTime.utc_now()) do
+      Mix.shell().info("""
+      #{Path.basename(path)}: signature OK
+        signer: #{subject(signer)} (#{signer.not_before} → #{signer.not_after})
+        CSCA:   #{subject(csca)} (SHA-256 #{hash(:sha256, csca.der)})
+      """)
+
+      if expired,
+        do: Mix.shell().error("  warning: the signer or its CSCA is out of its validity period\n")
+    else
+      {:error, reason} -> Mix.raise("#{path}: master list signature not valid (#{reason})")
+    end
+  end
+
+  defp export_countries(certs, dir) do
+    existing =
+      if File.dir?(dir),
+        do: dir |> TrustStore.files() |> Enum.flat_map(&TrustStore.read_file/1) |> MapSet.new(),
+        else: MapSet.new()
+
+    {added, skipped} =
+      Enum.reduce(certs, {%{}, 0}, fn cert, {added, skipped} ->
+        country = country(cert)
+
+        cond do
+          MapSet.member?(existing, cert.der) ->
+            {added, skipped}
+
+          not TrustStore.usable_anchor?(cert) or not Regex.match?(~r/\A[a-z]{2}\z/, country || "") ->
+            Mix.shell().error("skipping #{subject(cert)}: not a usable CSCA with a country")
+            {added, skipped + 1}
+
+          true ->
+            path =
+              Path.join([
+                dir,
+                country,
+                "csca-#{country}-#{String.slice(hash(:sha256, cert.der), 0, 16)}.pem"
+              ])
+
+            File.mkdir_p!(Path.dirname(path))
+            File.write!(path, :public_key.pem_encode([{:Certificate, cert.der, :not_encrypted}]))
+            {Map.update(added, country, 1, &(&1 + 1)), skipped}
+        end
+      end)
+
+    total = added |> Map.values() |> Enum.sum()
+
+    Mix.shell().info(
+      "#{total} new certificate(s) in #{map_size(added)} countries, #{skipped} skipped" <>
+        if(total > 0,
+          do: ": " <> Enum.map_join(Enum.sort(added), ", ", fn {c, n} -> "#{c} #{n}" end),
+          else: ""
+        )
+    )
+  end
+
+  defp country(cert) do
+    case List.keyfind(cert.subject.normalized, "2.5.4.6", 0) do
+      {_, country} -> country
+      nil -> nil
     end
   end
 

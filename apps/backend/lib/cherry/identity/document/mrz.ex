@@ -5,8 +5,9 @@ defmodule Cherry.Identity.Document.Mrz do
       DG1 ::= [APPLICATION 1] { [APPLICATION 31 (5F1F)] MRZ characters }
 
   Supported formats: TD1 (identity cards such as the Spanish DNI and TIE,
-  3 × 30) and TD3 (passports, 2 × 44). Every check digit is verified, including
-  the composite one.
+  3 × 30), TD2 (some foreign identity cards, 2 × 36) and TD3 (passports,
+  2 × 44). Every check digit is verified, including the composite one. Visas
+  (document code `V`) are not identity documents and are refused.
 
   For the Spanish DNI (and the TIE of foreign residents) the document number is
   the card's own number, which changes with each renewal, and the DNI/NIE
@@ -28,7 +29,7 @@ defmodule Cherry.Identity.Document.Mrz do
   ]
 
   @type t :: %__MODULE__{
-          format: :td1 | :td3,
+          format: :td1 | :td2 | :td3,
           document_code: String.t(),
           issuing_state: String.t(),
           document_number: String.t(),
@@ -61,9 +62,10 @@ defmodule Cherry.Identity.Document.Mrz do
   def parse(mrz, today) when is_binary(mrz) do
     cond do
       not Regex.match?(~r/\A[A-Z0-9<]+\z/, mrz) -> {:error, :malformed_dg1}
+      String.starts_with?(mrz, "V") -> {:error, :unsupported_document}
       byte_size(mrz) == 90 -> td1(mrz, today)
       byte_size(mrz) == 88 -> td3(mrz, today)
-      byte_size(mrz) == 72 -> {:error, :unsupported_document}
+      byte_size(mrz) == 72 -> td2(mrz, today)
       true -> {:error, :malformed_dg1}
     end
   end
@@ -104,7 +106,8 @@ defmodule Cherry.Identity.Document.Mrz do
   end
 
   # A document number longer than 9 characters continues in the optional data,
-  # followed by its check digit, with "<" in the check digit position.
+  # followed by its check digit, with "<" in the check digit position (TD1 and
+  # TD2).
   defp td1_document_number(number, "<", optional) do
     case Regex.run(~r/\A([A-Z0-9]+)([0-9])(<*)(.*)\z/, optional) do
       [_, extra, check, _fill, rest] ->
@@ -118,6 +121,39 @@ defmodule Cherry.Identity.Document.Mrz do
 
   defp td1_document_number(number, check, optional) do
     with :ok <- check(number, check), do: {:ok, strip(number), optional}
+  end
+
+  # TD2 line 1: code(2) state(3) name(31)
+  #     line 2: number(9) check nationality(3) birth(6) check sex(1) expiry(6) check
+  #             optional(7) composite
+  defp td2(mrz, today) do
+    <<line1::binary-36, line2::binary-36>> = mrz
+    <<code::binary-2, state::binary-3, _name::binary-31>> = line1
+
+    <<number::binary-9, number_check::binary-1, nationality::binary-3, birth::binary-6,
+      birth_check::binary-1, _sex::binary-1, expiry::binary-6, expiry_check::binary-1,
+      optional::binary-7, composite::binary-1>> = line2
+
+    composite_data =
+      binary_part(line2, 0, 10) <> binary_part(line2, 13, 7) <> binary_part(line2, 21, 14)
+
+    with {:ok, number, _optional} <- td1_document_number(number, number_check, optional),
+         :ok <- check(birth, birth_check),
+         :ok <- check(expiry, expiry_check),
+         :ok <- check(composite_data, composite),
+         {:ok, birth_date} <- birth_date(birth, today) do
+      {:ok,
+       %__MODULE__{
+         format: :td2,
+         document_code: strip(code),
+         issuing_state: strip(state),
+         document_number: number,
+         birth_date: birth_date,
+         expiry_date: expiry_date(expiry),
+         nationality: strip(nationality),
+         personal_number: nil
+       }}
+    end
   end
 
   # TD3 line 2: number(9) check nationality(3) birth(6) check sex expiry(6) check

@@ -114,6 +114,10 @@ defmodule Cherry.Identity.AgeVerificationsTest do
       adult = PKI.document(csca: ctx.csca, ds: ds)
       assert {:error, :certificate_expired} = verify(user, adult)
       refute AgeVerifications.verified?(user.id)
+
+      # An adult's expired document with an expired signer: the document is what is said.
+      old_adult = PKI.document(csca: ctx.csca, ds: ds, expiry: ~D[2020-01-01])
+      assert {:error, :document_expired} = verify(user_fixture(), old_adult)
     end
 
     test "the 18th birthday counts from that day (UTC)", ctx do

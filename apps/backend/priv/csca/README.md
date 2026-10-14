@@ -10,11 +10,32 @@ Un CSCA (Country Signing CA) es la raíz con la que un Estado firma los certific
 firmantes de documentos, que a su vez firman el SOD de cada DNI o pasaporte. Son certificados
 **públicos**: no son secretos ni datos personales.
 
-## Contenido (revisado el 2026-10-09)
+## Contenido (revisado el 2026-10-14)
 
-Solo España (la instancia oficial es solo para España). Todos son RSA-4096 con
-sha256WithRSAEncryption, autofirmados, con `C=ES, O=DIRECCION GENERAL DE LA POLICIA,
-serialNumber=N, CN=CSCA SPAIN`.
+Una carpeta por país (código ISO alfa-2 del `C` del certificado, en minúsculas): 638 certificados
+de 130 emisores, incluidos los salvoconductos de la UE (`eu`) y la ONU (`un`) y Kosovo (`ks`).
+Vienen de dos listas maestras públicas, importadas solo después de comprobar su firma
+(ver [Actualizar](#actualizar)):
+
+| Lista | Fecha | Certificados | CSCA que la firma (SHA-256, comprobada con su web oficial) |
+|---|---|---|---|
+| BSI (Alemania), `DE_ML_2026-10-01-11-50-52.ml` | 2026-10-01 | 609 (600 nuevos, 6 descartados) | `csca-germany` 10/2024: `2084AED7A991B3158E63AD750D3DC38BC6C9DCF5958F28D1162F49884E91ADA8` |
+| NPKD (Países Bajos), `NL_MASTERLIST.mls` | 2026-07-22 | 411 (35 nuevos) | `CSCA NL` serialNumber=7: `411356D206B99DA15EFADF4B84149F8600EE6260C6727CD6BC230D6B6E151A24` |
+
+Las dos listas se avalan entre sí: el CSCA neerlandés está en la lista alemana y el alemán en la
+neerlandesa. Los 6 descartados de la lista alemana son certificados de enlace de Camerún,
+Portugal, Turquía y Luxemburgo marcados como «no CA» (no pueden anclar una cadena; esos países
+tienen sus CSCA en otros ficheros). Los ficheros importados se llaman
+`csca-<país>-<16 primeros caracteres del SHA-256>.pem`.
+
+### España
+
+Los tres CSCA españoles se añadieron a mano antes que las listas, con su huella comprobada contra
+la web de la Policía. Todos son RSA-4096 con sha256WithRSAEncryption, autofirmados, con
+`C=ES, O=DIRECCION GENERAL DE LA POLICIA, serialNumber=N, CN=CSCA SPAIN`. La lista del BSI añadió
+dos más en `es/`: `csca-es-1A4225B479AA74E5.pem`, el certificado de enlace de la clave de CSCA 4
+firmado por CSCA 3, y `csca-es-43BD93B894A9C33B.pem`, otro autofirmado con la clave de CSCA 3
+(con otro número de serie).
 
 | Fichero | Validez | SHA-1 (la que publica la Policía) | SHA-256 | Origen |
 |---|---|---|---|---|
@@ -25,8 +46,8 @@ serialNumber=N, CN=CSCA SPAIN`.
 Las tres huellas SHA-1 coinciden con las publicadas en la página oficial de la Policía:
 <https://www.dnielectronico.es/PortalDNIe/PRF1_Cons02.action?pag=REF_1093&id_menu=52>.
 
-No se incluyen los certificados de enlace (3→4, 2→3): tienen la misma clave que las raíces y la
-autenticación pasiva usa cada CSCA directamente como ancla, sin construir cadenas entre CSCA.
+La autenticación pasiva usa cada CSCA directamente como ancla, sin construir cadenas entre CSCA:
+los certificados de enlace que traen las listas no estorban (tienen la misma clave que la raíz).
 
 ## Fuentes
 
@@ -35,25 +56,46 @@ autenticación pasiva usa cada CSCA directamente como ancla, sin construir caden
   CRL: `http://pki.policia.es/csca/crls/ESP.crl` (firmada por CSCA 4; aún no se consulta).
   La master list española (`http://pki.policia.es/csca/MasterList/SpanishMasterList.ml`) está
   parada desde 2022 y no incluye CSCA 4: **no usarla para actualizar**.
-- **BSI (Alemania), segunda fuente:** «German Master List» en
+- **BSI (Alemania):** «German Master List» en
   <https://www.bsi.bund.de/SharedDocs/Downloads/DE/BSI/ElekAusweise/CSCA/GermanMasterList.html>.
   Pública, se actualiza cada 1–3 meses e incluye España (CSCA 2, 3 y 4). Permite uso comercial
-  sin publicidad ni apariencia de cooperación con el BSI. Firmada por el BSI con ECDSA y
-  parámetros explícitos (OpenSSL 3 no la verifica con las opciones por defecto).
+  sin publicidad ni apariencia de cooperación con el BSI. Firmada por el «CSCA Master List
+  Signer» del BSI, que emite el CSCA alemán, con ECDSA y parámetros explícitos (OpenSSL 3 no
+  valida esa cadena; `mix cherry.csca --signed-by` sí). CSCA alemán y huellas:
+  <https://www.bsi.bund.de/EN/Themen/Oeffentliche-Verwaltung/Elektronische-Identitaeten/Public-Key-Infrastrukturen/CSCA/Root_Cert_Germany/Zertifikate_der_CSCA-PKI.html>.
+- **NPKD (Países Bajos):** <https://www.npkd.nl/masterlist.html> (descarga
+  `files/ml/NL_MASTERLIST.mls`, con su SHA-256 publicado en la página). Solo certificados
+  autofirmados. Firmada por el «Masterlist Signer NL», que emite el CSCA NL; los CSCA
+  neerlandeses están en `files/nl-csca-certificates.zip` de la misma web.
 - **ICAO PKD:** descarga gratuita pero con términos de uso no comercial y sin redistribución;
   no se usa.
 
 ## Actualizar
 
-España publicará previsiblemente un CSCA 5 hacia 2027 (el periodo de uso de la clave de CSCA 4
-acaba el 2027-05-18). Revisar cada pocos meses:
+Cada pocos meses (las listas se renuevan cada 1–3 meses; España publicará previsiblemente un
+CSCA 5 hacia 2027, cuando acaba el periodo de uso de la clave de CSCA 4, el 2027-05-18):
 
-1. Descargar el certificado nuevo de la página de la Policía (o extraerlo de la master list del
-   BSI: `mix cherry.csca GermanMasterList.ml --country ES --export /tmp/es`).
-2. Comprobar sus huellas: `mix cherry.csca /ruta/al/certificado.pem` y comparar la SHA-1 con la
-   publicada por la Policía. Si viene de la master list del BSI, la tarea **no** verifica la firma
-   de la lista: la huella publicada por la Policía es la comprobación.
-3. Copiarlo a `es/csca-spain-N.pem`, añadir la fila a la tabla de arriba y desplegar. Los
-   certificados se cargan al primer uso; tras cambiar ficheros en caliente, reiniciar el backend.
-4. No borrar CSCA antiguos mientras haya documentos en vigor firmados bajo ellos (un DNI dura
-   hasta 10 años; la validez de cada CSCA ya lo cubre).
+1. Descarga las dos listas y el CSCA vigente de cada Estado que las firma (enlaces en
+   [Fuentes](#fuentes)). Fuera del repositorio, p. ej. en `/tmp/csca`.
+2. Comprueba el CSCA de cada Estado contra la huella de su web oficial:
+   `openssl x509 -inform DER -in csca.cer -noout -fingerprint -sha256`. Si el Estado ha renovado
+   su CSCA, usa el nuevo. Pásalo a PEM (`openssl x509 -inform DER -in csca.cer -out csca.pem`).
+3. Importa cada lista. La tarea rechaza la lista si su firma no cuadra con ese CSCA y solo
+   escribe los certificados que aún no están:
+
+   ```bash
+   cd apps/backend
+   mix cherry.csca /tmp/csca/DE_ML_*.ml --signed-by /tmp/csca/de-csca.pem --export-countries priv/csca
+   mix cherry.csca /tmp/csca/NL_MASTERLIST.mls --signed-by /tmp/csca/nl-csca.pem --export-countries priv/csca
+   ```
+
+4. Revisa los descartados que lista la tarea, actualiza la tabla de [Contenido](#contenido-revisado-el-2026-10-14)
+   y pasa los tests (`mix test test/cherry/identity`). Despliega: los certificados se cargan
+   al primer uso; tras cambiar ficheros en caliente, reinicia el backend.
+5. No borres CSCA antiguos mientras haya documentos en vigor firmados bajo ellos (un DNI dura
+   hasta 10 años; la validez de cada CSCA ya lo cubre). Los caducados tampoco estorban: con un
+   documento caducado de un menor, la edad se comprueba igual.
+
+Para un CSCA suelto (p. ej. el CSCA 5 español desde la web de la Policía):
+`mix cherry.csca /ruta/al/certificado.pem` muestra sus huellas para compararlas con las oficiales;
+cópialo después a su carpeta de país.

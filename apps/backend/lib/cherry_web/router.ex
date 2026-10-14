@@ -98,6 +98,7 @@ defmodule CherryWeb.Router do
     get("/summary", ActivityController, :summary)
 
     get("/verification", AgeVerificationController, :show)
+    get("/verification/nfc/countries", AgeVerificationController, :nfc_countries)
     post("/verification/nfc", AgeVerificationController, :create_nfc)
     post("/verification/provider", AgeVerificationController, :create_provider)
     post("/verification/provider/check", AgeVerificationController, :check_provider)

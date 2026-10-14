@@ -1,6 +1,7 @@
 defmodule CherryWeb.Controllers.Api.AgeVerificationController do
   @moduledoc """
-  `GET /api/me/verification`, `POST /api/me/verification/nfc` and the
+  `GET /api/me/verification`, `POST /api/me/verification/nfc` (with the
+  countries it accepts in `GET /api/me/verification/nfc/countries`) and the
   external provider (Didit, selfie + document): `POST /api/me/verification/provider`
   starts a session the app opens in a browser and `POST
   /api/me/verification/provider/check` reads its decision.
@@ -44,6 +45,10 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
       required: AgeVerifications.required?(),
       providerAvailable: AgeVerifications.provider_available?()
     })
+  end
+
+  def nfc_countries(conn, _params) do
+    json(conn, %{countries: AgeVerifications.nfc_countries()})
   end
 
   def create_nfc(conn, params) do

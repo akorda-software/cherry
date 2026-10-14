@@ -23,6 +23,14 @@ describe("createVerificationApi", () => {
     expect(http.get).toHaveBeenCalledWith("/api/me/verification");
   });
 
+  it("GETs the NFC countries", async () => {
+    const http = createMockHttpClient();
+    vi.mocked(http.get).mockResolvedValueOnce({ countries: ["ES", "PT"] });
+
+    await expect(createVerificationApi(http).nfcCountries()).resolves.toEqual({ countries: ["ES", "PT"] });
+    expect(http.get).toHaveBeenCalledWith("/api/me/verification/nfc/countries");
+  });
+
   it("POSTs only the three chip files", async () => {
     const http = createMockHttpClient();
     vi.mocked(http.post).mockResolvedValueOnce(verified);

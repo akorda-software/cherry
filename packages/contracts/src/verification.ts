@@ -36,6 +36,15 @@ export interface AgeVerificationState {
   providerAvailable: boolean;
 }
 
+/**
+ * `GET /api/me/verification/nfc/countries`: países cuyos documentos con chip puede comprobar el
+ * servidor por NFC (los de sus certificados CSCA). Códigos ISO 3166-1 alfa-2 en mayúsculas,
+ * ordenados; también `EU` y `UN` (salvoconductos) y `KS` (Kosovo).
+ */
+export interface NfcCountriesResponse {
+  countries: string[];
+}
+
 /** Body de `POST /api/me/verification/provider`. */
 export interface ProviderSessionRequest {
   /** Adónde vuelve el navegador al acabar: esquema propio (`cherry://…`) o `https://`. Máx. 200. */

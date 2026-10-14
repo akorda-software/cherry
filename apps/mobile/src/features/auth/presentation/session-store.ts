@@ -119,6 +119,10 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       const session = await services.completeAuth[authentication.provider].execute(authentication.payload);
       set({ status: "signed-in", session, error: null, busyProvider: null });
     } catch (error) {
+      // La pantalla no enseña el código del proveedor; el log (logcat) sí, para diagnosticar
+      // configuraciones como DEVELOPER_ERROR (paquete o SHA-1 sin registrar en Google).
+      const { code } = (error ?? {}) as { code?: unknown };
+      console.warn(`[auth] ${provider}: ${String(code ?? "")} ${error instanceof Error ? error.message : ""}`);
       set({
         status: "signed-out",
         session: null,

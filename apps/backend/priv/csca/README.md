@@ -13,7 +13,7 @@ firmantes de documentos, que a su vez firman el SOD de cada DNI o pasaporte. Son
 ## Contenido (revisado el 2026-10-14)
 
 Una carpeta por país (código ISO alfa-2 del `C` del certificado, en minúsculas): 638 certificados
-de 130 emisores, incluidos los salvoconductos de la UE (`eu`) y la ONU (`un`) y Kosovo (`ks`).
+de 129 emisores, incluidos los salvoconductos de la UE (`eu`) y la ONU (`un`) y Kosovo (`ks`).
 Vienen de dos listas maestras públicas, importadas solo después de comprobar su firma
 (ver [Actualizar](#actualizar)):
 

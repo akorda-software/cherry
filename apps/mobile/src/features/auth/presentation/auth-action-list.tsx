@@ -1,10 +1,13 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { AuthProvider } from "@cherry/mobile-shared";
 import { Platform, Pressable, StyleSheet, Text as RNText, View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
-import { LoadingDots, PressableScale, Text, useTheme } from "../../../shared/ui";
+import { easings, LoadingDots, PressableScale, useTheme } from "../../../shared/ui";
+import { brandPalette } from "../../../shared/ui/tokens/primitives/color";
 import { withAlpha } from "../../../shared/ui/utils/color";
+import { LOGIN_STAGGER_MS, Rise } from "./login-entrance";
 import type { BusyProvider } from "./session-store";
 
 /** Persona de demo del seed del backend: perfil completo con likes, matches y chats. */
@@ -36,8 +39,14 @@ const providerBrand = {
 
 const providerNames: Record<AuthProvider, string> = { google: "Google", apple: "Apple" };
 
-/** Atenuado de «Próximamente»: el texto blanco sobre el negro atenuado sigue a ≥ 4.5:1. */
-const SOON_OPACITY = 0.55;
+/**
+ * «Próximamente» no es un gris pesado: el botón se hunde en el amarillo (un velo de tinta muy leve,
+ * sin sombra) y el texto queda en tinta suavizada, que sobre ese velo sigue a ≥ 4.5:1.
+ */
+const soonColors = {
+  fill: withAlpha(brandPalette.ink, 0.07),
+  ink: withAlpha(brandPalette.ink, 0.72)
+} as const;
 
 /**
  * Sign in with Apple: `enabled` donde hay flujo nativo (iOS); `soon`, visible pero deshabilitado
@@ -56,41 +65,62 @@ interface AuthActionListProps {
   onTest?(email?: string): void;
   /** Por defecto según la plataforma (`defaultAppleAvailability`). */
   apple?: AppleSignInAvailability;
+  /** Si se da, los botones entran escalonados a partir de este retardo (ms). */
+  entranceDelay?: number;
 }
 
-export function AuthActionList({ busyProvider, onSelect, onTest, apple }: AuthActionListProps) {
+export function AuthActionList({ busyProvider, onSelect, onTest, apple, entranceDelay }: AuthActionListProps) {
   const locked = busyProvider !== null;
   const appleAvailability = apple ?? defaultAppleAvailability();
+  const appleSoon = appleAvailability === "soon";
+  const rise = (index: number) => (entranceDelay === undefined ? undefined : entranceDelay + index * LOGIN_STAGGER_MS);
 
   return (
     <View style={styles.list}>
-      <ProviderButton
-        busy={busyProvider === "google"}
-        colors={{ fill: providerBrand.googleFill, text: providerBrand.googleInk, border: providerBrand.googleStroke }}
-        disabled={locked}
-        logo={<GoogleLogo size={20} />}
-        onPress={() => onSelect("google")}
-        provider="google"
-        testID="login-google"
-      />
-      <ProviderButton
-        busy={busyProvider === "apple"}
-        colors={{ fill: providerBrand.appleFill, text: providerBrand.appleInk, border: null }}
-        disabled={locked || appleAvailability === "soon"}
-        logo={<AppleLogo color={providerBrand.appleInk} size={20} />}
-        onPress={() => onSelect("apple")}
-        provider="apple"
-        soon={appleAvailability === "soon"}
-        testID="login-apple"
-      />
+      <Entrance delay={rise(0)}>
+        <ProviderButton
+          busy={busyProvider === "google"}
+          colors={{ fill: providerBrand.googleFill, text: providerBrand.googleInk, border: providerBrand.googleStroke }}
+          disabled={locked}
+          logo={<GoogleLogo size={20} />}
+          onPress={() => onSelect("google")}
+          pressTint={providerBrand.googleInk}
+          provider="google"
+          testID="login-google"
+        />
+      </Entrance>
+      <Entrance delay={rise(1)}>
+        <ProviderButton
+          busy={busyProvider === "apple"}
+          colors={
+            appleSoon
+              ? { fill: soonColors.fill, text: soonColors.ink, border: null }
+              : { fill: providerBrand.appleFill, text: providerBrand.appleInk, border: null }
+          }
+          disabled={locked || appleSoon}
+          logo={<AppleLogo color={appleSoon ? soonColors.ink : providerBrand.appleInk} size={20} />}
+          onPress={() => onSelect("apple")}
+          pressTint={providerBrand.appleInk}
+          provider="apple"
+          soon={appleSoon}
+          testID="login-apple"
+        />
+      </Entrance>
       {/* `__DEV__` y `EXPO_PUBLIC_*` son literales: el empaquetador los sustituye y elimina
           este bloque en producción salvo en builds internas con EXPO_PUBLIC_TEST_LOGIN=true
           (el backend solo acepta el acceso de prueba si corre en desarrollo, MIX_ENV=dev). */}
       {(__DEV__ || process.env.EXPO_PUBLIC_TEST_LOGIN === "true") && onTest ? (
-        <DevSignIn busy={busyProvider === "test"} disabled={locked} onTest={onTest} />
+        <Entrance delay={rise(2)}>
+          <DevSignIn busy={busyProvider === "test"} disabled={locked} onTest={onTest} />
+        </Entrance>
       ) : null}
     </View>
   );
+}
+
+/** Sin retardo = sin entrada (la lista aparece tal cual). */
+function Entrance({ delay, children }: { delay?: number; children: ReactNode }) {
+  return delay === undefined ? <>{children}</> : <Rise delay={delay}>{children}</Rise>;
 }
 
 interface ProviderButtonProps {
@@ -98,9 +128,11 @@ interface ProviderButtonProps {
   logo: ReactNode;
   /** `border: null` = sin contorno (Apple). */
   colors: { fill: string; text: string; border: string | null };
+  /** Velo que oscurece (o aclara) la cara mientras se pulsa. */
+  pressTint: string;
   busy: boolean;
   disabled: boolean;
-  /** Visible pero sin flujo todavía: se atenúa y lo dice («Próximamente»). */
+  /** Visible pero sin flujo todavía: hundido en el amarillo y lo dice («Próximamente»). */
   soon?: boolean;
   onPress(): void;
   testID: string;
@@ -108,12 +140,38 @@ interface ProviderButtonProps {
 
 /**
  * Botón de proveedor: píldora de 56 pt con el logo a la izquierda y el texto centrado, sin
- * contornos de tinta ni sombras duras; al pulsar encoge un poco.
+ * contornos de tinta ni sombras duras. Al pulsar encoge un poco y la cara se vela.
+ *
+ * El contenido y el hueco del cargador están siempre montados y no se aplanan (`collapsable={false}`):
+ * solo cambia su opacidad. Si una vista pasa de aplanable a no aplanable según `busy` (p. ej. una
+ * opacidad 0 ↔ 1 en el estilo), Fabric la aplana al volver de «entrando», reparenta el logo y el
+ * texto y Android cierra la app («The specified child already has a parent»).
  */
-function ProviderButton({ provider, logo, colors, busy, disabled, soon = false, onPress, testID }: ProviderButtonProps) {
+function ProviderButton({
+  provider,
+  logo,
+  colors,
+  pressTint,
+  busy,
+  disabled,
+  soon = false,
+  onPress,
+  testID
+}: ProviderButtonProps) {
   const theme = useTheme();
+  const c = theme.primitives.color;
   const label = `Continuar con ${providerNames[provider]}`;
   const blocked = busy || disabled;
+
+  const loading = useSharedValue(busy ? 1 : 0);
+  const pressed = useSharedValue(0);
+  useEffect(() => {
+    loading.value = withTiming(busy ? 1 : 0, { duration: 160, easing: easings.out });
+  }, [busy, loading]);
+
+  const contentStyle = useAnimatedStyle(() => ({ opacity: 1 - loading.value }));
+  const loaderStyle = useAnimatedStyle(() => ({ opacity: loading.value }));
+  const veilStyle = useAnimatedStyle(() => ({ opacity: pressed.value }));
 
   return (
     <PressableScale
@@ -121,6 +179,7 @@ function ProviderButton({ provider, logo, colors, busy, disabled, soon = false, 
       accessibilityLabel={label}
       accessibilityState={{ disabled: blocked, busy }}
       aria-busy={busy || undefined}
+      collapsable={false}
       disabled={blocked}
       elevation="none"
       faceStyle={[
@@ -133,18 +192,31 @@ function ProviderButton({ provider, logo, colors, busy, disabled, soon = false, 
         },
         soon
           ? null
-          : {
-              boxShadow: `0 1px 2px ${withAlpha(theme.primitives.color.ink, 0.1)}, 0 4px 14px ${withAlpha(theme.primitives.color.ink, 0.08)}`
-            }
+          : { boxShadow: `0 1px 2px ${withAlpha(c.ink, 0.08)}, 0 6px 18px ${withAlpha(c.limonadaDeep, 0.28)}` }
       ]}
       haptic
       onPress={onPress}
-      pressedScale={0.98}
+      onPressIn={() => {
+        pressed.value = withTiming(1, { duration: 90 });
+      }}
+      onPressOut={() => {
+        pressed.value = withTiming(0, { duration: 240, easing: easings.out });
+      }}
+      pressedScale={0.97}
       sinkWhenDisabled={false}
-      style={disabled && !busy ? { opacity: soon ? SOON_OPACITY : theme.primitives.opacity.disabled } : null}
+      style={disabled && !busy && !soon ? { opacity: theme.primitives.opacity.disabled } : null}
       testID={testID}
     >
-      <View style={[styles.providerRow, { opacity: busy ? 0 : 1 }]}>
+      <Animated.View
+        collapsable={false}
+        pointerEvents="none"
+        style={[
+          styles.veil,
+          { backgroundColor: withAlpha(pressTint, 0.07), borderRadius: theme.primitives.radius.pill },
+          veilStyle
+        ]}
+      />
+      <Animated.View collapsable={false} style={[styles.providerRow, contentStyle]} testID={`${testID}-content`}>
         <View style={styles.providerLogo}>{logo}</View>
         <View style={styles.providerText}>
           <RNText
@@ -164,12 +236,17 @@ function ProviderButton({ provider, logo, colors, busy, disabled, soon = false, 
           ) : null}
         </View>
         <View style={styles.providerTrail} />
-      </View>
-      {busy ? (
-        <View style={styles.providerLoading}>
+      </Animated.View>
+      <Animated.View
+        collapsable={false}
+        pointerEvents="none"
+        style={[styles.providerLoading, loaderStyle]}
+        testID={`${testID}-loader`}
+      >
+        {busy ? (
           <LoadingDots accessibilityLabel={`Entrando con ${providerNames[provider]}…`} color={colors.text} size={8} />
-        </View>
-      ) : null}
+        ) : null}
+      </Animated.View>
     </PressableScale>
   );
 }
@@ -188,7 +265,11 @@ const devShortcuts: { choice: DevChoice; label: string; short: string; testID: s
   { choice: "demo2", label: "Entrar como Hugo (demo 2)", short: "Hugo", testID: "login-dev-demo2" }
 ];
 
-/** Atajos de desarrollo, discretos: una fila de píldoras pequeñas. Nunca salen en producción. */
+/**
+ * Atajos de desarrollo, discretos: una fila de píldoras pequeñas, veladas en blanco sobre el amarillo.
+ * Nunca salen en producción. Como en los proveedores, el texto y el cargador conviven siempre
+ * montados en vistas que no se aplanan; solo cambia cuál se ve.
+ */
 function DevSignIn({ busy, disabled, onTest }: DevSignInProps) {
   const theme = useTheme();
   const c = theme.primitives.color;
@@ -201,9 +282,9 @@ function DevSignIn({ busy, disabled, onTest }: DevSignInProps) {
 
   return (
     <View style={styles.devBox} testID="login-dev-tools">
-      <Text color="muted" variant="caption">
+      <RNText style={[styles.devCaption, { color: c.inkSoft, fontFamily: theme.primitives.fonts.medium }]}>
         Pruebas
-      </Text>
+      </RNText>
       <View style={styles.devRow}>
         {devShortcuts.map((shortcut) => {
           const loading = busy && choice === shortcut.choice;
@@ -212,23 +293,25 @@ function DevSignIn({ busy, disabled, onTest }: DevSignInProps) {
               accessibilityLabel={shortcut.label}
               accessibilityRole="button"
               accessibilityState={{ disabled: disabled && !loading, busy: loading }}
+              collapsable={false}
               disabled={disabled}
               key={shortcut.choice}
               onPress={() => start(shortcut.choice)}
               style={({ pressed }) => [
                 styles.devChip,
-                { borderColor: c.dot, backgroundColor: pressed ? c.paperDeep : c.paper },
+                { backgroundColor: withAlpha(c.white, pressed ? 0.75 : 0.45) },
                 disabled && !loading ? { opacity: theme.primitives.opacity.disabled } : null
               ]}
               testID={shortcut.testID}
             >
-              {loading ? (
-                <LoadingDots color={c.inkSoft} size={5} />
-              ) : (
-                <Text color="muted" variant="caption">
+              <View collapsable={false} style={{ opacity: loading ? 0 : 1 }}>
+                <RNText style={[styles.devLabel, { color: c.inkSoft, fontFamily: theme.primitives.fonts.medium }]}>
                   {shortcut.short}
-                </Text>
-              )}
+                </RNText>
+              </View>
+              <View collapsable={false} pointerEvents="none" style={[styles.devLoading, { opacity: loading ? 1 : 0 }]}>
+                {loading ? <LoadingDots color={c.inkSoft} size={5} /> : null}
+              </View>
             </Pressable>
           );
         })}
@@ -307,6 +390,9 @@ const styles = StyleSheet.create({
   providerTrail: {
     width: 40
   },
+  veil: {
+    ...StyleSheet.absoluteFillObject
+  },
   providerLoading: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
@@ -327,12 +413,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6
   },
+  devCaption: {
+    fontSize: 12,
+    lineHeight: 16
+  },
   devChip: {
     minHeight: 30,
     minWidth: 58,
     paddingHorizontal: 12,
     borderRadius: 999,
-    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  devLabel: {
+    fontSize: 12,
+    lineHeight: 16
+  },
+  devLoading: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center"
   }

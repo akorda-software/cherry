@@ -1,14 +1,25 @@
-import { useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { ScrollView, StyleSheet, Text as RNText, View } from "react-native";
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 
-import { easings, FormMessage, Mascot, Text, useTheme } from "../../../shared/ui";
+import { FormMessage, Mascot, Text, useTheme } from "../../../shared/ui";
 import { withAlpha } from "../../../shared/ui/utils/color";
 import { AuthActionList } from "./auth-action-list";
+import { LoginBackdrop } from "./login-backdrop";
+import { LOGIN_STAGGER_MS, Rise } from "./login-entrance";
 import { useSessionShell } from "./session-shell-provider";
 
 /** Tras entrar, `app/index.tsx` espera al bootstrap y decide: onboarding o Descubrir. */
@@ -17,30 +28,101 @@ const afterSignInPath = "/";
 const MARK_SIZE = 148;
 const GLOW_SIZE = 380;
 
-/** Luz suave detrás de las cerezas: un degradado radial de blanco a transparente, sin bordes. */
-function Glow({ color }: { color: string }) {
+/** Retardos de la entrada escalonada: logo → nombre → frase → «Entra o crea tu cuenta» → botones. */
+const enter = (step: number) => 60 + step * LOGIN_STAGGER_MS;
+
+/**
+ * Luz suave detrás de Mochi: un degradado radial de blanco a transparente, sin bordes, que respira
+ * muy despacio (crece y se aviva un poco). Quieta con «reducir movimiento».
+ */
+function Glow({ color, still }: { color: string; still: boolean }) {
   const r = GLOW_SIZE / 2;
+  const breath = useSharedValue(0);
+
+  useEffect(() => {
+    if (still) {
+      cancelAnimation(breath);
+      breath.value = 0;
+      return;
+    }
+    breath.value = withDelay(
+      600,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: 2600, easing: Easing.inOut(Easing.sin) })
+        ),
+        -1
+      )
+    );
+    return () => cancelAnimation(breath);
+  }, [breath, still]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.8 + breath.value * 0.2,
+    transform: [{ scale: 0.96 + breath.value * 0.06 }]
+  }));
+
   return (
-    <View aria-hidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.glow}>
+    <Animated.View
+      aria-hidden
+      collapsable={false}
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      style={[styles.glow, style]}
+    >
       <Svg height={GLOW_SIZE} width={GLOW_SIZE}>
         <Defs>
           <RadialGradient cx={r} cy={r} gradientUnits="userSpaceOnUse" id="login-glow" r={r}>
-            <Stop offset="0" stopColor={color} stopOpacity={0.5} />
-            <Stop offset="0.55" stopColor={color} stopOpacity={0.18} />
+            <Stop offset="0" stopColor={color} stopOpacity={0.45} />
+            <Stop offset="0.55" stopColor={color} stopOpacity={0.14} />
             <Stop offset="1" stopColor={color} stopOpacity={0} />
           </RadialGradient>
         </Defs>
         <Circle cx={r} cy={r} fill="url(#login-glow)" r={r} />
       </Svg>
-    </View>
+    </Animated.View>
+  );
+}
+
+/** Mochi flota arriba y abajo, apenas unos puntos, como si estuviera suspendida en la luz. */
+function Floating({ children, still }: { children: ReactNode; still: boolean }) {
+  const float = useSharedValue(0);
+
+  useEffect(() => {
+    if (still) {
+      cancelAnimation(float);
+      float.value = 0;
+      return;
+    }
+    float.value = withDelay(
+      700,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 2200, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: 2200, easing: Easing.inOut(Easing.sin) })
+        ),
+        -1
+      )
+    );
+    return () => cancelAnimation(float);
+  }, [float, still]);
+
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: -4 * float.value }] }));
+
+  return (
+    <Animated.View collapsable={false} style={style}>
+      {children}
+    </Animated.View>
   );
 }
 
 /**
- * Bienvenida: lo primero que ve cualquiera. Arriba, sobre el amarillo de marca, el logo, el nombre
- * y una línea que dice qué es; abajo, en una hoja blanca, los proveedores (más los atajos de pruebas
- * en desarrollo). Esta pantalla no lleva el neobrutalismo del resto: sin contornos de tinta ni
- * sombras duras, solo sombras suaves y mucho aire.
+ * Bienvenida: lo primero que ve cualquiera. Todo sobre el mismo amarillo de marca: Mochi enamorada
+ * con una luz suave detrás, el nombre, una línea que dice qué es y, debajo, los proveedores (más los
+ * atajos de pruebas en desarrollo), sin hoja ni tarjeta. Por detrás suben muy despacio corazones y
+ * cerecitas tenues, y cada pieza entra escalonada. Esta pantalla no lleva el neobrutalismo del
+ * resto: sin contornos de tinta ni sombras duras. Con «reducir movimiento», todo quieto.
  */
 export function LoginScreen() {
   const router = useRouter();
@@ -56,94 +138,71 @@ export function LoginScreen() {
     }
   }, [router, state.status]);
 
-  // La hoja de los botones sube un poco al aparecer (nada con «reducir movimiento»).
-  const rise = useSharedValue(reduced ? 1 : 0);
-  useEffect(() => {
-    if (!reduced) {
-      rise.value = withDelay(80, withTiming(1, { duration: 420, easing: easings.out }));
-    }
-  }, [reduced, rise]);
-  const sheetStyle = useAnimatedStyle(() => ({
-    opacity: 0.4 + rise.value * 0.6,
-    transform: [{ translateY: (1 - rise.value) * 24 }]
-  }));
-
   const busyProvider = state.status === "signed-out" ? state.busyProvider : null;
   const error = state.status === "signed-out" ? state.error : null;
+  const sidePadding = {
+    paddingLeft: insets.left + theme.semantic.layout.screenPadding,
+    paddingRight: insets.right + theme.semantic.layout.screenPadding
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: c.limonada }]} testID="login-screen">
-      <LinearGradient
-        colors={[c.limonada, c.limonada, c.limonadaSoft] as const}
-        locations={[0, 0.45, 1]}
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-      />
+      <LoginBackdrop />
       <ScrollView
         alwaysBounceVertical={false}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <View
-          style={[
-            styles.hero,
-            {
-              paddingTop: insets.top + theme.primitives.spacing.xl,
-              paddingLeft: insets.left + theme.semantic.layout.screenPadding,
-              paddingRight: insets.right + theme.semantic.layout.screenPadding
-            }
-          ]}
-        >
+        <View style={[styles.hero, sidePadding, { paddingTop: insets.top + theme.primitives.spacing.xl }]}>
           <View style={styles.markWrap}>
-            <Glow color={c.white} />
-            <Mascot animated mood="love" size={MARK_SIZE} />
+            <Glow color={c.white} still={reduced} />
+            <Rise delay={enter(0)} distance={8} grow>
+              <Floating still={reduced}>
+                <Mascot animated mood="love" size={MARK_SIZE} />
+              </Floating>
+            </Rise>
           </View>
-          <RNText
-            allowFontScaling={false}
-            style={[styles.wordmark, { color: c.ink, fontFamily: theme.primitives.fonts.display }]}
-          >
-            cherry
-          </RNText>
-          <Text
-            align="center"
-            aria-level={1}
-            role="heading"
-            style={[styles.tagline, { fontFamily: theme.primitives.fonts.medium }]}
-            variant="body"
-          >
-            Conoce gente cerca de ti.
-          </Text>
+          <Rise delay={enter(1)}>
+            <RNText
+              allowFontScaling={false}
+              style={[styles.wordmark, { color: c.ink, fontFamily: theme.primitives.fonts.display }]}
+            >
+              cherry
+            </RNText>
+          </Rise>
+          <Rise delay={enter(2)}>
+            <Text
+              align="center"
+              aria-level={1}
+              role="heading"
+              style={[styles.tagline, { fontFamily: theme.primitives.fonts.medium }]}
+              variant="body"
+            >
+              Conoce gente cerca de ti.
+            </Text>
+          </Rise>
         </View>
 
-        <Animated.View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: c.white,
-              boxShadow: `0 -6px 30px ${withAlpha(c.ink, 0.08)}`,
-              paddingBottom: insets.bottom + theme.primitives.spacing.lg,
-              paddingLeft: insets.left + theme.semantic.layout.screenPadding,
-              paddingRight: insets.right + theme.semantic.layout.screenPadding
-            },
-            sheetStyle
-          ]}
-        >
+        <View style={[styles.actions, sidePadding, { paddingBottom: insets.bottom + theme.primitives.spacing.lg }]}>
           <View style={styles.column}>
-            <Text align="center" color="muted" variant="callout">
-              Entra o crea tu cuenta
-            </Text>
+            <Rise delay={enter(3)} distance={8}>
+              <RNText style={[styles.prompt, { color: withAlpha(c.ink, 0.72), fontFamily: theme.primitives.fonts.medium }]}>
+                Entra o crea tu cuenta
+              </RNText>
+            </Rise>
             {error ? (
-              <View style={[styles.error, { backgroundColor: c.tomateSoft }]}>
+              <View style={[styles.error, { backgroundColor: withAlpha(c.white, 0.7) }]}>
                 <FormMessage tone="error">{error}</FormMessage>
               </View>
             ) : null}
             <AuthActionList
               busyProvider={busyProvider}
+              entranceDelay={enter(4)}
               onSelect={(provider) => void signInWith(provider)}
               onTest={signInAsTest ? (email) => void signInAsTest(email) : undefined}
             />
           </View>
-        </Animated.View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -187,10 +246,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 25
   },
-  sheet: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    paddingTop: 28
+  actions: {
+    paddingTop: 8
+  },
+  prompt: {
+    fontSize: 15,
+    lineHeight: 20,
+    textAlign: "center"
   },
   column: {
     width: "100%",

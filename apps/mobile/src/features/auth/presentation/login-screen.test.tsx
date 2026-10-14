@@ -6,6 +6,7 @@ import { HEART } from "../../../shared/ui/art/icon-paths";
 import { renderRoute } from "../../../../test/router/render-route";
 import { sessionFixture } from "../../../../test/router/session-shell.fixture";
 import { createFreshTestEmail, DEMO2_TEST_EMAIL, DEMO_TEST_EMAIL } from "./auth-action-list";
+import { driftOpacity, LOGIN_DRIFTS } from "./login-backdrop";
 import { LoginScreen } from "./login-screen";
 
 function deferred<T>() {
@@ -50,8 +51,66 @@ describe("LoginScreen", () => {
     const view = renderRoute(<LoginScreen />);
 
     await screen.findByRole("heading", { name: "Conoce gente cerca de ti." });
-    const hearts = Array.from(view.container.querySelectorAll("path")).filter((path) => path.getAttribute("d") === HEART);
+    const backdrop = screen.getByTestId("login-backdrop");
+    const hearts = Array.from(view.container.querySelectorAll("path")).filter(
+      (path) => path.getAttribute("d") === HEART && !backdrop.contains(path)
+    );
     expect(hearts).toHaveLength(4);
+  });
+
+  it("lays everything on the brand yellow, with no white sheet, and keeps the drifting backdrop decorative", async () => {
+    renderRoute(<LoginScreen />);
+
+    await screen.findByRole("heading", { name: "Conoce gente cerca de ti." });
+    const backdrop = screen.getByTestId("login-backdrop");
+    expect(backdrop).toHaveAttribute("aria-hidden", "true");
+    expect(backdrop.children).toHaveLength(LOGIN_DRIFTS.length);
+    const whites = Array.from(screen.getByTestId("login-screen").querySelectorAll<HTMLElement>("div")).filter(
+      (node) => node.style.backgroundColor === "rgb(255, 255, 255)" && !node.closest("[data-testid=login-google]")
+    );
+    expect(whites).toHaveLength(0);
+  });
+
+  it("fades the drifting hearts in and out instead of popping them", () => {
+    expect(driftOpacity(0, 0.5)).toBe(0);
+    expect(driftOpacity(0.5, 0.5)).toBe(0.5);
+    expect(driftOpacity(1, 0.5)).toBe(0);
+  });
+
+  // Regresión del cierre en Android al volver de Google: si una vista del botón pasa de aplanable a no
+  // aplanable según `busy`, Fabric reparenta el logo y el texto («The specified child already has a
+  // parent»). El contenido y el cargador viven siempre montados (y con collapsable={false}); solo cambia
+  // su opacidad. Aquí: entrar y volver deja exactamente los mismos nodos en su sitio.
+  it("returns from «Entrando con Google…» to normal without rebuilding the button", async () => {
+    const flow = deferred<never>();
+
+    renderRoute(<LoginScreen />, {
+      services: {
+        authProviders: {
+          google: { authenticate: vi.fn(() => flow.promise) },
+          apple: { authenticate: vi.fn(async () => Promise.reject(new Error("unused"))) }
+        }
+      }
+    });
+
+    const google = await screen.findByRole("button", { name: "Continuar con Google" });
+    const content = screen.getByTestId("login-google-content");
+    const loader = screen.getByTestId("login-google-loader");
+    const label = screen.getByText("Continuar con Google");
+
+    fireEvent.click(google);
+    await waitFor(() => expect(google).toHaveAttribute("aria-busy", "true"));
+    expect(screen.getByTestId("login-google-content")).toBe(content);
+    expect(loader).toContainElement(screen.getByLabelText("Entrando con Google…"));
+    expect(content).toContainElement(label);
+
+    flow.reject(new Error("Google Sign-In was cancelled by the user"));
+    await waitFor(() => expect(screen.queryByLabelText("Entrando con Google…")).not.toBeInTheDocument());
+    expect(google).not.toBeDisabled();
+    expect(screen.getByTestId("login-google-content")).toBe(content);
+    expect(screen.getByTestId("login-google-loader")).toBe(loader);
+    expect(content).toContainElement(label);
+    expect(label.parentElement?.parentElement).toBe(content);
   });
 
   it("shows the loading state on the chosen provider and locks the rest", async () => {

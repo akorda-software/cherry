@@ -6,7 +6,8 @@ import {
   BOOT_SPLASH_MASCOT_SIZE,
   BOOT_SPLASH_MAX_WAIT_MS,
   BootSplash,
-  SPLASH_IMAGE_WIDTH
+  SPLASH_IMAGE_WIDTH,
+  useBootSplashCovering
 } from "../../src/shared/ui";
 import { HEART } from "../../src/shared/ui/art/icon-paths";
 import { renderWithTheme } from "./render-with-theme";
@@ -39,6 +40,24 @@ describe("BootSplash", () => {
     expect(container.querySelectorAll("svg")).toHaveLength(5);
     expect(container.querySelectorAll("circle")).toHaveLength(4);
     expect(Array.from(container.querySelectorAll("path")).filter((p) => p.getAttribute("d") === HEART)).toHaveLength(4);
+  });
+
+  it("tells the screens below that it covers them until its fade begins", () => {
+    function Probe() {
+      return <span data-testid="probe">{useBootSplashCovering() ? "covered" : "visible"}</span>;
+    }
+    const { getByTestId } = renderWithTheme(
+      <>
+        <Probe />
+        <BootSplash onFinish={vi.fn()} ready />
+      </>
+    );
+
+    expect(getByTestId("probe").textContent).toBe("covered");
+    act(() => {
+      vi.advanceTimersByTime(BOOT_SPLASH_INTRO_MS);
+    });
+    expect(getByTestId("probe").textContent).toBe("visible");
   });
 
   it("matches the native splash: Mochi is as big as in splash-icon.png at imageWidth", () => {

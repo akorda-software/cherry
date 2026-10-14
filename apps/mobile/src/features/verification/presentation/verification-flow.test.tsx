@@ -72,6 +72,35 @@ describe("age verification flow", () => {
     expect(screen.getByTestId("pathname")).toHaveTextContent(verificationRoutes.selfie);
   });
 
+  it("the info button lists the NFC countries without starting the DNI flow", async () => {
+    stubBackend(({ path }) =>
+      path === "/api/me/verification/nfc/countries"
+        ? { status: 200, body: { countries: ["PT", "ES", "PE"] } }
+        : { status: 404, body: {} }
+    );
+    renderRoute(<VerificationMethodsScreen />, {
+      initialPath: verificationRoutes.methods,
+      services: { bootstrapSession: { execute: async () => sessionFixture } }
+    });
+
+    fireEvent.click(await screen.findByTestId("verify-nfc-countries"));
+    expect(screen.getByTestId("pathname")).toHaveTextContent(verificationRoutes.methods);
+
+    const list = await screen.findByTestId("nfc-countries-list");
+    expect(within(list).getAllByText(/España|Perú|Portugal/).map((node) => node.textContent)).toEqual([
+      "España",
+      "Perú",
+      "Portugal"
+    ]);
+
+    fireEvent.change(screen.getByTestId("nfc-countries-search"), { target: { value: "peru" } });
+    expect(within(screen.getByTestId("nfc-countries-list")).getByText("Perú")).toBeInTheDocument();
+    expect(within(screen.getByTestId("nfc-countries-list")).queryByText("España")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("nfc-countries-search"), { target: { value: "japon" } });
+    expect(screen.getByTestId("nfc-countries-empty")).toBeInTheDocument();
+  });
+
   it("an unverified account sees the pending state instead of its likes", async () => {
     stubBackend(() => ({ status: 404, body: {} }));
     renderRoute(<LikesRoute />, {

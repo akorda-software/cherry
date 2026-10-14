@@ -58,7 +58,7 @@ export const VERIFICATION_METHODS: readonly {
     id: "nfc",
     icon: "shield-check",
     title: "Con tu DNI y el NFC del móvil",
-    body: "Tarda menos de un minuto. Sirve el DNI desde 2015, el TIE y el pasaporte electrónico.",
+    body: "Tarda menos de un minuto. Sirven el DNI desde 2015, el TIE y los pasaportes y documentos con chip de muchos países.",
     available: true,
     recommended: true
   },
@@ -82,7 +82,10 @@ export const VERIFICATION_METHODS: readonly {
 
 /** Qué hace falta antes de empezar con el DNI. */
 export const NFC_REQUIREMENTS = [
-  { icon: "shield-check", text: "Un DNI de 2015 o posterior (o un TIE o pasaporte con chip), en vigor." },
+  {
+    icon: "shield-check",
+    text: "Un DNI de 2015 o posterior, un TIE o un pasaporte o documento de identidad con chip, en vigor."
+  },
   { icon: "check-circle", text: "El NFC del móvil activado." },
   { icon: "clock", text: "Un minuto y una mesa donde apoyarte." }
 ] as const;
@@ -229,7 +232,8 @@ export function readErrorCopy(code: DocumentNfcErrorCode, kind: DocumentKind): V
     case "UNSUPPORTED_DOCUMENT":
       return {
         title: "No podemos leer este documento",
-        message: "Hace falta un documento con chip: DNI desde 2015 (DNI 3.0 o 4.0), TIE o pasaporte electrónico.",
+        message:
+          "Hace falta un documento con chip: DNI desde 2015 (DNI 3.0 o 4.0), TIE, pasaporte electrónico o documento de identidad con chip.",
         action: "retry"
       };
     case "TIMEOUT":
@@ -265,7 +269,7 @@ export function serverErrorCopy(
     case "document_expired":
       return {
         title: "El documento está caducado",
-        message: "Usa un documento en vigor: un DNI, TIE o pasaporte sin caducar.",
+        message: "Usa un documento en vigor: un DNI, TIE, pasaporte o documento de identidad sin caducar.",
         action: "none"
       };
     case "document_already_used":
@@ -315,7 +319,7 @@ export function serverErrorCopy(
     case "unsupported_document":
       return {
         title: "Ese documento no nos sirve",
-        message: "Usa un DNI, un TIE o un pasaporte. El carné de conducir no vale.",
+        message: "Usa un DNI, un TIE, un pasaporte o un documento de identidad. El carné de conducir no vale.",
         action: "retry"
       };
     case "session_not_found":

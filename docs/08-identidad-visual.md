@@ -59,12 +59,11 @@ mantiene hasta que están listas.
 
 - **Rubik** (`regular`, `medium`, `bold`, `extraBold`, `black`): toda la interfaz. Los titulares (`fonts.display`) van
   en Black con interletraje cerrado; `fonts.hand` es Rubik Medium (nada de letra «a mano»).
-- **Logo**: un par de cerezas cuyas hojas son dos corazones, dibujado a mano en SVG plano (sin contornos ni sombras):
-  rabitos en tinta, hojas `mentaDeep`, cerezas `primary` y brillos de papel. Fuente en
-  `apps/mobile/assets/brand/cherry-logo.svg`; los mismos trazados en `src/shared/ui/art/cherry-mark-geometry.ts`
-  (`CherryMark`). El logotipo (`Logo`) añade al lado la palabra «cherry» en Rubik Black. El icono de la app, el
-  adaptable de Android, el splash y el favicon son las cerezas sobre el amarillo de marca (`secondary`), generados
-  desde ese SVG (`assets/brand/cherry-icon.svg`).
+- **Logo** (por ahora): Mochi, la mascota, con la cara `love` (ojos de corazón), tal cual la dibuja `Mascot`, con
+  sus colores, contorno y sombra dura. Exportada en `apps/mobile/assets/brand/mochi-love.svg`; el logotipo (`Logo`)
+  añade al lado la palabra «cherry» en Rubik Black. El icono de la app, el adaptable de Android, el splash y el
+  favicon son Mochi sobre el amarillo de marca (`secondary`), generados desde ese SVG
+  (`assets/brand/app-icon.svg`).
 
 Escala (`theme.primitives.text`): `hero 40`, `title1 30`, `title2 24`, `title3 19`, `body 16`, `bodyStrong 16`,
 `callout 15`, `label 15`, `caption 13`, `micro 11 (mayúsculas)`, `button 17`, `buttonSmall 15`, `hand 20`,
@@ -138,8 +137,9 @@ Inventario (API completa en `DS_READY.md`):
 
 - Raíz (`app/_layout.tsx`): fuentes + splash, `GestureHandlerRootView`, barra de estado oscura, fondo del sistema en
   papel, proveedores (tema, configuración, sesión, bootstrap), `ToastHost` y `BootSplashGate`: el splash nativo
-  (amarillo y logo) lo releva `BootSplash` en el mismo sitio; las cerezas dan un saltito, se balancean y las hojas
-  laten una vez (≈ 0,76 s) y se funde con la app en cuanto sabe adónde ir. Con «reducir movimiento», solo el fundido.
+  (amarillo y Mochi) lo releva `BootSplash` en el mismo sitio; Mochi da un saltito, se balancea y los ojos de
+  corazón laten una vez (≈ 0,76 s) y se funde con la app en cuanto sabe adónde ir. Con «reducir movimiento», solo el
+  fundido.
 - Zona privada (`app/(app)/_layout.tsx`): guard de sesión y onboarding (con estados de carga y error de la libreta),
   `Stack` sin cabecera (cada pantalla trae su `TopBar`) y `AppOverlays` montado una vez encima. Pantallas: `(tabs)`,
   `profile/[id]`, `chat/[id]`, `filters` (modal), `edit/{photos,tags,bio,basics}`, `settings`, `about`.

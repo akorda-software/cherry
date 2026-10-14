@@ -6,7 +6,7 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 
-import { CherryMark, easings, FormMessage, Text, useTheme } from "../../../shared/ui";
+import { easings, FormMessage, Mascot, Text, useTheme } from "../../../shared/ui";
 import { withAlpha } from "../../../shared/ui/utils/color";
 import { AuthActionList } from "./auth-action-list";
 import { useSessionShell } from "./session-shell-provider";
@@ -14,7 +14,7 @@ import { useSessionShell } from "./session-shell-provider";
 /** Tras entrar, `app/index.tsx` espera al bootstrap y decide: onboarding o Descubrir. */
 const afterSignInPath = "/";
 
-const MARK_SIZE = 124;
+const MARK_SIZE = 148;
 const GLOW_SIZE = 380;
 
 /** Luz suave detrás de las cerezas: un degradado radial de blanco a transparente, sin bordes. */
@@ -96,7 +96,7 @@ export function LoginScreen() {
         >
           <View style={styles.markWrap}>
             <Glow color={c.white} />
-            <CherryMark decorative size={MARK_SIZE} />
+            <Mascot animated mood="love" size={MARK_SIZE} />
           </View>
           <RNText
             allowFontScaling={false}

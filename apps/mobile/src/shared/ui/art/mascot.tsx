@@ -39,6 +39,8 @@ export interface MascotProps {
 
 /** Lienzo de 120 × 120. Dos cerezas de un mismo rabito, apoyadas en y 104. */
 const VIEWBOX = "0 0 120 120";
+export const MASCOT_VIEWBOX = VIEWBOX;
+export const MASCOT_CANVAS = 120;
 const SHADOW = 5;
 const CHERRY_R = 22;
 const LEFT = { cx: 40, cy: 82, eyes: [33, 47] as const, eyeY: 80, mouthX: 41, mouthY: 91 };
@@ -50,16 +52,43 @@ const LEAF = "M70 18Q84 8 99 16Q88 28 70 18Z";
 /** Altura media de los ojos: eje del parpadeo. */
 const EYES_Y = (LEFT.eyeY + RIGHT.eyeY) / 2;
 
-interface Palette {
+export interface MascotPalette {
   ink: string;
   white: string;
   cherry: string;
   leaf: string;
 }
 
+type Palette = MascotPalette;
+
+/** Colores de Mochi: contorno de tinta, cerezas cereza y la hoja del pastel elegido (fresa → menta). */
+export function useMascotPalette(color: PastelName = "fresa"): MascotPalette {
+  const theme = useTheme();
+  const p = theme.primitives.pastel;
+  const c = theme.primitives.color;
+
+  return {
+    ink: c.ink,
+    white: c.white,
+    cherry: mixHex(p.fresa.fill, c.tomateDeep, 0.4),
+    leaf: color === "fresa" || color === "tomate" ? p.menta.fill : p[color].fill
+  };
+}
+
+/** Grosor de línea en unidades del lienzo: ~3.5, entre 2.25 y 5 px reales según el tamaño. */
+export function mascotStroke(size: number): number {
+  return (Math.min(Math.max((3.5 * size) / 120, 2.25), 5) * 120) / size;
+}
+
+/** Centros de los cuatro ojos (en `love`, los corazones), en unidades del lienzo. */
+export const MASCOT_EYES: readonly { x: number; y: number }[] = CHERRIES.flatMap(({ eyes, eyeY }) =>
+  eyes.map((x) => ({ x, y: eyeY }))
+);
+
 /**
  * La mascota (provisional): dos cerezas del mismo rabito. Ilustración vectorial plana
- * con contorno y sombra dura de tinta; cara de la app en vacíos, carga, errores y match.
+ * con contorno y sombra dura de tinta; cara de la app en vacíos, carga, errores y match, y
+ * (con `love`) el logo de la app.
  */
 export const Mascot = memo(function Mascot({
   size = 120,
@@ -70,20 +99,9 @@ export const Mascot = memo(function Mascot({
   style,
   testID
 }: MascotProps) {
-  const theme = useTheme();
   const reducedMotion = useReducedMotion();
-  const p = theme.primitives.pastel;
-  const c = theme.primitives.color;
-
-  const palette: Palette = {
-    ink: c.ink,
-    white: c.white,
-    cherry: mixHex(p.fresa.fill, c.tomateDeep, 0.4),
-    leaf: color === "fresa" || color === "tomate" ? p.menta.fill : p[color].fill
-  };
-
-  // Grosor de línea óptico: ~3.5 en el lienzo, entre 2.25 y 5 px reales.
-  const stroke = (Math.min(Math.max((3.5 * size) / 120, 2.25), 5) * 120) / size;
+  const palette = useMascotPalette(color);
+  const stroke = mascotStroke(size);
   const motion = animated && !reducedMotion;
 
   const breath = useSharedValue(0);
@@ -185,14 +203,7 @@ export const Mascot = memo(function Mascot({
     >
       <Animated.View style={[absoluteFill, styles.bodyOrigin, bodyStyle]}>
         <Svg width={size} height={size} viewBox={VIEWBOX}>
-          <Stem mood={mood} palette={palette} stroke={stroke} />
-          {CHERRIES.map(({ cx, cy }) => (
-            <G key={cx}>
-              <Circle cx={cx + SHADOW} cy={cy + SHADOW} r={CHERRY_R} fill={palette.ink} />
-              <Circle cx={cx} cy={cy} r={CHERRY_R} fill={palette.cherry} stroke={palette.ink} strokeWidth={stroke} />
-            </G>
-          ))}
-          {face(mood, palette, stroke)}
+          <MascotBody mood={mood} palette={palette} stroke={stroke} />
         </Svg>
 
         <Animated.View style={[absoluteFill, { transformOrigin: `50% ${eyeOriginY}` }, eyeStyle]}>
@@ -210,6 +221,38 @@ export const Mascot = memo(function Mascot({
     </View>
   );
 });
+
+interface MascotBodyProps {
+  mood: MascotMood;
+  palette: MascotPalette;
+  stroke: number;
+  /** En `love`, sin los corazones de los ojos (para animarlos aparte con `MascotLoveEye`). */
+  withoutLoveEyes?: boolean;
+}
+
+/**
+ * Cuerpo de Mochi para meter en un `<Svg viewBox={MASCOT_VIEWBOX}>`: rabitos, hoja, cerezas con su
+ * sombra dura y la cara (sin los ojos abiertos, que van en su capa para parpadear).
+ */
+export function MascotBody({ mood, palette, stroke, withoutLoveEyes = false }: MascotBodyProps) {
+  return (
+    <>
+      <Stem mood={mood} palette={palette} stroke={stroke} />
+      {CHERRIES.map(({ cx, cy }) => (
+        <G key={cx}>
+          <Circle cx={cx + SHADOW} cy={cy + SHADOW} r={CHERRY_R} fill={palette.ink} />
+          <Circle cx={cx} cy={cy} r={CHERRY_R} fill={palette.cherry} stroke={palette.ink} strokeWidth={stroke} />
+        </G>
+      ))}
+      {face(mood, palette, stroke, !withoutLoveEyes)}
+    </>
+  );
+}
+
+/** Un ojo de corazón de `love`, centrado en `x`, `y` (ver `MASCOT_EYES`). */
+export function MascotLoveEye({ x, y, palette }: { x: number; y: number; palette: MascotPalette }) {
+  return <Path d={HEART} transform={`translate(${x - 12 * 0.5} ${y - 12 * 0.5}) scale(0.5)`} fill={palette.ink} />;
+}
 
 function hasOpenEyes(mood: MascotMood) {
   return mood === "happy" || mood === "wink" || mood === "surprised" || mood === "sad" || mood === "thinking";
@@ -263,7 +306,7 @@ function openEyes(mood: MascotMood, pal: Palette): ReactNode {
 }
 
 /** Resto de la cara: ojos cerrados o de corazón y bocas. */
-function face(mood: MascotMood, pal: Palette, stroke: number): ReactNode {
+function face(mood: MascotMood, pal: Palette, stroke: number, loveEyes = true): ReactNode {
   const w = stroke * 0.85;
   const line = { stroke: pal.ink, strokeWidth: w, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, fill: "none" };
   const mouths = (shape: (x: number, y: number) => string, filled = false) =>
@@ -289,9 +332,9 @@ function face(mood: MascotMood, pal: Palette, stroke: number): ReactNode {
       ];
     case "love":
       return [
-        ...CHERRIES.flatMap(({ eyes: xs, eyeY }) =>
-          xs.map((x) => <Path key={`h${x}`} d={HEART} transform={`translate(${x - 12 * 0.5} ${eyeY - 12 * 0.5}) scale(0.5)`} fill={pal.ink} />)
-        ),
+        ...(loveEyes
+          ? CHERRIES.flatMap(({ eyes: xs, eyeY }) => xs.map((x) => <MascotLoveEye key={`h${x}`} palette={pal} x={x} y={eyeY} />))
+          : []),
         ...mouths((x, y) => `M${x - 5} ${y}Q${x} ${y + 4} ${x + 5} ${y - 0.5}`)
       ];
     case "sleepy":

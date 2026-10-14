@@ -14,27 +14,33 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg from "react-native-svg";
 
-import { CherryMarkShapes, cherryMarkWidth, useCherryMarkColors } from "../art/cherry-mark";
 import {
-  CHERRY_MARK_HEIGHT,
-  CHERRY_MARK_OPTICAL_CENTER,
-  CHERRY_MARK_PIVOTS,
-  CHERRY_MARK_VIEWBOX,
-  CHERRY_MARK_WIDTH
-} from "../art/cherry-mark-geometry";
+  MASCOT_CANVAS,
+  MASCOT_EYES,
+  MASCOT_VIEWBOX,
+  MascotBody,
+  MascotLoveEye,
+  mascotStroke,
+  useMascotPalette
+} from "../art/mascot";
 import { easings, springs } from "../motion/springs";
 import { useTheme } from "../providers/theme-provider";
 
 /**
- * Ancho del logo en el splash nativo (`imageWidth` de expo-splash-screen en app.config.ts) y escala
- * del dibujo dentro de `splash-icon.png` (1024 px). Con ellos, el logo de JS cae justo encima del
- * nativo y el relevo no se nota.
+ * Ancho del logo en el splash nativo (`imageWidth` de expo-splash-screen en app.config.ts) y cómo
+ * está Mochi dentro de `splash-icon.png` (1024 px): escala del lienzo de 120 y centro del círculo que
+ * la envuelve, que es lo que queda en el centro de la pantalla. Con ellos, la Mochi de JS cae justo
+ * encima de la nativa y el relevo no se nota.
  */
 export const SPLASH_IMAGE_WIDTH = 200;
-const SPLASH_ICON_MARK_SCALE = 478 / 409;
-export const BOOT_SPLASH_MARK_HEIGHT = (CHERRY_MARK_HEIGHT * SPLASH_ICON_MARK_SCALE * SPLASH_IMAGE_WIDTH) / 1024;
+const SPLASH_ICON_SCALE = 478 / 57.5;
+const SPLASH_ICON_CENTER = { x: 62.6, y: 57.9 };
+export const BOOT_SPLASH_MASCOT_SIZE = (MASCOT_CANVAS * SPLASH_ICON_SCALE * SPLASH_IMAGE_WIDTH) / 1024;
 
-/** Lo que dura la entrada: rebote, balanceo de las cerezas y latido de las hojas. */
+/** Trazo con el que están dibujados los iconos (el de Mochi a 120 pt). */
+const BRAND_STROKE = mascotStroke(MASCOT_CANVAS);
+
+/** Lo que dura la entrada: saltito, balanceo y latido de los ojos de corazón. */
 export const BOOT_SPLASH_INTRO_MS = 760;
 /** Fundido final hacia la app. */
 export const BOOT_SPLASH_EXIT_MS = 280;
@@ -50,15 +56,15 @@ export interface BootSplashProps {
 }
 
 /**
- * Relevo del splash nativo: el mismo amarillo y el mismo logo, en el mismo sitio. Las cerezas dan un
- * saltito, se balancean colgadas del rabito y las hojas-corazón laten una vez; después todo se funde
- * con la app, que ya se ha montado debajo (no espera a la animación para arrancar). Con «reducir
- * movimiento» no se mueve nada: solo el fundido, en cuanto la app está lista.
+ * Relevo del splash nativo: el mismo amarillo y la misma Mochi enamorada, en el mismo sitio. Da un
+ * saltito (se aplasta, rebota y se balancea) y los ojos de corazón laten una vez; después todo se
+ * funde con la app, que ya se ha montado debajo (no espera a la animación para arrancar). Con
+ * «reducir movimiento» no se mueve nada: solo el fundido, en cuanto la app está lista.
  */
 export function BootSplash({ ready, onFinish, testID = "boot-splash" }: BootSplashProps) {
   const theme = useTheme();
   const reduced = useReducedMotion();
-  const colors = useCherryMarkColors("color");
+  const palette = useMascotPalette();
   const [introDone, setIntroDone] = useState(reduced);
   const [timedOut, setTimedOut] = useState(false);
   const exiting = useRef(false);
@@ -66,9 +72,9 @@ export function BootSplash({ ready, onFinish, testID = "boot-splash" }: BootSpla
   finish.current = onFinish;
 
   const hop = useSharedValue(0);
-  const swing = useSharedValue(0);
-  const bigBeat = useSharedValue(1);
-  const smallBeat = useSharedValue(1);
+  const tilt = useSharedValue(0);
+  const leftBeat = useSharedValue(1);
+  const rightBeat = useSharedValue(1);
   const exit = useSharedValue(0);
 
   useEffect(() => {
@@ -79,54 +85,54 @@ export function BootSplash({ ready, onFinish, testID = "boot-splash" }: BootSpla
 
     // Saltito: se aplasta contra el suelo y rebota (el muelle pasa de largo y estira un poco).
     hop.value = withSequence(withTiming(1, { duration: 110, easing: easings.inOut }), withSpring(0, springs.pop));
-    // Balanceo amortiguado de las cerezas, colgadas de la unión de los rabitos.
-    swing.value = withDelay(
+    // Balanceo amortiguado sobre su base.
+    tilt.value = withDelay(
       110,
       withSequence(
-        withTiming(6, { duration: 150, easing: easings.out }),
-        withTiming(-4, { duration: 170, easing: easings.inOut }),
-        withTiming(2, { duration: 150, easing: easings.inOut }),
+        withTiming(-5, { duration: 150, easing: easings.out }),
+        withTiming(3.5, { duration: 170, easing: easings.inOut }),
+        withTiming(-1.5, { duration: 150, easing: easings.inOut }),
         withTiming(0, { duration: 130, easing: easings.out })
       )
     );
-    // Un latido por hoja, la pequeña un poco después.
-    bigBeat.value = withDelay(
+    // Un latido de los ojos de corazón, la cereza de la derecha un poco después.
+    leftBeat.value = withDelay(
       300,
-      withSequence(withTiming(1.2, { duration: 120, easing: easings.out }), withSpring(1, springs.pop))
+      withSequence(withTiming(1.45, { duration: 120, easing: easings.out }), withSpring(1, springs.pop))
     );
-    smallBeat.value = withDelay(
+    rightBeat.value = withDelay(
       380,
-      withSequence(withTiming(1.24, { duration: 120, easing: easings.out }), withSpring(1, springs.pop))
+      withSequence(withTiming(1.45, { duration: 120, easing: easings.out }), withSpring(1, springs.pop))
     );
 
     const timer = setTimeout(() => setIntroDone(true), BOOT_SPLASH_INTRO_MS);
     return () => clearTimeout(timer);
-  }, [bigBeat, hop, reduced, smallBeat, swing]);
+  }, [hop, leftBeat, reduced, rightBeat, tilt]);
 
-  // Si la app tarda, las hojas siguen latiendo despacio mientras espera (y hay un tope).
+  // Si la app tarda, los corazones siguen latiendo despacio mientras espera (y hay un tope).
   useEffect(() => {
     if (!introDone || ready) {
       return;
     }
 
     if (!reduced) {
-      const beat = (peak: number) =>
+      const beat = () =>
         withRepeat(
           withSequence(
-            withDelay(620, withTiming(peak, { duration: 130, easing: easings.out })),
+            withDelay(620, withTiming(1.3, { duration: 130, easing: easings.out })),
             withTiming(1, { duration: 260, easing: easings.inOut })
           ),
           -1
         );
-      bigBeat.value = beat(1.14);
-      smallBeat.value = withDelay(80, beat(1.16));
+      leftBeat.value = beat();
+      rightBeat.value = withDelay(80, beat());
     }
 
     const timer = setTimeout(() => setTimedOut(true), BOOT_SPLASH_MAX_WAIT_MS);
     return () => {
       clearTimeout(timer);
     };
-  }, [bigBeat, introDone, ready, reduced, smallBeat]);
+  }, [introDone, leftBeat, ready, reduced, rightBeat]);
 
   useEffect(() => {
     if (!introDone || !(ready || timedOut) || exiting.current) {
@@ -134,45 +140,39 @@ export function BootSplash({ ready, onFinish, testID = "boot-splash" }: BootSpla
     }
 
     exiting.current = true;
-    cancelAnimation(bigBeat);
-    cancelAnimation(smallBeat);
-    bigBeat.value = withTiming(1, { duration: 120 });
-    smallBeat.value = withTiming(1, { duration: 120 });
+    cancelAnimation(leftBeat);
+    cancelAnimation(rightBeat);
+    leftBeat.value = withTiming(1, { duration: 120 });
+    rightBeat.value = withTiming(1, { duration: 120 });
     const done = () => finish.current();
     exit.value = withTiming(1, { duration: reduced ? 160 : BOOT_SPLASH_EXIT_MS, easing: easings.out }, (finished) => {
       if (finished) {
         runOnJS(done)();
       }
     });
-  }, [bigBeat, exit, introDone, ready, reduced, smallBeat, timedOut]);
+  }, [exit, introDone, leftBeat, ready, reduced, rightBeat, timedOut]);
 
-  const height = BOOT_SPLASH_MARK_HEIGHT;
-  const width = cherryMarkWidth(height);
-  const unit = height / CHERRY_MARK_HEIGHT;
-  // La caja se centra en pantalla; se desplaza para que el centro óptico quede donde lo pone el nativo.
-  const shiftX = (CHERRY_MARK_WIDTH / 2 - CHERRY_MARK_OPTICAL_CENTER.x) * unit;
-  const shiftY = (CHERRY_MARK_HEIGHT / 2 - CHERRY_MARK_OPTICAL_CENTER.y) * unit;
-  const origin = (point: { x: number; y: number }) => ({
-    transformOrigin: [point.x * unit, point.y * unit, 0] as [number, number, number]
-  });
+  const size = BOOT_SPLASH_MASCOT_SIZE;
+  const unit = size / MASCOT_CANVAS;
+  // La caja se centra en pantalla; se desplaza para que el centro del círculo quede donde lo pone el nativo.
+  const shiftX = (MASCOT_CANVAS / 2 - SPLASH_ICON_CENTER.x) * unit;
+  const shiftY = (MASCOT_CANVAS / 2 - SPLASH_ICON_CENTER.y) * unit;
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: 1 - exit.value }));
-  const markStyle = useAnimatedStyle(() => {
+  const bodyStyle = useAnimatedStyle(() => {
     const h = hop.value;
     const grow = 1 + exit.value * 0.06;
     return {
-      transform: [{ translateY: h * 6 }, { scaleX: (1 + h * 0.04) * grow }, { scaleY: (1 - h * 0.07) * grow }]
+      transform: [
+        { translateY: h * 6 },
+        { rotate: `${tilt.value}deg` },
+        { scaleX: (1 + h * 0.05) * grow },
+        { scaleY: (1 - h * 0.08) * grow }
+      ]
     };
   });
-  const swingStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${swing.value}deg` }] }));
-  const bigStyle = useAnimatedStyle(() => ({ transform: [{ scale: bigBeat.value }] }));
-  const smallStyle = useAnimatedStyle(() => ({ transform: [{ scale: smallBeat.value }] }));
-
-  const layer = (parts: Parameters<typeof CherryMarkShapes>[0]["parts"]) => (
-    <Svg height={height} style={StyleSheet.absoluteFill} viewBox={CHERRY_MARK_VIEWBOX} width={width}>
-      <CherryMarkShapes colors={colors} parts={parts} />
-    </Svg>
-  );
+  const leftStyle = useAnimatedStyle(() => ({ transform: [{ scale: leftBeat.value }] }));
+  const rightStyle = useAnimatedStyle(() => ({ transform: [{ scale: rightBeat.value }] }));
 
   return (
     <Animated.View
@@ -182,18 +182,26 @@ export function BootSplash({ ready, onFinish, testID = "boot-splash" }: BootSpla
       style={[styles.root, { backgroundColor: theme.primitives.color.limonada }, backdropStyle]}
       testID={testID}
     >
-      <View style={{ width, height, transform: [{ translateX: -shiftX }, { translateY: -shiftY }] }}>
-        <Animated.View style={[StyleSheet.absoluteFill, { transformOrigin: ["50%", "100%", 0] }, markStyle]}>
-          {layer(["stalk"])}
-          <Animated.View style={[StyleSheet.absoluteFill, origin(CHERRY_MARK_PIVOTS.junction), swingStyle]}>
-            {layer(["cherries"])}
-          </Animated.View>
-          <Animated.View style={[StyleSheet.absoluteFill, origin(CHERRY_MARK_PIVOTS.bigTip), bigStyle]}>
-            {layer(["bigHeart"])}
-          </Animated.View>
-          <Animated.View style={[StyleSheet.absoluteFill, origin(CHERRY_MARK_PIVOTS.smallTip), smallStyle]}>
-            {layer(["smallHeart"])}
-          </Animated.View>
+      <View style={{ width: size, height: size, transform: [{ translateX: -shiftX }, { translateY: -shiftY }] }}>
+        {/* Mochi se apoya en la base de las cerezas (y ≈ 109 de 120): de ahí salta y se balancea. */}
+        <Animated.View style={[StyleSheet.absoluteFill, { transformOrigin: ["50%", "90%", 0] }, bodyStyle]}>
+          <Svg height={size} style={StyleSheet.absoluteFill} viewBox={MASCOT_VIEWBOX} width={size}>
+            <MascotBody mood="love" palette={palette} stroke={BRAND_STROKE} withoutLoveEyes />
+          </Svg>
+          {MASCOT_EYES.map((eye, index) => (
+            <Animated.View
+              key={`${eye.x}`}
+              style={[
+                StyleSheet.absoluteFill,
+                { transformOrigin: [eye.x * unit, eye.y * unit, 0] },
+                index < 2 ? leftStyle : rightStyle
+              ]}
+            >
+              <Svg height={size} viewBox={MASCOT_VIEWBOX} width={size}>
+                <MascotLoveEye palette={palette} x={eye.x} y={eye.y} />
+              </Svg>
+            </Animated.View>
+          ))}
         </Animated.View>
       </View>
     </Animated.View>

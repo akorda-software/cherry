@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { Platform } from "react-native";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { HEART } from "../../../shared/ui/art/icon-paths";
 import { renderRoute } from "../../../../test/router/render-route";
 import { sessionFixture } from "../../../../test/router/session-shell.fixture";
 import { createFreshTestEmail, DEMO2_TEST_EMAIL, DEMO_TEST_EMAIL } from "./auth-action-list";
@@ -43,6 +44,14 @@ describe("LoginScreen", () => {
     expect(screen.queryByText(/gratis|trucos|muros de pago|código abierto/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continuar con Google" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continuar con Apple" })).toBeInTheDocument();
+  });
+
+  it("greets with Mochi in love, the logo of the app", async () => {
+    const view = renderRoute(<LoginScreen />);
+
+    await screen.findByRole("heading", { name: "Conoce gente cerca de ti." });
+    const hearts = Array.from(view.container.querySelectorAll("path")).filter((path) => path.getAttribute("d") === HEART);
+    expect(hearts).toHaveLength(4);
   });
 
   it("shows the loading state on the chosen provider and locks the rest", async () => {

@@ -33,7 +33,12 @@ defmodule Cherry.Identity.Document.PassiveAuth do
           | :data_group_mismatch
           | Mrz.error()
 
-  @type result :: %{mrz: Mrz.t(), document_signer: Certificate.t(), csca: Certificate.t()}
+  @type result :: %{
+          mrz: Mrz.t(),
+          document_signer: Certificate.t(),
+          csca: Certificate.t(),
+          certificate_expired: boolean()
+        }
 
   @doc """
   Options:
@@ -41,6 +46,11 @@ defmodule Cherry.Identity.Document.PassiveAuth do
     * `:trust_anchors` — CSCA certificates (`%Certificate{}`); defaults to
       `TrustStore.anchors/0`.
     * `:now` — `DateTime` used for validity periods and ages (default: now).
+    * `:allow_expired_certificates` — when `true`, an expired Document Signer
+      or CSCA does not fail the check: the signatures still prove the data is
+      genuine, and the result says `certificate_expired: true`. The caller
+      must then refuse the document itself (after looking at the age, so that
+      a minor's old document is still treated as a minor's).
   """
   @spec verify(%{dg1: binary(), dg2: binary(), sod: binary()}, keyword()) ::
           {:ok, result()} | {:error, error()}
@@ -51,13 +61,17 @@ defmodule Cherry.Identity.Document.PassiveAuth do
 
     with {:ok, sod} <- Sod.parse(sod),
          :ok <- content_type(sod),
-         {:ok, signer, csca} <- verify_signers(sod, anchors, now),
+         {:ok, signer, csca, expired} <- verify_signers(sod, anchors, now),
          :ok <- data_group(sod, 1, dg1),
          :ok <- data_group(sod, 2, dg2),
-         {:ok, mrz} <- Mrz.parse_dg1(dg1, DateTime.to_date(now)) do
-      {:ok, %{mrz: mrz, document_signer: signer, csca: csca}}
+         {:ok, mrz} <- Mrz.parse_dg1(dg1, DateTime.to_date(now)),
+         :ok <- check_expired(expired, Keyword.get(opts, :allow_expired_certificates, false)) do
+      {:ok, %{mrz: mrz, document_signer: signer, csca: csca, certificate_expired: expired}}
     end
   end
+
+  defp check_expired(true, false), do: {:error, :certificate_expired}
+  defp check_expired(_expired, _allowed), do: :ok
 
   @doc """
   Public, non-personal facts about an EF.SOD for debugging a rejection in
@@ -134,25 +148,30 @@ defmodule Cherry.Identity.Document.PassiveAuth do
   end
 
   # ICAO recommends a single SignerInfo; any one that fully verifies is enough.
+  # One with certificates in force is preferred over one with expired ones.
   defp verify_signers(%Sod{signers: signers} = sod, anchors, now) do
-    Enum.reduce_while(signers, nil, fn signer, first_error ->
+    Enum.reduce_while(signers, nil, fn signer, best ->
       case verify_signer(sod, signer, anchors, now) do
-        {:ok, _cert, _csca} = ok -> {:halt, ok}
-        {:error, _reason} = error -> {:cont, first_error || error}
+        {:ok, _cert, _csca, false} = ok -> {:halt, ok}
+        {:ok, _cert, _csca, true} = expired -> {:cont, prefer(best, expired)}
+        {:error, _reason} = error -> {:cont, best || error}
       end
     end)
   end
 
+  defp prefer({:ok, _cert, _csca, _expired} = best, _other), do: best
+  defp prefer(_error_or_nil, other), do: other
+
   defp verify_signer(sod, signer, anchors, now) do
     # The chain is checked first: the Document Signer's key (chosen by whoever
     # built the SOD) is only used once a trusted CSCA has vouched for it.
+    # Validity periods are reported, not enforced here (see `verify/2`).
     with {:ok, cert} <- signer_certificate(sod, signer),
          :ok <- document_signer_profile(cert),
          {:ok, csca} <- trusted_issuer(cert, anchors),
-         :ok <- valid_at(cert, now),
-         :ok <- valid_at(csca, now),
          :ok <- signer_info_signature(sod, signer, cert) do
-      {:ok, cert, csca}
+      {:ok, cert, csca,
+       not (Certificate.valid_at?(cert, now) and Certificate.valid_at?(csca, now))}
     end
   end
 
@@ -239,10 +258,6 @@ defmodule Cherry.Identity.Document.PassiveAuth do
 
   defp key_ids_compatible?(aki, ski) when is_binary(aki) and is_binary(ski), do: aki == ski
   defp key_ids_compatible?(_aki, _ski), do: true
-
-  defp valid_at(cert, now) do
-    if Certificate.valid_at?(cert, now), do: :ok, else: {:error, :certificate_expired}
-  end
 
   defp constant_time_equal?(a, b) when byte_size(a) == byte_size(b),
     do: :crypto.hash_equals(a, b)

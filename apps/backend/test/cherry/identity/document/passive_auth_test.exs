@@ -226,6 +226,25 @@ defmodule Cherry.Identity.Document.PassiveAuthTest do
       assert {:error, :certificate_expired} = verify(PKI.document(csca: csca, ds: ds))
     end
 
+    test "an expired certificate is only reported when allowed" do
+      csca = PKI.csca()
+      past = DateTime.add(DateTime.utc_now(), -1, :day) |> DateTime.truncate(:second)
+      ds = PKI.document_signer(csca, not_before: DateTime.add(past, -400, :day), not_after: past)
+      doc = PKI.document(csca: csca, ds: ds)
+
+      assert {:ok, %{certificate_expired: true, mrz: %{}}} =
+               verify(doc, allow_expired_certificates: true)
+
+      assert {:ok, %{certificate_expired: false}} =
+               verify(PKI.document(csca: csca), allow_expired_certificates: true)
+
+      # The signatures are still checked.
+      tampered = %{doc | dg1: PKI.document(csca: csca, ds: ds, birth: ~D[1985-02-02]).dg1}
+
+      assert {:error, :data_group_mismatch} =
+               verify(tampered, allow_expired_certificates: true)
+    end
+
     test "a Document Signer certificate that is not valid yet" do
       csca = PKI.csca()
       future = DateTime.add(DateTime.utc_now(), 2, :day) |> DateTime.truncate(:second)

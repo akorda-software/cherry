@@ -115,9 +115,11 @@ defmodule Cherry.Identity.AgeVerifications do
     result =
       with :ok <- check_available(),
            :ok <- register_attempt(user_id, now),
-           {:ok, %{mrz: mrz} = auth} <- passive_auth(document, Keyword.put(opts, :now, now)),
-           :ok <- check_in_force(mrz, now),
+           {:ok, %{mrz: mrz} = auth} <- passive_auth(document, nfc_auth_opts(opts, now)),
+           # The age goes first: a minor's expired document is still a minor's.
            :ok <- check_adult(mrz, now),
+           :ok <- check_certificates_in_force(auth),
+           :ok <- check_in_force(mrz, now),
            :ok <- check_document_accepted(nfc_document_kind(mrz)),
            {:ok, fingerprint} <- Fingerprint.compute(mrz),
            {:ok, verification} <- store(user_id, method(mrz), fingerprint, now) do
@@ -507,6 +509,14 @@ defmodule Cherry.Identity.AgeVerifications do
     end)
     |> Exception.format_stacktrace()
   end
+
+  defp nfc_auth_opts(opts, now),
+    do: opts |> Keyword.put(:now, now) |> Keyword.put(:allow_expired_certificates, true)
+
+  defp check_certificates_in_force(%{certificate_expired: true}),
+    do: {:error, :certificate_expired}
+
+  defp check_certificates_in_force(_auth), do: :ok
 
   # Expired documents are refused: otherwise every old passport would be a new
   # fingerprint (one more account). A document without a readable expiry date

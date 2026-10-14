@@ -179,6 +179,7 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
    - Del certificado del firmante y del CSCA: si alguno ha caducado, `certificate_expired`.
    - Del propio documento según la MRZ: si ha caducado, `document_expired`. Si no, cada pasaporte antiguo sería una huella nueva y, por tanto, una cuenta más. Se acepta un documento sin fecha de caducidad legible.
    - Es lo prudente; ver «DNI permanente» abajo.
+   - **La edad se mira antes que la caducidad** (2026-10-14). Si las firmas son correctas, un certificado caducado no impide leer la fecha de nacimiento: un documento caducado de un menor da `underage` (y se borra la cuenta), no `document_expired` ni `certificate_expired`. Igual que con Didit.
 4. **Edad con la fecha UTC.** Con día o mes desconocidos, el siglo se elige con la fecha más temprana posible y la edad con la más tardía (nunca hace a nadie mayor). Una edad de 120 años o más se trata como MRZ malformada. La fecha UTC es más estricta que la hora de Madrid: el día del cumpleaños se acepta desde la 01:00 o las 02:00 de España (según el horario). Las fechas con día o mes desconocidos (`<<`) se toman como la más tardía posible. Si nace un 29 de febrero, cumple el 1 de marzo en años no bisiestos.
 5. **Ya verificado con otro documento → 409 `already_verified`**; el mismo documento → idempotente. Una verificación `revoked` no se sustituye sola.
 6. **Intentos: solo se guarda la fecha** (ni el resultado ni nada del documento), y se purgan a las 24 h. Así no queda en la BD qué cuentas intentaron verificarse siendo menores.

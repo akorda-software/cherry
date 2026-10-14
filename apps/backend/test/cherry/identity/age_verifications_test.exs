@@ -96,6 +96,26 @@ defmodule Cherry.Identity.AgeVerificationsTest do
                )
     end
 
+    test "a minor's expired document is underage, not expired", ctx do
+      doc = document(ctx, birth: ~D[2010-03-01], expiry: ~D[2020-01-01])
+      assert {:error, :underage} = verify(user_fixture(), doc)
+
+      # Old documents usually come with an expired Document Signer too.
+      ds =
+        PKI.document_signer(ctx.csca,
+          not_before: DateTime.add(@now, -4000, :day),
+          not_after: DateTime.add(@now, -1, :day)
+        )
+
+      old = PKI.document(csca: ctx.csca, ds: ds, birth: ~D[2010-03-01], expiry: ~D[2020-01-01])
+      assert {:error, :underage} = verify(user_fixture(), old)
+
+      user = user_fixture()
+      adult = PKI.document(csca: ctx.csca, ds: ds)
+      assert {:error, :certificate_expired} = verify(user, adult)
+      refute AgeVerifications.verified?(user.id)
+    end
+
     test "the 18th birthday counts from that day (UTC)", ctx do
       doc = document(ctx, birth: ~D[2008-10-09])
 

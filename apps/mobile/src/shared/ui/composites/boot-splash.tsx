@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   cancelAnimation,
@@ -47,6 +47,35 @@ export const BOOT_SPLASH_EXIT_MS = 280;
 /** Si la app sigue sin estar lista pasado este tiempo tras la entrada, se aparta igualmente. */
 export const BOOT_SPLASH_MAX_WAIT_MS = 2500;
 
+/**
+ * Cuántos splash de arranque tapan ahora mismo la app (hasta que empieza su fundido). Lo leen las
+ * pantallas con entrada propia (la bienvenida) para no gastarla debajo del splash: arrancan cuando
+ * este empieza a fundirse, y el relevo se ve como una sola animación.
+ */
+let covering = 0;
+const coverListeners = new Set<() => void>();
+
+function setCovering(delta: number) {
+  covering = Math.max(0, covering + delta);
+  coverListeners.forEach((listener) => listener());
+}
+
+function subscribeCovering(listener: () => void) {
+  coverListeners.add(listener);
+  return () => {
+    coverListeners.delete(listener);
+  };
+}
+
+/** `true` mientras el splash de arranque tapa la app (deja de taparla al empezar el fundido). */
+export function useBootSplashCovering(): boolean {
+  return useSyncExternalStore(
+    subscribeCovering,
+    () => covering > 0,
+    () => false
+  );
+}
+
 export interface BootSplashProps {
   /** La app ya sabe qué pantalla enseñar: en cuanto acaba la entrada, el splash se funde. */
   ready: boolean;
@@ -70,6 +99,20 @@ export function BootSplash({ ready, onFinish, testID = "boot-splash" }: BootSpla
   const exiting = useRef(false);
   const finish = useRef(onFinish);
   finish.current = onFinish;
+  const uncover = useRef<(() => void) | null>(null);
+
+  useLayoutEffect(() => {
+    setCovering(1);
+    let released = false;
+    const release = () => {
+      if (!released) {
+        released = true;
+        setCovering(-1);
+      }
+    };
+    uncover.current = release;
+    return release;
+  }, []);
 
   const hop = useSharedValue(0);
   const tilt = useSharedValue(0);
@@ -140,6 +183,7 @@ export function BootSplash({ ready, onFinish, testID = "boot-splash" }: BootSpla
     }
 
     exiting.current = true;
+    uncover.current?.();
     cancelAnimation(leftBeat);
     cancelAnimation(rightBeat);
     leftBeat.value = withTiming(1, { duration: 120 });

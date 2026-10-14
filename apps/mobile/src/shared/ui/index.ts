@@ -1,6 +1,7 @@
 export * from "./art";
 export * from "./app-shell";
 export * from "./composites/app-header";
+export * from "./composites/boot-splash";
 export * from "./composites/card";
 export * from "./composites/confirm-sheet";
 export * from "./composites/empty-state";

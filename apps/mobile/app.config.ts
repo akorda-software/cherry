@@ -91,9 +91,11 @@ export default (): ExpoConfig => {
       [
         "expo-splash-screen",
         {
+          // Logo de cerezas sobre el amarillo de marca; `BootSplash` (JS) lo releva en el mismo sitio:
+          // si cambias el ancho o el dibujo de splash-icon.png, cambia también SPLASH_IMAGE_WIDTH.
           image: "./assets/images/splash-icon.png",
-          imageWidth: 220,
-          backgroundColor: "#FAF6F0",
+          imageWidth: 200,
+          backgroundColor: "#FFC53D",
           resizeMode: "contain"
         }
       ]

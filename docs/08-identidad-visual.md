@@ -137,7 +137,9 @@ Inventario (API completa en `DS_READY.md`):
 ## Navegación
 
 - Raíz (`app/_layout.tsx`): fuentes + splash, `GestureHandlerRootView`, barra de estado oscura, fondo del sistema en
-  papel, proveedores (tema, configuración, sesión, bootstrap) y `ToastHost`.
+  papel, proveedores (tema, configuración, sesión, bootstrap), `ToastHost` y `BootSplashGate`: el splash nativo
+  (amarillo y logo) lo releva `BootSplash` en el mismo sitio; las cerezas dan un saltito, se balancean y las hojas
+  laten una vez (≈ 0,76 s) y se funde con la app en cuanto sabe adónde ir. Con «reducir movimiento», solo el fundido.
 - Zona privada (`app/(app)/_layout.tsx`): guard de sesión y onboarding (con estados de carga y error de la libreta),
   `Stack` sin cabecera (cada pantalla trae su `TopBar`) y `AppOverlays` montado una vez encima. Pantallas: `(tabs)`,
   `profile/[id]`, `chat/[id]`, `filters` (modal), `edit/{photos,tags,bio,basics}`, `settings`, `about`.

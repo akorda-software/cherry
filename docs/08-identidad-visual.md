@@ -59,9 +59,12 @@ mantiene hasta que están listas.
 
 - **Rubik** (`regular`, `medium`, `bold`, `extraBold`, `black`): toda la interfaz. Los titulares (`fonts.display`) van
   en Black con interletraje cerrado; `fonts.hand` es Rubik Medium (nada de letra «a mano»).
-- **Logo**: la palabra «cherry» en Fraunces Black (SOFT 100, opsz 144; OFL), convertida a trazados y retocada a mano
-  en `src/shared/ui/art/wordmark-path.ts`. Las bolas de las dos erres son las cerezas, unidas por los rabitos y una
-  hoja. No se carga como fuente. El icono de la app son las dos erres con sus cerezas sobre amarillo.
+- **Logo**: un par de cerezas cuyas hojas son dos corazones, dibujado a mano en SVG plano (sin contornos ni sombras):
+  rabitos en tinta, hojas `mentaDeep`, cerezas `primary` y brillos de papel. Fuente en
+  `apps/mobile/assets/brand/cherry-logo.svg`; los mismos trazados en `src/shared/ui/art/cherry-mark-geometry.ts`
+  (`CherryMark`). El logotipo (`Logo`) añade al lado la palabra «cherry» en Rubik Black. El icono de la app, el
+  adaptable de Android, el splash y el favicon son las cerezas sobre el amarillo de marca (`secondary`), generados
+  desde ese SVG (`assets/brand/cherry-icon.svg`).
 
 Escala (`theme.primitives.text`): `hero 40`, `title1 30`, `title2 24`, `title3 19`, `body 16`, `bodyStrong 16`,
 `callout 15`, `label 15`, `caption 13`, `micro 11 (mayúsculas)`, `button 17`, `buttonSmall 15`, `hand 20`,

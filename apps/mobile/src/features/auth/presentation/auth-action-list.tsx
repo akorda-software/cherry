@@ -1,9 +1,10 @@
 import { type ReactNode, useState } from "react";
 import type { AuthProvider } from "@cherry/mobile-shared";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text as RNText, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import { Button, Icon, LoadingDots, PressableScale, Text, useTheme } from "../../../shared/ui";
+import { LoadingDots, PressableScale, Text, useTheme } from "../../../shared/ui";
+import { withAlpha } from "../../../shared/ui/utils/color";
 import type { BusyProvider } from "./session-store";
 
 /** Persona de demo del seed del backend: perfil completo con likes, matches y chats. */
@@ -21,66 +22,67 @@ export function createFreshTestEmail(now: number = Date.now(), random: () => num
 }
 
 /**
- * Colores de marca de terceros, no del tema: Apple solo admite su botón en negro o blanco,
- * sin adornos (ni sombras de color ni giros), y Google su «G» de cuatro colores sobre blanco
- * (guías de Sign in with Apple / Google).
+ * Colores de marca de terceros, no del tema (guías de Sign in with Apple y de Google Sign-In):
+ * Apple, botón negro con logo y texto blancos; Google, la «G» de cuatro colores sobre blanco con
+ * el contorno gris neutro de su botón claro.
  */
 const providerBrand = {
   appleFill: "#000000",
-  appleInk: "#FFFFFF"
+  appleInk: "#FFFFFF",
+  googleFill: "#FFFFFF",
+  googleStroke: "#747775",
+  googleInk: "#1F1F1F"
 } as const;
 
 const providerNames: Record<AuthProvider, string> = { google: "Google", apple: "Apple" };
+
+/** Atenuado de «Próximamente»: el texto blanco sobre el negro atenuado sigue a ≥ 4.5:1. */
+const SOON_OPACITY = 0.55;
+
+/**
+ * Sign in with Apple: `enabled` donde hay flujo nativo (iOS); `soon`, visible pero deshabilitado
+ * («Próximamente»), en Android y en web, que de momento no lo tienen.
+ */
+export type AppleSignInAvailability = "enabled" | "soon";
+
+export function defaultAppleAvailability(os: string = Platform.OS): AppleSignInAvailability {
+  return os === "ios" ? "enabled" : "soon";
+}
 
 interface AuthActionListProps {
   busyProvider: BusyProvider | null;
   onSelect(provider: AuthProvider): void;
   /** Solo en desarrollo: login de pruebas (sin email = usuario de test compartido). */
   onTest?(email?: string): void;
-  /**
-   * «Continuar con Apple»: por defecto solo en iOS, el único sitio con Sign in with Apple
-   * nativo (en Android y en web no hay flujo soportado).
-   */
-  showApple?: boolean;
+  /** Por defecto según la plataforma (`defaultAppleAvailability`). */
+  apple?: AppleSignInAvailability;
 }
 
-export function AuthActionList({
-  busyProvider,
-  onSelect,
-  onTest,
-  showApple = Platform.OS === "ios"
-}: AuthActionListProps) {
-  const theme = useTheme();
-  const c = theme.primitives.color;
+export function AuthActionList({ busyProvider, onSelect, onTest, apple }: AuthActionListProps) {
   const locked = busyProvider !== null;
+  const appleAvailability = apple ?? defaultAppleAvailability();
 
   return (
     <View style={styles.list}>
       <ProviderButton
         busy={busyProvider === "google"}
-        colors={{ fill: c.white, border: c.ink, text: c.ink, shadow: c.ink }}
+        colors={{ fill: providerBrand.googleFill, text: providerBrand.googleInk, border: providerBrand.googleStroke }}
         disabled={locked}
-        logo={<GoogleLogo size={22} />}
+        logo={<GoogleLogo size={20} />}
         onPress={() => onSelect("google")}
         provider="google"
         testID="login-google"
       />
-      {showApple ? (
-        <ProviderButton
-          busy={busyProvider === "apple"}
-          colors={{
-            fill: providerBrand.appleFill,
-            border: providerBrand.appleFill,
-            text: providerBrand.appleInk,
-            shadow: null
-          }}
-          disabled={locked}
-          logo={<AppleLogo color={providerBrand.appleInk} size={22} />}
-          onPress={() => onSelect("apple")}
-          provider="apple"
-          testID="login-apple"
-        />
-      ) : null}
+      <ProviderButton
+        busy={busyProvider === "apple"}
+        colors={{ fill: providerBrand.appleFill, text: providerBrand.appleInk, border: null }}
+        disabled={locked || appleAvailability === "soon"}
+        logo={<AppleLogo color={providerBrand.appleInk} size={20} />}
+        onPress={() => onSelect("apple")}
+        provider="apple"
+        soon={appleAvailability === "soon"}
+        testID="login-apple"
+      />
       {/* `__DEV__` y `EXPO_PUBLIC_*` son literales: el empaquetador los sustituye y elimina
           este bloque en producción salvo en builds internas con EXPO_PUBLIC_TEST_LOGIN=true
           (el backend solo acepta el acceso de prueba si corre en desarrollo, MIX_ENV=dev). */}
@@ -94,48 +96,74 @@ export function AuthActionList({
 interface ProviderButtonProps {
   provider: AuthProvider;
   logo: ReactNode;
-  /** `shadow: null` = botón limpio, sin sombra ni hundimiento (Apple). */
-  colors: { fill: string; border: string; text: string; shadow: string | null };
+  /** `border: null` = sin contorno (Apple). */
+  colors: { fill: string; text: string; border: string | null };
   busy: boolean;
   disabled: boolean;
+  /** Visible pero sin flujo todavía: se atenúa y lo dice («Próximamente»). */
+  soon?: boolean;
   onPress(): void;
   testID: string;
 }
 
-/** Botón de proveedor como pegatina: contorno, sombra dura y se hunde al pulsar. */
-function ProviderButton({ provider, logo, colors, busy, disabled, onPress, testID }: ProviderButtonProps) {
+/**
+ * Botón de proveedor: píldora de 56 pt con el logo a la izquierda y el texto centrado, sin
+ * contornos de tinta ni sombras duras; al pulsar encoge un poco.
+ */
+function ProviderButton({ provider, logo, colors, busy, disabled, soon = false, onPress, testID }: ProviderButtonProps) {
   const theme = useTheme();
   const label = `Continuar con ${providerNames[provider]}`;
   const blocked = busy || disabled;
 
   return (
     <PressableScale
+      accessibilityHint={soon ? `Próximamente: todavía no puedes entrar con ${providerNames[provider]} aquí.` : undefined}
       accessibilityLabel={label}
       accessibilityState={{ disabled: blocked, busy }}
       aria-busy={busy || undefined}
       disabled={blocked}
-      elevation={colors.shadow ? "md" : "none"}
+      elevation="none"
       faceStyle={[
         styles.providerFace,
         {
           backgroundColor: colors.fill,
-          borderColor: colors.border,
-          borderWidth: theme.primitives.border.bold,
+          borderColor: colors.border ?? colors.fill,
+          borderWidth: colors.border ? 1 : 0,
           borderRadius: theme.primitives.radius.pill
-        }
+        },
+        soon
+          ? null
+          : {
+              boxShadow: `0 1px 2px ${withAlpha(theme.primitives.color.ink, 0.1)}, 0 4px 14px ${withAlpha(theme.primitives.color.ink, 0.08)}`
+            }
       ]}
       haptic
       onPress={onPress}
-      pressedScale={colors.shadow ? 1 : 0.98}
-      shadowColor={colors.shadow ?? undefined}
-      style={disabled && !busy ? { opacity: theme.primitives.opacity.disabled } : null}
+      pressedScale={0.98}
+      sinkWhenDisabled={false}
+      style={disabled && !busy ? { opacity: soon ? SOON_OPACITY : theme.primitives.opacity.disabled } : null}
       testID={testID}
     >
       <View style={[styles.providerRow, { opacity: busy ? 0 : 1 }]}>
-        {logo}
-        <Text color={colors.text} numberOfLines={1} variant="button">
-          {label}
-        </Text>
+        <View style={styles.providerLogo}>{logo}</View>
+        <View style={styles.providerText}>
+          <RNText
+            maxFontSizeMultiplier={1.3}
+            numberOfLines={1}
+            style={[styles.providerLabel, { color: colors.text, fontFamily: theme.primitives.fonts.bold }]}
+          >
+            {label}
+          </RNText>
+          {soon ? (
+            <RNText
+              maxFontSizeMultiplier={1.3}
+              style={[styles.soonText, { color: colors.text, fontFamily: theme.primitives.fonts.medium }]}
+            >
+              Próximamente
+            </RNText>
+          ) : null}
+        </View>
+        <View style={styles.providerTrail} />
       </View>
       {busy ? (
         <View style={styles.providerLoading}>
@@ -152,73 +180,59 @@ interface DevSignInProps {
   onTest(email?: string): void;
 }
 
-/** Atajos de desarrollo: nunca salen en una build de producción. */
+type DevChoice = "new" | "demo" | "demo2";
+
+const devShortcuts: { choice: DevChoice; label: string; short: string; testID: string }[] = [
+  { choice: "new", label: "Entrar como usuario nuevo", short: "Nuevo", testID: "login-dev-new" },
+  { choice: "demo", label: "Entrar como Lucía (demo)", short: "Lucía", testID: "login-dev-demo" },
+  { choice: "demo2", label: "Entrar como Hugo (demo 2)", short: "Hugo", testID: "login-dev-demo2" }
+];
+
+/** Atajos de desarrollo, discretos: una fila de píldoras pequeñas. Nunca salen en producción. */
 function DevSignIn({ busy, disabled, onTest }: DevSignInProps) {
   const theme = useTheme();
-  const [choice, setChoice] = useState<"new" | "demo" | "demo2" | null>(null);
+  const c = theme.primitives.color;
+  const [choice, setChoice] = useState<DevChoice | null>(null);
 
-  function start(next: "new" | "demo" | "demo2") {
+  function start(next: DevChoice) {
     setChoice(next);
     onTest(next === "new" ? createFreshTestEmail() : next === "demo" ? DEMO_TEST_EMAIL : DEMO2_TEST_EMAIL);
   }
 
   return (
-    <View
-      style={[
-        styles.devBox,
-        {
-          borderColor: theme.primitives.color.inkFaint,
-          borderWidth: theme.primitives.border.thin,
-          borderRadius: theme.primitives.radius.md
-        }
-      ]}
-      testID="login-dev-tools"
-    >
-      <View style={styles.devTitle}>
-        <Icon color={theme.semantic.text.muted} name="code" size={16} />
-        <Text color="muted" variant="caption">
-          Solo en desarrollo
-        </Text>
+    <View style={styles.devBox} testID="login-dev-tools">
+      <Text color="muted" variant="caption">
+        Pruebas
+      </Text>
+      <View style={styles.devRow}>
+        {devShortcuts.map((shortcut) => {
+          const loading = busy && choice === shortcut.choice;
+          return (
+            <Pressable
+              accessibilityLabel={shortcut.label}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: disabled && !loading, busy: loading }}
+              disabled={disabled}
+              key={shortcut.choice}
+              onPress={() => start(shortcut.choice)}
+              style={({ pressed }) => [
+                styles.devChip,
+                { borderColor: c.dot, backgroundColor: pressed ? c.paperDeep : c.paper },
+                disabled && !loading ? { opacity: theme.primitives.opacity.disabled } : null
+              ]}
+              testID={shortcut.testID}
+            >
+              {loading ? (
+                <LoadingDots color={c.inkSoft} size={5} />
+              ) : (
+                <Text color="muted" variant="caption">
+                  {shortcut.short}
+                </Text>
+              )}
+            </Pressable>
+          );
+        })}
       </View>
-      <Button
-        color="menta"
-        disabled={disabled && !(busy && choice === "new")}
-        fullWidth
-        icon="sparkle"
-        loading={busy && choice === "new"}
-        onPress={() => start("new")}
-        size="sm"
-        testID="login-dev-new"
-        variant="soft"
-      >
-        Entrar como usuario nuevo
-      </Button>
-      <Button
-        color="cielo"
-        disabled={disabled && !(busy && choice === "demo")}
-        fullWidth
-        icon="user"
-        loading={busy && choice === "demo"}
-        onPress={() => start("demo")}
-        size="sm"
-        testID="login-dev-demo"
-        variant="soft"
-      >
-        Entrar como Lucía (demo)
-      </Button>
-      <Button
-        color="lavanda"
-        disabled={disabled && !(busy && choice === "demo2")}
-        fullWidth
-        icon="user"
-        loading={busy && choice === "demo2"}
-        onPress={() => start("demo2")}
-        size="sm"
-        testID="login-dev-demo2"
-        variant="soft"
-      >
-        Entrar como Hugo (demo 2)
-      </Button>
     </View>
   );
 }
@@ -249,6 +263,7 @@ function GoogleLogo({ size }: { size: number }) {
   );
 }
 
+/** Manzana de Apple (solo en negro o blanco). */
 function AppleLogo({ size, color }: { size: number; color: string }) {
   return (
     <View aria-hidden importantForAccessibility="no-hide-descendants">
@@ -264,34 +279,61 @@ function AppleLogo({ size, color }: { size: number; color: string }) {
 
 const styles = StyleSheet.create({
   list: {
-    gap: 14
+    gap: 12
   },
   providerFace: {
-    minHeight: 58,
-    paddingHorizontal: 24,
-    alignItems: "center",
+    minHeight: 56,
+    paddingHorizontal: 20,
     justifyContent: "center"
   },
   providerRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12
+    alignItems: "center"
+  },
+  providerLogo: {
+    width: 40,
+    alignItems: "flex-start"
+  },
+  providerText: {
+    flex: 1,
+    alignItems: "center"
+  },
+  providerLabel: {
+    textAlign: "center",
+    fontSize: 16,
+    lineHeight: 21,
+    letterSpacing: 0.1
+  },
+  providerTrail: {
+    width: 40
   },
   providerLoading: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center"
   },
+  soonText: {
+    fontSize: 12,
+    lineHeight: 15
+  },
   devBox: {
-    borderStyle: "dashed",
-    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 10,
     marginTop: 4
   },
-  devTitle: {
+  devRow: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 6
+  },
+  devChip: {
+    minHeight: 30,
+    minWidth: 58,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center"
   }
 });

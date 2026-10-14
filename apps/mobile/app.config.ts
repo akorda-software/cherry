@@ -51,6 +51,7 @@ export default (): ExpoConfig => {
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundImage: "./assets/images/adaptive-icon-background.png",
+        // Amarillo de marca (brandPalette.secondary), igual que el splash.
         backgroundColor: "#FFC53D",
         monochromeImage: "./assets/images/adaptive-icon-monochrome.png"
       }

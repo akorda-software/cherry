@@ -2,7 +2,7 @@
 
 Runbook operativo del despliegue de `apps/backend`. Arquitectura completa: [`../arquitectura.md`](../arquitectura.md) · Decisión de arquitectura: `docs/decisions.md` **D-2026-09-04**. Objetivo actual: primer despliegue y pruebas en el servidor propio. El acuerdo operativo vigente del 2026-09-05 acepta downtime de segundos o minutos, backups locales + R2 pendientes y ausencia de failover externo.
 
-## Estado (2026-10-14)
+## Estado (2026-10-16)
 
 **Publicado en `https://cherry.akorda.es`** (desde el 2026-10-14; antes solo LAN). Cadena: Cloudflare (CNAME proxificado a `home.akorda.es`) → Caddy (bloque `cherry.akorda.es { reverse_proxy 192.168.0.126:80 }`) → Traefik → contenedor. En el UCG-Fiber, la regla `DMZ-Caddy to cherry-backend 80` (192.168.30.21 → 192.168.0.126 TCP 80; la de vuelta la deriva UniFi). `http://192.168.0.126` sigue respondiendo desde la LAN. Cambio respecto al plan original (D-2026-10-13b en `docs/decisions.md`): **el panel es el Dokploy de nipogi** (`nipogi-dokploy`, 192.168.0.121, v0.30.8) y cherry-backend es un *servidor remoto* suyo. En la VM solo corren Docker, Swarm de un nodo y Traefik; sin panel ni su PostgreSQL.
 
@@ -22,6 +22,11 @@ Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): 
 | 2026-10-14 | `cd3226e` | Mismo código: dominio público `cherry.akorda.es` y login con Google |
 | 2026-10-14 | `cd3226e` | Mismo código: client ID web del proyecto Cherry y verificación de edad obligatoria |
 | 2026-10-14 | `2e92a5e` | Volver a registrarse tras borrar la propia cuenta (`users.deletion_reason`); purgada a mano la única cuenta, ya borrada |
+| 2026-10-16 | `fd9ce10` | Cuatro pasadas de rendimiento y robustez del backend/móvil; backend desplegado y verificado por versión, health/readiness y Swarm |
+
+Publicación del 2026-10-16: commit `fd9ce10d6fd064b906663f6c2a21b9749026938a`, [CI 38871351664](https://github.com/akorda-software/cherry/actions/runs/38871351664) en verde (tests backend/móvil y build/push de imagen). Deploy manual por API de NiPoGi sobre la app existente `cherry-backend-mkeaem`, sin activar el job pausado del workflow. Sin migraciones nuevas ni cambios de contratos, secretos, red o infraestructura; se conservan 1 réplica, `stop-first`/rollback y el bind de fotos. Imagen previa para rollback: `ghcr.io/akorda-software/cherry-backend:2e92a5e9668f972f4a9af66d2756d2c3a692c787`. No se compilaron ni publicaron APK/IPA; los OAuth de Apple/Google para iOS quedan para el siguiente trabajo.
+
+Verificado: despliegue Dokploy `XQca1lsdNEN2f9CgWQUUE` en `done`, actualización Swarm `completed` (08:09 UTC), imagen esperada y volumen `/var/lib/cherry/uploads` conservado. Los endpoints públicos `/healthz` y `/readyz` y el healthcheck de origen devuelven 200 con el SHA exacto, estables durante al menos 35 segundos; `/api/config` público también devuelve 200. Sondeo público con `curl`: `urllib` desde Olares obtenía 403 del borde, sin modificar políticas para comprobarlo. No se realizaron pruebas de carga ni cambios en OAuth/tiendas.
 
 Pendiente:
 - `FORCE_SSL=false`: Traefik aún no confía en el `X-Forwarded-Proto` de Caddy (falta `forwardedHeaders.trustedIPs: [192.168.30.21/32]` en el entrypoint `web` de `/etc/dokploy/traefik/traefik.yml` y reiniciar Traefik); con `FORCE_SSL` activo antes, bucle de redirecciones. Desde fuera ya solo se entra por HTTPS (Caddy redirige); falta HSTS.

@@ -13,11 +13,14 @@ defmodule Cherry.Dating.Photos do
   Lists active photos for a profile, ordered by position.
   """
   def list_photos(profile_id) do
-    ProfilePhoto
-    |> where([p], p.profile_id == ^profile_id and p.is_active == true)
+    active_query()
+    |> where([p], p.profile_id == ^profile_id)
     |> order_by([p], p.position)
     |> Repo.all()
   end
+
+  @doc "Active-only query for lists and preloads, excluding soft-deleted history."
+  def active_query, do: from(p in ProfilePhoto, where: p.is_active == true)
 
   @doc """
   Creates a photo.
@@ -50,12 +53,12 @@ defmodule Cherry.Dating.Photos do
   def reorder_photos(profile_id, ordered_photo_ids) when is_list(ordered_photo_ids) do
     Repo.transaction(fn ->
       # Serialises with uploads/deletes of the same profile.
-      Repo.one!(from p in Profile, where: p.id == ^profile_id, lock: "FOR UPDATE")
+      Repo.one!(from(p in Profile, where: p.id == ^profile_id, lock: "FOR UPDATE"))
 
       active_query =
         from(p in ProfilePhoto, where: p.profile_id == ^profile_id and p.is_active == true)
 
-      active_ids = Repo.all(from p in active_query, select: p.id)
+      active_ids = Repo.all(from(p in active_query, select: p.id))
 
       if permutation?(ordered_photo_ids, active_ids) do
         now = DateTime.utc_now() |> DateTime.truncate(:second)

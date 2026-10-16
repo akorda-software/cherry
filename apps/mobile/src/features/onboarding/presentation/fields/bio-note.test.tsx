@@ -45,4 +45,14 @@ describe("BioNote", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("No hemos podido guardar.");
   });
+
+  it("disables both typing and adding ideas while saving", () => {
+    renderWithTheme(<BioNote editable={false} onChange={() => {}} testID="bio" value="Mi descripción." />);
+
+    expect(screen.getByTestId("bio-input")).toHaveAttribute("readonly");
+    fireEvent.click(screen.getByTestId("bio-ideas-toggle"));
+    expect(screen.getByTestId("bio-starter-1")).toBeDisabled();
+    fireEvent.click(screen.getByTestId("bio-starter-1"));
+    expect(screen.getByTestId("bio-input")).toHaveValue("Mi descripción.");
+  });
 });

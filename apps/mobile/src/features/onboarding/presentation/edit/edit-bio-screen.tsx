@@ -47,7 +47,9 @@ export function EditBioScreen() {
       tone="cielo"
     >
       <BioNote
+        editable={ready && !busy}
         error={error}
+        length={validation.length}
         onChange={(next) => {
           setBio(next);
           if (error) setError(null);

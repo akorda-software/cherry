@@ -84,6 +84,36 @@ describe("activity store", () => {
 });
 
 describe("activity polling", () => {
+  it("does not fetch on mount in background and loads once when activated", async () => {
+    const appState = fakeAppState("background");
+    const fetchSummary = vi.fn(async () => summary(1, 0, 0));
+    acquireActivityPolling({ fetchSummary, appState });
+    await refreshActivitySummary({ force: true });
+    await vi.advanceTimersByTimeAsync(ACTIVITY_POLL_INTERVAL_MS);
+    expect(fetchSummary).not.toHaveBeenCalled();
+    appState.emit("active");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchSummary).toHaveBeenCalledOnce();
+  });
+
+  it("absorbs a synchronous client failure and still permits the next refresh", async () => {
+    const fetchSummary = vi.fn()
+      .mockImplementationOnce(() => { throw new TypeError("client unavailable"); })
+      .mockResolvedValue(summary(1, 0, 0));
+    expect(() => acquireActivityPolling({ fetchSummary, appState: fakeAppState() })).not.toThrow();
+    await vi.advanceTimersByTimeAsync(0);
+    await refreshActivitySummary({ force: true });
+    expect(fetchSummary).toHaveBeenCalledTimes(2);
+    expect(useActivityStore.getState().summary).toEqual(summary(1, 0, 0));
+  });
+
+  it.each([0, -1, Infinity, NaN, 2_147_483_648])("rejects interval %s without acquiring a poller", (intervalMs) => {
+    const fetchSummary = vi.fn(async () => summary(1, 0, 0));
+    expect(() => acquireActivityPolling({ fetchSummary, intervalMs })).toThrow(RangeError);
+    expect(fetchSummary).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("fetches on start and then every interval while in foreground", async () => {
     const fetchSummary = vi.fn(async () => summary(3, 1, 0));
     const release = acquireActivityPolling({ fetchSummary, appState: fakeAppState() });

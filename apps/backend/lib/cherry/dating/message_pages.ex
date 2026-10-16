@@ -11,11 +11,13 @@ defmodule Cherry.Dating.MessagePages do
   @doc """
   Página de mensajes, más nuevos primero. `cursor` es el `next_cursor` opaco de
   una página anterior (o, por compatibilidad, un instante ISO 8601).
+  `limit` debe estar entre 1 y 100 (50 por defecto).
   """
   def list_messages_page(conversation_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
 
-    with {:ok, cursor} <- decode_cursor(Keyword.get(opts, :cursor)) do
+    with true <- is_integer(limit) and limit in 1..100,
+         {:ok, cursor} <- decode_cursor(Keyword.get(opts, :cursor)) do
       rows =
         from(m in Message,
           where: m.conversation_id == ^conversation_id,
@@ -29,6 +31,9 @@ defmodule Cherry.Dating.MessagePages do
       next_cursor = if length(rows) > limit, do: encode_cursor(List.last(page))
 
       {:ok, %{messages: page, next_cursor: next_cursor}}
+    else
+      false -> {:error, :invalid_limit}
+      error -> error
     end
   end
 
@@ -38,7 +43,16 @@ defmodule Cherry.Dating.MessagePages do
 
   defp apply_cursor(query, {:before, %DateTime{} = at, id}) do
     from(m in query,
-      where: m.inserted_at < ^at or (m.inserted_at == ^at and m.id < ^id)
+      # A tuple range becomes an index condition, unlike an OR filter that
+      # rescans every newer message on each deep page.
+      where:
+        fragment(
+          "(?, ?) < (?, ?)",
+          m.inserted_at,
+          m.id,
+          type(^at, :utc_datetime_usec),
+          type(^id, :binary_id)
+        )
     )
   end
 

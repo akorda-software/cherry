@@ -1,6 +1,19 @@
 import { Socket, type Channel } from "phoenix";
 
 import type { ChatMessage, ChatTypingEvent, ConversationMessagesPage } from "@cherry/contracts";
+import {
+  AUTO_RETRY_DELAY_MS, CHANNEL_REJOIN_DELAYS_MS, CHANNEL_REJOIN_MAX_MS, CHAT_PAGE_SIZE,
+  MAX_AUTO_ATTEMPTS, PUSH_TIMEOUT_MS, SOCKET_RECONNECT_DELAYS_MS, SOCKET_RECONNECT_MAX_MS,
+  TOKEN_REFRESH_MIN_INTERVAL_MS, TYPING_PUSH_TIMEOUT_MS, TYPING_THROTTLE_MS, TYPING_TTL_MS
+} from "./chat-session-config";
+import {
+  classifyChannelError, classifyRestError, errorCodeOf, isAuthFatal,
+  UNAVAILABLE_REASONS, unavailableReasonOf, type TransmitResult
+} from "./chat-errors";
+import { createReadReceiptController } from "./read-receipt-controller";
+
+export * from "./chat-session-config";
+export { classifyRestError, type TransmitResult } from "./chat-errors";
 
 import {
   mergeMessages,
@@ -88,29 +101,6 @@ export interface ChatSessionOptions {
   SocketImpl?: SocketConstructor;
 }
 
-export const CHAT_PAGE_SIZE = 40;
-export const PUSH_TIMEOUT_MS = 10_000;
-export const TYPING_TTL_MS = 4_000;
-export const TYPING_THROTTLE_MS = 3_000;
-export const AUTO_RETRY_DELAY_MS = 1_500;
-/** Intentos automáticos por envío antes de mostrar «no se ha podido enviar · reintentar». */
-export const MAX_AUTO_ATTEMPTS = 2;
-export const MARK_READ_DEBOUNCE_MS = 400;
-export const TOKEN_REFRESH_MIN_INTERVAL_MS = 4_000;
-
-const UNAVAILABLE_REASONS = new Set([
-  "not_participant",
-  "conversation_not_active",
-  "profile_required",
-  "profile_not_found"
-]);
-
-export type TransmitResult =
-  | { kind: "ok"; message: ChatMessage }
-  | { kind: "unavailable"; reason: string }
-  | { kind: "invalid" }
-  | { kind: "transient"; ambiguous: boolean };
-
 export interface ChatSession {
   getState(): ChatSessionState;
   subscribe(listener: () => void): () => void;
@@ -197,9 +187,18 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
   let tokenRefreshInFlight: Promise<void> | null = null;
   let lastTokenRefreshAt = -Infinity;
 
-  let readPending = false;
-  let markReadTimer: ReturnType<typeof setTimeout> | null = null;
-  let markReadInFlight = false;
+  const readReceipts = createReadReceiptController({
+    send: () => api.markRead(),
+    canSend: () => !disposed && !paused && visible && state.status === "ready",
+    onRead: () => events.onRead?.(),
+    onError(error) {
+      const reason = unavailableReasonOf(error);
+      if (!reason) return false;
+      markUnavailable(reason);
+      return true;
+    },
+    now
+  });
   let typingTimer: ReturnType<typeof setTimeout> | null = null;
   let lastTypingSentAt = -Infinity;
   const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -337,11 +336,10 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
 
     if (theirs.length > 0) {
       clearTypingTimer();
-      readPending = true;
       if (live) {
         theirs.forEach((message) => events.onIncomingMessage?.(message));
       }
-      scheduleMarkRead();
+      readReceipts.request();
     }
 
     return added;
@@ -367,7 +365,6 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
       const incoming = sortNewestFirst(page.messages);
       const merged = mergeMessages(state.messages, incoming, "older");
       cursor = page.nextCursor;
-      readPending = true;
       setState({
         ...learnIdentity(incoming),
         status: "ready",
@@ -376,7 +373,7 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
         olderError: false
       });
 
-      scheduleMarkRead(0);
+      readReceipts.request(0);
       void connect();
     } catch (error) {
       if (disposed) {
@@ -580,8 +577,8 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
   function createSocket(url: string) {
     const instance = new SocketImpl(url, {
       params: () => ({ token: token ?? "" }),
-      reconnectAfterMs: (tries: number) => [250, 1_000, 2_000, 4_000][tries - 1] ?? 8_000,
-      rejoinAfterMs: (tries: number) => [1_000, 2_000, 5_000][tries - 1] ?? 10_000
+      reconnectAfterMs: (tries: number) => SOCKET_RECONNECT_DELAYS_MS[tries - 1] ?? SOCKET_RECONNECT_MAX_MS,
+      rejoinAfterMs: (tries: number) => CHANNEL_REJOIN_DELAYS_MS[tries - 1] ?? CHANNEL_REJOIN_MAX_MS
     });
 
     instance.onError(() => {
@@ -717,6 +714,7 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
 
     retryTimers.forEach((timer) => clearTimeout(timer));
     retryTimers.clear();
+    readReceipts.cancel();
     clearTypingTimer();
     teardownSocket();
 
@@ -732,51 +730,6 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
 
     if (!wasUnavailable) {
       events.onUnavailable?.(reason);
-    }
-  }
-
-  // ── Leído ─────────────────────────────────────────────────────────────
-
-  function scheduleMarkRead(delay = MARK_READ_DEBOUNCE_MS) {
-    if (!readPending || !visible || disposed || state.status !== "ready") {
-      return;
-    }
-
-    if (markReadTimer !== null) {
-      clearTimeout(markReadTimer);
-    }
-
-    markReadTimer = setTimeout(() => {
-      markReadTimer = null;
-      void flushMarkRead();
-    }, delay);
-  }
-
-  async function flushMarkRead() {
-    if (!readPending || !visible || disposed || markReadInFlight || state.status !== "ready") {
-      return;
-    }
-
-    markReadInFlight = true;
-    readPending = false;
-
-    try {
-      await api.markRead();
-      if (!disposed) {
-        events.onRead?.();
-      }
-    } catch (error) {
-      readPending = true;
-      const reason = unavailableReasonOf(error);
-      if (reason) {
-        markUnavailable(reason);
-      }
-    } finally {
-      markReadInFlight = false;
-      // Si llegó algo mientras marcábamos, otra pasada.
-      if (readPending) {
-        scheduleMarkRead();
-      }
     }
   }
 
@@ -897,7 +850,7 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
     }
 
     const merged = mergeMessages(state.messages, [message], "newer");
-    readPending = false; // El backend marca como leído al enviar.
+    readReceipts.acknowledge(); // El backend marca como leído al enviar.
     setState({
       myProfileId: state.myProfileId ?? message.senderProfileId,
       messages: merged.messages,
@@ -944,7 +897,7 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
 
     lastTypingSentAt = now();
     try {
-      channel.push("typing", {}, 5_000);
+      channel.push("typing", {}, TYPING_PUSH_TIMEOUT_MS);
     } catch {
       // `typing` es opcional: nunca rompe el chat.
     }
@@ -985,10 +938,9 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
     setVisible(next) {
       visible = next;
       if (next) {
-        scheduleMarkRead(0);
-      } else if (markReadTimer !== null) {
-        clearTimeout(markReadTimer);
-        markReadTimer = null;
+        readReceipts.schedule(0);
+      } else {
+        readReceipts.cancel();
       }
     },
 
@@ -1004,6 +956,7 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
         return;
       }
       paused = true;
+      readReceipts.cancel();
       clearTypingTimer();
       channelJoined = false;
       socket?.disconnect();
@@ -1038,7 +991,7 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
           void connect({ force: !wasPaused });
         }
       });
-      scheduleMarkRead(0);
+      readReceipts.schedule(0);
     },
 
     dispose() {
@@ -1047,10 +1000,7 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
       }
 
       disposed = true;
-      if (markReadTimer !== null) {
-        clearTimeout(markReadTimer);
-        markReadTimer = null;
-      }
+      readReceipts.dispose();
       clearTypingTimer();
       retryTimers.forEach((timer) => clearTimeout(timer));
       retryTimers.clear();
@@ -1067,76 +1017,4 @@ export function createChatSession(options: ChatSessionOptions): ChatSession {
     const mine = state.messages.find((message) => message.senderProfileId !== otherProfileId);
     return mine ? { myProfileId: mine.senderProfileId } : {};
   }
-}
-
-// ── Clasificación de errores ─────────────────────────────────────────────
-
-function errorCodeOf(error: unknown): string | null {
-  if (typeof error === "object" && error !== null && "code" in error) {
-    const code = (error as { code?: unknown }).code;
-    return typeof code === "string" ? code : null;
-  }
-
-  return null;
-}
-
-function statusOf(error: unknown): number | undefined {
-  if (typeof error === "object" && error !== null && "status" in error) {
-    const status = (error as { status?: unknown }).status;
-    return typeof status === "number" ? status : undefined;
-  }
-
-  return undefined;
-}
-
-function unavailableReasonOf(error: unknown): string | null {
-  const code = errorCodeOf(error);
-
-  if (code !== null && UNAVAILABLE_REASONS.has(code)) {
-    return code;
-  }
-
-  // 403 sin código reconocible en una conversación = ya no es tuya.
-  return statusOf(error) === 403 ? "conversation_not_active" : null;
-}
-
-function isAuthFatal(error: unknown): boolean {
-  if (error instanceof Error) {
-    return error.message === "session_refresh_failed" || error.message === "missing_session";
-  }
-
-  return false;
-}
-
-export function classifyRestError(error: unknown): TransmitResult {
-  const reason = unavailableReasonOf(error);
-  if (reason) {
-    return { kind: "unavailable", reason };
-  }
-
-  const status = statusOf(error);
-
-  if (status === 422) {
-    return { kind: "invalid" };
-  }
-
-  if (status === 429) {
-    return { kind: "transient", ambiguous: false };
-  }
-
-  // Red caída a mitad (sin status) o 5xx: pudo guardarse antes de fallar.
-  return { kind: "transient", ambiguous: status === undefined || status === 0 || status >= 500 };
-}
-
-function classifyChannelError(response?: { reason?: string; errors?: unknown }): TransmitResult {
-  if (response?.reason && UNAVAILABLE_REASONS.has(response.reason)) {
-    return { kind: "unavailable", reason: response.reason };
-  }
-
-  if (response?.errors) {
-    return { kind: "invalid" };
-  }
-
-  // El servidor contestó con error: no se guardó.
-  return { kind: "transient", ambiguous: false };
 }

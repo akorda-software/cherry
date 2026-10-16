@@ -39,6 +39,23 @@ describe("bio", () => {
     expect(graphemeCount("🍙🍙")).toBe(2);
   });
 
+  it.each([
+    ["", 0],
+    ["Café, música y montaña.", 23],
+    ["Una\notra\tlínea", 14],
+    ["a\r\nb", 3],
+    ["e\u0301", 1],
+    ["👩🏽‍💻", 1],
+    ["🇪🇸", 1]
+  ])("counts %j without changing Unicode grapheme semantics", (text, length) => {
+    expect(graphemeCount(text)).toBe(length);
+  });
+
+  it("returns the trimmed length for the live meter alongside validation", () => {
+    const text = "Una bio con más de veinte caracteres.";
+    expect(validateBio(`  ${text}  `)).toEqual({ ok: true, value: text, length: graphemeCount(text) });
+  });
+
   it("validates 20–240 characters", () => {
     expect(validateBio("Corta")).toEqual({ ok: false, reason: "too_short", length: 5 });
     expect(validateBio("Una bio con más de veinte caracteres.").ok).toBe(true);

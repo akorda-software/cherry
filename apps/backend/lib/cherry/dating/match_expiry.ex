@@ -4,8 +4,9 @@ defmodule Cherry.Dating.MatchExpiry do
 
   La regla se aplica de forma perezosa en todas las lecturas (`expires_at <= now`
   equivale a caducado: no se lista ni permite mensajería). `expire_stale/1`
-  además normaliza el `status` a `"expired"`; lo ejecuta periódicamente
-  `Cherry.Dating.MatchExpirySweeper`.
+  además normaliza el `status` a `"expired"` para llamadas manuales; el proceso
+  periódico `Cherry.Dating.MatchExpirySweeper` usa `expire_batch/2` para limitar
+  las filas y omitir matches bloqueados por otras transacciones.
   """
 
   import Ecto.Query
@@ -41,13 +42,40 @@ defmodule Cherry.Dating.MatchExpiry do
     now = DateTime.truncate(now, :second)
 
     {count, _rows} =
-      from(m in Match,
-        where:
-          m.status == "active" and is_nil(m.first_message_at) and not is_nil(m.expires_at) and
-            m.expires_at <= ^now
-      )
+      stale_query(now)
       |> Repo.update_all(set: [status: "expired", updated_at: now])
 
     count
+  end
+
+  @doc "Expires at most `limit` matches, skipping rows currently used by another transaction."
+  def expire_batch(now \\ DateTime.utc_now(), limit \\ 500)
+
+  def expire_batch(now, limit) when is_integer(limit) and limit in 1..1000 do
+    now = DateTime.truncate(now, :second)
+
+    batch =
+      stale_query(now)
+      |> order_by([m], asc: m.expires_at, asc: m.id)
+      |> limit(^limit)
+      |> lock("FOR UPDATE SKIP LOCKED")
+      |> select([m], m.id)
+
+    {count, _rows} =
+      from(m in Match, where: m.id in subquery(batch))
+      |> Repo.update_all(set: [status: "expired", updated_at: now])
+
+    count
+  end
+
+  def expire_batch(_now, _limit),
+    do: raise(ArgumentError, "expiry batch size must be between 1 and 1000")
+
+  defp stale_query(now) do
+    from(m in Match,
+      where:
+        m.status == "active" and is_nil(m.first_message_at) and not is_nil(m.expires_at) and
+          m.expires_at <= ^now
+    )
   end
 end

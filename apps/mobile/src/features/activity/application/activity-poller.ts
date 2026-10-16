@@ -1,4 +1,5 @@
 import type { ActivitySummary } from "@cherry/contracts";
+import { activityPerformance } from "../../../shared/config/performance";
 
 import { useActivityStore } from "./activity-store";
 
@@ -8,9 +9,9 @@ import { useActivityStore } from "./activity-store";
  * Consulta al empezar, al volver a primer plano y cada `intervalMs` mientras la app está activa.
  */
 
-export const ACTIVITY_POLL_INTERVAL_MS = 45_000;
+export const ACTIVITY_POLL_INTERVAL_MS = activityPerformance.pollIntervalMs;
 /** Dos consultas seguidas (foco + primer plano) dentro de esta ventana se agrupan en una. */
-export const ACTIVITY_MIN_GAP_MS = 2_000;
+export const ACTIVITY_MIN_GAP_MS = activityPerformance.minRequestGapMs;
 
 type AppStateStatus = "active" | "background" | "inactive" | "unknown" | "extension" | string;
 
@@ -45,7 +46,7 @@ function isForeground(): boolean {
 
 /** Pide el resumen ya (si hay alguien escuchando). Agrupa peticiones muy seguidas. */
 export function refreshActivitySummary({ force = false }: { force?: boolean } = {}): Promise<void> {
-  if (!fetcher) {
+  if (!fetcher || !isForeground()) {
     return Promise.resolve();
   }
 
@@ -61,7 +62,8 @@ export function refreshActivitySummary({ force = false }: { force?: boolean } = 
   const run = fetcher;
   const requestGeneration = generation;
 
-  const promise: Promise<void> = run()
+  // Keep eager invocation, but turn synchronous adapter failures into ordinary rejections too.
+  const promise: Promise<void> = new Promise<ActivitySummary>((resolve) => resolve(run()))
     .then(
       (summary) => {
         // Si nadie escucha ya o la sesión cambió mientras tanto, no resucitamos datos.
@@ -89,6 +91,9 @@ export function acquireActivityPolling({
   intervalMs = ACTIVITY_POLL_INTERVAL_MS,
   appState = null
 }: ActivityPollingOptions): () => void {
+  if (!Number.isInteger(intervalMs) || intervalMs <= 0 || intervalMs > 2_147_483_647) {
+    throw new RangeError("Activity interval must be a positive timer-safe number of milliseconds");
+  }
   refCount += 1;
   fetcher = fetchSummary;
 

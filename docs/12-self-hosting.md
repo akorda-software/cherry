@@ -174,6 +174,8 @@ Sin CSCA del país del documento, la autenticación pasiva NFC lo rechaza (`untr
 | `R2_MAX_UPLOAD_BYTES` / `R2_UPLOAD_URL_TTL_SECONDS` | los de `UPLOAD_*` | Límites propios del adaptador `r2` |
 | `EXPO_PUSH_ACCESS_TOKEN` | vacío | Token de la Expo Push API. El backend acepta dispositivos en `/api/me/push-token`; el móvil aún no registra tokens (ver `11-deuda-tecnica-pendiente.md`) |
 | `EXPO_PUSH_BASE_URL` / `EXPO_PUSH_RECEIVE_TIMEOUT_MS` | `https://exp.host` / `5000` | Proveedor de push y timeout de respuesta (1–15000 ms); para carga, usar el simulador de `infra/load` |
+| `EXPO_PUSH_BATCH_SIZE` | `100` | Dispositivos por petición a Expo (1–100); lotes menores aumentan las peticiones por trabajo |
+| `EXPO_PUSH_POOL_TIMEOUT_MS` / `EXPO_PUSH_CONNECT_TIMEOUT_MS` | `5000` / `5000` | Espera del pool y conexión HTTP de push (1–15000 ms cada una); validadas al arrancar por `PushConfig` |
 | `PUSH_CONCURRENCY` | `4` | Workers Oban de push por nodo (1–32), con jobs persistentes y reintentos |
 
 ### Opcionales
@@ -196,6 +198,7 @@ El contrato con la app es el mismo con cualquier adaptador (detalle en `06-contr
 ### `STORAGE_ADAPTER=local` (sin servicios extra)
 
 - Las fotos se suben con un `PUT` firmado a `/api/uploads/<token>` y se sirven en `/uploads/photos/<clave>` desde `UPLOADS_DIR`. Solo se publican al completar la subida; las abandonadas y las borradas se eliminan del disco (barrido cada 10 min).
+- El barrido conserva un máximo predeterminado de 200 fotos y 200 intents por tick. En configuración Elixir: `config :cherry, :photo_storage_sweeper, batch_size: 200` (rango 1–1000); `interval_ms` positivo y `initial_delay_ms` no negativo, por defecto 600000/60000 ms. No son variables de entorno. Los fallos quedan pendientes para otro tick; un backlog puede tardar varios ciclos.
 - `UPLOADS_DIR` tiene que estar en un **volumen persistente** (no en el sistema de ficheros del contenedor) e incluirse en los backups junto con PostgreSQL.
 - El contenedor corre como `nobody`: el directorio debe ser escribible por el uid 65534. Con un bind mount:
 

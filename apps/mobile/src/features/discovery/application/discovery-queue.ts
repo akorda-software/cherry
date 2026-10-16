@@ -13,20 +13,21 @@ import {
 } from "@cherry/contracts";
 
 import { apiErrorCode, friendlyErrorMessage } from "../../../shared/api";
+import { discoveryPerformance } from "../../../shared/config/performance";
 import { classifyActionError, classifyFeedError } from "../domain/feed-errors";
 
 /** Tamaño de página del feed. */
-export const DISCOVERY_PAGE_SIZE = 20;
+export const DISCOVERY_PAGE_SIZE = discoveryPerformance.pageSize;
 /** Cuando quedan estas cards o menos, se pide la siguiente página. */
-export const DISCOVERY_PREFETCH_THRESHOLD = 5;
+export const DISCOVERY_PREFETCH_THRESHOLD = discoveryPerformance.prefetchThreshold;
 /** Cuántas cards por delante se precargan (todas las fotos de las 2 primeras, la principal del resto). */
-export const DISCOVERY_IMAGE_LOOKAHEAD = 6;
+export const DISCOVERY_IMAGE_LOOKAHEAD = discoveryPerformance.imageLookahead;
 
 export interface DiscoveryQueueDeps {
   fetchPage(cursor: string | null): Promise<DiscoveryFeedPage>;
   recordAction(request: DiscoveryActionRequest): Promise<DiscoveryActionResponse>;
   undo(): Promise<DiscoveryUndoResponse>;
-  /** Precarga imágenes (expo-image `Image.prefetch`). Nunca debe lanzar. */
+  /** Precarga imágenes; la dependencia comparte/deduplica y absorbe fallos. La cola solo selecciona URLs. */
   prefetchImages?(urls: string[]): void;
   /** Se llama cuando un like crea match (la celebración la pinta `MatchCelebrationHost`). */
   onMatch?(match: DiscoveryMatch): void;
@@ -97,7 +98,8 @@ export type DiscoveryUndoResult =
   | { status: "unavailable" }
   | { status: "nothing_to_undo" }
   | { status: "failed"; error: unknown }
-  | { status: "busy" };
+  | { status: "busy" }
+  | { status: "ignored" };
 
 export interface DiscoveryQueueActions {
   /** Liga la cola a un usuario; si es otro distinto, la vacía. */
@@ -146,7 +148,7 @@ const INITIAL_STATE: DiscoveryQueueState = {
   lastRemoval: null
 };
 
-const MAX_EMPTY_PAGES_IN_A_ROW = 3;
+const MAX_EMPTY_PAGES_IN_A_ROW = discoveryPerformance.maxEmptyPagesInARow;
 
 export function createDiscoveryQueue(
   depsSource: DiscoveryQueueDeps | (() => DiscoveryQueueDeps | null)
@@ -170,7 +172,6 @@ export function createDiscoveryQueue(
   /** Perfiles decididos en esta sesión: nunca se vuelven a meter desde una página posterior. */
   const decided = new Set<string>();
   const inflight = new Map<string, Promise<unknown>>();
-  const prefetched = new Set<string>();
 
   const nextSeq = () => {
     seq += 1;
@@ -185,7 +186,7 @@ export function createDiscoveryQueue(
         return;
       }
 
-      const urls: string[] = [];
+      const urls = new Set<string>();
 
       get()
         .profiles.slice(0, DISCOVERY_IMAGE_LOOKAHEAD)
@@ -194,16 +195,13 @@ export function createDiscoveryQueue(
           const wanted = index < 2 ? photos : photos.slice(0, 1);
 
           for (const url of wanted) {
-            if (typeof url === "string" && url !== "" && !prefetched.has(url)) {
-              prefetched.add(url);
-              urls.push(url);
-            }
+            if (typeof url === "string" && url !== "") urls.add(url);
           }
         });
 
-      if (urls.length > 0) {
+      if (urls.size > 0) {
         try {
-          deps.prefetchImages(urls);
+          deps.prefetchImages([...urls]);
         } catch {
           // La precarga es una mejora: nunca rompe la cola.
         }
@@ -422,6 +420,7 @@ export function createDiscoveryQueue(
 
         try {
           const response = await request;
+          if (ses !== session) return { status: "ignored" };
           clearPending();
 
           // Un match que llega tras cambiar de sesión no es de quien está ahora en la app.
@@ -431,6 +430,7 @@ export function createDiscoveryQueue(
 
           return { status: "recorded", response };
         } catch (error) {
+          if (ses !== session) return { status: "ignored" };
           clearPending();
 
           if (classifyActionError(error) === "settled") {
@@ -480,6 +480,8 @@ export function createDiscoveryQueue(
           return { status: "nothing_to_undo" };
         }
 
+        const ses = session;
+        const gen = generation;
         set({ undoing: true });
 
         // Si el último «no» aún viaja, el backend todavía no lo conoce.
@@ -487,7 +489,11 @@ export function createDiscoveryQueue(
           await Promise.allSettled([...inflight.values()]);
         }
 
-        const gen = generation;
+        if (ses !== session) return { status: "ignored" };
+        if (gen !== generation) {
+          set({ undoing: false });
+          return { status: "ignored" };
+        }
         const optimistic = get().lastPass;
 
         if (optimistic) {
@@ -518,8 +524,20 @@ export function createDiscoveryQueue(
 
         try {
           const response = (await resolveDeps().undo()) as UndoPayload;
+          if (ses !== session) return { status: "ignored" };
+          // A confirmed server mutation survives a same-session reload. Reconcile
+          // decisions, but do not inject its card into a newer page/filter snapshot.
+          const card = response.profile ? createDiscoveryProfileCard(response.profile) : null;
+          if (card) {
+            decided.delete(card.id);
+            if (optimistic && optimistic.id !== card.id) decided.add(optimistic.id);
+          }
+          if (gen !== generation) {
+            set({ undoing: false });
+            return { status: "ignored" };
+          }
 
-          if (!response.profile) {
+          if (!card) {
             // Deshecho en el servidor, pero esa persona ya no es visible: se va sin drama.
             dropOptimistic();
             set({
@@ -534,37 +552,30 @@ export function createDiscoveryQueue(
             return { status: "unavailable" };
           }
 
-          const card = createDiscoveryProfileCard(response.profile);
-          decided.delete(card.id);
+          const current = get();
+          const replacedOptimistic = optimistic !== null && optimistic.id !== card.id;
+          const rest = current.profiles.filter(
+            (profile) => profile.id !== card.id && !(replacedOptimistic && profile.id === optimistic.id)
+          );
 
-          if (gen === generation) {
-            const current = get();
-            const replacedOptimistic = optimistic !== null && optimistic.id !== card.id;
-
-            if (replacedOptimistic) {
-              decided.add(optimistic.id);
-            }
-
-            const rest = current.profiles.filter(
-              (profile) => profile.id !== card.id && !(replacedOptimistic && profile.id === optimistic.id)
-            );
-
-            set({
-              profiles: [card, ...rest],
-              undoing: false,
-              lastPass: null,
-              lastReturn:
-                optimistic?.id === card.id
-                  ? current.lastReturn
-                  : { seq: nextSeq(), profileId: card.id, reason: "undo", action: "dislike" }
-            });
-            prefetchUpcoming();
-          } else {
-            set({ undoing: false });
-          }
+          set({
+            profiles: [card, ...rest],
+            undoing: false,
+            lastPass: null,
+            lastReturn:
+              optimistic?.id === card.id
+                ? current.lastReturn
+                : { seq: nextSeq(), profileId: card.id, reason: "undo", action: "dislike" }
+          });
+          prefetchUpcoming();
 
           return { status: "undone", card };
         } catch (error) {
+          if (ses !== session) return { status: "ignored" };
+          if (gen !== generation) {
+            set({ undoing: false });
+            return { status: "ignored" };
+          }
           dropOptimistic();
 
           const nothing = apiErrorCode(error) === "nothing_to_undo";
@@ -623,7 +634,6 @@ export function createDiscoveryQueue(
         emptyPagesInARow = 0;
         decided.clear();
         inflight.clear();
-        prefetched.clear();
         set({ ...INITIAL_STATE });
       }
     };

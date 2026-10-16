@@ -2,16 +2,18 @@
 
 ## Suites
 
-Cifras de la última ejecución (2026-09-29), todas en verde:
+Cifras de la última ejecución (2026-10-15), todas en verde:
 
 | Suite | Comando | Tests |
 |---|---|---|
-| Backend (ExUnit) | `pnpm test:backend` → `mix test` en `apps/backend` | 384 |
-| Móvil (vitest + jsdom) | `pnpm --filter @cherry/mobile test` | 678 (95 ficheros) |
-| Mobile-shared (vitest) | `pnpm --filter @cherry/mobile-shared test` | 43 |
-| Contracts (vitest) | `pnpm test:contracts` | 23 |
+| Backend (ExUnit) | `pnpm test:backend` → `mix test` en `apps/backend` | 668 |
+| Móvil (vitest + jsdom) | `pnpm --filter @cherry/mobile test` | 966 (127 ficheros) |
+| Mobile-shared (vitest) | `pnpm --filter @cherry/mobile-shared test` | 51 |
+| Contracts (vitest) | `pnpm test:contracts` | 28 |
 
 `pnpm test:mobile` ejecuta: typecheck de mobile y mobile-shared → tests mobile-shared → tests mobile → tests contracts. `pnpm test` = móvil + backend.
+
+Cierre de la cuarta pasada: backend comprobado además con **Elixir 1.18.4 / OTP 28** (toolchain de CI); `mix format --check-formatted` global pasa con esa versión, incluido `mrz.ex` sin modificar. Bundles de producción Hermes Android/iOS exportados correctamente, sin instalar ni probar hardware. Los avisos conocidos de mocks DOM/`act` no hacen fallar la suite móvil.
 
 ## Entorno del backend
 
@@ -33,6 +35,10 @@ Cobertura: umbral 90 % configurado en `mix.exs` (`mix test --cover`).
 ### Backend
 - Dominio dating (`dating_test.exs`, `discovery_test.exs`): perfiles draft, completitud, ranking v2 con sus filtros duros y puntuación, swipes, matches, conversaciones, caducidad.
 - Concurrencia real: dos likes simultáneos crean exactamente un match (`swipe_concurrency_test.exs`).
+- Eficiencia social/chat: número de consultas por lote/likes, preferencias precargadas obsoletas, keyset con empates al microsegundo y límites inválidos, caducidad por lotes y filas bloqueadas. Benchmark reproducible: [`apps/backend/bench/README.md`](../apps/backend/bench/README.md).
+- Eficiencia de Discovery: comparación de filas completas con el SQL anterior para radios/expansión/paginación y exclusión inmediata de swipes. El benchmark seguro `bench/discovery_swipe_probe.exs` usa tablas temporales en una BD local de test verificada, sin truncar tablas persistentes.
+- Hotpaths: resumen agregado en un statement, autorización booleana sin hidratar conversación/match y tokens push con proyección mínima e invalidación masiva acotada. Regresiones de reglas/consultas y configuración de lotes/timeouts; `bench/activity_chat_probe.exs` revierte fixtures sintéticos y no acredita una ganancia de latencia estable.
+- Fotos: barridos con tamaño validado, marcado batch solo de borrados exitosos y ausencia de UPDATE vacío; reintento de fallos, objetos activos/recientes excluidos e intents completados sin borrar su objeto definitivo. Perfil propio/completitud no hidratan el historial de fotos inactivas.
 - Controllers API: auth y login de desarrollo, sesión, config, bootstrap/safety/settings, perfil, fotos y etiquetas, subidas locales, discovery (paginación, ranking, deshacer), API social y visibilidad, matches y chat, push-token, etiquetas.
 - Canal de chat: reglas de join, envío, lectura y broadcasts.
 - Auth: validación/expiración de tokens REST y WS, rotación y revocación por reuso; proveedores Google/Apple.
@@ -43,6 +49,14 @@ Cobertura: umbral 90 % configurado en `mix.exs` (`mix test --cover`).
 - Routing: navegación raíz, zona privada, cierre de sesión y runtime config (`test/router/*`).
 - Features (`src/features/**/*.test.ts`): sesión (refresh/retry), proveedores y callbacks de auth, onboarding (pasos, reanudación, preferencias, fecha de nacimiento), cola de discovery (optimismo, rollback, deshacer), likes, matches, chat (sesión de socket, mensajes), fotos, ubicación, seguridad, ajustes y pestaña Yo.
 - UI (`test/ui/*`): contrato de tokens/tema y componentes (botones, pegatinas, conmutador, campos, hojas, avisos, barra de pestañas).
+- Onboarding: la pantalla de bio prueba texto actualizado, CTA estable, doble toque, error/reintento y guardado sin cambios. La caché del perfil/catálogo prueba deduplicación y respuestas obsoletas tras reset o guardado. `TextField` comprueba que escribir no vuelve a renderizar la decoración de foco. Microbenchmark y verificación nativa: [rendimiento](./13-rendimiento.md).
+- Sesión: respuestas exitosas tardías se rechazan al cambiar de cuenta o cerrar/reabrir sesión, también por la vía de refresco de token. La regresión integrada comprueba que un guardado de A no invalida la carga pendiente del perfil de B.
+- Listas/cargas: paginación de likes frente a refresh, exclusiones locales mientras se lee un snapshot antiguo, deduplicación tras reset y deshacer tras cambio de sesión. Precarga de imágenes compartida con TTL/LRU acotado, reintentos y fallos tardíos; ordenación de chats equivalente con un parseo por fecha. Benchmark de JS: `node scripts/benchmark-matches.mjs`.
+- Discovery prueba además que un undo confirmado tras recargar reconcilia decisiones sin contaminar la página nueva y que una precarga fallida no queda suprimida durante toda la sesión; la integración con el prefetcher compartido evita repetir llamadas nativas por solapamientos.
+- Chats virtualizados: estados de carga/error/vacío/contenido, paginación manual/scroll sin cascada al montar, 2.400 matches con ventana simulada, reciclaje de labels/callbacks y remonte exclusivo del avatar al cambiar de persona; reloj detenido al perder foco o entrar en background.
+- Red/realtime: timeouts con cuerpo colgado, delays inválidos, errores síncronos y limpieza de señales; timeout/cancelación de la subida alternativa y ausencia de progreso tardío. Avisos de leído con backoff/jitter, deduplicación, pendientes, errores terminales, ocultación/dispose y fallo antiguo tras una lectura confirmada por envío. Actividad no consulta en background y se recupera de un adaptador que lanza síncronamente.
+- Editor del chat: escribir no vuelve a ejecutar la pantalla/sesión; borradores por conversación sin entradas vacías, sin evicción de texto pendiente y limpios tras logout/cambio de cuenta; envío rechazado/aceptado e ideas. Resumen tardío de reconexión rechazado tras cambiar de cuenta o desmontar, sin perder actualizaciones válidas.
+- Dominio del chat: comparación diferencial con el algoritmo previo (1.000 pares de merge × ambos desempates y 500 timelines), coste de parseo/día/sort y pruebas con `TZ=Europe/Madrid` y `TZ=America/New_York`. Benchmark reproducible: `node scripts/benchmark-chat.mjs`, sin equivalencia con FPS nativos.
 
 - Verificación (`src/features/verification`, `modules/document-nfc`): API JS del módulo NFC con el nativo simulado, máquina de estados del flujo y la pantalla de prueba con backend falso. La lectura real por NFC no se puede probar sin documento y móvil (`docs/compliance/02-nfc-pruebas-manana.md`).
 
@@ -70,7 +84,7 @@ Se entra con `POST /api/auth/dev/test-login` y `{"email": "demo@cherry.dev"}`; c
 
 ## Huecos conocidos
 
-- Sin tests de renderizado de las pantallas de producto (onboarding, Descubrir, Likes, Chats, Yo): se prueban su dominio y sus stores, no las pantallas.
+- Cobertura de renderizado parcial de las pantallas de producto; no sustituye pruebas E2E ni la verificación nativa del onboarding, Descubrir, Likes, Chats y Yo.
 - Sin pruebas E2E ni en dispositivo real.
 
 Detalle en `11-deuda-tecnica-pendiente.md`.

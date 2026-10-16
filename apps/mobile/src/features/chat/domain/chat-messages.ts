@@ -89,6 +89,10 @@ export function mergeMessages(
   incoming: readonly ChatMessage[],
   tie: "newer" | "older" = "newer"
 ): MergeResult {
+  if (incoming.length === 0) {
+    return { messages: existing as ChatMessage[], added: [] };
+  }
+
   const known = new Set(existing.map((message) => message.id));
   const added: ChatMessage[] = [];
 
@@ -103,8 +107,47 @@ export function mergeMessages(
     return { messages: existing as ChatMessage[], added };
   }
 
-  const combined = tie === "newer" ? [...added, ...existing] : [...existing, ...added];
-  return { messages: sortNewestFirst(combined), added };
+  const first = tie === "newer" ? added : existing;
+  const second = tie === "newer" ? existing : added;
+  return { messages: mergeByTime(first, second), added };
+}
+
+/** Claves temporales por llamada, sin caché ni metadatos en los mensajes del servidor. */
+function mergeByTime(first: readonly ChatMessage[], second: readonly ChatMessage[]): ChatMessage[] {
+  const combined = [...first, ...second];
+  const times = new Array<number>(combined.length);
+  let combinedOrdered = true;
+
+  for (let index = 0; index < combined.length; index += 1) {
+    const time = messageTime(combined[index]!);
+    times[index] = time;
+    if (index > 0 && time > times[index - 1]!) {
+      combinedOrdered = false;
+      if (index !== first.length) {
+        // Primer desorden interno: sort estable, reutilizando las claves ya leídas.
+        return combined
+          .map((message, index) => ({ message, index, time: times[index] ?? messageTime(message) }))
+          .sort((a, b) => b.time - a.time || a.index - b.index)
+          .map(({ message }) => message);
+      }
+    }
+  }
+
+  // Lo habitual en tiempo real/paginación: basta con concatenar, sin ordenar ni decorar.
+  if (combinedOrdered) return combined;
+
+  const merged = new Array<ChatMessage>(combined.length);
+  let target = 0;
+  let left = 0;
+  let right = first.length;
+  while (left < first.length && right < combined.length) {
+    // Ante empate gana `first`: equivale al orden de entrada del sort estable.
+    if (times[left]! >= times[right]!) merged[target++] = combined[left++]!;
+    else merged[target++] = combined[right++]!;
+  }
+  while (left < first.length) merged[target++] = combined[left++]!;
+  while (right < combined.length) merged[target++] = combined[right++]!;
+  return merged;
 }
 
 /** Margen para relojes desfasados al emparejar un mensaje propio con su envío optimista. */

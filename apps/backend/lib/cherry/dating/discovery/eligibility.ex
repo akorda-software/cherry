@@ -2,6 +2,12 @@ defmodule Cherry.Dating.Discovery.Eligibility do
   @moduledoc "Hard discovery filters. Every page reevaluates privacy and reciprocal preferences."
 
   def cte(ph, opts, geo_filter, tier_sql) do
+    # ST_DWithin can underestimate dense local populations. An anti join then
+    # scans each candidate's received swipes and filters for the viewer instead
+    # of probing (actor, target). Keep bounded feeds on the exact unique-index
+    # probe; unlimited feeds can still hash the viewer's swipes once.
+    swipe_probe_offset = if opts[:limited?], do: " OFFSET 0", else: ""
+
     """
     candidates AS MATERIALIZED (
       SELECT p.id,
@@ -28,7 +34,7 @@ defmodule Cherry.Dating.Discovery.Eligibility do
         AND #{ph.(:viewer_age)}::int BETWEEN dp.age_min AND dp.age_max
         AND p.looking_for && #{ph.(:intents)}::text[]
         AND NOT EXISTS (SELECT 1 FROM swipe_actions s
-                        WHERE s.actor_profile_id = #{ph.(:viewer)}::uuid AND s.target_profile_id = p.id)
+                        WHERE s.actor_profile_id = #{ph.(:viewer)}::uuid AND s.target_profile_id = p.id#{swipe_probe_offset})
         -- Already said no to the viewer: a like would never be seen (the likes
         -- inbox only lists unanswered likes). Undo deletes the row, lifting it.
         AND NOT EXISTS (SELECT 1 FROM swipe_actions d

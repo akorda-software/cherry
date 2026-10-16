@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import type { MatchSummary } from "@cherry/contracts";
@@ -17,7 +17,6 @@ export interface ConversationRowProps {
 export const ConversationRow = memo(function ConversationRow({ match, now, onOpen }: ConversationRowProps) {
   const theme = useTheme();
   const c = theme.primitives.color;
-  const [pressed, setPressed] = useState(false);
   const name = displayNameOf(match);
   const unread = match.unreadCount;
   const preview = lastMessagePreview(match);
@@ -38,12 +37,11 @@ export const ConversationRow = memo(function ConversationRow({ match, now, onOpe
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       onPress={() => onOpen(match)}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
-      style={[styles.row, pressed ? { backgroundColor: c.paperDeep } : null]}
+      style={({ pressed }) => [styles.row, pressed ? { backgroundColor: c.paperDeep } : null]}
       testID={`conversation-${match.id}`}
     >
-      <Avatar name={name} size="md" uri={match.otherProfile.photoUrl} />
+      {/* Native images retain their previous bitmap while loading; reset only the avatar on recycling. */}
+      <Avatar key={match.otherProfile.id} name={name} size="md" uri={match.otherProfile.photoUrl} />
       <View style={styles.texts}>
         <View style={styles.line}>
           <Text numberOfLines={1} style={styles.flex} variant="bodyStrong">

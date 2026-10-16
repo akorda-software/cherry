@@ -4,12 +4,9 @@ defmodule Cherry.Dating.Messaging do
   import Ecto.Query
 
   alias Cherry.Repo
-  alias Cherry.Accounts.User
-  alias Cherry.Dating.Profile
   alias Cherry.Dating.Match
   alias Cherry.Dating.Conversation
   alias Cherry.Dating.Message
-  alias Cherry.Dating.UserBlock
 
   # ── Chat ──────────────────────────────────────────────────────────────
 
@@ -156,85 +153,13 @@ defmodule Cherry.Dating.Messaging do
     end
   end
 
-  def get_messageable_conversation(conversation_id, profile_id) do
-    with {:ok, conversation_id} <- Ecto.UUID.cast(conversation_id),
-         {:ok, profile_id} <- Ecto.UUID.cast(profile_id) do
-      conversation_id
-      |> authorization_query()
-      |> Repo.one()
-      |> authorize(profile_id)
-    else
-      :error -> {:error, :not_participant}
-    end
-  end
+  defdelegate get_messageable_conversation(conversation_id, profile_id),
+    to: Cherry.Dating.ConversationAccess,
+    as: :get
 
-  # One statement per join/history/typing/broadcast check. No cached permissions:
-  # a committed block, expiry or deleted account is effective on the next check.
-  defp authorization_query(conversation_id) do
-    blocked_pair =
-      from(b in UserBlock,
-        where:
-          (b.actor_profile_id == parent_as(:match).profile_a_id and
-             b.target_profile_id == parent_as(:match).profile_b_id) or
-            (b.actor_profile_id == parent_as(:match).profile_b_id and
-               b.target_profile_id == parent_as(:match).profile_a_id),
-        select: 1
-      )
-
-    from(c in Conversation,
-      join: m in Match,
-      as: :match,
-      on: m.id == c.match_id,
-      join: a in Profile,
-      on: a.id == m.profile_a_id,
-      join: b in Profile,
-      on: b.id == m.profile_b_id,
-      join: ua in User,
-      on: ua.id == a.user_id,
-      join: ub in User,
-      on: ub.id == b.user_id,
-      where: c.id == ^conversation_id,
-      select:
-        {c, m,
-         is_nil(a.deleted_at) and is_nil(b.deleted_at) and
-           is_nil(ua.deleted_at) and is_nil(ub.deleted_at) and
-           not exists(subquery(blocked_pair))}
-    )
-  end
-
-  defp authorize(nil, _profile_id), do: {:error, :not_participant}
-
-  defp authorize({conversation, match, pair_allowed?}, profile_id) do
-    cond do
-      !match_participant?(match, profile_id) ->
-        {:error, :not_participant}
-
-      !match_allows_messaging?(match) or !pair_allowed? ->
-        {:error, :conversation_not_active}
-
-      true ->
-        {:ok, %{conversation | match: match}}
-    end
-  end
-
-  defp match_participant?(%Match{} = match, profile_id) do
-    match.profile_a_id == profile_id or match.profile_b_id == profile_id
-  end
-
-  defp match_allows_messaging?(%Match{status: "active", expires_at: nil}), do: true
-
-  defp match_allows_messaging?(%Match{status: "active", expires_at: %DateTime{} = expires_at}) do
-    DateTime.compare(expires_at, now()) == :gt
-  end
-
-  defp match_allows_messaging?(_match), do: false
-
-  def conversation_allows_messaging?(conversation_id, profile_id) do
-    case get_messageable_conversation(conversation_id, profile_id) do
-      {:ok, _conversation} -> true
-      {:error, _reason} -> false
-    end
-  end
+  defdelegate conversation_allows_messaging?(conversation_id, profile_id),
+    to: Cherry.Dating.ConversationAccess,
+    as: :allowed?
 
   def conversation_messaging_status(conversation_id, profile_id) do
     get_messageable_conversation(conversation_id, profile_id)

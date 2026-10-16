@@ -1,3 +1,6 @@
+import { withRequestTimeout } from "../../../shared/api/request-timeout";
+import { networkPerformance } from "../../../shared/config/performance";
+
 /**
  * `PUT` del binario de la foto a la URL firmada del intent, con TODAS las
  * cabeceras que devuelve el backend (R2/S3 firma `Content-Type`; el almacén
@@ -24,7 +27,7 @@ export interface BinaryUploadHttpError extends Error {
   body?: unknown;
 }
 
-const DEFAULT_TIMEOUT_MS = 120_000;
+const DEFAULT_TIMEOUT_MS = networkPerformance.uploadTimeoutMs;
 
 function parseJson(text: string | null | undefined): unknown {
   if (!text) {
@@ -54,22 +57,22 @@ function abortError(): Error {
   return error;
 }
 
-export const uploadBinaryWithFetch: BinaryUploader = async ({ url, method, headers, body, onProgress, signal }) => {
-  onProgress?.(0);
-  const response = await fetch(url, { method, headers, body, signal });
-
-  if (!response.ok) {
-    let text: string | null = null;
-
-    try {
-      text = await response.text();
-    } catch {
-      text = null;
+export const uploadBinaryWithFetch: BinaryUploader = async ({
+  url, method, headers, body, onProgress, signal, timeoutMs = DEFAULT_TIMEOUT_MS
+}) => {
+  await withRequestTimeout(async (requestSignal) => {
+    onProgress?.(0);
+    const response = await fetch(url, { method, headers, body, signal: requestSignal });
+    if (!response.ok) {
+      let text: string | null = null;
+      try {
+        text = await response.text();
+      } catch {
+        text = null;
+      }
+      throw binaryUploadHttpError(response.status, text);
     }
-
-    throw binaryUploadHttpError(response.status, text);
-  }
-
+  }, timeoutMs, signal);
   onProgress?.(1);
 };
 
@@ -132,8 +135,13 @@ export const uploadBinaryWithXhr: BinaryUploader = ({
       reject(abortError());
     };
 
-    onProgress?.(0);
-    xhr.send(body);
+    try {
+      onProgress?.(0);
+      xhr.send(body);
+    } catch (error) {
+      cleanup();
+      reject(error);
+    }
   });
 
 /** XHR si existe (progreso real); `fetch` en cualquier otro caso. */

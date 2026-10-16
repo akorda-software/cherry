@@ -58,13 +58,19 @@ let graphemeSegmenter: GraphemeSegmenter | null | undefined;
  * nunca cuentan de menos.
  */
 export function graphemeCount(value: string): number {
+  // Plain Latin text (including Spanish accents) has one code unit per grapheme.
+  // Combining marks, emoji and CRLF deliberately take the Unicode-aware path.
+  if (/^[\u0020-\u00ff\n\t]*$/u.test(value)) return value.length;
+
   if (graphemeSegmenter === undefined) {
     const Segmenter = (Intl as unknown as { Segmenter?: SegmenterConstructor }).Segmenter;
     graphemeSegmenter = Segmenter ? new Segmenter("es", { granularity: "grapheme" }) : null;
   }
 
   if (graphemeSegmenter === null) {
-    return [...value].length;
+    let count = 0;
+    for (const _point of value) count += 1;
+    return count;
   }
 
   let count = 0;
@@ -110,7 +116,7 @@ export function bioLength(raw: string | null | undefined): number {
 }
 
 export type BioValidation =
-  | { ok: true; value: string }
+  | { ok: true; value: string; length: number }
   | { ok: false; reason: "too_short" | "too_long"; length: number };
 
 export function validateBio(raw: string | null | undefined): BioValidation {
@@ -125,7 +131,7 @@ export function validateBio(raw: string | null | undefined): BioValidation {
     return { ok: false, reason: "too_long", length };
   }
 
-  return { ok: true, value };
+  return { ok: true, value, length };
 }
 
 /** Arranques de bio: rompen el bloqueo de la página en blanco. */

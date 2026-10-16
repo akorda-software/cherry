@@ -8,6 +8,7 @@ import type {
 } from "@cherry/contracts";
 
 import { createDiscoveryQueue, type DiscoveryQueueDeps } from "./discovery-queue";
+import { createImagePrefetcher } from "../../../shared/device/image-prefetch";
 
 function card(id: string, overrides: Partial<DiscoveryProfileCard> = {}): DiscoveryProfileCard {
   return {
@@ -77,6 +78,15 @@ function setup(overrides: Partial<DiscoveryQueueDeps> = {}) {
 }
 
 describe("discovery queue: loading", () => {
+  it("offers preloads again after a failed attempt rather than suppressing them for the session", async () => {
+    const prefetchImages = vi.fn().mockImplementationOnce(() => { throw new Error("unavailable"); });
+    const { store } = setup({ prefetchImages });
+    await store.getState().load();
+    await store.getState().load();
+    expect(prefetchImages).toHaveBeenCalledTimes(2);
+    expect(prefetchImages.mock.calls[1]).toEqual(prefetchImages.mock.calls[0]);
+  });
+
   it("loads the first page and becomes ready", async () => {
     const { store, deps, ids } = setup();
 
@@ -238,7 +248,18 @@ describe("discovery queue: loading", () => {
     ]);
 
     await store.getState().act(card("a"), "like");
-    expect(deps.prefetchImages).toHaveBeenLastCalledWith(["https://img/c-2.jpg"]);
+    expect(deps.prefetchImages).toHaveBeenLastCalledWith([
+      "https://img/b-1.jpg", "https://img/b-2.jpg", "https://img/c-1.jpg", "https://img/c-2.jpg"
+    ]);
+  });
+
+  it("lets the shared prefetcher deduplicate native calls when upcoming cards overlap", async () => {
+    const native = vi.fn(async () => true);
+    const { store } = setup({ prefetchImages: createImagePrefetcher(native) });
+    await store.getState().load();
+    await store.getState().act(card("a"), "like");
+    expect(native).toHaveBeenCalledTimes(2);
+    expect(native).toHaveBeenLastCalledWith(["https://img/c-2.jpg"]);
   });
 });
 
@@ -337,6 +358,27 @@ describe("discovery queue: acting", () => {
 });
 
 describe("discovery queue: undo", () => {
+  it("reconciles a confirmed undo after a reload without inserting into the newer page", async () => {
+    const response = deferred<DiscoveryUndoResponse>();
+    const recordAction = vi.fn()
+      .mockResolvedValueOnce({ matchCreated: false })
+      .mockRejectedValueOnce(new TypeError("offline"));
+    const { store, ids } = setup({ recordAction, undo: vi.fn(() => response.promise) });
+    await store.getState().load();
+    await store.getState().act(card("a"), "dislike");
+    await store.getState().act(card("b"), "like");
+    expect(store.getState().lastPass).toBeNull();
+    const undoing = store.getState().undo();
+    await store.getState().load();
+    expect(ids()).toEqual(["b", "c"]);
+    response.resolve({ undone: true, profile: card("a") });
+    await undoing;
+    expect(ids()).toEqual(["b", "c"]);
+
+    await store.getState().load();
+    expect(ids()).toEqual(["a", "b", "c"]);
+  });
+
   it("brings the last pass back instantly and confirms with the backend", async () => {
     const undo = deferred<DiscoveryUndoResponse>();
     const { store, ids } = setup({ undo: vi.fn(() => undo.promise) });
@@ -406,6 +448,56 @@ describe("discovery queue: undo", () => {
 });
 
 describe("discovery queue: session binding", () => {
+  it("does not forget B's decided profile when A's action fails late", async () => {
+    const responseA = deferred<DiscoveryActionResponse>();
+    const recordAction = vi.fn().mockReturnValueOnce(responseA.promise).mockResolvedValue({ matchCreated: false });
+    const { store, ids } = setup({ recordAction });
+    store.getState().bind("user-A");
+    await store.getState().load();
+    const oldAction = store.getState().act(card("a"), "like");
+    store.getState().bind("user-B");
+    await store.getState().load();
+    await store.getState().act(card("a"), "like");
+    responseA.reject(new TypeError("old failure"));
+    await oldAction;
+    await store.getState().load(); // A stale page still contains a, but B already decided it.
+    expect(ids()).toEqual(["b", "c"]);
+  });
+
+  it("never sends an old undo after changing session while waiting for a swipe", async () => {
+    const pending = deferred<DiscoveryActionResponse>();
+    const { store, deps } = setup({ recordAction: vi.fn(() => pending.promise) });
+    store.getState().bind("user-A");
+    await store.getState().load();
+    const acting = store.getState().act(card("a"), "dislike");
+    const undoing = store.getState().undo();
+    store.getState().bind("user-B");
+    await store.getState().load();
+    pending.resolve({ matchCreated: false });
+    await Promise.all([acting, undoing]);
+    expect(deps.undo).not.toHaveBeenCalled();
+    expect(store.getState().notice).toBeNull();
+  });
+
+  it("does not let an old undo clear the new session's busy state or notice", async () => {
+    const oldResponse = deferred<DiscoveryUndoResponse>();
+    const newResponse = deferred<DiscoveryUndoResponse>();
+    const undo = vi.fn().mockReturnValueOnce(oldResponse.promise).mockReturnValueOnce(newResponse.promise);
+    const { store } = setup({ undo });
+    store.getState().bind("user-A");
+    const oldUndo = store.getState().undo();
+    store.getState().bind("user-B");
+    const newUndo = store.getState().undo();
+    oldResponse.reject(apiError(422, "nothing_to_undo"));
+    await oldUndo;
+    expect(store.getState().undoing).toBe(true);
+    expect(store.getState().notice).toBeNull();
+    newResponse.resolve({ undone: true, profile: card("b") });
+    await newUndo;
+    expect(store.getState().profiles.map((profile) => profile.id)).toEqual(["b"]);
+    expect(store.getState().undoing).toBe(false);
+  });
+
   it("empties the queue when a different user binds it", async () => {
     const { store, ids } = setup();
     store.getState().bind("user-1");

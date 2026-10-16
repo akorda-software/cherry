@@ -83,6 +83,58 @@ beforeEach(() => {
 });
 
 describe("likes · carga y paginación", () => {
+  it("shares simultaneous refreshes and lets every caller await the same request", async () => {
+    const deps = makeDeps();
+    const response = deferred<ReceivedLikesPage>();
+    deps.fetchPage.mockReturnValueOnce(response.promise);
+    const first = store().load(deps);
+    const second = store().load(deps, "refresh");
+    response.resolve(page(["a"]));
+    await Promise.all([first, second]);
+    expect(deps.fetchPage).toHaveBeenCalledOnce();
+    expect(store().refreshing).toBe(false);
+  });
+
+  it("ignores an old page that arrives after a refreshed first page", async () => {
+    const deps = makeDeps();
+    await store().load(deps);
+    const oldPage = deferred<ReceivedLikesPage>();
+    deps.fetchPage.mockReturnValueOnce(oldPage.promise);
+    const loadingMore = store().loadMore(deps);
+    deps.fetchPage.mockResolvedValueOnce(page(["fresh"], "fresh-cursor"));
+    await store().load(deps, "refresh");
+    oldPage.resolve(page(["stale"], "stale-cursor"));
+    await loadingMore;
+    expect(ids()).toEqual(["fresh"]);
+    expect(store()).toMatchObject({ nextCursor: "fresh-cursor", loadingMore: false });
+  });
+
+  it("does not let a previous session clear the current in-flight request", async () => {
+    const deps = makeDeps();
+    const old = deferred<ReceivedLikesPage>();
+    const current = deferred<ReceivedLikesPage>();
+    deps.fetchPage.mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise);
+    const oldLoad = store().load(deps);
+    store().reset();
+    const newLoad = store().load(deps);
+    old.resolve(page(["old"]));
+    await oldLoad;
+    const joined = store().load(deps, "refresh");
+    expect(deps.fetchPage).toHaveBeenCalledTimes(2);
+    current.resolve(page(["current"]));
+    await Promise.all([newLoad, joined]);
+    expect(ids()).toEqual(["current"]);
+  });
+
+  it("recovers from a synchronous page error instead of sticking in loading", async () => {
+    const deps = makeDeps();
+    deps.fetchPage.mockImplementationOnce(() => { throw new TypeError("offline"); });
+    await store().load(deps);
+    expect(store().status).toBe("error");
+    await store().load(deps);
+    expect(store().status).toBe("ready");
+  });
+
   it("loads the first page", async () => {
     const deps = makeDeps();
     const loading = store().load(deps);
@@ -137,6 +189,52 @@ describe("likes · carga y paginación", () => {
 });
 
 describe("likes · responder", () => {
+  it("excludes a pending like even when the read starts after the action", async () => {
+    const deps = makeDeps();
+    await store().load(deps);
+    const action = deferred<DiscoveryActionResponse>();
+    const pageResponse = deferred<ReceivedLikesPage>();
+    deps.recordAction.mockReturnValueOnce(action.promise);
+    const responding = store().respond(deps, "a", "like");
+    deps.fetchPage.mockReturnValueOnce(pageResponse.promise);
+    const refreshing = store().load(deps, "refresh");
+    action.resolve({ matchCreated: false });
+    await responding;
+    pageResponse.resolve(page(["a", "b", "c"]));
+    await refreshing;
+    expect(ids()).toEqual(["b", "c"]);
+  });
+
+  it("allows an older read to restore a like whose action failed", async () => {
+    const deps = makeDeps();
+    await store().load(deps);
+    const response = deferred<ReceivedLikesPage>();
+    deps.fetchPage.mockReturnValueOnce(response.promise);
+    const refreshing = store().load(deps, "refresh");
+    deps.recordAction.mockRejectedValueOnce(new TypeError("offline"));
+    await store().respond(deps, "a", "like");
+    response.resolve(page(["a", "b", "c"]));
+    await refreshing;
+    expect(ids()).toEqual(["a", "b", "c"]);
+  });
+
+  it("does not reinsert a completed like from a response that started before the action", async () => {
+    const deps = makeDeps();
+    await store().load(deps);
+    const response = deferred<ReceivedLikesPage>();
+    deps.fetchPage.mockReturnValueOnce(response.promise);
+    const refreshing = store().load(deps, "refresh");
+    await store().respond(deps, "a", "like");
+    response.resolve(page(["a", "b", "c"]));
+    await refreshing;
+    expect(ids()).toEqual(["b", "c"]);
+
+    // A later read is authoritative: another screen/device may have undone the pass.
+    deps.fetchPage.mockResolvedValueOnce(page(["a", "b", "c"]));
+    await store().load(deps, "refresh");
+    expect(ids()).toEqual(["a", "b", "c"]);
+  });
+
   it("likes back: removes the card, reports the match and adjusts the badge", async () => {
     const deps = makeDeps();
     await store().load(deps);
@@ -335,6 +433,58 @@ describe("likes · deshacer el «no»", () => {
 });
 
 describe("likes · otros", () => {
+  it("keeps profiles removed from another screen out of a pending read, but not future reads", async () => {
+    const deps = makeDeps();
+    const response = deferred<ReceivedLikesPage>();
+    deps.fetchPage.mockReturnValueOnce(response.promise);
+    const loading = store().load(deps);
+    store().removeProfile("a");
+    response.resolve(page(["a", "b"]));
+    await loading;
+    expect(ids()).toEqual(["b"]);
+    deps.fetchPage.mockResolvedValueOnce(page(["a", "b"]));
+    await store().load(deps, "refresh");
+    expect(ids()).toEqual(["a", "b"]);
+  });
+
+  it("never sends an old undo using the new session after waiting for a pass", async () => {
+    const deps = makeDeps();
+    await store().load(deps);
+    const responseA = deferred<DiscoveryActionResponse>();
+    deps.recordAction.mockReturnValueOnce(responseA.promise);
+    const oldPass = store().respond(deps, "a", "dislike");
+    const oldUndo = store().undoPass(deps);
+    store().reset();
+    await store().load(deps);
+    await store().respond(deps, "a", "dislike");
+    responseA.resolve({ matchCreated: false });
+    await Promise.all([oldPass, oldUndo]);
+    expect(deps.undo).not.toHaveBeenCalled();
+    expect(store().lastPass?.like.profile.id).toBe("a");
+  });
+
+  it("keeps another session's undo busy when the previous undo finishes late", async () => {
+    const deps = makeDeps();
+    await store().load(deps);
+    await store().respond(deps, "a", "dislike");
+    const responseA = deferred<DiscoveryUndoResponse>();
+    const responseB = deferred<DiscoveryUndoResponse>();
+    deps.undo.mockReturnValueOnce(responseA.promise).mockReturnValueOnce(responseB.promise);
+    const oldUndo = store().undoPass(deps);
+    await vi.waitFor(() => expect(deps.undo).toHaveBeenCalledOnce());
+    store().reset();
+    await store().load(deps);
+    await store().respond(deps, "a", "dislike");
+    const newUndo = store().undoPass(deps);
+    await vi.waitFor(() => expect(deps.undo).toHaveBeenCalledTimes(2));
+    responseA.resolve({ undone: true, profile: card("a") });
+    await oldUndo;
+    expect(store().undoing).toBe(true);
+    responseB.resolve({ undone: true, profile: card("a") });
+    await newUndo;
+    expect(store().undoing).toBe(false);
+  });
+
   it("removes a profile answered from another screen", async () => {
     const deps = makeDeps();
     await store().load(deps);

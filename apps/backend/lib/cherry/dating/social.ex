@@ -31,7 +31,7 @@ defmodule Cherry.Dating.Social do
   responde igual (`:profile_not_found`), sin revelar la razón.
   """
 
-  alias Cherry.Dating.{Inbox, Profile}
+  alias Cherry.Dating.Profile
   alias Cherry.Dating.Social.{PublicProfiles, ReceivedLikes, Swipes}
 
   defdelegate swipe(viewer, target_id, action_type), to: Swipes
@@ -57,13 +57,5 @@ defmodule Cherry.Dating.Social do
   # ── Activity summary ───────────────────────────────────────────────────
 
   @doc "Contadores para los badges de pestañas."
-  def activity_summary(%Profile{} = viewer) do
-    counts = Inbox.counts(viewer.id)
-
-    %{
-      received_likes_count: received_likes_count(viewer),
-      new_matches_count: counts.new_matches_count,
-      unread_conversations_count: counts.unread_conversations_count
-    }
-  end
+  defdelegate activity_summary(viewer), to: Cherry.Dating.ActivitySummary, as: :get
 end

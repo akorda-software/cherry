@@ -58,7 +58,9 @@ function BioForm() {
 
   return (
     <BioNote
+      editable={ready && !busy}
       error={error}
+      length={validation.length}
       onChange={(next) => {
         setBio(next);
         if (error) setError(null);

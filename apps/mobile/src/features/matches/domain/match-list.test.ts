@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { ChatMessage, MatchSummary } from "@cherry/contracts";
 
@@ -9,6 +9,7 @@ import {
   lastMessagePreview,
   matchExpiryHint,
   matchSummaryFromDiscoveryMatch,
+  sortMatchesByActivity,
   splitMatches
 } from "./match-list";
 
@@ -38,6 +39,16 @@ function match(id: string, overrides: Partial<MatchSummary> = {}): MatchSummary 
 }
 
 describe("splitMatches", () => {
+  it("parses each conversation's two dates once, independent of the sort's comparisons", () => {
+    const matches = Array.from({ length: 128 }, (_, index) => match(String(index), {
+      lastMessage: message(String(index), "other", (index * 37) % 128)
+    }));
+    const parse = vi.spyOn(Date, "parse");
+    const sections = splitMatches(matches);
+    expect(parse).toHaveBeenCalledTimes(matches.length * 2);
+    expect(sections.conversations).toHaveLength(matches.length);
+  });
+
   it("separates new matches from conversations and sorts each section", () => {
     const sections = splitMatches([
       match("new-old", { matchedAt: iso(-3 * DAY) }),
@@ -48,6 +59,31 @@ describe("splitMatches", () => {
 
     expect(sections.newMatches.map((m) => m.id)).toEqual(["new-recent", "new-old"]);
     expect(sections.conversations.map((m) => m.id)).toEqual(["chat-recent", "chat-old"]);
+  });
+});
+
+describe("sortMatchesByActivity", () => {
+  it("keeps stable ties, invalid-date fallback, and the input and match objects unchanged", () => {
+    const first = match("first", { matchedAt: "invalid" });
+    const second = match("second", { matchedAt: "invalid" });
+    const newest = match("newest", { matchedAt: iso(0) });
+    const entries = Object.freeze([first, newest, second]);
+    const sorted = sortMatchesByActivity(entries);
+    expect(sorted).toEqual([newest, first, second]);
+    expect(sorted[1]).toBe(first);
+    expect(entries).toEqual([first, newest, second]);
+  });
+
+  it("matches the previous ordering for mixed messages, dates and ties", () => {
+    const entries = Array.from({ length: 100 }, (_, index) => match(String(index), {
+      matchedAt: iso((index * 7) % 11),
+      lastMessage: index % 3 === 0 ? null : message(String(index), "other", (index * 13) % 17)
+    }));
+    const activity = (entry: MatchSummary) => Math.max(
+      entry.lastMessage ? Date.parse(entry.lastMessage.insertedAt) : 0,
+      Date.parse(entry.matchedAt)
+    );
+    expect(sortMatchesByActivity(entries)).toEqual([...entries].sort((a, b) => activity(b) - activity(a)));
   });
 });
 

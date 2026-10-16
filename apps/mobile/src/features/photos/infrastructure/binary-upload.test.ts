@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { binaryUploadHttpError, readUriAsBlob, uploadBinaryWithXhr } from "./binary-upload";
+import { binaryUploadHttpError, readUriAsBlob, uploadBinaryWithFetch, uploadBinaryWithXhr } from "./binary-upload";
 
 /** XHR mínimo controlable desde el test. */
 class FakeXhr {
@@ -50,10 +50,72 @@ class FakeXhr {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   FakeXhr.last = null;
 });
 
+describe("uploadBinaryWithFetch", () => {
+  it("forwards cancellation even if fetch does not reject on abort", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) => new Promise<Response>(() => {}));
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    const pending = uploadBinaryWithFetch({
+      url: "http://up/token", method: "PUT", headers: {}, body: new Blob(["x"]), signal: controller.signal
+    });
+    const assertion = expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    controller.abort();
+    await assertion;
+    expect(fetchMock.mock.calls[0]![1]!.signal!.aborted).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("honors timeoutMs even when fetch ignores abort, without reporting late completion", async () => {
+    vi.useFakeTimers();
+    let finish!: (value: Response) => void;
+    const fetchMock = vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    const progress = vi.fn();
+    const pending = uploadBinaryWithFetch({
+      url: "http://up/token", method: "PUT", headers: {}, body: new Blob(["x"]),
+      timeoutMs: 500, onProgress: progress
+    });
+    const failed = pending.catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(500);
+    const signal = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].signal!;
+    expect(signal.aborted).toBe(true);
+    expect(await failed).toMatchObject({ timedOut: true });
+    finish(new Response(null, { status: 200 }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(progress.mock.calls).toEqual([[0]]);
+  });
+
+  it("does not start an already-cancelled upload", async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(uploadBinaryWithFetch({
+      url: "http://up/token", method: "PUT", headers: {}, body: new Blob(["x"]), signal: controller.signal
+    })).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("uploadBinaryWithXhr", () => {
+  it("removes cancellation listeners when sending throws synchronously", async () => {
+    class BrokenXhr extends FakeXhr {
+      send() { throw new Error("cannot send"); }
+    }
+    vi.stubGlobal("XMLHttpRequest", BrokenXhr);
+    const controller = new AbortController();
+    const remove = vi.spyOn(controller.signal, "removeEventListener");
+    await expect(uploadBinaryWithXhr({
+      url: "http://up/t", method: "PUT", headers: {}, body: new Blob(["x"]), signal: controller.signal
+    })).rejects.toThrow("cannot send");
+    expect(remove).toHaveBeenCalledWith("abort", expect.any(Function));
+  });
+
   it("sends every header, reports progress and resolves on 2xx", async () => {
     vi.stubGlobal("XMLHttpRequest", FakeXhr);
     const progress: number[] = [];

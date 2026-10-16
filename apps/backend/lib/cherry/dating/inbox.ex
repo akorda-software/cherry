@@ -184,6 +184,11 @@ defmodule Cherry.Dating.Inbox do
           unread_conversations_count: non_neg_integer()
         }
   def counts(profile_id, now \\ now()) do
+    profile_id |> counts_query(now) |> Repo.one()
+  end
+
+  @doc false
+  def counts_query(profile_id, now \\ now()) do
     from([match: m, conversation: c, other: other] in visible_query(profile_id, now),
       left_join: r in ConversationRead,
       on: r.conversation_id == c.id and r.profile_id == ^profile_id,
@@ -199,7 +204,6 @@ defmodule Cherry.Dating.Inbox do
           )
       }
     )
-    |> Repo.one()
   end
 
   defdelegate mark_read(conversation_id, profile_id, at \\ DateTime.utc_now()),

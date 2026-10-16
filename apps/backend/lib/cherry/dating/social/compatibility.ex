@@ -38,7 +38,7 @@ defmodule Cherry.Dating.Social.Compatibility do
         type(^viewer_id, :binary_id)
       )
     )
-    |> apply_viewer_preferences(preferences_for(viewer), viewer_id, today)
+    |> apply_viewer_preferences(viewer_id, today)
     |> apply_intent_compatibility(viewer.looking_for)
   end
 
@@ -67,52 +67,37 @@ defmodule Cherry.Dating.Social.Compatibility do
     )
   end
 
-  defp preferences_for(%Profile{discovery_preference: %DiscoveryPreference{} = pref}), do: pref
-
-  defp preferences_for(%Profile{id: viewer_id}),
-    do: Repo.get_by(DiscoveryPreference, profile_id: viewer_id)
-
-  defp apply_viewer_preferences(query, nil, _viewer_id, _today), do: query
-
-  defp apply_viewer_preferences(query, %DiscoveryPreference{} = pref, viewer_id, today) do
-    genders =
-      [{"man", pref.show_men}, {"woman", pref.show_women}, {"non_binary", pref.show_non_binary}]
-      |> Enum.filter(&elem(&1, 1))
-      |> Enum.map(&elem(&1, 0))
-
-    query =
-      from([other: p] in query,
-        where: p.gender in ^genders,
-        # Same sargable birth_date range and UTC date as the feed (Feb 29 included).
-        where:
-          fragment(
-            "? <= (?::date - make_interval(years => ?::int))::date",
-            p.birth_date,
-            ^today,
-            ^pref.age_min
-          ),
-        where:
-          fragment(
-            "? > (?::date - make_interval(years => ?::int + 1))::date",
-            p.birth_date,
-            ^today,
-            ^pref.age_max
-          )
-      )
-
-    if pref.compatible_only do
-      where(
-        query,
-        [other: p],
-        fragment(
-          "EXISTS (SELECT 1 FROM profile_tags a JOIN profile_tags b ON b.tag_id = a.tag_id JOIN tags t ON t.id = a.tag_id AND t.is_active WHERE a.profile_id = ? AND b.profile_id = ?)",
-          p.id,
-          type(^viewer_id, :binary_id)
-        )
-      )
-    else
-      query
-    end
+  # Join the current preference once in the social statement. A missing row
+  # retains the legacy fallback; a stale preload cannot bypass new filters.
+  defp apply_viewer_preferences(query, viewer_id, today) do
+    from([other: p] in query,
+      left_join: pref in DiscoveryPreference,
+      on: pref.profile_id == ^viewer_id,
+      # Same sargable birth_date range and UTC date as the feed (Feb 29 included).
+      where:
+        is_nil(pref.profile_id) or
+          (((p.gender == "man" and pref.show_men) or
+              (p.gender == "woman" and pref.show_women) or
+              (p.gender == "non_binary" and pref.show_non_binary)) and
+             fragment(
+               "? <= (?::date - make_interval(years => ?::int))::date",
+               p.birth_date,
+               ^today,
+               pref.age_min
+             ) and
+             fragment(
+               "? > (?::date - make_interval(years => ?::int + 1))::date",
+               p.birth_date,
+               ^today,
+               pref.age_max
+             ) and
+             (not pref.compatible_only or
+                fragment(
+                  "EXISTS (SELECT 1 FROM profile_tags a JOIN profile_tags b ON b.tag_id = a.tag_id JOIN tags t ON t.id = a.tag_id AND t.is_active WHERE a.profile_id = ? AND b.profile_id = ?)",
+                  p.id,
+                  type(^viewer_id, :binary_id)
+                )))
+    )
   end
 
   # Same symmetric intent rule as the feed ("a ver qué pasa" sees everyone;

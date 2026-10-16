@@ -54,6 +54,7 @@ interface Entry {
   body: string;
   insertedAt: string;
   time: number;
+  dayKey: string;
   mine: boolean;
   delivery: DeliveryState;
   retryable: boolean;
@@ -73,13 +74,15 @@ export function buildTimeline(
 
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index]!;
+    const time = messageTimeOrNow(message.insertedAt, now);
     chronological.push({
       key: keyAliases?.get(message.id) ?? message.id,
       id: message.id,
       clientId: keyAliases?.get(message.id) ?? null,
       body: message.body,
       insertedAt: message.insertedAt,
-      time: messageTimeOrNow(message.insertedAt, now),
+      time,
+      dayKey: localDayKey(time),
       mine: isMine(message),
       delivery: "sent",
       retryable: false
@@ -87,13 +90,15 @@ export function buildTimeline(
   }
 
   for (const item of outbox) {
+    const time = messageTimeOrNow(item.createdAt, now);
     chronological.push({
       key: item.clientId,
       id: null,
       clientId: item.clientId,
       body: item.body,
       insertedAt: item.createdAt,
-      time: messageTimeOrNow(item.createdAt, now),
+      time,
+      dayKey: localDayKey(time),
       mine: true,
       delivery: item.status,
       retryable: item.retryable
@@ -125,11 +130,10 @@ export function buildTimeline(
       showTime: !joinsNewer || entry.delivery !== "sent"
     });
 
-    const dayKey = localDayKey(entry.time);
-    if (older === undefined || localDayKey(older.time) !== dayKey) {
+    if (older === undefined || older.dayKey !== entry.dayKey) {
       timeline.push({
         kind: "day",
-        key: `day-${dayKey}`,
+        key: `day-${entry.dayKey}`,
         label: formatDaySeparator(entry.time, now)
       });
     }
@@ -146,7 +150,7 @@ function messageTimeOrNow(iso: string, now: number): number {
 function sameGroup(older: Entry, newer: Entry): boolean {
   return (
     older.mine === newer.mine &&
-    localDayKey(older.time) === localDayKey(newer.time) &&
+    older.dayKey === newer.dayKey &&
     newer.time - older.time <= GROUP_WINDOW_MS
   );
 }

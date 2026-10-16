@@ -336,6 +336,17 @@ describe("chat session · escribiendo…", () => {
 });
 
 describe("chat session · leído", () => {
+  it("does not hammer a failing server with read receipts every 400 ms", async () => {
+    const { session, api } = setup({ socketUrl: null });
+    api.markRead.mockRejectedValue(new TypeError("offline"));
+    session.setVisible(true);
+    session.start();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(api.markRead.mock.calls.length).toBeLessThanOrEqual(10);
+    expect(api.markRead).toHaveBeenCalled();
+    session.dispose();
+  });
+
   it("marks the conversation as read on open when visible", async () => {
     const { session, api, events } = setup({}, page([msg("m1", OTHER, "hola", 1)]));
     session.setVisible(true);
@@ -399,7 +410,7 @@ describe("chat session · leído", () => {
     expect(api.markRead).not.toHaveBeenCalled();
   });
 
-  it("retries marking as read on the next trigger after a failure", async () => {
+  it("retries marking as read after backoff, without new messages bypassing it", async () => {
     const { session, api, channel } = await startJoined();
     api.markRead.mockReset().mockRejectedValueOnce(new TypeError("offline")).mockResolvedValue(undefined);
     session.setVisible(true);
@@ -408,6 +419,8 @@ describe("chat session · leído", () => {
 
     channel.simulateEvent("new_message", msg("m1", OTHER, "hola", 5));
     await vi.advanceTimersByTimeAsync(500);
+    expect(api.markRead).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1_500);
     expect(api.markRead).toHaveBeenCalledTimes(2);
   });
 });

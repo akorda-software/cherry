@@ -15,6 +15,11 @@ type LoadStatus = "idle" | "loading" | "ready" | "error";
 
 type CallProfileApi = <T>(run: (api: ProfileApi) => Promise<T>) => Promise<T>;
 
+/** Start eagerly, but normalize synchronous client errors into rejected promises. */
+async function requestProfileApi<T>(callApi: CallProfileApi, run: (api: ProfileApi) => Promise<T>): Promise<T> {
+  return callApi(run);
+}
+
 interface ProfileDraftState {
   /** Usuario al que pertenece el borrador (se descarta si cambia la sesión). */
   userId: string | null;
@@ -42,43 +47,46 @@ const INITIAL = {
   catalogStatus: "idle" as LoadStatus
 };
 
-export const useProfileDraftStore = create<ProfileDraftState>((set) => ({
-  ...INITIAL,
-
-  setProfile: (profile) => set({ profile, status: "ready", error: null }),
-
-  patchProfile: (patch) => set((state) => (state.profile ? { profile: { ...state.profile, ...patch } } : state)),
-
-  setPhotos: (photos) =>
-    set((state) => (state.profile ? { profile: { ...state.profile, photos } } : state)),
-
-  setPreferences: (discoveryPreferences) =>
-    set((state) => (state.profile ? { profile: { ...state.profile, discoveryPreferences } } : state)),
-
-  setTags: ({ tags, blockedTags }) =>
-    set((state) =>
-      state.profile
-        ? {
-            profile: {
-              ...state.profile,
-              ...(tags ? { tags } : null),
-              ...(blockedTags ? { blockedTags } : null)
-            }
-          }
-        : state
-    ),
-
-  setCatalog: (catalog) => set({ catalog, catalogStatus: "ready" }),
-
-  reset: () => set({ ...INITIAL })
-}));
-
 let profileRequest: { userId: string; promise: Promise<Profile | null> } | null = null;
 let catalogRequest: Promise<Tag[]> | null = null;
 
+/** A successful save is newer than any GET already in flight. */
+function patchDraft(state: ProfileDraftState, patch: Partial<Profile>) {
+  if (!state.profile) return state;
+  profileRequest = null;
+  return { profile: { ...state.profile, ...patch }, status: "ready" as const, error: null };
+}
+
+export const useProfileDraftStore = create<ProfileDraftState>((set) => ({
+  ...INITIAL,
+
+  setProfile: (profile) => {
+    profileRequest = null;
+    set({ profile, status: "ready", error: null });
+  },
+
+  patchProfile: (patch) => set((state) => patchDraft(state, patch)),
+
+  setPhotos: (photos) => set((state) => patchDraft(state, { photos })),
+
+  setPreferences: (discoveryPreferences) => set((state) => patchDraft(state, { discoveryPreferences })),
+
+  setTags: ({ tags, blockedTags }) =>
+    set((state) => patchDraft(state, { ...(tags ? { tags } : null), ...(blockedTags ? { blockedTags } : null) })),
+
+  setCatalog: (catalog) => set({ catalog, catalogStatus: "ready" }),
+
+  reset: () => {
+    profileRequest = null;
+    catalogRequest = null;
+    set({ ...INITIAL });
+  }
+}));
+
 /**
  * Carga (o reutiliza) el perfil del usuario. `force` vuelve a pedirlo aunque
- * ya esté cargado. Devuelve el perfil (`null` = aún no existe).
+ * ya esté cargado, pero comparte cualquier petición pendiente para ese usuario.
+ * Devuelve el perfil (`null` = aún no existe).
  */
 export async function loadProfileDraft(
   callApi: CallProfileApi,
@@ -90,27 +98,25 @@ export async function loadProfileDraft(
   if (store.userId !== userId) {
     store.reset();
     useProfileDraftStore.setState({ userId });
-    profileRequest = null;
-    catalogRequest = null;
   } else if (!force && store.status === "ready") {
     return store.profile;
   }
 
-  if (profileRequest && profileRequest.userId === userId && !force) {
+  if (profileRequest && profileRequest.userId === userId) {
     return profileRequest.promise;
   }
 
   useProfileDraftStore.setState({ status: "loading", error: null });
 
-  const promise = callApi((api) => api.getProfile()).then(
+  const promise = requestProfileApi(callApi, (api) => api.getProfile()).then(
     ({ profile }) => {
-      if (useProfileDraftStore.getState().userId === userId) {
+      if (profileRequest?.promise === promise && useProfileDraftStore.getState().userId === userId) {
         useProfileDraftStore.setState({ profile, status: "ready", error: null });
       }
       return profile;
     },
     (error: unknown) => {
-      if (useProfileDraftStore.getState().userId === userId) {
+      if (profileRequest?.promise === promise && useProfileDraftStore.getState().userId === userId) {
         useProfileDraftStore.setState({ status: "error", error });
       }
       throw error;
@@ -136,27 +142,33 @@ export async function loadTagCatalog(callApi: CallProfileApi, { force = false }:
     return store.catalog;
   }
 
-  if (!catalogRequest || force) {
-    useProfileDraftStore.setState({ catalogStatus: "loading" });
-    catalogRequest = callApi((api) => api.getTagCatalog()).then(
-      (catalog) => {
-        useProfileDraftStore.getState().setCatalog(catalog);
-        return catalog;
-      },
-      (error: unknown) => {
-        useProfileDraftStore.setState({ catalogStatus: "error" });
-        catalogRequest = null;
-        throw error;
-      }
-    );
-  }
+  if (catalogRequest) return catalogRequest;
 
-  return catalogRequest;
+  useProfileDraftStore.setState({ catalogStatus: "loading" });
+  const promise = requestProfileApi(callApi, (api) => api.getTagCatalog()).then(
+    (catalog) => {
+      if (catalogRequest === promise) {
+        useProfileDraftStore.getState().setCatalog(catalog);
+      }
+      return catalog;
+    },
+    (error: unknown) => {
+      if (catalogRequest === promise) {
+        useProfileDraftStore.setState({ catalogStatus: "error" });
+      }
+      throw error;
+    }
+  );
+  catalogRequest = promise;
+
+  try {
+    return await promise;
+  } finally {
+    if (catalogRequest === promise) catalogRequest = null;
+  }
 }
 
 // El borrador contiene el perfil entero: fuera de memoria al cerrar sesión.
 onSignOut(() => {
   useProfileDraftStore.getState().reset();
-  profileRequest = null;
-  catalogRequest = null;
 });

@@ -6,7 +6,7 @@ defmodule Cherry.Dating.ProfileCards do
     * `load_media/2`: fotos activas (por posición) y etiquetas positivas activas
       marcadas como `shared` con el viewer (2 consultas).
     * `rows/2`: filas base con las mismas claves que las filas del feed
-      (`Cherry.Dating.Discovery`) más señales sociales (1 consulta + contexto del viewer).
+      (`Cherry.Dating.Discovery`) más señales sociales y contexto del viewer (1 consulta).
 
   Nunca expone coordenadas: solo la distancia en metros para que el serializador
   la aproxime.
@@ -60,17 +60,31 @@ defmodule Cherry.Dating.ProfileCards do
   def rows(_viewer_id, [], _now), do: %{}
 
   def rows(viewer_id, profile_ids, now) do
-    viewer = viewer_context(viewer_id)
     ids = Enum.uniq(profile_ids)
+
+    viewer_context =
+      from(p in Profile,
+        left_join: pl in ProfileLocation,
+        on: pl.profile_id == p.id,
+        left_join: dp in DiscoveryPreference,
+        on: dp.profile_id == p.id,
+        where: p.id == ^viewer_id,
+        select: %{point: pl.coordinates, distance_km: dp.distance_km}
+      )
 
     from(p in Profile,
       join: u in User,
       on: u.id == p.user_id,
       left_join: pl in ProfileLocation,
       on: pl.profile_id == p.id,
+      left_join: viewer in subquery(viewer_context),
+      on: true,
       where: p.id in ^ids,
       select: %{
         profile: p,
+        distance_m:
+          fragment("ST_Distance(?::geography, ?::geography)", pl.coordinates, viewer.point),
+        viewer_distance_km: viewer.distance_km,
         user_deleted_at: u.deleted_at,
         liked_viewer:
           fragment(
@@ -94,9 +108,8 @@ defmodule Cherry.Dating.ProfileCards do
           )
       }
     )
-    |> select_distance(viewer.point)
     |> Repo.all()
-    |> Map.new(fn row -> {row.profile.id, build_row(row, viewer, now)} end)
+    |> Map.new(fn row -> {row.profile.id, build_row(row, now)} end)
   end
 
   @doc """
@@ -156,28 +169,7 @@ defmodule Cherry.Dating.ProfileCards do
     Enum.find_index(@category_order, &(&1 == category)) || length(@category_order)
   end
 
-  defp viewer_context(viewer_id) do
-    Repo.one(
-      from(p in Profile,
-        left_join: pl in ProfileLocation,
-        on: pl.profile_id == p.id,
-        left_join: dp in DiscoveryPreference,
-        on: dp.profile_id == p.id,
-        where: p.id == ^viewer_id,
-        select: %{point: pl.coordinates, distance_km: dp.distance_km}
-      )
-    ) || %{point: nil, distance_km: nil}
-  end
-
-  defp select_distance(query, nil), do: select_merge(query, %{distance_m: nil})
-
-  defp select_distance(query, point) do
-    select_merge(query, [_p, _u, pl], %{
-      distance_m: fragment("ST_Distance(?::geography, ?::geography)", pl.coordinates, ^point)
-    })
-  end
-
-  defp build_row(row, viewer, now) do
+  defp build_row(row, now) do
     profile = row.profile
 
     %{
@@ -195,7 +187,8 @@ defmodule Cherry.Dating.ProfileCards do
       viewer_liked: row.viewer_liked,
       blocked: row.blocked,
       is_newcomer: newcomer?(profile, now),
-      beyond_preferred_distance: beyond_preferred_distance?(row.distance_m, viewer.distance_km)
+      beyond_preferred_distance:
+        beyond_preferred_distance?(row.distance_m, row.viewer_distance_km)
     }
   end
 

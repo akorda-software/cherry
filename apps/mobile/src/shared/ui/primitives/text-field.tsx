@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode, useEffect, useState } from "react";
+import { forwardRef, memo, type ReactNode, useEffect, useState } from "react";
 import {
   Platform,
   type StyleProp,
@@ -73,15 +73,10 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   const c = theme.primitives.color;
   const xl = size === "xl";
   const [focused, setFocused] = useState(false);
-  const focus = useSharedValue(0);
   const { shake, style: shakeStyle } = useShake({ haptic: false });
   const hasError = Boolean(error);
   const length = (value ?? defaultValue ?? "").length;
   const showCounter = (counter ?? maxLength !== undefined) && maxLength !== undefined;
-
-  useEffect(() => {
-    focus.value = withSpring(focused ? 1 : 0, springs.snappy);
-  }, [focus, focused]);
 
   useEffect(() => {
     if (hasError) {
@@ -92,15 +87,6 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   const restFill = hasError ? theme.semantic.state.dangerSoft : editable ? c.white : c.paperDeep;
   const focusFill = hasError ? theme.semantic.state.dangerSoft : theme.primitives.pastel[color].soft;
   const shadowBase = xl ? 3 : 2;
-
-  const faceStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(focus.value, [0, 1], [restFill, focusFill])
-  }));
-
-  const shadowStyle = useAnimatedStyle(() => {
-    const offset = shadowBase + 2 * focus.value;
-    return { transform: [{ translateX: offset }, { translateY: offset }] };
-  });
 
   const radius = xl ? theme.primitives.radius.lg : theme.primitives.radius.md;
   const border = xl ? theme.primitives.border.bold : theme.primitives.border.regular;
@@ -127,10 +113,15 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
         </Text>
       ) : null}
       <Animated.View style={shakeStyle}>
-        <Animated.View
-          style={[styles.shadow, { borderRadius: radius, backgroundColor: c.ink }, shadowStyle]}
+        <FieldDecoration
+          focused={focused}
+          focusFill={focusFill}
+          ink={c.ink}
+          radius={radius}
+          restFill={restFill}
+          shadowBase={shadowBase}
         />
-        <Animated.View
+        <View
           style={[
             styles.face,
             {
@@ -140,8 +131,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
               borderColor: hasError ? theme.semantic.state.danger : c.ink,
               paddingHorizontal: dense ? 6 : xl ? 20 : 16,
               alignItems: multiline ? "flex-start" : "center"
-            },
-            faceStyle
+            }
           ]}
         >
           {icon ? (
@@ -179,7 +169,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             {...inputProps}
           />
           {right}
-        </Animated.View>
+        </View>
       </Animated.View>
       {hasError || hint || showCounter ? (
         <View style={styles.meta}>
@@ -208,6 +198,44 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           ) : null}
         </View>
       ) : null}
+    </View>
+  );
+});
+
+/** Keep focus worklets and their native views out of the per-keystroke render path. */
+const FieldDecoration = memo(function FieldDecoration({
+  focused,
+  focusFill,
+  ink,
+  radius,
+  restFill,
+  shadowBase
+}: {
+  focused: boolean;
+  focusFill: string;
+  ink: string;
+  radius: number;
+  restFill: string;
+  shadowBase: number;
+}) {
+  const focus = useSharedValue(0);
+
+  useEffect(() => {
+    focus.set(withSpring(focused ? 1 : 0, springs.snappy));
+  }, [focus, focused]);
+
+  const faceStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(focus.get(), [0, 1], [restFill, focusFill])
+  }));
+  const shadowStyle = useAnimatedStyle(() => {
+    const offset = shadowBase + 2 * focus.get();
+    return { transform: [{ translateX: offset }, { translateY: offset }] };
+  });
+
+  return (
+    <View pointerEvents="none" style={styles.shadow}>
+      <Animated.View style={[styles.shadow, { borderRadius: radius, backgroundColor: ink }, shadowStyle]} />
+      <Animated.View style={[styles.shadow, { borderRadius: radius }, faceStyle]} />
     </View>
   );
 });

@@ -1,8 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ChatMessage, MatchSummary } from "@cherry/contracts";
+import type { ActivitySummary, ChatMessage, MatchSummary, SessionBundle } from "@cherry/contracts";
 
+import { useActivityStore } from "../../activity/application/activity-store";
+import { useSessionStore } from "../../auth/presentation/session-store";
 import { useMatchesStore } from "../../matches/application/matches-store";
 import { FakeSocket } from "../test-utils/fake-phoenix";
 import { useChatSession } from "./use-chat-session";
@@ -95,10 +97,69 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
+  useSessionStore.setState({ status: "signed-out", session: null });
   vi.useRealTimers();
 });
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+const sessionBundle: SessionBundle = {
+  accessToken: "test-access", accessTokenExpiresAt: "2099-01-01T00:00:00Z",
+  refreshToken: "test-refresh", refreshTokenExpiresAt: "2099-01-01T00:00:00Z",
+  user: { id: "account-a", displayName: "A", email: "a@example.test" }
+};
+
+async function startSummaryRefresh() {
+  const response = deferred<Response>();
+  const fetchMock = vi.fn(() => response.promise);
+  vi.stubGlobal("fetch", fetchMock);
+  const hook = renderHook(() => useChatSession(CONV, { otherProfileId: OTHER, focused: false }));
+  await flush();
+  act(() => FakeSocket.last().simulateError());
+  await flush();
+  expect(fetchMock).toHaveBeenCalledOnce();
+  return { ...hook, respond: (summary: ActivitySummary) => response.resolve(new Response(JSON.stringify(summary), { status: 200 })) };
+}
+
 describe("useChatSession", () => {
+  it("never applies a reconnection summary before the authenticated response ownership check", async () => {
+    useSessionStore.setState({
+      status: "signed-in", session: sessionBundle,
+      services: { ...useSessionStore.getState().services, executeAuthenticated: undefined }
+    });
+    vi.spyOn(auth.shell, "executeAuthenticated").mockImplementation(useSessionStore.getState().executeAuthenticated);
+    const hook = await startSummaryRefresh();
+    const current = { receivedLikesCount: 1, newMatchesCount: 2, unreadConversationsCount: 3 };
+    useSessionStore.setState({ session: { ...sessionBundle, user: { ...sessionBundle.user, id: "account-b" } } });
+    useActivityStore.getState().setSummary(current);
+    hook.respond({ receivedLikesCount: 9, newMatchesCount: 9, unreadConversationsCount: 9 });
+    await flush();
+    expect(useActivityStore.getState().summary).toEqual(current);
+  });
+
+  it("does not publish a late reconnection summary after the chat unmounts", async () => {
+    const hook = await startSummaryRefresh();
+    const current = { receivedLikesCount: 1, newMatchesCount: 2, unreadConversationsCount: 3 };
+    useActivityStore.getState().setSummary(current);
+    hook.unmount();
+    hook.respond({ receivedLikesCount: 9, newMatchesCount: 9, unreadConversationsCount: 9 });
+    await flush();
+    expect(useActivityStore.getState().summary).toEqual(current);
+  });
+
+  it("still publishes a current reconnection summary after validation", async () => {
+    const hook = await startSummaryRefresh();
+    const summary = { receivedLikesCount: 4, newMatchesCount: 2, unreadConversationsCount: 1 };
+    hook.respond(summary);
+    await flush();
+    expect(useActivityStore.getState().summary).toEqual(summary);
+  });
+
   it("loads the history, opens the socket on the derived URL and builds the timeline", async () => {
     const { result } = renderHook(() => useChatSession(CONV, { otherProfileId: OTHER, focused: true }));
     await flush();

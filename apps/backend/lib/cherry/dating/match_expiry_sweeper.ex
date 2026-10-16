@@ -1,12 +1,15 @@
 defmodule Cherry.Dating.MatchExpirySweeper do
   @moduledoc """
   Proceso ligero que marca periódicamente los matches caducados
-  (`Cherry.Dating.MatchExpiry.expire_stale/1`). La caducidad ya se aplica de forma
+  (`Cherry.Dating.MatchExpiry.expire_batch/2`). La caducidad ya se aplica de forma
   perezosa en lecturas y mensajería; esto solo mantiene `matches.status` veraz
   para admin/analítica. Idempotente: varios nodos pueden ejecutarlo a la vez.
 
   Config: `config :cherry, :match_expiry_sweeper, enabled: true, interval_ms: 3_600_000,
-  initial_delay_ms: 60_000` (todas opcionales).
+  initial_delay_ms: 60_000, batch_size: 500, drain_delay_ms: 1000` (todas opcionales).
+  Cada tick actualiza como máximo un lote (1–1000 filas) y omite filas bloqueadas.
+  Si el lote está lleno, continúa tras `drain_delay_ms`, liberando la conexión
+  entre lotes; si no, vuelve al intervalo normal.
   """
 
   use GenServer
@@ -29,8 +32,23 @@ defmodule Cherry.Dating.MatchExpirySweeper do
     config = Keyword.merge(Application.get_env(:cherry, :match_expiry_sweeper, []), opts)
 
     if Keyword.get(config, :enabled, not sandbox_pool?()) do
+      batch_size = Keyword.get(config, :batch_size, 500)
+      drain_delay_ms = Keyword.get(config, :drain_delay_ms, 1000)
+
+      unless is_integer(batch_size) and batch_size in 1..1000,
+        do: raise(ArgumentError, "expiry batch size must be between 1 and 1000")
+
+      unless is_integer(drain_delay_ms) and drain_delay_ms > 0,
+        do: raise(ArgumentError, "expiry drain delay must be positive")
+
       schedule(Keyword.get(config, :initial_delay_ms, @default_initial_delay_ms))
-      {:ok, %{interval_ms: Keyword.get(config, :interval_ms, @default_interval_ms)}}
+
+      {:ok,
+       %{
+         interval_ms: Keyword.get(config, :interval_ms, @default_interval_ms),
+         batch_size: batch_size,
+         drain_delay_ms: drain_delay_ms
+       }}
     else
       :ignore
     end
@@ -38,18 +56,19 @@ defmodule Cherry.Dating.MatchExpirySweeper do
 
   @impl true
   def handle_info(:sweep, state) do
-    sweep()
-    schedule(state.interval_ms)
+    count = sweep(state.batch_size)
+    schedule(if count == state.batch_size, do: state.drain_delay_ms, else: state.interval_ms)
     {:noreply, state}
   end
 
-  defp sweep do
-    case MatchExpiry.expire_stale() do
-      0 -> :ok
-      count -> Logger.info("Match expiry sweep: #{count} matches marked as expired")
-    end
+  defp sweep(batch_size) do
+    count = MatchExpiry.expire_batch(DateTime.utc_now(), batch_size)
+    if count > 0, do: Logger.info("Match expiry sweep: #{count} matches marked as expired")
+    count
   rescue
-    error -> Logger.warning("Match expiry sweep failed: #{Exception.message(error)}")
+    error ->
+      Logger.warning("Match expiry sweep failed: #{Exception.message(error)}")
+      :error
   end
 
   defp schedule(delay_ms), do: Process.send_after(self(), :sweep, delay_ms)

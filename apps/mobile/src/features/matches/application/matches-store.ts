@@ -3,7 +3,7 @@ import { create } from "zustand";
 import type { ChatMessage, DiscoveryMatch, MatchesResponse, MatchSummary } from "@cherry/contracts";
 
 import { onSignOut } from "../../auth/presentation/on-sign-out";
-import { applyMessageToMatch, lastActivityAt, matchSummaryFromDiscoveryMatch } from "../domain/match-list";
+import { applyMessageToMatch, lastActivityAt, matchSummaryFromDiscoveryMatch, sortMatchesByActivity } from "../domain/match-list";
 
 /**
  * Lista de matches compartida por la pestaña Chats, la conversación (cabecera, deshacer match)
@@ -48,10 +48,6 @@ export function getMatchesSessionEpoch(): number {
 /** Matches quitados en local mientras una carga estaba en vuelo (no deben reaparecer). */
 const removedIds = new Set<string>();
 
-function sortByActivity(matches: MatchSummary[]): MatchSummary[] {
-  return [...matches].sort((a, b) => lastActivityAt(b) - lastActivityAt(a));
-}
-
 function timeOf(iso: string | undefined): number {
   const time = iso ? Date.parse(iso) : 0;
   return Number.isNaN(time) ? 0 : time;
@@ -64,7 +60,7 @@ function timeOf(iso: string | undefined): number {
 export function mergeServerMatches(server: MatchSummary[], local: MatchSummary[]): MatchSummary[] {
   const localById = new Map(local.map((match) => [match.id, match]));
 
-  return sortByActivity(
+  return sortMatchesByActivity(
     server
       .filter((match) => !removedIds.has(match.id))
       .map((match) => {
@@ -135,7 +131,7 @@ export const useMatchesStore = create<MatchesState>((set, get) => ({
             (!initialActivity.has(match.id) || lastActivityAt(match) > initialActivity.get(match.id)!)
           );
           set({
-            matches: sortByActivity([...mergeServerMatches(page.matches, get().matches), ...arrived]),
+            matches: sortMatchesByActivity([...mergeServerMatches(page.matches, get().matches), ...arrived]),
             nextCursor: page.nextCursor,
             status: "ready",
             error: null,
@@ -173,7 +169,7 @@ export const useMatchesStore = create<MatchesState>((set, get) => ({
         if (generation !== pageGeneration) return;
         const existing = new Set(get().matches.map((match) => match.id));
         const additions = page.matches.filter((match) => !existing.has(match.id) && !removedIds.has(match.id));
-        set({ matches: sortByActivity([...get().matches, ...additions]), nextCursor: page.nextCursor });
+        set({ matches: sortMatchesByActivity([...get().matches, ...additions]), nextCursor: page.nextCursor });
       }, (error: unknown) => {
         if (generation === pageGeneration) set({ error });
       })
@@ -189,7 +185,7 @@ export const useMatchesStore = create<MatchesState>((set, get) => ({
     if (removedIds.has(match.id)) return;
     const current = get().matches;
     const merged = mergeServerMatches([match], current);
-    set({ matches: sortByActivity([...merged, ...current.filter((entry) => entry.id !== match.id)]) });
+    set({ matches: sortMatchesByActivity([...merged, ...current.filter((entry) => entry.id !== match.id)]) });
   },
 
   addFromDiscoveryMatch(match) {
@@ -200,7 +196,7 @@ export const useMatchesStore = create<MatchesState>((set, get) => ({
     }
 
     removedIds.delete(match.id);
-    set({ matches: sortByActivity([matchSummaryFromDiscoveryMatch(match), ...matches]) });
+    set({ matches: sortMatchesByActivity([matchSummaryFromDiscoveryMatch(match), ...matches]) });
   },
 
   applyMessage(conversationId, message, { read }) {
@@ -218,7 +214,7 @@ export const useMatchesStore = create<MatchesState>((set, get) => ({
     });
 
     if (changed) {
-      set({ matches: sortByActivity(next) });
+      set({ matches: sortMatchesByActivity(next) });
     }
   },
 

@@ -33,17 +33,15 @@ defmodule Cherry.Dating.PhotoStorage do
   # commits: leave expired intents alone for a few minutes.
   @intent_grace_seconds 5 * 60
   @default_batch 200
+  @max_batch 1000
 
   @doc "Borra el objeto de una foto ya inactiva. Devuelve la foto (marcada si se borró)."
   def purge_photo(%ProfilePhoto{storage_deleted_at: nil} = photo) do
-    case Storage.delete_object(photo.storage_key) do
-      :ok ->
-        mark_photos([photo.id])
-        %{photo | storage_deleted_at: now()}
-
-      {:error, reason} ->
-        log_failure("photo #{photo.id}", reason)
-        photo
+    if purge_photo_object(photo) do
+      mark_photos([photo.id])
+      %{photo | storage_deleted_at: now()}
+    else
+      photo
     end
   end
 
@@ -100,12 +98,22 @@ defmodule Cherry.Dating.PhotoStorage do
   end
 
   @doc """
-  Un barrido: fotos pendientes de borrar e intents caducados. Devuelve
-  `%{photos: n, intents: n}` (filas limpiadas).
+  Un barrido: como máximo `batch` fotos y `batch` intents caducados (1–1000,
+  por defecto #{@default_batch}). Devuelve `%{photos: n, intents: n}` (filas
+  limpiadas). Solo marca los objetos borrados con éxito, en una escritura por
+  tipo, sin mantener una transacción abierta durante las llamadas al storage.
   """
   def sweep(now \\ DateTime.utc_now(), batch \\ @default_batch) do
+    batch_size!(batch)
     %{photos: sweep_photos(batch), intents: sweep_intents(now, batch)}
   end
+
+  @doc "Valida el tamaño de lote de limpieza; sin argumento devuelve el predeterminado."
+  def batch_size!(batch \\ @default_batch)
+  def batch_size!(batch) when is_integer(batch) and batch in 1..@max_batch, do: batch
+
+  def batch_size!(_batch),
+    do: raise(ArgumentError, "photo storage batch size must be between 1 and #{@max_batch}")
 
   defp sweep_photos(batch) do
     from(ph in ProfilePhoto,
@@ -115,11 +123,25 @@ defmodule Cherry.Dating.PhotoStorage do
       on: u.id == p.user_id,
       where: is_nil(ph.storage_deleted_at),
       where: not ph.is_active or not is_nil(p.deleted_at) or not is_nil(u.deleted_at),
-      limit: ^batch
+      limit: ^batch,
+      select: %{id: ph.id, storage_key: ph.storage_key}
     )
     |> Repo.all()
-    |> Enum.map(&purge_photo/1)
-    |> Enum.count(&(&1.storage_deleted_at != nil))
+    |> Enum.filter(&purge_photo_object/1)
+    |> Enum.map(& &1.id)
+    |> mark_photos()
+    |> elem(0)
+  end
+
+  defp purge_photo_object(photo) do
+    case Storage.delete_object(photo.storage_key) do
+      :ok ->
+        true
+
+      {:error, reason} ->
+        log_failure("photo #{photo.id}", reason)
+        false
+    end
   end
 
   defp sweep_intents(now, batch) do
@@ -152,6 +174,8 @@ defmodule Cherry.Dating.PhotoStorage do
     end
   end
 
+  defp mark_intents([]), do: 0
+
   defp mark_intents(intents) do
     ids = Enum.map(intents, & &1.id)
 
@@ -162,6 +186,8 @@ defmodule Cherry.Dating.PhotoStorage do
 
     count
   end
+
+  defp mark_photos([]), do: {0, nil}
 
   defp mark_photos(ids) do
     Repo.update_all(from(ph in ProfilePhoto, where: ph.id in ^ids),

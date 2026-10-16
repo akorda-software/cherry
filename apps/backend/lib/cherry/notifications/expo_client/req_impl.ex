@@ -5,19 +5,17 @@ defmodule Cherry.Notifications.ExpoClient.ReqImpl do
 
   @behaviour Cherry.Notifications.ExpoClient
 
-  defstruct [:base_url, :access_token, :receive_timeout_ms]
-
-  @default_base_url "https://exp.host"
-  @default_receive_timeout_ms 5_000
+  defstruct [
+    :base_url,
+    :access_token,
+    :receive_timeout_ms,
+    :batch_size,
+    :pool_timeout_ms,
+    :connect_timeout_ms
+  ]
 
   def expo_config do
-    config = Application.get_env(:cherry, :expo_push, [])
-
-    %__MODULE__{
-      base_url: Keyword.get(config, :base_url, @default_base_url),
-      access_token: blank_to_nil(Keyword.get(config, :access_token)),
-      receive_timeout_ms: Keyword.get(config, :receive_timeout_ms, @default_receive_timeout_ms)
-    }
+    struct!(__MODULE__, Cherry.Notifications.PushConfig.load())
   end
 
   def request_headers(config \\ expo_config()) do
@@ -32,10 +30,12 @@ defmodule Cherry.Notifications.ExpoClient.ReqImpl do
   def send_messages([], _opts), do: {:ok, []}
 
   def send_messages(messages, opts) when is_list(messages) do
+    config = expo_config()
+
     messages
-    |> Enum.chunk_every(100)
+    |> Enum.chunk_every(config.batch_size)
     |> Enum.reduce_while({:ok, []}, fn chunk, {:ok, tickets} ->
-      case send_chunk(chunk, opts) do
+      case send_chunk(chunk, opts, config) do
         {:ok, chunk_tickets} -> {:cont, {:ok, [chunk_tickets | tickets]}}
         {:error, reason} -> {:halt, {:error, reason}}
       end
@@ -46,15 +46,16 @@ defmodule Cherry.Notifications.ExpoClient.ReqImpl do
     end
   end
 
-  defp send_chunk(messages, opts) do
-    config = expo_config()
-
+  defp send_chunk(messages, opts, config) do
     request_opts =
       [
         json: messages,
         headers: request_headers(config),
         receive_timeout: config.receive_timeout_ms,
-        finch: [pool_timeout: 5_000, conn_opts: [transport_opts: [timeout: 5_000]]],
+        finch: [
+          pool_timeout: config.pool_timeout_ms,
+          conn_opts: [transport_opts: [timeout: config.connect_timeout_ms]]
+        ],
         # Oban owns retries; a failing provider must not hold a worker indefinitely.
         retry: false
       ]
@@ -95,7 +96,4 @@ defmodule Cherry.Notifications.ExpoClient.ReqImpl do
 
   defp maybe_put_authorization(headers, access_token),
     do: [{"authorization", "Bearer #{access_token}"} | headers]
-
-  defp blank_to_nil(value) when value in [nil, ""], do: nil
-  defp blank_to_nil(value), do: value
 end

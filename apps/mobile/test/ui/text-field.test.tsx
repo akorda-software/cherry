@@ -1,6 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import * as Reanimated from "react-native-reanimated";
 
 import { TextField } from "../../src/shared/ui";
 import { renderWithTheme } from "./render-with-theme";
@@ -53,5 +54,17 @@ describe("TextField", () => {
     renderWithTheme(<TextField label="¿Cómo te llamas?" size="xl" testID="name" value="Lucía" />);
 
     expect(screen.getByTestId("name")).toHaveStyle({ fontFamily: "Rubik-Black" });
+  });
+
+  it("does not re-render the focus decoration when only the text changes", () => {
+    const animatedStyle = vi.spyOn(Reanimated, "useAnimatedStyle");
+    const { rerender } = renderWithTheme(<TextField testID="description" value="Hola" />);
+    animatedStyle.mockClear();
+
+    rerender(<TextField testID="description" value="Hola de nuevo" />);
+
+    // Only the error-shake wrapper is evaluated; the two focus worklets stay isolated.
+    expect(animatedStyle).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("description")).toHaveValue("Hola de nuevo");
   });
 });

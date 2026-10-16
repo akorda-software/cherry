@@ -53,6 +53,7 @@ defmodule Cherry.Dating.Discovery.PageQuery do
     sql =
       page_sql(ph,
         limited?: limited?,
+        expand_distance?: viewer.expand_distance,
         cursor?: cursor != nil,
         viewer_compatible_only?: viewer.compatible_only,
         reciprocal_gender: reciprocal_gender_sql(viewer.gender),
@@ -72,9 +73,17 @@ defmodule Cherry.Dating.Discovery.PageQuery do
     # With a bounded radius the GiST index on profile_locations drives the scan.
     {geo_filter, tier_sql, distance_scale} =
       if opts[:limited?] do
+        # Without expansion the hard geo filter already proves tier 1. Avoid
+        # evaluating the same PostGIS predicate a second time per candidate.
+        tier_sql =
+          if opts[:expand_distance?],
+            do:
+              "CASE WHEN ST_DWithin(pl.coordinates, #{ph.(:point)}::geography, #{ph.(:radius)}::float8) THEN 1 ELSE 2 END",
+            else: "1"
+
         {
           "ST_DWithin(pl.coordinates, #{ph.(:point)}::geography, #{ph.(:outer_radius)}::float8)",
-          "CASE WHEN ST_DWithin(pl.coordinates, #{ph.(:point)}::geography, #{ph.(:radius)}::float8) THEN 1 ELSE 2 END",
+          tier_sql,
           "CASE WHEN f.tier = 1 THEN #{ph.(:radius)}::float8 ELSE #{ph.(:outer_radius)}::float8 END"
         }
       else

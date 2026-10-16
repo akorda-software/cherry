@@ -58,9 +58,16 @@ defmodule Cherry.Dating.Social.ReceivedLikes do
   @doc "Número de likes recibidos pendientes (misma regla que `received_likes/2`)."
   def received_likes_count(%Profile{} = viewer) do
     viewer
-    |> received_likes_query()
-    |> select([swipe: s], count(s.id))
+    |> count_query()
     |> Repo.one()
+    |> Map.fetch!(:received_likes_count)
+  end
+
+  @doc false
+  def count_query(%Profile{} = viewer) do
+    viewer
+    |> received_likes_query()
+    |> select([swipe: s], %{received_likes_count: count(s.id)})
   end
 
   defp validate_likes_limit(limit) when is_integer(limit) and limit in 1..@likes_max_limit,

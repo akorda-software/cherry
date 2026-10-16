@@ -6,8 +6,11 @@ import { BIO_MAX, BIO_MIN, BIO_STARTERS, bioLength, insertBioStarter } from "../
 
 export interface BioNoteProps {
   value: string;
+  /** Reuse the form validation's grapheme count instead of scanning the text twice. */
+  length?: number;
   onChange(next: string): void;
   error?: string | null;
+  editable?: boolean;
   autoFocus?: boolean;
   testID?: string;
 }
@@ -31,19 +34,22 @@ type SelectableInput = TextInput & {
  * el contador en vivo debajo y, aparte y plegadas, ideas opcionales para
  * empezar que se añaden al final del texto.
  */
-export function BioNote({ value, onChange, error, autoFocus = false, testID = "bio-note" }: BioNoteProps) {
+export function BioNote({ value, length, onChange, error, editable = true, autoFocus = false, testID = "bio-note" }: BioNoteProps) {
   const theme = useTheme();
   const { height: windowHeight } = useWindowDimensions();
   const input = useRef<TextInput>(null);
   // Refs para que las ideas no se vuelvan a pintar con cada tecla.
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
+  const editableRef = useRef(editable);
   valueRef.current = value;
   onChangeRef.current = onChange;
+  editableRef.current = editable;
 
   const fieldHeight = windowHeight < COMPACT_WINDOW ? FIELD_HEIGHT_COMPACT : FIELD_HEIGHT;
 
   const addStarter = useCallback((starter: string) => {
+    if (!editableRef.current) return;
     const next = insertBioStarter(valueRef.current, starter);
     onChangeRef.current(next);
     requestAnimationFrame(() => {
@@ -64,6 +70,7 @@ export function BioNote({ value, onChange, error, autoFocus = false, testID = "b
           autoCapitalize="sentences"
           autoFocus={autoFocus}
           counter={false}
+          editable={editable}
           inputStyle={[
             styles.input,
             {
@@ -82,12 +89,12 @@ export function BioNote({ value, onChange, error, autoFocus = false, testID = "b
           testID={`${testID}-input`}
           value={value}
         />
-        <BioMeter length={bioLength(value)} testID={testID} />
+        <BioMeter length={length ?? bioLength(value)} testID={testID} />
       </View>
 
       {error ? <FormMessage tone="error">{error}</FormMessage> : null}
 
-      <BioIdeas onPick={addStarter} testID={testID} />
+      <BioIdeas editable={editable} onPick={addStarter} testID={testID} />
     </Stack>
   );
 }
@@ -133,7 +140,7 @@ function BioMeter({ length, testID }: { length: number; testID: string }) {
  * Ideas para empezar: plegadas tras «¿Sin ideas?», claramente opcionales.
  * Cada una se añade al final del texto (no sustituye nada).
  */
-const BioIdeas = memo(function BioIdeas({ onPick, testID }: { onPick(starter: string): void; testID: string }) {
+const BioIdeas = memo(function BioIdeas({ editable, onPick, testID }: { editable: boolean; onPick(starter: string): void; testID: string }) {
   const theme = useTheme();
   const c = theme.primitives.color;
   const [open, setOpen] = useState(false);
@@ -167,6 +174,7 @@ const BioIdeas = memo(function BioIdeas({ onPick, testID }: { onPick(starter: st
               <PressableScale
                 accessibilityHint="Añade esta frase al final de tu descripción"
                 accessibilityLabel={starter}
+                disabled={!editable}
                 elevation="xs"
                 faceStyle={[
                   styles.chip,

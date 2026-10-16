@@ -10,6 +10,7 @@ defmodule Cherry.Dating.Profiles do
 
   alias Cherry.Repo
   alias Cherry.Dating.Profile
+  alias Cherry.Dating.Photos
   alias Cherry.Identity.AgeVerifications
 
   # ── Profiles ──────────────────────────────────────────────────────────
@@ -87,7 +88,13 @@ defmodule Cherry.Dating.Profiles do
   end
 
   def profile_completion_missing(%Profile{} = profile) do
-    profile = Repo.preload(profile, [:photos, :tags, :discovery_preference, :location])
+    profile =
+      Repo.preload(profile, [
+        :tags,
+        :discovery_preference,
+        :location,
+        photos: Photos.active_query()
+      ])
 
     strict = Application.get_env(:cherry, :strict_profile_completion, true)
 

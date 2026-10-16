@@ -45,7 +45,8 @@ export const NewMatchAvatar = memo(function NewMatchAvatar({ match, index, now, 
         style={styles.item}
         testID={`new-match-${match.id}`}
       >
-        <Avatar name={name} ring={RINGS[index % RINGS.length]} size="lg" uri={match.otherProfile.photoUrl} />
+        {/* Keep the cell recyclable without carrying another person's native image into it. */}
+        <Avatar key={match.otherProfile.id} name={name} ring={RINGS[index % RINGS.length]} size="lg" uri={match.otherProfile.photoUrl} />
         <View style={styles.texts}>
           <Text align="center" maxFontSizeMultiplier={1.2} numberOfLines={1} variant="label">
             {name}

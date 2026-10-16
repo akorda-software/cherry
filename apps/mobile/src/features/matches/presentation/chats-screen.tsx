@@ -1,21 +1,15 @@
 import { useRouter } from "expo-router";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { type ReactNode, useCallback } from "react";
+import { RefreshControl, ScrollView, type ScrollViewProps, StyleSheet, View } from "react-native";
 
 import type { MatchSummary } from "@cherry/contracts";
 
 import { friendlyErrorMessage } from "../../../shared/api";
 import {
-  Badge,
   Button,
-  Divider,
   EmptyState,
   ErrorState,
-  Mascot,
   Screen,
-  StickyNote,
-  Surface,
-  Text,
   TopBar,
   appShellRoutes,
   chatHref,
@@ -26,21 +20,10 @@ import { refreshActivitySummary } from "../../activity/application/activity-poll
 import { useActivitySummary } from "../../activity/application/use-activity-summary";
 import { useScreenFocus } from "../../activity/presentation/use-screen-focus";
 import { useMatchesList } from "../application/use-matches";
+import { ChatsList } from "./chats-list";
+import { CHATS_PRESENTATION } from "./chats-presentation-config";
 import { ChatsSkeleton } from "./chats-skeleton";
-import { ConversationRow } from "./conversation-row";
-import { NewMatchAvatar } from "./new-match-avatar";
-
-/** Refresca las horas relativas («hace 5 min») sin esperar a la red. */
-function useNow(intervalMs = 60_000): number {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(timer);
-  }, [intervalMs]);
-
-  return now;
-}
+import { useChatsNow } from "./use-chats-now";
 
 /** Pestaña Chats: matches nuevos arriba y conversaciones debajo. */
 export function ChatsScreen() {
@@ -49,17 +32,24 @@ export function ChatsScreen() {
   const tabSpace = useTabBarSpace();
   const padding = theme.semantic.layout.screenPadding;
   const list = useMatchesList();
-  const now = useNow();
   useActivitySummary();
 
-  useScreenFocus((first) => {
+  const focused = useScreenFocus((first) => {
     if (!first) {
       void list.refreshSilently();
       void refreshActivitySummary();
     }
   });
+  const now = useChatsNow(focused);
 
   const openChat = useCallback((match: MatchSummary) => router.push(chatHref(match.conversationId)), [router]);
+  const { hasMore, loadingMore, error, loadMore } = list;
+  const loadMoreOnScroll = useCallback<NonNullable<ScrollViewProps["onScroll"]>>(({ nativeEvent }) => {
+    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+    // Solo al desplazarse, no al montar una lista corta de matches nuevos.
+    const nearEnd = layoutMeasurement.height + contentOffset.y >= contentSize.height - CHATS_PRESENTATION.paginationDistancePx;
+    if (nearEnd && hasMore && !loadingMore && !error) void loadMore();
+  }, [hasMore, loadingMore, error, loadMore]);
 
   const refreshControl = (
     <RefreshControl
@@ -73,7 +63,7 @@ export function ChatsScreen() {
 
   const loading = (list.status === "loading" || list.status === "idle") && list.matches.length === 0;
   const hasMatches = list.matches.length > 0;
-  let body: ReactNode;
+  let body: ReactNode = null;
 
   if (loading) {
     body = <ChatsSkeleton />;
@@ -98,66 +88,6 @@ export function ChatsScreen() {
         title="Aún no tienes matches"
       />
     );
-  } else {
-    body = (
-      <>
-        {list.newMatches.length > 0 ? (
-          <View style={styles.section} testID="chats-new-matches">
-            <View style={[styles.sectionTitle, { paddingHorizontal: padding }]}>
-              <Text role="heading" variant="title3">
-                Nuevos matches
-              </Text>
-              <Badge color="limonada" count={list.newMatches.length} />
-            </View>
-            <ScrollView
-              contentContainerStyle={[styles.newRow, { paddingHorizontal: padding }]}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            >
-              {list.newMatches.map((match, index) => (
-                <NewMatchAvatar index={index} key={match.id} match={match} now={now} onOpen={openChat} />
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
-
-        {list.conversations.length > 0 ? (
-          <View style={[styles.section, { paddingHorizontal: padding }]} testID="chats-conversations">
-            <Text role="heading" variant="title3">
-              Mensajes
-            </Text>
-            <Surface clip padding={0} radius="lg">
-              {list.conversations.map((match, index) => (
-                <View key={match.id}>
-                  {index > 0 ? <Divider style={styles.divider} /> : null}
-                  <ConversationRow match={match} now={now} onOpen={openChat} />
-                </View>
-              ))}
-            </Surface>
-          </View>
-        ) : (
-          <View style={[styles.section, { paddingHorizontal: padding }]}>
-            <StickyNote
-              color="limonada"
-              tape={{ color: "fresa", pattern: "hearts" }}
-              testID="chats-icebreak-note"
-              tilt={-1.5}
-            >
-              <View style={styles.note}>
-                <Mascot animated={false} mood="wink" size={64} />
-                <View style={styles.noteTexts}>
-                  <Text variant="title3">¡Rompe el hielo!</Text>
-                  <Text variant="hand">
-                    Toca a alguien de arriba y salúdale. Una pregunta sobre algo que tengáis en común funciona de
-                    maravilla.
-                  </Text>
-                </View>
-              </View>
-            </StickyNote>
-          </View>
-        )}
-      </>
-    );
   }
 
   const centered = loading ? false : !hasMatches;
@@ -169,35 +99,46 @@ export function ChatsScreen() {
       padded={false}
       testID="chats-screen"
     >
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          centered ? styles.centered : null,
-          { paddingBottom: tabSpace + 32 },
-          loading || centered ? { paddingHorizontal: padding } : null
-        ]}
-        refreshControl={loading ? undefined : refreshControl}
-        onScroll={({ nativeEvent }) => {
-          if (nativeEvent.layoutMeasurement.height + nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - 240) {
-            if (list.hasMore && !list.loadingMore && !list.error) void list.loadMore();
-          }
-        }}
-        scrollEventThrottle={200}
-        showsVerticalScrollIndicator={false}
-        testID="chats-list"
-      >
-        {body}
-        {list.hasMore ? (
-          <View style={{ paddingHorizontal: padding }}>
-            <Button
-              label={list.loadingMore ? "Cargando chats…" : "Cargar más chats"}
-              disabled={list.loadingMore}
-              onPress={() => void list.loadMore()}
-              testID="chats-load-more"
-            />
-          </View>
-        ) : null}
-      </ScrollView>
+      {hasMatches ? (
+        <ChatsList
+          bottomSpace={tabSpace}
+          conversations={list.conversations}
+          hasMore={list.hasMore}
+          loadingMore={list.loadingMore}
+          newMatches={list.newMatches}
+          now={now}
+          onLoadMore={list.loadMore}
+          onOpen={openChat}
+          onScroll={loadMoreOnScroll}
+          refreshControl={refreshControl}
+        />
+      ) : (
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            centered ? styles.centered : null,
+            { paddingBottom: tabSpace + 32 },
+            loading || centered ? { paddingHorizontal: padding } : null
+          ]}
+          refreshControl={loading ? undefined : refreshControl}
+          onScroll={loadMoreOnScroll}
+          scrollEventThrottle={CHATS_PRESENTATION.scrollEventThrottleMs}
+          showsVerticalScrollIndicator={false}
+          testID="chats-list"
+        >
+          {body}
+          {list.hasMore ? (
+            <View style={{ paddingHorizontal: padding }}>
+              <Button
+                disabled={list.loadingMore}
+                label={list.loadingMore ? "Cargando chats…" : "Cargar más chats"}
+                onPress={() => void list.loadMore()}
+                testID="chats-load-more"
+              />
+            </View>
+          ) : null}
+        </ScrollView>
+      )}
     </Screen>
   );
 }
@@ -215,29 +156,5 @@ const styles = StyleSheet.create({
   centered: {
     flexGrow: 1,
     justifyContent: "center"
-  },
-  section: {
-    gap: 12
-  },
-  sectionTitle: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8
-  },
-  newRow: {
-    gap: 8,
-    paddingVertical: 6
-  },
-  divider: {
-    marginHorizontal: 16
-  },
-  note: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14
-  },
-  noteTexts: {
-    flex: 1,
-    gap: 4
   }
 });

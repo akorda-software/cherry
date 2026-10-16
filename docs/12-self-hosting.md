@@ -176,6 +176,8 @@ Sin CSCA del país del documento, la autenticación pasiva NFC lo rechaza (`untr
 | `R2_MAX_UPLOAD_BYTES` / `R2_UPLOAD_URL_TTL_SECONDS` | los de `UPLOAD_*` | Límites propios del adaptador `r2` |
 | `EXPO_PUSH_ACCESS_TOKEN` | vacío | Token de la Expo Push API. El backend acepta dispositivos en `/api/me/push-token`; el móvil aún no registra tokens (ver `11-deuda-tecnica-pendiente.md`) |
 | `EXPO_PUSH_BASE_URL` / `EXPO_PUSH_RECEIVE_TIMEOUT_MS` | `https://exp.host` / `5000` | Proveedor de push y timeout de respuesta (1–15000 ms); para carga, usar el simulador de `infra/load` |
+| `EXPO_PUSH_BATCH_SIZE` | `100` | Dispositivos por petición a Expo (1–100); lotes menores aumentan las peticiones por trabajo |
+| `EXPO_PUSH_POOL_TIMEOUT_MS` / `EXPO_PUSH_CONNECT_TIMEOUT_MS` | `5000` / `5000` | Espera del pool y conexión HTTP de push (1–15000 ms cada una); validadas al arrancar por `PushConfig` |
 | `PUSH_CONCURRENCY` | `4` | Workers Oban de push por nodo (1–32), con jobs persistentes y reintentos |
 
 ### Opcionales
@@ -198,6 +200,7 @@ El contrato con la app es el mismo con cualquier adaptador (detalle en `06-contr
 ### `STORAGE_ADAPTER=local` (sin servicios extra)
 
 - Las fotos se suben con un `PUT` firmado a `/api/uploads/<token>` y se sirven en `/uploads/photos/<clave>` desde `UPLOADS_DIR`. Solo se publican al completar la subida; las abandonadas y las borradas se eliminan del disco (barrido cada 10 min).
+- El barrido conserva un máximo predeterminado de 200 fotos y 200 intents por tick. En configuración Elixir: `config :cherry, :photo_storage_sweeper, batch_size: 200` (rango 1–1000); `interval_ms` positivo y `initial_delay_ms` no negativo, por defecto 600000/60000 ms. No son variables de entorno. Los fallos quedan pendientes para otro tick; un backlog puede tardar varios ciclos.
 - `UPLOADS_DIR` tiene que estar en un **volumen persistente** (no en el sistema de ficheros del contenedor) e incluirse en los backups junto con PostgreSQL.
 - El contenedor corre como `nobody`: el directorio debe ser escribible por el uid 65534. Con un bind mount:
 
@@ -355,4 +358,3 @@ El código no asume España salvo donde se indica. Para montar, por ejemplo, «C
 6. **Distribución en las tiendas.** Publica con tu cuenta de desarrollador, tu paquete y bundle ID (§8) y limita la distribución a tu país en Google Play Console y App Store Connect. Las fichas, la clasificación de edad y los requisitos de cada tienda están resumidos en `docs/compliance/01-tiendas.md` (para España).
 7. **Idioma.** La app solo está en español (textos en el código, sin i18n), y algunos textos de la verificación nombran documentos españoles (DNI, TIE). Traducirla está pendiente (`11-deuda-tecnica-pendiente.md`); hasta entonces, una instancia en otro idioma tiene que mantener su traducción en su fork.
 8. **Unidades y formato.** Distancias en kilómetros y fechas con formato español (24 h); no hay moneda porque no hay pagos.
-

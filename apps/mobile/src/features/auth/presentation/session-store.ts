@@ -77,6 +77,9 @@ const defaultServices: SessionShellServices = {
   executeAuthenticated: async () => Promise.reject(new Error("Authenticated requests are not configured"))
 };
 
+// In-memory ownership, not token identity: refreshes belong to the same session.
+let authenticatedEpoch = 0;
+
 export const useSessionStore = create<SessionStoreState>((set, get) => ({
   status: "loading",
   session: null,
@@ -169,18 +172,40 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
 
   executeAuthenticated: async (request) => {
     const { services, status, session } = get();
+    const startedEpoch = authenticatedEpoch;
+    const assertCurrentSession = () => {
+      if (startedEpoch !== authenticatedEpoch) throw new Error("session_changed");
+    };
+    const guardedRequest = (accessToken: string) => {
+      assertCurrentSession();
+      return request(accessToken);
+    };
 
     if (services.executeAuthenticated) {
-      return services.executeAuthenticated(request) as Promise<ReturnType<typeof request>>;
+      const response = await services.executeAuthenticated(guardedRequest);
+      assertCurrentSession();
+      return response;
     }
 
     if (status !== "signed-in" || session === null) {
       throw new Error("missing_session");
     }
 
-    return request(session.accessToken);
+    const response = await guardedRequest(session.accessToken);
+    assertCurrentSession();
+    return response;
   }
 }));
+
+// Reject late successes before caller continuations can update another account's stores.
+// Also catches logout + login to the same account without rereading SecureStore per response.
+useSessionStore.subscribe((state, previous) => {
+  if (
+    state.status !== previous.status ||
+    state.session?.user.id !== previous.session?.user.id ||
+    state.services !== previous.services
+  ) authenticatedEpoch += 1;
+});
 
 export function useSessionShell(): {
   state: AuthShellState;

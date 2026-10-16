@@ -31,16 +31,29 @@ export function lastActivityAt(match: MatchSummary): number {
   return Math.max(timeOf(match.lastMessage?.insertedAt), timeOf(match.matchedAt));
 }
 
+/** Parse each timestamp once, not again for every comparison in O(n log n) sorting. */
+function sortByTime(matches: readonly MatchSummary[], timestamp: (match: MatchSummary) => number): MatchSummary[] {
+  return matches
+    .map((match) => ({ match, time: timestamp(match) }))
+    .sort((a, b) => b.time - a.time)
+    .map(({ match }) => match);
+}
+
+export function sortMatchesByActivity(matches: readonly MatchSummary[]): MatchSummary[] {
+  return sortByTime(matches, lastActivityAt);
+}
+
 export function splitMatches(matches: readonly MatchSummary[]): MatchSections {
-  const newMatches = matches
-    .filter((match) => match.lastMessage === null)
-    .sort((a, b) => timeOf(b.matchedAt) - timeOf(a.matchedAt));
+  const newMatches: MatchSummary[] = [];
+  const conversations: MatchSummary[] = [];
+  for (const match of matches) {
+    (match.lastMessage === null ? newMatches : conversations).push(match);
+  }
 
-  const conversations = matches
-    .filter((match) => match.lastMessage !== null)
-    .sort((a, b) => lastActivityAt(b) - lastActivityAt(a));
-
-  return { newMatches, conversations };
+  return {
+    newMatches: sortByTime(newMatches, (match) => timeOf(match.matchedAt)),
+    conversations: sortMatchesByActivity(conversations)
+  };
 }
 
 /** El último mensaje lo escribí yo (en un 1:1, todo lo que no manda la otra persona). */

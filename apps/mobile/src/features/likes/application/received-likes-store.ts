@@ -77,8 +77,23 @@ export interface ReceivedLikesState {
 
 let loadInFlight: Promise<void> | null = null;
 let generation = 0;
+let paginationEpoch = 0;
 let noticeId = 0;
 const actionsInFlight = new Map<string, Promise<unknown>>();
+// Only retain removals for reads that could contain an older server snapshot.
+const readExclusions = new Set<Set<string>>();
+
+async function fetchLikesPage(deps: ReceivedLikesDeps, cursor: string | null) {
+  return deps.fetchPage(cursor);
+}
+
+function excludeFromReads(profileId: string) {
+  for (const exclusions of readExclusions) exclusions.add(profileId);
+}
+
+function allowInReads(profileId: string) {
+  for (const exclusions of readExclusions) exclusions.delete(profileId);
+}
 
 function notice(tone: LikesNotice["tone"], message: string): LikesNotice {
   noticeId += 1;
@@ -122,11 +137,17 @@ const initialState = {
 
 export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
   /** Quita de una página a quien ya he respondido (respuesta en vuelo o último «no»). */
-  function withoutAnswered(likes: ReceivedLike[]): ReceivedLike[] {
+  function withoutAnswered(likes: ReceivedLike[], excluded: ReadonlySet<string>): ReceivedLike[] {
     const { pending, lastPass } = get();
     return likes.filter(
-      (like) => pending[like.profile.id] === undefined && lastPass?.like.profile.id !== like.profile.id
+      (like) => !excluded.has(like.profile.id) && pending[like.profile.id] === undefined && lastPass?.like.profile.id !== like.profile.id
     );
+  }
+
+  function trackRead() {
+    const excluded = new Set(Object.keys(get().pending));
+    readExclusions.add(excluded);
+    return excluded;
   }
 
   function clearPending(profileId: string) {
@@ -151,9 +172,11 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
       }
 
       const loadGeneration = generation;
+      paginationEpoch += 1;
+      const excluded = trackRead();
+      set({ loadingMore: false });
 
-      loadInFlight = deps
-        .fetchPage(null)
+      const request = fetchLikesPage(deps, null)
         .then(
           (page) => {
             if (loadGeneration !== generation) {
@@ -161,7 +184,7 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
             }
 
             set({
-              likes: withoutAnswered(appendUnique([], page.likes)),
+              likes: withoutAnswered(appendUnique([], page.likes), excluded),
               nextCursor: page.nextCursor,
               hasMore: page.nextCursor !== null,
               status: "ready",
@@ -187,10 +210,12 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
           if (loadGeneration === generation) {
             set({ refreshing: false });
           }
-          loadInFlight = null;
+          readExclusions.delete(excluded);
+          if (loadInFlight === request) loadInFlight = null;
         });
 
-      return loadInFlight;
+      loadInFlight = request;
+      return request;
     },
 
     async loadMore(deps) {
@@ -201,21 +226,24 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
       }
 
       const loadGeneration = generation;
+      const pageEpoch = paginationEpoch;
+      const excluded = trackRead();
+      const current = () => loadGeneration === generation && pageEpoch === paginationEpoch;
       set({ loadingMore: true });
 
       try {
-        const page = await deps.fetchPage(nextCursor);
-        if (loadGeneration !== generation) {
+        const page = await fetchLikesPage(deps, nextCursor);
+        if (!current()) {
           return;
         }
 
         set({
-          likes: appendUnique(get().likes, withoutAnswered(page.likes)),
+          likes: appendUnique(get().likes, withoutAnswered(page.likes, excluded)),
           nextCursor: page.nextCursor,
           hasMore: page.nextCursor !== null
         });
       } catch (error) {
-        if (loadGeneration !== generation) {
+        if (!current()) {
           return;
         }
 
@@ -226,7 +254,8 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
         }
         // Otros errores: se reintenta al volver a llegar al final.
       } finally {
-        if (loadGeneration === generation) {
+        readExclusions.delete(excluded);
+        if (current()) {
           set({ loadingMore: false });
         }
       }
@@ -242,6 +271,7 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
 
       const entry = likes[index]!;
       const respondGeneration = generation;
+      excludeFromReads(profileId);
       set({
         likes: likes.filter((like) => like.profile.id !== profileId),
         pending: { ...pending, [profileId]: action },
@@ -299,6 +329,7 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
           return { kind: "gone" };
         }
 
+        allowInReads(profileId);
         set({
           likes: insertAt(get().likes, entry, index),
           notice: notice(
@@ -332,7 +363,7 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
         // Si el «no» aún viaja, esperamos a que llegue antes de deshacerlo.
         await actionsInFlight.get(profileId)?.catch(() => undefined);
 
-        if (get().lastPass?.like.profile.id !== profileId) {
+        if (undoGeneration !== generation || get().lastPass !== lastPass) {
           // Falló o se invalidó mientras tanto: no hay nada que deshacer.
           return false;
         }
@@ -352,6 +383,7 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
         }
 
         if (undoneProfile.id === profileId) {
+          allowInReads(profileId);
           set({ likes: insertAt(get().likes, lastPass.like, lastPass.index) });
           deps.onCountDelta?.(1);
         }
@@ -372,7 +404,7 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
         });
         return false;
       } finally {
-        set({ undoing: false });
+        if (undoGeneration === generation) set({ undoing: false });
       }
     },
 
@@ -389,6 +421,7 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
     },
 
     removeProfile(profileId) {
+      excludeFromReads(profileId);
       const { likes } = get();
       if (likes.some((like) => like.profile.id === profileId)) {
         set({ likes: likes.filter((like) => like.profile.id !== profileId) });
@@ -397,8 +430,10 @@ export const useReceivedLikesStore = create<ReceivedLikesState>((set, get) => {
 
     reset() {
       generation += 1;
+      paginationEpoch += 1;
       loadInFlight = null;
       actionsInFlight.clear();
+      readExclusions.clear();
       set({ ...initialState });
     }
   };

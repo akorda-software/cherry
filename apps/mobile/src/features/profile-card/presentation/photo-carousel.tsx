@@ -13,6 +13,7 @@ import {
 
 import type { PhotoSummary } from "@cherry/contracts";
 
+import { prefetchImageUrls } from "../../../shared/device";
 import { HardShadow, pastelForName, Text, useTheme, WashiTape } from "../../../shared/ui";
 
 export interface PhotoCarouselProps {
@@ -74,9 +75,7 @@ export const PhotoCarousel = memo(function PhotoCarousel({
   const urls = useMemo(() => photos.map((photo) => photo.url), [photos]);
 
   useEffect(() => {
-    if (preload && urls.length > 1 && typeof Image.prefetch === "function") {
-      Image.prefetch(urls, "memory-disk").catch(() => undefined);
-    }
+    if (preload && urls.length > 1) prefetchImageUrls(urls);
   }, [preload, urls]);
 
   const go = useCallback(

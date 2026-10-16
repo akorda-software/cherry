@@ -292,7 +292,10 @@ config :cherry, Cherry.Storage.R2,
 config :cherry, :expo_push,
   base_url: System.get_env("EXPO_PUSH_BASE_URL", "https://exp.host"),
   access_token: System.get_env("EXPO_PUSH_ACCESS_TOKEN"),
-  receive_timeout_ms: positive_env.("EXPO_PUSH_RECEIVE_TIMEOUT_MS", 5000, 15_000)
+  receive_timeout_ms: positive_env.("EXPO_PUSH_RECEIVE_TIMEOUT_MS", 5000, 15_000),
+  batch_size: positive_env.("EXPO_PUSH_BATCH_SIZE", 100, 100),
+  pool_timeout_ms: positive_env.("EXPO_PUSH_POOL_TIMEOUT_MS", 5000, 15_000),
+  connect_timeout_ms: positive_env.("EXPO_PUSH_CONNECT_TIMEOUT_MS", 5000, 15_000)
 
 # Cifrado en reposo de mensajes (D-2026-08-21).
 #

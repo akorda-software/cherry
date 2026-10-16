@@ -92,7 +92,8 @@ defmodule Cherry.Notifications do
         where:
           push_token.user_id == ^user_id and push_token.status == "active" and
             is_nil(session_family.revoked_at),
-        order_by: [desc: push_token.last_seen_at, desc: push_token.inserted_at]
+        order_by: [desc: push_token.last_seen_at, desc: push_token.inserted_at],
+        select: %{id: push_token.id, expo_push_token: push_token.expo_push_token}
       )
     )
   end
@@ -169,22 +170,25 @@ defmodule Cherry.Notifications do
   defp new_message_title(_name), do: "Tienes un mensaje nuevo"
 
   defp deactivate_unregistered_tokens(push_tokens, tickets) do
-    push_tokens
-    |> Enum.zip(tickets)
-    |> Enum.reduce(0, fn {push_token, ticket}, count ->
-      if ticket_error(ticket) == "DeviceNotRegistered" do
-        deactivate_push_token(push_token)
-        count + 1
-      else
-        count
-      end
-    end)
+    ids =
+      push_tokens
+      |> Enum.zip(tickets)
+      |> Enum.filter(fn {_token, ticket} -> ticket_error(ticket) == "DeviceNotRegistered" end)
+      |> Enum.map(fn {token, _ticket} -> token.id end)
+
+    deactivate_push_tokens(ids)
   end
 
-  defp deactivate_push_token(%PushToken{} = push_token) do
-    push_token
-    |> PushToken.changeset(%{status: "inactive", disabled_at: now()})
-    |> Repo.update()
+  defp deactivate_push_tokens([]), do: 0
+
+  defp deactivate_push_tokens(ids) do
+    at = now()
+
+    {count, _} =
+      from(token in PushToken, where: token.id in ^ids)
+      |> Repo.update_all(set: [status: "inactive", disabled_at: at, updated_at: at])
+
+    count
   end
 
   defp ticket_status(ticket), do: Map.get(ticket, "status") || Map.get(ticket, :status)

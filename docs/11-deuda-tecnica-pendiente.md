@@ -10,10 +10,11 @@ Huecos conocidos entre producto, contratos, documentación y código a 2026-09-2
 4. **Sin estado «sin conexión».** Descubrir y el resto de pantallas tratan un fallo de red como error genérico con reintento; no hay detección de conectividad.
 5. **Expo Go no sirve para entrar.** En Expo Go no se crean servicios de login y la app se queda en la pantalla de carga (deducido del código). Hace falta un build de desarrollo, Expo Web con el login de desarrollo o `EXPO_PUBLIC_MOCK_AUTH=true`.
 6. **«Continuar con Apple» también se muestra en web**, donde Sign in with Apple nativo no está disponible (la condición es `Platform.OS !== "android"`).
-7. **Sin tests de renderizado de las pantallas de producto** (onboarding, Descubrir, Likes, Chats, Yo): se prueban dominio, stores y componentes del sistema de diseño.
+7. **Cobertura de pantallas parcial, sin E2E.** Hay pruebas de bio/onboarding y de varias pantallas de producto, pero no un recorrido completo con módulos nativos reales. El rendimiento del onboarding sigue pendiente de medir en un build release en dispositivo (ver `13-rendimiento.md`).
 8. El enlace «Ver el código» de «Acerca de» solo aparece si se compila con `EXPO_PUBLIC_SOURCE_URL` o el servidor define `INSTANCE_SOURCE_URL`.
 9. El selector de edad de Filtros llega a 99; el backend admite hasta 100.
 10. **Lectura NFC del DNI sin probar en hardware** (`modules/document-nfc`, rama `feat/dni-nfc`). Android compila; iOS no se ha compilado nunca. Pendientes y guía: `compliance/02-mayoria-de-edad.md` («Estado del prototipo») y `compliance/02-nfc-pruebas-manana.md`.
+11. **Chats virtualizados, pendientes de validación nativa.** La tercera pasada usa `FlashList` en conversaciones y avatares horizontales; se separaron modelo/presentación, se aislaron imágenes al reciclar y se detuvo el reloj fuera de foco/primer plano. Las pruebas cubren ventanas simuladas y paginación, no layout/memoria/FPS reales. Falta comprobar listas largas, fotos lentas, reordenación, fuentes grandes y lector de pantalla en release Android/iOS (ver `13-rendimiento.md`).
 
 ## Backend
 
@@ -23,11 +24,12 @@ Huecos conocidos entre producto, contratos, documentación y código a 2026-09-2
 4. **Métricas sin capturar.** Existe `analytics_events` y `Cherry.Dating.track_event/1`, pero nada lo llama: no se registra ningún evento de producto.
 5. **Índices sin `CONCURRENTLY` sobre `swipe_actions`.** `20260929113715_discovery_ranking_v2` (`swipe_actions_likes_received_index`) y `20260929154521_add_dislikes_received_index` crean índices normales, que bloquean escrituras en `swipe_actions` mientras se construyen. Inocuo en el primer despliegue (tabla vacía y `stop-first`); con una tabla grande ya en producción habría que usar `migration_lock: :pg_advisory_lock` y una migración propia con `@disable_ddl_transaction true` (detalle en `infra/deploy/README.md` §6).
 6. **`decimal` 2.4.1.** El arreglo del aviso conocido está en 3.x y `ecto 3.13` exige `~> 2.0`: actualizar cuando Ecto lo admita. El resto de dependencias se actualizó el 2026-09-29.
-7. **Coste del feed lineal en candidatos** (unos 20–25 µs cada uno; 10–42 ms p50 con 3.000–10.000 perfiles). Con decenas de miles de candidatos en un mismo radio habrá que precalcular (cola de candidatos o estadísticas de atención por perfil).
+7. **Coste del feed todavía lineal en candidatos.** La segunda pasada optimiza las búsquedas de swipes en radios limitados y evita un filtro geográfico duplicado, pero no elimina la evaluación de cada candidato. Los benchmarks dependen mucho de población/actividad/plan y no fijan capacidad concurrente (ver `13-rendimiento.md` y `apps/backend/bench/README.md`). Con decenas de miles de candidatos en un mismo radio sigue pendiente evaluar precálculo sin cambiar ranking/frescura.
 8. **`compatible_only` simétrico, pendiente de validar con el propietario.** Hoy, si cualquiera de los dos lo activa, se exige una etiqueta en común en ambos sentidos (D-2026-09-29, ranking v2).
 9. **Una sola réplica.** Sin clúster de Erlang (libcluster) el PubSub del chat no cruza nodos: no se puede escalar horizontalmente el backend.
 10. **Fotos sin moderación.** Se verifican existencia, tamaño, MIME y cabecera binaria; no hay decodificación completa ni moderación de contenido.
 11. **Verificación de edad sin hacer obligatoria del todo.** `AGE_VERIFICATION_REQUIRED` bloquea la API REST social, pero no excluye de los feeds a los perfiles sin verificar ni se comprueba en el WebSocket del chat; tampoco se consulta la CRL de la Policía. Detalle en `compliance/02-mayoria-de-edad.md`.
+12. **Equidad del barrido de almacenamiento pendiente.** Se conservan lotes de 200 fotos/intents por tipo, ahora con marcado batch y tamaño validado, pero la selección aún no tiene cursor/orden de reintentos. Fallos persistentes dentro de un lote pueden retrasar otras filas; no hay promesa de drenaje inmediato de un backlog. La purga completa por cuenta no se ha optimizado en estas pasadas (ver `13-rendimiento.md`).
 
 ## Instancias en otros países
 

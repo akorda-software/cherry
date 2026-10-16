@@ -89,6 +89,7 @@ export function useChatSession(
       return undefined;
     }
 
+    let active = true;
     const created = createChatSession({
       conversationId,
       socketUrl,
@@ -98,17 +99,19 @@ export function useChatSession(
         sendMessage: (body) => callChatApiRef.current((api) => api.sendMessage(conversationId, body)),
         markRead: () => callChatApiRef.current((api) => api.markRead(conversationId))
       },
-      getSocketToken: ({ fresh }) =>
-        fresh
-          ? // Petición barata que valida el token (y lo refresca ante un 401); de paso, badges frescos.
-            executeAuthenticatedRef.current(async (token) => {
-              const summary = await createActivityApi(
-                createJsonHttpClient({ apiBaseUrl, getHeaders: () => ({ Authorization: `Bearer ${token}` }) })
-              ).getSummary();
-              useActivityStore.getState().setSummary(summary);
-              return token;
-            })
-          : executeAuthenticatedRef.current(async (token) => token),
+      async getSocketToken({ fresh }) {
+        if (!fresh) return executeAuthenticatedRef.current(async (token) => token);
+
+        // Validate/refresh credentials, but publish only AFTER the auth boundary checks ownership.
+        const result = await executeAuthenticatedRef.current(async (token) => ({
+          token,
+          summary: await createActivityApi(
+            createJsonHttpClient({ apiBaseUrl, getHeaders: () => ({ Authorization: `Bearer ${token}` }) })
+          ).getSummary()
+        }));
+        if (active) useActivityStore.getState().setSummary(result.summary);
+        return result.token;
+      },
       events: {
         onLatestMessage(message: ChatMessage, mine: boolean) {
           useMatchesStore.getState().applyMessage(conversationId, message, { read: mine || visibleRef.current });
@@ -139,6 +142,7 @@ export function useChatSession(
     created.start();
 
     return () => {
+      active = false;
       created.dispose();
       setSession((current) => (current === created ? null : current));
     };

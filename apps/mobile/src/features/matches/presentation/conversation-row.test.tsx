@@ -29,6 +29,20 @@ function match(overrides: Partial<MatchSummary> = {}): MatchSummary {
 }
 
 describe("ConversationRow", () => {
+  it("remounts only the avatar when a recycled cell receives another person's photo", () => {
+    const first = match({ otherProfile: { id: "first", displayName: "Ana", age: 30, photoUrl: "https://photo/ana" } });
+    const second = match({ id: "match-2", otherProfile: { id: "second", displayName: "Bea", age: 31, photoUrl: "https://photo/bea" } });
+    const onOpen = vi.fn();
+    const { rerender } = renderWithTheme(<ConversationRow match={first} now={now} onOpen={onOpen} />);
+    const previousImage = screen.getByTestId("expo-image");
+    const previousRow = screen.getByTestId("conversation-match-1");
+    rerender(<ConversationRow match={second} now={now} onOpen={onOpen} />);
+    expect(screen.getByTestId("conversation-match-2")).toBe(previousRow);
+    expect(screen.getByTestId("expo-image")).not.toBe(previousImage);
+    expect(previousImage).not.toBeInTheDocument();
+    expect(screen.getByTestId("expo-image")).toHaveTextContent("https://photo/bea");
+  });
+
   it("shows my last message with «Tú:» and a relative time", () => {
     renderWithTheme(<ConversationRow match={match()} now={now} onOpen={vi.fn()} />);
 
@@ -54,5 +68,21 @@ describe("ConversationRow", () => {
 
     fireEvent.click(row);
     expect(onOpen).toHaveBeenCalledWith(unread);
+  });
+
+  it("does not retain another match's unread state or callback when its cell is reused", () => {
+    const onOpen = vi.fn();
+    const { rerender } = renderWithTheme(<ConversationRow match={match({ unreadCount: 2 })} now={now} onOpen={onOpen} />);
+    const next = match({
+      id: "match-2", conversationId: "conv-2",
+      otherProfile: { id: "next", displayName: "Marta", age: null, photoUrl: null }
+    });
+    rerender(<ConversationRow match={next} now={now} onOpen={onOpen} />);
+    expect(screen.queryByTestId("conversation-unread-match-1")).not.toBeInTheDocument();
+    const row = screen.getByTestId("conversation-match-2");
+    expect(row).toHaveAttribute("aria-label", expect.stringContaining("Marta"));
+    expect(row).not.toHaveAttribute("aria-label", expect.stringContaining("sin leer"));
+    fireEvent.click(row);
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith(next);
   });
 });

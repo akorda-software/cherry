@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import { FlatList, type ListRenderItem, Platform, StyleSheet, type TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -24,18 +24,16 @@ import { useDelayedFlag, useScreenFocus } from "../../activity/presentation/use-
 import { useMatchForConversation, useUnmatch } from "../../matches/application/use-matches";
 import { displayNameOf, matchExpiryHint } from "../../matches/domain/match-list";
 import { SafetySheet } from "../../safety";
+import { useChatDraftStore } from "../application/chat-draft-store";
 import { useChatSession } from "../application/use-chat-session";
 import { useIcebreakers } from "../application/use-icebreakers";
 import type { TimelineItem } from "../domain/timeline";
 import { ChatHeader } from "./chat-header";
 import { ChatMenuSheet } from "./chat-menu-sheet";
 import { ChatSkeleton, DaySeparator, HistoryTop, TypingBubble } from "./chat-parts";
-import { Composer } from "./composer";
+import { DraftComposer } from "./draft-composer";
 import { IcebreakersPanel } from "./icebreakers-panel";
 import { MessageBubble } from "./message-bubble";
-
-/** Borradores por conversación mientras la app está abierta (salir y volver no pierde lo escrito). */
-const drafts = new Map<string, string>();
 
 /** Deja que la hoja anterior termine de cerrarse antes de abrir otra (iOS no apila modales al vuelo). */
 const SHEET_HANDOFF_MS = 320;
@@ -53,14 +51,13 @@ export function ChatScreen({ conversationId }: { conversationId: string }) {
   if (liveMatch) {
     lastMatch.current = liveMatch;
   }
-  const match = liveMatch ?? lastMatch.current;
+  const match = liveMatch ?? (lastMatch.current?.conversationId === conversationId ? lastMatch.current : null);
   const other = match?.otherProfile ?? null;
   const name = match ? displayNameOf(match) : null;
 
   const chat = useChatSession(conversationId, { otherProfileId: other?.id ?? null, focused });
   const { state, timeline } = chat;
 
-  const [text, setText] = useState(() => drafts.get(conversationId) ?? "");
   const inputRef = useRef<TextInput>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmUnmatch, setConfirmUnmatch] = useState(false);
@@ -68,10 +65,6 @@ export function ChatScreen({ conversationId }: { conversationId: string }) {
   const [unmatchError, setUnmatchError] = useState<string | null>(null);
   const [safetyOpen, setSafetyOpen] = useState(false);
   const unmatch = useUnmatch();
-
-  useEffect(() => {
-    drafts.set(conversationId, text);
-  }, [conversationId, text]);
 
   const empty = state.status === "ready" && state.messages.length === 0 && state.outbox.length === 0;
   const icebreakers = useIcebreakers(other?.id ?? null, empty, conversationId);
@@ -97,21 +90,8 @@ export function ChatScreen({ conversationId }: { conversationId: string }) {
     }
   }, [other, router]);
 
-  function submit() {
-    if (chat.send(text)) {
-      setText("");
-    }
-  }
-
-  function changeText(next: string) {
-    setText(next);
-    if (next.trim() !== "") {
-      chat.notifyTyping();
-    }
-  }
-
   function pickIcebreaker(message: string) {
-    setText(message);
+    useChatDraftStore.getState().setDraft(conversationId, message);
     inputRef.current?.focus();
   }
 
@@ -241,13 +221,12 @@ export function ChatScreen({ conversationId }: { conversationId: string }) {
         </View>
       ) : null
     ) : state.status === "error" ? null : (
-      <Composer
+      <DraftComposer
         accessibilityLabel={`Mensaje para ${displayName}`}
-        onChangeText={changeText}
-        onSend={submit}
-        placeholder="Escribe algo bonito…"
+        conversationId={conversationId}
+        onSend={chat.send}
+        onTyping={chat.notifyTyping}
         ref={inputRef}
-        value={text}
       />
     );
 

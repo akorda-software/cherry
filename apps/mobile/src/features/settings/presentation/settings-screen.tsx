@@ -130,6 +130,7 @@ export function SettingsScreen() {
           testID="settings-update-location"
           trailing={location.pending ? <LoadingDots color={theme.primitives.color.ink} /> : "none"}
         />
+        <ListRow label="Privacidad y decisiones" description="Textos, consentimiento sensible y retirada." icon="shield-check" onPress={() => router.push(appShellRoutes.legal)} testID="settings-legal" />
       </ListSection>
 
       {optionalEntries.length > 0 ? (
@@ -171,7 +172,7 @@ export function SettingsScreen() {
       <ListSection title="Zona de peligro">
         <ListRow
           danger
-          description="Desactiva tu cuenta y oculta tu perfil. No se puede deshacer."
+          description="Elimina tu cuenta, perfil y conversaciones compartidas. No se puede deshacer."
           icon="trash"
           label="Borrar cuenta"
           onPress={() => setDeleteOpen(true)}

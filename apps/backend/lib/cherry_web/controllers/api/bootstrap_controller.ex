@@ -31,6 +31,7 @@ defmodule CherryWeb.Controllers.Api.BootstrapController do
       end
 
     json(conn, %{
+      legal: Cherry.Legal.status(user),
       user: %{
         id: user.id,
         email: user.email,

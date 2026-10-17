@@ -19,6 +19,7 @@ defmodule CherryWeb.Router do
     plug(:private_media_cache)
     plug(CherryWeb.Plugs.Authenticate)
     plug(CherryWeb.Plugs.TrackActivity)
+    plug(CherryWeb.Plugs.RequireLegalAcceptance)
   end
 
   defp private_media_cache(conn, _) do
@@ -49,6 +50,8 @@ defmodule CherryWeb.Router do
     get("/invitation", BackofficeController, :invitation)
     post("/invitation", BackofficeController, :accept_invitation)
     post("/logout", BackofficeController, :delete_session)
+    get("/account", BackofficeAccountController, :show)
+    post("/account", BackofficeAccountController, :update)
     get("/", BackofficeController, :index)
     get("/team", BackofficeTeamController, :index)
     post("/team", BackofficeTeamController, :create)
@@ -67,7 +70,8 @@ defmodule CherryWeb.Router do
     get("/contacto", PageController, :contact)
     get("/eliminar-cuenta", PageController, :deletion)
 
-    for slug <- ~w(privacidad condiciones normas seguridad-infantil transparencia) do
+    for slug <-
+          ~w(privacidad condiciones normas seguridad-infantil transparencia aviso-legal cookies) do
       get("/#{slug}", PageController, :legal, assigns: %{legal_slug: slug})
     end
   end
@@ -110,6 +114,8 @@ defmodule CherryWeb.Router do
   scope "/api/me", CherryWeb.Controllers.Api do
     pipe_through(:authenticated_api)
 
+    get("/legal", LegalController, :show)
+    post("/legal", LegalController, :create)
     get("/profile", ProfileController, :show)
     put("/profile", ProfileController, :update)
     post("/profile/complete", ProfileController, :complete)

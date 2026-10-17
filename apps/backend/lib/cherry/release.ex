@@ -35,6 +35,35 @@ defmodule Cherry.Release do
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
   end
 
+  @doc "One-time owner bootstrap; reads a mounted private file, never prints credentials."
+  def bootstrap_backoffice do
+    load_app()
+    email = System.fetch_env!("CHERRY_BACKOFFICE_EMAIL")
+    path = System.fetch_env!("CHERRY_BACKOFFICE_PASSWORD_FILE")
+    if String.trim(email) == "", do: raise("CHERRY_BACKOFFICE_EMAIL is empty")
+    stat = File.lstat!(path)
+
+    unless Path.type(path) == :absolute and stat.type == :regular and
+             Bitwise.band(stat.mode, 0o777) in [0o600, 0o400] do
+      raise "password file must be an absolute private regular file (0600/0400)"
+    end
+
+    password = path |> File.read!() |> String.trim_trailing("\n")
+
+    case Ecto.Migrator.with_repo(Cherry.Repo, fn _ ->
+           Cherry.Backoffice.Security.bootstrap(email, password)
+         end) do
+      {:ok, {:ok, _staff}, _} ->
+        IO.puts("Owner provisioned; personal password change required at first login.")
+
+      {:ok, {:error, :already_bootstrapped}, _} ->
+        raise "an active owner already exists; use the documented recovery process"
+
+      _ ->
+        raise "owner bootstrap failed; check identity and password requirements without printing credentials"
+    end
+  end
+
   @doc "Offline only: reapply erasures, invalidate sessions, reconcile photos."
   def recover do
     load_app()

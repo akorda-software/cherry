@@ -305,6 +305,64 @@ defmodule CherryWeb.BackofficeTest do
            |> response(426)
   end
 
+  test "temporary owner must rotate before cases/team, with CSRF and session revocation", %{
+    conn: conn
+  } do
+    {:ok, owner} =
+      Cherry.Backoffice.Security.bootstrap(
+        "bootstrap-web@example.invalid",
+        "synthetic-temporary-web-passphrase"
+      )
+
+    signed =
+      https_post(conn, "/backoffice/login", %{
+        "method" => "password",
+        "email" => owner.email,
+        "password" => "synthetic-temporary-web-passphrase"
+      })
+
+    assert signed |> https_get("/backoffice") |> redirected_to() == "/backoffice/account"
+    assert signed |> https_get("/backoffice/team") |> redirected_to() == "/backoffice/account"
+
+    assert signed |> https_get("/backoffice/account") |> html_response(200) =~
+             "contraseña temporal"
+
+    assert_raise Plug.CSRFProtection.InvalidCSRFTokenError, fn ->
+      signed
+      |> recycle()
+      |> put_private(:plug_skip_csrf_protection, false)
+      |> https_post("/backoffice/account", %{
+        "current_password" => "synthetic-temporary-web-passphrase",
+        "password" => "synthetic-personal-web-passphrase"
+      })
+    end
+
+    assert signed
+           |> https_post("/backoffice/account", %{
+             "current_password" => "wrong",
+             "password" => "synthetic-personal-web-passphrase"
+           })
+           |> response(422)
+
+    assert signed
+           |> https_post("/backoffice/account", %{
+             "current_password" => "synthetic-temporary-web-passphrase",
+             "password" => "synthetic-personal-web-passphrase"
+           })
+           |> redirected_to() == "/backoffice/login"
+
+    assert signed |> https_get("/backoffice/account") |> redirected_to() == "/backoffice/login"
+
+    rotated =
+      https_post(conn, "/backoffice/login", %{
+        "method" => "password",
+        "email" => owner.email,
+        "password" => "synthetic-personal-web-passphrase"
+      })
+
+    assert rotated |> https_get("/backoffice/team") |> response(200)
+  end
+
   defp https_post(conn, path, params \\ %{}),
     do: post(conn, "https://www.example.com" <> path, params)
 end

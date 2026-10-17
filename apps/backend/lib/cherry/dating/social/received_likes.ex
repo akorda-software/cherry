@@ -76,6 +76,8 @@ defmodule Cherry.Dating.Social.ReceivedLikes do
   defp validate_likes_limit(_limit), do: {:error, :invalid_limit}
 
   defp received_likes_query(%Profile{id: viewer_id} = viewer) do
+    {enforced, ready, fingerprint} = Cherry.Legal.Policy.requirements()
+
     responded =
       from(r in SwipeAction,
         where:
@@ -104,6 +106,7 @@ defmodule Cherry.Dating.Social.ReceivedLikes do
       where: s.target_profile_id == ^viewer_id and s.action_type == "like",
       where: is_nil(p.deleted_at) and is_nil(u.deleted_at),
       where: is_nil(u.suspended_at),
+      where: not (^enforced) or (^ready and u.legal_policy_fingerprint == ^fingerprint),
       where: p.is_complete and p.is_discoverable and not p.is_paused,
       where: not exists(subquery(responded)),
       where: not exists(subquery(blocked))

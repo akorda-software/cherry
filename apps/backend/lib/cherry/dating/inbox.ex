@@ -215,6 +215,8 @@ defmodule Cherry.Dating.Inbox do
   # ── Visibility ─────────────────────────────────────────────────────────
 
   defp visible_query(profile_id, now) do
+    {enforced, ready, fingerprint} = Cherry.Legal.Policy.requirements()
+
     blocked_pair =
       from(b in UserBlock,
         where:
@@ -242,6 +244,7 @@ defmodule Cherry.Dating.Inbox do
       where: is_nil(m.expires_at) or m.expires_at > ^now,
       where: is_nil(other.deleted_at) and is_nil(other_user.deleted_at),
       where: is_nil(other_user.suspended_at),
+      where: not (^enforced) or (^ready and other_user.legal_policy_fingerprint == ^fingerprint),
       where: not exists(subquery(blocked_pair))
     )
   end

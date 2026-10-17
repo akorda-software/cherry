@@ -27,6 +27,7 @@
           <th>Expediente</th>
           <th>Tipo y motivo</th>
           <th>Recibido</th>
+          <th>Revisión de plazo</th>
           <th>Responsable</th>
         </tr>
       </thead>
@@ -40,6 +41,17 @@
           </td>
           <td>{label(record.kind)}<span class="detail">{label(record.category)}</span></td>
           <td><time>{record.inserted_at}</time></td>
+          <td>
+            <time :if={Cherry.Casework.Deadlines.response_date(record)}>
+              {Cherry.Casework.Deadlines.response_date(record)}
+            </time>
+            <span :if={Cherry.Casework.Deadlines.overdue?(record)} class="priority">
+              Revisar vencimiento
+            </span>
+            <span :if={!Cherry.Casework.Deadlines.response_date(record)}>
+              Sin plazo universal
+            </span>
+          </td>
           <td>
             {cond do
               record.assigned_staff_id == @current_staff.id -> "Asignado a ti"

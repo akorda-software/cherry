@@ -4,6 +4,13 @@
 
 El panel/buzón local cubre recepción, decisiones y recursos. **No demuestra que se hayan ejecutado derechos, que haya personal disponible ni que el servicio cumpla la ley.** Las fotos siguen aplazadas por el titular, no exentas ni resueltas.
 
+**Preparación del 17-10-2026:** expediente `12–16`, textos públicos completos por
+instancia y prueba separada de aceptación/consentimiento implementados
+([detalle](../16-textos-y-consentimiento.md)). Albert es el titular actual y la
+cooperativa solo futura. No se marcan como aprobados bases jurídicas,
+conservación/bloqueo, EIPD/DPD ni contratos por generar esos documentos. La
+obligatoriedad móvil sigue apagada hasta distribución y revisión.
+
 ## 1. Titular y matriz de aplicabilidad — titular + asesoría
 
 - [ ] Identificar responsable, domicilio/contactos y forma de operación. Validar el alcance de RGPD/LOPDGDD, LSSI y DSA según el servicio real. Ser gratuito, voluntario u open source no elimina por sí solo obligaciones de protección de datos.

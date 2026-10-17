@@ -6,6 +6,8 @@ import { refreshBootstrap, useAppBootstrap } from "../../src/features/app-bootst
 import { AppOverlays } from "../../src/features/app-overlays";
 import { useSessionShell } from "../../src/features/auth/presentation";
 import { optionalStackScreens } from "../../src/features/optional-modules";
+import { needsLegalAcceptance } from "../../src/features/legal/domain/legal";
+import { LegalScreen } from "../../src/features/legal/presentation/legal-screen";
 import { appShellRoutes, ErrorState, LoadingScreen, Screen, useTheme } from "../../src/shared/ui";
 
 function PrivateGuard({ children }: PropsWithChildren) {
@@ -22,7 +24,7 @@ function PrivateGuard({ children }: PropsWithChildren) {
   }
 
   // Support and privacy do not require a complete profile, age verification or a healthy social bootstrap.
-  if (pathname === "/support" || pathname === appShellRoutes.support) return <>{children}</>;
+  if (["/support", appShellRoutes.support, "/settings", appShellRoutes.settings, "/about", appShellRoutes.about, "/legal", appShellRoutes.legal].includes(pathname)) return <>{children}</>;
 
   if (bootstrapState.status === "loading" || bootstrapState.status === "idle") {
     return <LoadingScreen testID="private-loading" />;
@@ -39,6 +41,8 @@ function PrivateGuard({ children }: PropsWithChildren) {
       </Screen>
     );
   }
+
+  if (needsLegalAcceptance(bootstrapState.bootstrap.legal)) return <LegalScreen gate />;
 
   if (bootstrapState.bootstrap.profile.onboardingRequired) {
     return <Redirect href={appShellRoutes.onboarding} />;
@@ -84,6 +88,7 @@ export default function PrivateLayoutRoute() {
         <Stack.Screen name="edit/basics" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="support" />
+        <Stack.Screen name="legal" />
         <Stack.Screen name="about" />
         <Stack.Screen name="verify/index" />
         <Stack.Screen name="verify/methods" />

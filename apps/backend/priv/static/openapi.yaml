@@ -19,7 +19,48 @@ tags:
   - name: Push Notifications
   - name: Verification
   - name: Casework
+  - name: Legal
 paths:
+  /api/me/legal:
+    get:
+      tags: [Legal]
+      security: [{bearerAuth: []}]
+      summary: Read the exact legal publication and this account's decision status.
+      description: Always accessible without accepting a new publication. Private, no-store.
+      responses:
+        '200':
+          description: Version, SHA-256 fingerprint, exact texts, readiness and separate account acceptance status.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Legal]
+      security: [{bearerAuth: []}]
+      summary: Record independent affirmative declarations for the current publication.
+      description: Idempotent per account and fingerprint. Acknowledging privacy is not a blanket consent. Proof is erased with the account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, fingerprint, termsAccepted, sensitiveConsent, adulthoodConfirmed]
+              properties:
+                version: {type: string}
+                fingerprint: {type: string, pattern: '^[a-f0-9]{64}$'}
+                termsAccepted: {type: boolean, enum: [true]}
+                sensitiveConsent: {type: boolean, enum: [true]}
+                adulthoodConfirmed: {type: boolean, enum: [true]}
+      responses:
+        '200':
+          description: Acceptance recorded, with version, fingerprint and original acceptance timestamp.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: The publication changed; reload and decide again.
+        '422':
+          description: Three strict affirmative booleans are required.
+        '503':
+          description: Operator details or publication approval missing; no acceptance recorded.
   /api/auth/{provider}/callback:
     post:
       tags: [Auth]

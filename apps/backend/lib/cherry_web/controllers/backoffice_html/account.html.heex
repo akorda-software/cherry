@@ -1,0 +1,35 @@
+<.shell title="Mi acceso" staff={@current_staff}>
+  <section class="login">
+    <h1>Tu acceso personal</h1>
+    <p :if={@current_staff.password_change_required} class="hint">
+      Sustituye la contraseña temporal antes de consultar expedientes o gestionar el equipo.
+    </p>
+    <p>
+      La nueva contraseña revoca todas tus sesiones e invitaciones. Después vuelve a iniciar sesión.
+    </p>
+    <p :if={@error} role="alert" class="error">{@error}</p>
+    <.form for={%{}} action={~p"/backoffice/account"}>
+      <label for="current-password">Contraseña actual</label>
+      <input
+        id="current-password"
+        name="current_password"
+        type="password"
+        required
+        autocomplete="current-password"
+        maxlength="256"
+      />
+      <label for="password">Contraseña nueva</label>
+      <input
+        id="password"
+        name="password"
+        type="password"
+        required
+        autocomplete="new-password"
+        minlength="16"
+        maxlength="256"
+      />
+      <p class="hint">Utiliza una frase larga y única o un gestor. No compartas tu cuenta.</p>
+      <button type="submit">Cambiar contraseña y cerrar sesiones</button>
+    </.form>
+  </section>
+</.shell>

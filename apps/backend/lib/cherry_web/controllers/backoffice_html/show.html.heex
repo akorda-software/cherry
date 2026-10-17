@@ -13,6 +13,9 @@
         Ficha mínima de una suspensión vigente. El relato y los datos de otras personas no se conservan aquí. No es una nueva sanción ni acredita hechos adicionales; su revisión requiere decisión humana.
       </p>
       <h2>Solicitud recibida</h2>
+      <p :if={@case.kind == "privacy"} class="hint">
+        Recordatorio: responder antes de {Cherry.Casework.Deadlines.response_date(@case)} (un mes natural desde la recepción en este buzón). Comprueba la recepción original si llegó antes por otro canal. No se aplica una prórroga automática: comunícala y motívala dentro del primer mes si procede. Responder no acredita ejecutar el derecho.
+      </p>
       <p class="statement">{@case.statement || "Sin detalles adicionales."}</p>
       <p :if={@case.parent_case_id}>
         <a href={~p"/backoffice/cases/#{@case.parent_case_id}"}>Consultar decisión recurrida</a>

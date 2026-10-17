@@ -104,11 +104,11 @@ defmodule Cherry.Dating.Matching do
               ),
             order_by: u.id,
             lock: "FOR SHARE",
-            select: u.suspended_at
+            select: u
           )
         )
 
-      Enum.any?(users, &(!is_nil(&1)))
+      Enum.any?(users, &(not is_nil(&1.suspended_at) or not Cherry.Legal.permitted?(&1)))
     else
       _ -> false
     end

@@ -13,6 +13,8 @@ defmodule Cherry.Accounts.User do
     # A moderation restriction is not account deletion: rights and appeals stay available.
     field(:suspended_at, :utc_datetime)
     field(:suspension_case_id, :binary_id)
+    # System-owned only: never accepted from a profile/auth form.
+    field(:legal_policy_fingerprint, :string)
 
     # Legacy soft-deletion marker; new account deletion physically removes the row.
     field(:deletion_reason, :string)

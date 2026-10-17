@@ -22,6 +22,7 @@ defmodule CherryWeb.BackofficeHTML do
           <a href={~p"/backoffice"} class="brand">Cherry <span>Atención y seguridad</span></a>
           <nav :if={@staff} aria-label="Áreas del backoffice">
             <a href={~p"/backoffice"}>Expedientes</a>
+            <a href={~p"/backoffice/account"}>Mi acceso</a>
             <a :if={@staff.role == "superadmin"} href={~p"/backoffice/team"}>Equipo y permisos</a>
           </nav>
           <.form :if={@staff} for={%{}} action={~p"/backoffice/logout"}>

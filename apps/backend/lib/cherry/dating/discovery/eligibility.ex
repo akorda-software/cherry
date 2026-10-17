@@ -24,7 +24,8 @@ defmodule Cherry.Dating.Discovery.Eligibility do
       WHERE #{geo_filter}
         AND p.id <> #{ph.(:viewer)}::uuid
         AND p.is_discoverable AND p.is_complete AND NOT p.is_paused
-        AND p.deleted_at IS NULL AND u.deleted_at IS NULL AND u.suspended_at IS NULL
+         AND p.deleted_at IS NULL AND u.deleted_at IS NULL AND u.suspended_at IS NULL
+         AND #{Cherry.Legal.sql_predicate("u")}
         AND p.gender = ANY(#{ph.(:genders)}::text[])
         AND #{opts[:reciprocal_gender]}
         -- age BETWEEN age_min AND age_max, as a sargable birth_date range

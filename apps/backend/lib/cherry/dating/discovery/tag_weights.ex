@@ -90,7 +90,8 @@ defmodule Cherry.Dating.Discovery.TagWeights do
       FROM profiles p
       JOIN users u ON u.id = p.user_id
       WHERE p.is_discoverable AND p.is_complete AND NOT p.is_paused
-        AND p.deleted_at IS NULL AND u.deleted_at IS NULL
+         AND p.deleted_at IS NULL AND u.deleted_at IS NULL
+         AND #{Cherry.Legal.sql_predicate("u")}
     ),
     total AS (SELECT count(*)::int AS n FROM discoverable),
     counts AS (

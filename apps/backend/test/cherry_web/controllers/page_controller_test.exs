@@ -13,7 +13,7 @@ defmodule CherryWeb.PageControllerTest do
 
   test "every legal and help page is public, explicit about drafts and has no third party scripts" do
     for path <-
-          ~w(/privacidad /condiciones /normas /seguridad-infantil /transparencia /contacto /eliminar-cuenta) do
+          ~w(/privacidad /condiciones /normas /seguridad-infantil /transparencia /contacto /eliminar-cuenta /aviso-legal /cookies) do
       conn = get(build_conn(), path)
       html = html_response(conn, 200)
       assert html =~ "textos legales son provisionales"

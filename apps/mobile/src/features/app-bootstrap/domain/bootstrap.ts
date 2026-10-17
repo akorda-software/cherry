@@ -1,3 +1,5 @@
+import type { LegalStatus } from "../../legal/domain/legal";
+
 export interface AppBootstrapUser {
   id: string;
   email: string;
@@ -27,6 +29,7 @@ export interface AppBootstrap {
   profile: AppBootstrapProfileState;
   /** Ausente en servidores anteriores a la verificación: se trata como no obligatoria. */
   ageVerification?: AppBootstrapAgeVerification;
+  legal?: LegalStatus;
 }
 
 /**

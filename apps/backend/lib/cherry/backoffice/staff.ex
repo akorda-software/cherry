@@ -7,6 +7,7 @@ defmodule Cherry.Backoffice.Staff do
     field(:role, :string)
     field(:disabled_at, :utc_datetime)
     field(:password_hash, :string, redact: true)
+    field(:password_change_required, :boolean, default: false)
     field(:failed_login_attempts, :integer, default: 0)
     field(:login_blocked_until, :utc_datetime)
     timestamps(type: :utc_datetime)

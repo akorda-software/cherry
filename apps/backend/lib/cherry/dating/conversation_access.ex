@@ -84,6 +84,8 @@ defmodule Cherry.Dating.ConversationAccess do
   end
 
   defp pair_available do
+    {enforced, ready, fingerprint} = Cherry.Legal.Policy.requirements()
+
     blocked_pair =
       from(b in UserBlock,
         where:
@@ -99,6 +101,9 @@ defmodule Cherry.Dating.ConversationAccess do
       is_nil(a.deleted_at) and is_nil(b.deleted_at) and
         is_nil(ua.deleted_at) and is_nil(ub.deleted_at) and
         is_nil(ua.suspended_at) and is_nil(ub.suspended_at) and
+        (not (^enforced) or
+           (^ready and ua.legal_policy_fingerprint == ^fingerprint and
+              ub.legal_policy_fingerprint == ^fingerprint)) and
         not exists(subquery(blocked_pair))
     )
   end

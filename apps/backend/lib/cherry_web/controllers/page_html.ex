@@ -42,6 +42,7 @@ defmodule CherryWeb.PageHTML do
             <a href={~p"/privacidad"}>Privacidad</a><a href={~p"/condiciones"}>Condiciones</a>
             <a href={~p"/normas"}>Normas</a><a href={~p"/seguridad-infantil"}>Seguridad infantil</a>
             <a href={~p"/eliminar-cuenta"}>Eliminar mi cuenta</a><a href={~p"/contacto"}>Titular y contacto</a>
+            <a href={~p"/aviso-legal"}>Aviso legal</a><a href={~p"/cookies"}>Cookies</a>
           </nav>
           <p :if={@instance.operator}>Instancia gestionada por {@instance.operator}.</p>
           <p>

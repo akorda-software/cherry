@@ -5,6 +5,8 @@ import { useReducedMotion } from "react-native-reanimated";
 import { refreshBootstrap, useAppBootstrap } from "../../src/features/app-bootstrap";
 import { useSessionShell } from "../../src/features/auth/presentation";
 import { OnboardingFrame } from "../../src/features/onboarding";
+import { needsLegalAcceptance } from "../../src/features/legal/domain/legal";
+import { LegalScreen } from "../../src/features/legal/presentation/legal-screen";
 import { appShellRoutes, ErrorState, LoadingScreen, Screen, useTheme } from "../../src/shared/ui";
 
 /**
@@ -27,6 +29,8 @@ export default function OnboardingLayoutRoute() {
   if (session.status === "signed-out") {
     return <Redirect href={appShellRoutes.login} />;
   }
+
+  if (bootstrap.status === "ready" && needsLegalAcceptance(bootstrap.bootstrap.legal)) return <LegalScreen gate />;
 
   if (entry.current === null && bootstrap.status === "ready") {
     const profile = bootstrap.bootstrap.profile;

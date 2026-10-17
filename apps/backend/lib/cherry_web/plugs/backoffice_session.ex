@@ -20,7 +20,10 @@ defmodule CherryWeb.Plugs.BackofficeSession do
         # The transport was validated above, not inferred from a free-form header.
         conn = %{conn | scheme: :https}
         conn = fetch_cookies(conn, signed: [@cookie])
-        assign(conn, :current_staff, Access.authenticate(conn.cookies[@cookie]))
+
+        conn
+        |> assign(:current_staff, Access.authenticate(conn.cookies[@cookie]))
+        |> require_password_change()
       else
         conn
         |> send_resp(426, "El backoffice requiere HTTPS y un proxy de confianza configurado.")
@@ -59,6 +62,18 @@ defmodule CherryWeb.Plugs.BackofficeSession do
   end
 
   defp secure?, do: Application.get_env(:cherry, :backoffice_secure_cookie, true)
+
+  defp require_password_change(
+         %{assigns: %{current_staff: %{password_change_required: true}}} = conn
+       ) do
+    if conn.request_path in ["/backoffice/account", "/backoffice/logout"] do
+      conn
+    else
+      conn |> Phoenix.Controller.redirect(to: "/backoffice/account") |> halt()
+    end
+  end
+
+  defp require_password_change(conn), do: conn
 
   defp https?(conn) do
     origin = conn.private[:transport_origin] || %{scheme: conn.scheme, peer_ip: conn.remote_ip}

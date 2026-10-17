@@ -8,6 +8,12 @@ Dossier de trabajo para poder publicar Cherry en App Store y Google Play cumplie
 
 > **No es asesoramiento legal.** Recoge lo investigado (octubre de 2026) para decidir y construir; los textos legales finales y la evaluación de impacto deben pasar por un abogado.
 
+**Actualización 17-10-2026:** textos completos configurables, expediente jurídico,
+RAT/proveedores, conservación/bloqueo, riesgos/EIPD/LIA y procedimientos en `12–16`.
+La prueba de decisiones y la pantalla móvil están implementadas, con aprobación
+y obligatoriedad separadas y desactivadas por defecto. No equivalen a una
+aprobación del titular ni jurídica. [Implementación](../16-textos-y-consentimiento.md).
+
 ## Contexto que lo condiciona todo
 
 - **Solo España.** La instancia oficial se publica únicamente en el storefront español de ambas tiendas (`PRODUCT.md`, `decisions.md` D-2026-10-09). Quien monte su propia instancia en otro país la adapta a su ley. Esto deja fuera Ofcom (Reino Unido), las leyes de app stores de EE. UU. y los bloqueos 18+ de Apple en Australia, Brasil y Singapur.
@@ -29,6 +35,11 @@ Dossier de trabajo para poder publicar Cherry en App Store y Google Play cumplie
 | 09 | [Backoffice y cumplimiento: implementación](./09-plan-backoffice.md) | Entregables, pruebas de cierre, dependencias y decisiones legales | Primer lote interno local; fotos aplazadas al final |
 | 10 | [Cierre de cumplimiento](./10-cierre-cumplimiento.md) | Lista verificable de pendientes técnicos, operativos, jurídicos y de tiendas | Pendiente de cerrar con el titular y asesoría |
 | 11 | [Agentes en reclamaciones](./11-agentes-en-reclamaciones.md) | Estudio de clasificación/asistencia y condiciones para un futuro piloto | Sin implementar, sin proveedor ni decisiones automáticas |
+| 12 | [Expediente jurídico](./12-expediente-juridico.md) | Titular, aplicabilidad, aprobación y transición a cooperativa | Preparado; decisiones/aprobación pendientes |
+| 13 | [RAT y proveedores](./13-registro-tratamientos-y-proveedores.md) | Actividades, bases propuestas, roles/contratos/transferencias | Preparado; validación contractual pendiente |
+| 14 | [Conservación y bloqueo](./14-conservacion-y-bloqueo.md) | Plazos técnicos reales y art. 32 LOPDGDD | Sin archivo legal adicional; bloqueo pendiente de resolver |
+| 15 | [Riesgos, EIPD y LIA](./15-riesgos-eipd-y-ponderaciones.md) | Análisis preliminar, necesidad de EIPD/DPD y ponderaciones | No es EIPD ni LIA aprobada |
+| 16 | [Procedimientos y plantillas](./16-procedimientos-y-plantillas.md) | Derechos, avisos, recursos, brechas, confidencialidad y simulacros | Preparado; personas/firma/ensayo pendientes |
 
 ## Orden de trabajo propuesto
 

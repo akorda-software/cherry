@@ -157,6 +157,7 @@ defmodule Cherry.Backoffice.Access do
           Repo.update!(
             Ecto.Changeset.change(staff,
               password_hash: Password.hash(password),
+              password_change_required: false,
               failed_login_attempts: 0,
               login_blocked_until: nil
             ),
@@ -280,7 +281,11 @@ defmodule Cherry.Backoffice.Access do
 
   def authorize!(_, _), do: Repo.rollback(:forbidden)
 
-  def allowed?(%Staff{role: "superadmin"}, _), do: true
+  def allowed?(%Staff{role: "superadmin"}, permission)
+      when permission in [:login, :queue, :reassign, :manage_team] or
+             permission in ~w(report complaint privacy appeal measure),
+      do: true
+
   def allowed?(%Staff{}, :manage_team), do: false
 
   def allowed?(%Staff{role: "admin"}, permission)

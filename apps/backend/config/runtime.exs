@@ -409,6 +409,19 @@ config :cherry, :instance,
   terms_url: http_url_env.("INSTANCE_TERMS_URL"),
   source_url: http_url_env.("INSTANCE_SOURCE_URL")
 
+# These are public details, not secrets. Each operator supplies their own.
+config :cherry, :public_legal,
+  address: optional_env.("PUBLIC_LEGAL_ADDRESS"),
+  tax_id: optional_env.("PUBLIC_TAX_ID"),
+  registry: optional_env.("PUBLIC_REGISTRY"),
+  approved: System.get_env("LEGAL_TEXTS_APPROVED", "false") == "true"
+
+# Enable only after approval, distribution of the consent-capable mobile client
+# and notice to existing accounts. It is not a declaration of legal compliance.
+config :cherry,
+       :legal_enforcement_enabled,
+       System.get_env("LEGAL_ENFORCEMENT_ENABLED", "false") == "true"
+
 # ── Verificación de edad (D-2026-10-09) ────────────────────────────────
 # DOCUMENT_FINGERPRINT_KEY: clave HMAC de la huella del documento (una persona,
 # una cuenta). Sin ella, POST /api/me/verification/nfc responde 503. No se puede

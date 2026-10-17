@@ -10,6 +10,7 @@ export const appShellRoutes = {
   me: "/(app)/(tabs)/me",
   settings: "/(app)/settings",
   support: "/(app)/support",
+  legal: "/(app)/legal",
   filters: "/(app)/filters",
   about: "/(app)/about",
   editPhotos: "/(app)/edit/photos",

@@ -39,6 +39,24 @@ Validación final de la revisión: **702 pruebas backend, 974 móvil, 53 mobile-
 
 ## Acceso del equipo
 
+**Ampliación 17-10-2026:** `Cherry.Backoffice.Security` separa alta inicial y
+rotación personal de la autenticación, invitaciones y permisos. El bootstrap
+requiere contraseña robusta entregada mediante archivo privado; obliga a
+cambiarla en `/backoffice/account` antes de consultar expedientes/equipo.
+«Mi acceso» permite cambiar contraseña comprobando la actual y revocando todas
+las sesiones/invitaciones; después requiere nuevo login. No se amplían permisos
+por parámetros ni se crean cuentas de apoyo ficticias. La cola/detalle añaden un
+recordatorio de mes natural para privacidad, no una prórroga automática ni SLA.
+
+En una release, `Cherry.Release.bootstrap_backoffice/0` lee
+`CHERRY_BACKOFFICE_EMAIL` y `CHERRY_BACKOFFICE_PASSWORD_FILE` (ruta absoluta,
+archivo regular 0600/0400 montado privadamente); no imprime credenciales ni
+sobrescribe un propietario activo. Después retirar archivo transitorio del
+contenedor/host. No introducir contraseñas en el comando, Git o el chat. La
+credencial del titular se entrega fuera del repositorio; no se necesita SSH para
+el acceso cotidiano ni para el cambio personal. La cuenta de apoyo se invita
+cuando exista otra persona y dirección nominativa reales.
+
 Las cuentas de equipo son **independientes** de `users`, Google y Apple. Ningún correo ni rol del cliente concede privilegios automáticamente. El primer superusuario se provisiona por consola; después puede gestionar el equipo en `/backoffice/team`. No hay registro público de personal.
 
 | Rol | Acceso |

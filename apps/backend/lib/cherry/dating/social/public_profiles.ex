@@ -32,6 +32,9 @@ defmodule Cherry.Dating.Social.PublicProfiles do
       profile.deleted_at != nil or row.user_deleted_at != nil or row.user_suspended_at != nil ->
         false
 
+      not Cherry.Legal.permitted_user?(profile.user_id) ->
+        false
+
       profile.id == viewer_id ->
         true
 

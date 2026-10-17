@@ -12,14 +12,18 @@ defmodule CherryWeb.UserSocket do
 
     case TokenAuth.authenticate(token) do
       {:ok, %{user: user}} ->
-        profile = Dating.get_profile_by_user(user.id)
+        if Cherry.Legal.permitted?(user) do
+          profile = Dating.get_profile_by_user(user.id)
 
-        socket =
-          socket
-          |> assign(:user_id, user.id)
-          |> assign(:profile_id, profile && profile.id)
+          socket =
+            socket
+            |> assign(:user_id, user.id)
+            |> assign(:profile_id, profile && profile.id)
 
-        {:ok, socket}
+          {:ok, socket}
+        else
+          :error
+        end
 
       {:error, _reason} ->
         :error

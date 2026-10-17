@@ -12,15 +12,21 @@
 - No cambiar correo del titular, flags legales, OAuth, buckets, copias ni
   distribución móvil por este cambio. No añadir `www` ni otros hosts sin necesidad.
 
-**Preparación local; no migrado ni desplegado.** En la comprobación inicial ambos
-hosts nuevos carecían de A/AAAA resoluble desde Olares. Capacidades de secretos y
-SSH administrativo desactivadas; no se ha consultado la zona privada de Cloudflare
-ni aplicado DNS, Caddy o Dokploy. El servicio vigente sigue en `cherry.akorda.es`.
+**Migrado y desplegado**, autorizado por el titular después de preparar el código.
+Imagen `ghcr.io/akorda-software/cherry-backend:dd45b47e722c0109d61c637e7137a6fb4c64ff35`;
+[CI 39043457798](https://github.com/akorda-software/cherry/actions/runs/39043457798)
+correcta: **782 backend, 985 móvil, 54 compartidas, 29 contratos y seis backups**.
+Build publicado; job `deploy` sigue pausado. Despliegue manual NiPoGi
+`xQXRnuFtOsF5h1rmq6uai`, `done`, Swarm 1/1 y actualización `completed`.
 
-Validación local: **782 pruebas backend, cero fallos**, incluidas separación de
-hosts, rechazo de cabeceras reenviadas, API/WebSocket bloqueados en `admin`, login
-con CSRF auténtico y cookie sin `Domain`. No sustituye la prueba HTTPS de los
-dominios reales ni acredita la migración. Sin cambios de código móvil.
+DNS, TLS público y certificado de origen verificados en ambos hosts; Caddy validado
+y recargado sin reiniciar servicios ni cambiar otros sitios. Landing/textos/API
+públicos 200; health/readiness con SHA exacto. Login real del titular con CSRF,
+rechazo sin token, cookie host-only, cambio inicial obligatorio y logout/revocación
+probados **sin cambiar su contraseña**. Panel 404 en apex/antiguo/IP LAN y API/socket
+404 en `admin`. La compatibilidad antigua conserva rutas y rechazo de handshake
+sin autenticar, sin redirección; no se ensayó una conversación autenticada ni OAuth
+real Android/iOS. Sin cambios de código móvil ni compilaciones APK/IPA.
 
 ## Separación que aplica el código
 
@@ -45,23 +51,23 @@ dominios reales ni acredita la migración. Sin cambios de código móvil.
   de seguridad. El panel continúa accesible por Internet mediante login; no se
   ha añadido una restricción VPN ni modificado el firewall.
 
-## Aplicación pendiente
+## Configuración aplicada y runbook
 
-1. Comprobar zona DNS autoritativa y registros existentes. Si la zona está
-   gestionada en Cloudflare y la credencial permite esa zona, crear **solo** los
+1. Zona Cloudflare activa y inicialmente sin registros. Creados **solo** los
    CNAME de apex y `admin` hacia `home.akorda.es`, con proxy y Full (strict).
+   Resolución contrastada en Cloudflare y Google; NS `aiden`/`keira` de Cloudflare.
    No copiar la IP WAN dinámica ni modificar correo, NS u otros registros. Si
    faltan acceso/delegación/certificados, documentar el bloqueo, no sustituirlos.
-2. Leer y respaldar la configuración vigente de Caddy y los dominios/env de esta
-   aplicación en Dokploy, sin volcar secretos ni restaurar configuraciones
-   históricas globales. Añadir ambos dominios a la app existente, puerto interno
-   4000, HTTP en Traefik: TLS continúa terminando en Caddy/Cloudflare.
-3. Añadir los bloques Caddy `cherry.org.es` y `admin.cherry.org.es` hacia
-   `192.168.0.126:80`. Validar y recargar Caddy; verificar emisión de certificados
-   y TLS público. No cambia origen/destino/puerto del salto DMZ → backend y no
-   requiere una nueva política de firewall.
-4. Publicar/desplegar backend con esta frontera y configurar, preservando todas
-   las demás variables y secretos:
+2. Configuración previa respaldada privadamente, sin volcar secretos ni restaurar
+   configuraciones históricas globales. Ambos dominios añadidos a la app existente,
+   puerto interno 4000 y HTTP en Traefik. Se mantienen también el antiguo y la IP
+   LAN. TLS continúa terminando en Caddy/Cloudflare.
+3. Bloque Caddy compartido de los dos nuevos hosts hacia `192.168.0.126:80`.
+   Certificados Let's Encrypt válidos hasta el 15 enero 2027, con renovación
+   automática de Caddy. No cambia origen/destino/puerto del salto DMZ → backend;
+   **no se modificó ningún firewall, NAT ni DNS interno**.
+4. Backend publicado/desplegado con esta frontera y valores siguientes,
+   preservando todas las demás variables y secretos:
 
    ```dotenv
    PHX_HOST=cherry.org.es
@@ -76,14 +82,37 @@ dominios reales ni acredita la migración. Sin cambios de código móvil.
    ambos flags legales en `false`, las audiencias OAuth y R2 privado. Conservar
    CI `deploy` pausado y usar despliegue manual NiPoGi. Verificar el peer real
    si cambia el entorno; no ampliar a una subred por comodidad.
-5. Una vez el destino nuevo esté sano, redirigir **solo la web** del dominio
-   antiguo al apex nuevo. Preservar sin redirección `/api`, `/api/*`, `/socket`,
+5. Después de verificar destino y acceso real, Caddy redirige **solo las páginas
+   públicas y estáticos conocidos** del antiguo al apex nuevo (301). Conserva sin
+   redirección `/api`, `/api/*`, `/socket`,
    `/socket/*`, `/uploads`, `/uploads/*` y sondas/métricas técnicas necesarias.
-   `/backoffice` y sus descendientes deben dar 404 también en el antiguo; no
+   `/backoffice` y sus descendientes dan 404 también en el antiguo; no
    remitir formularios, códigos, cookies o parámetros de invitación al nuevo.
-6. Actualizar el paquete privado de recuperación y la documentación canónica
-   `akorda-infra` con la configuración realmente aplicada y su reversión
-   acotada. No registrar secretos ni atribuir pruebas no ejecutadas.
+   Se purgaron exclusivamente las dos URLs CSS antiguas (`site.css` y
+   `backoffice.css`) para retirar respuestas 200 en caché anteriores al redirect.
+6. Paquete privado de recuperación sincronizado con el entorno vivo y URL del
+   archivo privado de acceso actualizada, sin cambiar credenciales. Documentación
+   canónica publicada en `akorda-infra`, commit `362a3d8`, con Caddyfile cotejado
+   byte a byte contra el host. Snapshot transitorio privado retirado tras comprobar
+   que no cambiaron OAuth, otros secretos/variables, dominios previos, build ni
+   credenciales de registro. No registrar secretos ni atribuir pruebas no ejecutadas.
+
+### Incidencias acotadas del corte
+
+- La emisión inicial de certificados encontró caché DNS negativa y el borde
+  respondió 525 mientras Caddy obtenía los certificados. Convergió con el reintento
+  automático, sin bajar TLS estricto ni desactivar verificación.
+- El UCG conserva temporalmente caché negativa del apex (SOA de 1800 s; observados
+  1105 s restantes). Puede tardar hasta unos 30 minutos desde la consulta antigua
+  en resolver en la LAN. Las comprobaciones finales usaron DNS público mediante
+  DoH, además de verificar TLS directamente en origen. No se reinició ni alteró el
+  resolver global de la red para vaciar esa caché.
+- Cloudflare añadía `Allow: /` al robots privado mediante Bot Preference Sync,
+  pese a `is_robots_txt_managed=false`. Se cambió **solo**
+  `bot_preference_sync_enabled: true → false` en la zona nueva `cherry.org.es`,
+  conservando las preferencias/bloqueos AI y todos los demás ajustes. Tras
+  propagación, `admin/robots.txt` devuelve exactamente `Disallow: /`, sin el
+  `Allow` contradictorio. No se cambió la zona `akorda.es` ni otros dominios.
 
 La futura compilación Android/iOS usará el apex nuevo. No retirar la
 compatibilidad antigua hasta distribuirla y comprobar la migración. OAuth y

@@ -7,13 +7,18 @@ antiguos de copias locales/pgBackRest: [circuito vigente](../backup/README.md).
 
 ## Estado (2026-10-17)
 
-**Cambio de dominio preparado, no aplicado:** web/API en `cherry.org.es`, panel
-exclusivamente en `admin.cherry.org.es`. [Plan y estado](../../docs/17-dominios.md).
-Hasta verificar la migración, las referencias de producción siguientes conservan
-el dominio vigente `cherry.akorda.es`. No retirar su API: hay móviles instalados
-que todavía la usan. Sin compilación móvil ni cambios OAuth en este bloque.
+**Dominio propio activo:** web/API en `https://cherry.org.es`, panel exclusivamente
+en `https://admin.cherry.org.es`. Imagen `dd45b47e722c0109d61c637e7137a6fb4c64ff35`,
+[CI 39043457798](https://github.com/akorda-software/cherry/actions/runs/39043457798)
+correcta (**782 backend, 985 móvil, 54 compartidas, 29 contratos y seis backups**).
+Despliegue manual NiPoGi `xQXRnuFtOsF5h1rmq6uai`, `done`, Swarm 1/1,
+`completed`, health/readiness con SHA exacto. DNS y HTTPS de borde/origen, login
+real/CSRF/cookie host-only/logout y separación de hosts comprobados. Caddy redirige
+solo web/estáticos conocidos antiguos; API y sockets mantienen el dominio anterior
+para móviles instalados. [Evidencias, caché DNS LAN y runbook](../../docs/17-dominios.md).
+No se compilaron móviles, cambiaron audiencias OAuth, flags legales ni firewalls.
 
-**Actualización posterior — legal/backoffice:** producción en
+**Actualización previa — legal/backoffice:** desplegada en
 `4ce5ad0e69d82342c9d5c93bf00c07fc6bb6cd13`,
 [CI 39037164818](https://github.com/akorda-software/cherry/actions/runs/39037164818)
 correcto (**773 backend, 985 móvil, 54 compartidas, 29 contratos y seis backups**).
@@ -44,7 +49,8 @@ antiguos sin distribución compatible/revisión. No apertura ni cierre jurídico
 Inventario posterior: **una cuenta de producto, dos fotos, un staff, cero tareas
 de borrado y cero credenciales de staff** tras el logout de prueba; propietario
 todavía debe cambiar la temporal. Paquete privado de recuperación sincronizado.
-OAuth, fotos/moderación, APK/IPA, DNS, firewall y CI deploy pausado no cambiaron.
+En aquella actualización no cambiaron OAuth, fotos/moderación, APK/IPA, DNS,
+firewall ni CI deploy pausado. El dominio cambió después, como se indica arriba.
 La custodia offline adicional de claves la asume el titular.
 
 **Despliegue anterior de fotos/copias:** `c0084736b734f2e31ea820f7a192d7c577eee3ea`, [CI
@@ -71,14 +77,21 @@ dos fotos, cero tareas de borrado y cero staff. No ejecutar rollback ciego a
 `fd9ce10`: no soporta lecturas privadas y los archivos locales ya no existen;
 mantener el acceso privado/cerrado mientras se corrige hacia delante.
 
-**Publicado en `https://cherry.akorda.es`** (desde el 2026-10-14; antes solo LAN). Cadena: Cloudflare (CNAME proxificado a `home.akorda.es`) → Caddy (bloque `cherry.akorda.es { reverse_proxy 192.168.0.126:80 }`) → Traefik → contenedor. En el UCG-Fiber, la regla `DMZ-Caddy to cherry-backend 80` (192.168.30.21 → 192.168.0.126 TCP 80; la de vuelta la deriva UniFi). `http://192.168.0.126` sigue respondiendo desde la LAN. Cambio respecto al plan original (D-2026-10-13b en `docs/decisions.md`): **el panel es el Dokploy de nipogi** (`nipogi-dokploy`, 192.168.0.121, v0.30.8) y cherry-backend es un *servidor remoto* suyo. En la VM solo corren Docker, Swarm de un nodo y Traefik; sin panel ni su PostgreSQL.
+**Publicado en `https://cherry.org.es` y `https://admin.cherry.org.es`** desde el
+2026-10-17 (antes `cherry.akorda.es`, cuya API continúa compatible). Cadena:
+Cloudflare (CNAME proxificado a `home.akorda.es`) → Caddy (TLS; proxy de ambos
+hosts hacia `192.168.0.126:80`) → Traefik → contenedor. La regla UCG existente
+`DMZ-Caddy to cherry-backend 80` no cambió. `http://192.168.0.126` sigue respondiendo
+desde LAN, pero no sirve el panel. El panel de **despliegue** es Dokploy NiPoGi
+(`nipogi-dokploy`, `192.168.0.121`, v0.30.8), distinto del backoffice Cherry;
+cherry-backend es su servidor remoto, con Docker/Swarm/Traefik y sin otro Dokploy.
 
 | Pieza | Estado |
 |---|---|
 | cherry-db | Rol `cherry`, `cherry_prod` (postgis, pg_stat_statements, pgcrypto, uuid-ossp), `conf.d/10-cherry.conf` (listen LAN, 4 GB shared_buffers), `pg_hba` solo `.126`. nftables: 22 desde LAN/VPN, 5432 solo desde `.126` |
 | cherry-backend | Docker 28.5 + Swarm + Traefik 3.6 (Setup Server de Dokploy). Root por SSH solo desde 192.168.0.121 con su clave (`sshd_config.d/05-dokploy.conf`, `from=` en `authorized_keys`). `daemon.json` con rotación de logs, `cron.weekly/docker-image-prune`. Snapshot Proxmox `antes-dokploy`. nftables (tabla `inet cherry_fw`, no toca las de Docker): 22 desde LAN/VPN; 80 desde Caddy **y la LAN** (quitar la LAN al publicar); 443 y puertos de Swarm cerrados |
-| Dokploy | Proyecto `cherry` → entorno `production` → app `backend` (`cherry-backend-mkeaem`): imagen pública `ghcr.io/akorda-software/cherry-backend:<sha>`, 1 réplica, `stop-first`, rollback, healthcheck `/healthz`, bind `/var/lib/cherry/uploads`, dominios `cherry.akorda.es` y `192.168.0.126`, ambos sin HTTPS en Traefik (TLS en Cloudflare/Caddy) |
-| Env vigente | `PHX_HOST=cherry.akorda.es`, `PHX_URL_SCHEME=https`, `PUBLIC_BASE_URL=https://cherry.akorda.es`, `FORCE_SSL=false` (ver pendientes), `STORAGE_ADAPTER=r2`, `ERASURE_JOURNAL_ENABLED=true`, `BACKOFFICE_ENABLED=true`, `BACKOFFICE_TRUSTED_PROXY_IPS=10.0.1.3`, `LEGAL_TEXTS_APPROVED=false`, `LEGAL_ENFORCEMENT_ENABLED=false`, `AGE_VERIFICATION_REQUIRED=true`. OAuth preservado. Paquete vigente de recuperación en `~/.config/cherry-recovery/production.env` (Olares, 0600), junto a identidad age y credenciales limitadas |
+| Dokploy | Proyecto `cherry` → entorno `production` → app `backend` (`cherry-backend-mkeaem`): imagen pública `ghcr.io/akorda-software/cherry-backend:<sha>`, 1 réplica, `stop-first`, rollback, healthcheck `/healthz`, bind `/var/lib/cherry/uploads`; dominios `cherry.org.es`, `admin.cherry.org.es`, `cherry.akorda.es` y `192.168.0.126`, sin HTTPS en Traefik (TLS en Cloudflare/Caddy) |
+| Env vigente | `PHX_HOST=cherry.org.es`, `PHX_URL_SCHEME=https`, `PUBLIC_BASE_URL=https://cherry.org.es`, `BACKOFFICE_HOST=admin.cherry.org.es`, `FORCE_SSL=false` (ver pendientes), `STORAGE_ADAPTER=r2`, `ERASURE_JOURNAL_ENABLED=true`, `BACKOFFICE_ENABLED=true`, `BACKOFFICE_TRUSTED_PROXY_IPS=10.0.1.3`, `LEGAL_TEXTS_APPROVED=false`, `LEGAL_ENFORCEMENT_ENABLED=false`, `AGE_VERIFICATION_REQUIRED=true`. URLs legales en el apex nuevo; OAuth preservado. Paquete vigente de recuperación en `~/.config/cherry-recovery/production.env` (Olares, 0600), junto a identidad age y credenciales limitadas |
 
 Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): el CI publica la imagen `ghcr.io/akorda-software/cherry-backend:<sha>` en cada push a `main`; después, con la API de Dokploy de nipogi, `application.saveDockerProvider` con la imagen nueva y `application.deploy`. Comprobar con `curl http://192.168.0.126/healthz` (devuelve el `version` desplegado).
 
@@ -92,6 +105,7 @@ Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): 
 | 2026-10-16 | `fd9ce10` | Cuatro pasadas de rendimiento y robustez del backend/móvil; backend desplegado y verificado por versión, health/readiness y Swarm |
 | 2026-10-17 | `c008473` | Fotos privadas R2 UE, bajas externas antirrestauración, borrado físico y copias diarias cifradas de siete días (sin fotos); backoffice apagado |
 | 2026-10-17 | `4ce5ad0` | Textos/identidad, prueba legal preparada y backoffice activo con propietario nominativo/rotación; confianza HTTPS Swarm exacta y contactos sin transformación del borde |
+| 2026-10-17 | `dd45b47` | Dominio propio `cherry.org.es`, equipo solo en `admin.cherry.org.es`, TLS estricto y separación de hosts/API/socket; compatibilidad antigua y redirección web |
 
 Publicación del 2026-10-16: commit `fd9ce10d6fd064b906663f6c2a21b9749026938a`, [CI 38871351664](https://github.com/akorda-software/cherry/actions/runs/38871351664) en verde (tests backend/móvil y build/push de imagen). Deploy manual por API de NiPoGi sobre la app existente `cherry-backend-mkeaem`, sin activar el job pausado del workflow. Sin migraciones nuevas ni cambios de contratos, secretos, red o infraestructura; se conservan 1 réplica, `stop-first`/rollback y el bind de fotos. Imagen previa para rollback: `ghcr.io/akorda-software/cherry-backend:2e92a5e9668f972f4a9af66d2756d2c3a692c787`. No se compilaron ni publicaron APK/IPA; los OAuth de Apple/Google para iOS quedan para el siguiente trabajo.
 

@@ -18,6 +18,7 @@ defmodule CherryWeb.PageControllerTest do
       html = html_response(conn, 200)
       assert html =~ "textos legales son provisionales"
       assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
+      assert get_resp_header(conn, "cache-control") == ["no-cache, no-transform"]
       assert [csp] = get_resp_header(conn, "content-security-policy")
       assert csp =~ "default-src 'none'"
       refute html =~ "<script"

@@ -56,7 +56,7 @@ defmodule CherryWeb.BackofficeTest do
     assert cookie.http_only and cookie.secure
     assert cookie.same_site == "Strict"
     assert cookie.path == "/backoffice"
-    assert get_resp_header(conn, "cache-control") == ["no-store"]
+    assert get_resp_header(conn, "cache-control") == ["no-store, no-transform"]
     assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
     assert get_resp_header(conn, "x-robots-tag") == ["noindex, nofollow"]
     refute Map.has_key?(conn.private, :raw_body)
@@ -361,6 +361,24 @@ defmodule CherryWeb.BackofficeTest do
       })
 
     assert rotated |> https_get("/backoffice/team") |> response(200)
+  end
+
+  test "IPv4-mapped peers match only the exact trusted IPv4 proxy" do
+    before = Application.get_env(:cherry, :backoffice_trusted_proxy_ips, [])
+    Application.put_env(:cherry, :backoffice_trusted_proxy_ips, [{10, 0, 1, 3}])
+    on_exit(fn -> Application.put_env(:cherry, :backoffice_trusted_proxy_ips, before) end)
+
+    assert build_conn()
+           |> Map.put(:remote_ip, {0, 0, 0, 0, 0, 65_535, 2560, 259})
+           |> put_req_header("x-forwarded-proto", "https")
+           |> get("/backoffice/login")
+           |> response(200)
+
+    assert build_conn()
+           |> Map.put(:remote_ip, {0, 0, 0, 0, 0, 65_535, 2560, 260})
+           |> put_req_header("x-forwarded-proto", "https")
+           |> get("/backoffice/login")
+           |> response(426)
   end
 
   defp https_post(conn, path, params \\ %{}),

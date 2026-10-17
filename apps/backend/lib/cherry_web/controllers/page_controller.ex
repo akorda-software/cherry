@@ -25,6 +25,8 @@ defmodule CherryWeb.PageController do
       "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
     )
     |> put_resp_header("referrer-policy", "no-referrer")
-    |> put_resp_header("cache-control", "no-cache")
+    # Preserve public contact details without Cloudflare email obfuscation and
+    # its injected JS (which the intentionally script-free CSP would block).
+    |> put_resp_header("cache-control", "no-cache, no-transform")
   end
 end

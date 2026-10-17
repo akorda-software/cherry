@@ -7,7 +7,7 @@ defmodule CherryWeb.Plugs.BackofficeSession do
   def call(conn, _opts) do
     conn =
       conn
-      |> put_resp_header("cache-control", "no-store")
+      |> put_resp_header("cache-control", "no-store, no-transform")
       |> put_resp_header("referrer-policy", "no-referrer")
       |> put_resp_header("x-robots-tag", "noindex, nofollow")
       |> put_resp_header(
@@ -79,7 +79,21 @@ defmodule CherryWeb.Plugs.BackofficeSession do
     origin = conn.private[:transport_origin] || %{scheme: conn.scheme, peer_ip: conn.remote_ip}
 
     origin.scheme == :https or
-      (origin.peer_ip in Application.get_env(:cherry, :backoffice_trusted_proxy_ips, []) and
+      (trusted_peer?(origin.peer_ip) and
          get_req_header(conn, "x-forwarded-proto") == ["https"])
   end
+
+  # An IPv4 socket accepted by the dual-stack listener can be represented as
+  # ::ffff:a.b.c.d. Normalize the address, never broaden the configured allowlist.
+  defp trusted_peer?(ip) do
+    Enum.any?(
+      Application.get_env(:cherry, :backoffice_trusted_proxy_ips, []),
+      &(normalize_ip(&1) == normalize_ip(ip))
+    )
+  end
+
+  defp normalize_ip({0, 0, 0, 0, 0, 65_535, a, b}),
+    do: {div(a, 256), rem(a, 256), div(b, 256), rem(b, 256)}
+
+  defp normalize_ip(ip), do: ip
 end

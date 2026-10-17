@@ -28,9 +28,9 @@ aprobación del titular ni jurídica. [Implementación](../16-textos-y-consentim
 | 02 | [Mayoría de edad](./02-mayoria-de-edad.md) | Verificación 18+: DNI por NFC, proveedor de respaldo, app europea | Prototipo en `feat/dni-nfc` (servidor probado; NFC sin probar con DNI real) |
 | 03 | [Fotos](./03-fotos.md) | Moderación automática, abuso infantil por huella, duplicados | Pendiente (hay zona de espera) |
 | 04 | [Bots y cuentas falsas](./04-bots-y-cuentas-falsas.md) | Atestación del dispositivo, una persona = una cuenta, señales | Pendiente |
-| 05 | [Reportes y moderación](./05-reportes-y-moderacion.md) | Panel, agentes de IA, plazos, avisos, recursos | Panel/buzón/recursos humanos locales; sin activar, fotos/IA y operación pendientes |
+| 05 | [Reportes y moderación](./05-reportes-y-moderacion.md) | Panel, agentes de IA, plazos, avisos, recursos | Panel activado con un titular; cobertura real/revisión independiente, fotos/IA pendientes |
 | 06 | [Privacidad y RGPD](./06-privacidad-rgpd.md) | Datos sensibles, EIPD, DPD, encargados, conservación | Recepción/gestión de derechos local; ejecución/política/cierre jurídico pendientes |
-| 07 | [Textos legales](./07-textos-legales.md) | Términos, normas de la comunidad, privacidad, aviso legal | Pendiente |
+| 07 | [Textos legales](./07-textos-legales.md) | Términos, normas de la comunidad, privacidad, aviso legal | Preparados/publicados; aprobación y distribución de consentimiento pendientes |
 | 08 | [Costes, proveedores y financiación](./08-financiacion-y-proveedores.md) | Qué es de pago, a quién pedir créditos, forma legal, donaciones | Lista hecha; sin contactar |
 | 09 | [Backoffice y cumplimiento: implementación](./09-plan-backoffice.md) | Entregables, pruebas de cierre, dependencias y decisiones legales | Primer lote interno local; fotos aplazadas al final |
 | 10 | [Cierre de cumplimiento](./10-cierre-cumplimiento.md) | Lista verificable de pendientes técnicos, operativos, jurídicos y de tiendas | Pendiente de cerrar con el titular y asesoría |

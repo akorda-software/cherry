@@ -2,6 +2,34 @@
 
 Registro de avance del proyecto. Convención: una entrada por unidad de trabajo, con estado. Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho.
 
+## 2026-10-17 — Preparación jurídica y backoffice operativo [x técnico / ~ jurídico]
+
+Textos completos por instancia, aviso legal/cookies, Albert titular y cooperativa
+solo futura; identidad pública propia configurada. RAT/proveedores, matriz de
+aplicabilidad, conservación/bloqueo, riesgo/EIPD/LIA, procedimientos/plantillas y
+transición en `compliance/12–16`, **no dictamen ni aprobación**. Especialmente
+pendientes arts. 9.1 y 32 LOPDGDD, EIPD/DPD, contratos y cobertura real.
+Prueba de tres declaraciones separadas, texto exacto/digest/fecha, idempotencia y
+cascada de borrado; pantalla móvil con errores/reintento/derechos y retirada/baja
+accesibles. Exigencia y aprobación desactivadas hasta revisión y distribución.
+
+Backoffice activado con un superusuario nominativo, temporal privada y cambio
+inicial obligatorio; rotación personal revoca sesiones. Recordatorio de mes
+natural para privacidad, no 30 días ni prórroga automática. HTTPS/proxy con peer
+Swarm real IPv4 mapeado, allowlist exacta y `no-transform` contra ocultación del
+correo del borde, sin tocar firewall/DNS ni relajar CSP. Login/CSRF/cookies/logout
+reales y HTTP/cabecera falsa rechazados. Un staff no acredita dos personas.
+
+Commits `eb82e58` + corrección desplegada `4ce5ad0`; [CI 39037164818](https://github.com/akorda-software/cherry/actions/runs/39037164818)
+correcto: **773 backend, 985 móvil, 54 compartidas, 29 contratos, seis backups**,
+typechecks/formato/compile correctos. Avisos de mocks React/act existentes durante
+tests UI; no avisos de compilación backend. Dokploy NiPoGi `jy3_WGK2kKafQb-YfV-hf`
+en `done`, Swarm 1/1 y health/readiness públicos 200 con SHA exacto. Una cuenta,
+dos fotos, un staff y cero tareas/credenciales staff tras prueba. `cherry_test`
+sin usuarios/perfiles/consentimientos/staff persistentes. Recuperación privada
+actualizada; copia offline a cargo del titular. Sin APK/IPA, OAuth, moderación de
+fotos, bots ni CI deploy; `.expo/devices.json` ajeno conservado. [Estado](./14-backoffice.md).
+
 ## 2026-10-17 — Fotos privadas y recuperación protegida en producción [x]
 
 R2 UE privado en tres buckets separados (fotos, copias, registro de bajas),

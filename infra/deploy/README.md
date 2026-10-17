@@ -7,7 +7,41 @@ antiguos de copias locales/pgBackRest: [circuito vigente](../backup/README.md).
 
 ## Estado (2026-10-17)
 
-**Producción actual:** `c0084736b734f2e31ea820f7a192d7c577eee3ea`, [CI
+**Actualización posterior — legal/backoffice:** producción en
+`4ce5ad0e69d82342c9d5c93bf00c07fc6bb6cd13`,
+[CI 39037164818](https://github.com/akorda-software/cherry/actions/runs/39037164818)
+correcto (**773 backend, 985 móvil, 54 compartidas, 29 contratos y seis backups**).
+Deploy manual NiPoGi `jy3_WGK2kKafQb-YfV-hf`, `done`, Swarm 1/1 y readiness 200
+con SHA exacto. El bloque siguiente de fotos/copias conserva su evidencia histórica,
+pero ya no describe la imagen/estado del panel vigentes.
+
+Titular Albert, domicilio/NIF reutilizados de sus datos públicos por su indicación
+y correo propio configurados; cooperativa futura, datos registrales sin inventar.
+`BACKOFFICE_ENABLED=true`, un superusuario nominativo, contraseña temporal privada
+en Olares (`~/.config/cherry-backoffice/operator-login.json`, 0600, directorio 0700),
+rotación inicial obligatoria. No se muestra ni versiona. Tras cambiarla, retirar
+el archivo temporal desde la terminal del titular; no es recuperación automática.
+No se provisiona una segunda identidad ficticia.
+
+Transporte: Traefik `web.forwardedHeaders.trustedIPs=[192.168.30.21/32]`, reiniciado
+para aplicarlo. Peer real del backend = LB overlay `10.0.1.3`, representado como
+IPv4 mapeada; `BACKOFFICE_TRUSTED_PROXY_IPS=10.0.1.3`. La IP de Traefik cambió al
+reiniciar y no sirve para inferir ese peer. Normalización exacta, no un `/24`.
+HTTP directo desde LAN y con `X-Forwarded-Proto: https` falso: **426**. Login HTTPS,
+CSRF real/rechazo sin token, cookie Secure/HttpOnly/Strict, redirección obligatoria
+a cambio y logout/revocación: probados con la cuenta real, sin cambiar su contraseña.
+`no-transform` conserva correos legibles e impide el script de ocultación del borde;
+sin relajar CSP ni cambiar la zona global.
+
+`LEGAL_TEXTS_APPROVED=false`, `LEGAL_ENFORCEMENT_ENABLED=false`; no cortar clientes
+antiguos sin distribución compatible/revisión. No apertura ni cierre jurídico.
+Inventario posterior: **una cuenta de producto, dos fotos, un staff, cero tareas
+de borrado y cero credenciales de staff** tras el logout de prueba; propietario
+todavía debe cambiar la temporal. Paquete privado de recuperación sincronizado.
+OAuth, fotos/moderación, APK/IPA, DNS, firewall y CI deploy pausado no cambiaron.
+La custodia offline adicional de claves la asume el titular.
+
+**Despliegue anterior de fotos/copias:** `c0084736b734f2e31ea820f7a192d7c577eee3ea`, [CI
 39027167214](https://github.com/akorda-software/cherry/actions/runs/39027167214)
 correcto, despliegue manual Dokploy `hvlN93QbxGTGZ0qYuEWTY` en `done`, Swarm
 1/1 e imagen exacta. Incluye borrado físico y sus migraciones previas, fotos
@@ -38,7 +72,7 @@ mantener el acceso privado/cerrado mientras se corrige hacia delante.
 | cherry-db | Rol `cherry`, `cherry_prod` (postgis, pg_stat_statements, pgcrypto, uuid-ossp), `conf.d/10-cherry.conf` (listen LAN, 4 GB shared_buffers), `pg_hba` solo `.126`. nftables: 22 desde LAN/VPN, 5432 solo desde `.126` |
 | cherry-backend | Docker 28.5 + Swarm + Traefik 3.6 (Setup Server de Dokploy). Root por SSH solo desde 192.168.0.121 con su clave (`sshd_config.d/05-dokploy.conf`, `from=` en `authorized_keys`). `daemon.json` con rotación de logs, `cron.weekly/docker-image-prune`. Snapshot Proxmox `antes-dokploy`. nftables (tabla `inet cherry_fw`, no toca las de Docker): 22 desde LAN/VPN; 80 desde Caddy **y la LAN** (quitar la LAN al publicar); 443 y puertos de Swarm cerrados |
 | Dokploy | Proyecto `cherry` → entorno `production` → app `backend` (`cherry-backend-mkeaem`): imagen pública `ghcr.io/akorda-software/cherry-backend:<sha>`, 1 réplica, `stop-first`, rollback, healthcheck `/healthz`, bind `/var/lib/cherry/uploads`, dominios `cherry.akorda.es` y `192.168.0.126`, ambos sin HTTPS en Traefik (TLS en Cloudflare/Caddy) |
-| Env | `PHX_HOST=cherry.akorda.es`, `PHX_URL_SCHEME=https`, `PUBLIC_BASE_URL=https://cherry.akorda.es`, `FORCE_SSL=false` (ver pendientes), `STORAGE_ADAPTER=r2`, `ERASURE_JOURNAL_ENABLED=true`, `BACKOFFICE_ENABLED=false`, `AGE_VERIFICATION_REQUIRED=true`. OAuth preservado. Paquete vigente de recuperación en `~/.config/cherry-recovery/production.env` (Olares, 0600), junto a identidad age y credenciales limitadas |
+| Env vigente | `PHX_HOST=cherry.akorda.es`, `PHX_URL_SCHEME=https`, `PUBLIC_BASE_URL=https://cherry.akorda.es`, `FORCE_SSL=false` (ver pendientes), `STORAGE_ADAPTER=r2`, `ERASURE_JOURNAL_ENABLED=true`, `BACKOFFICE_ENABLED=true`, `BACKOFFICE_TRUSTED_PROXY_IPS=10.0.1.3`, `LEGAL_TEXTS_APPROVED=false`, `LEGAL_ENFORCEMENT_ENABLED=false`, `AGE_VERIFICATION_REQUIRED=true`. OAuth preservado. Paquete vigente de recuperación en `~/.config/cherry-recovery/production.env` (Olares, 0600), junto a identidad age y credenciales limitadas |
 
 Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): el CI publica la imagen `ghcr.io/akorda-software/cherry-backend:<sha>` en cada push a `main`; después, con la API de Dokploy de nipogi, `application.saveDockerProvider` con la imagen nueva y `application.deploy`. Comprobar con `curl http://192.168.0.126/healthz` (devuelve el `version` desplegado).
 
@@ -51,13 +85,16 @@ Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): 
 | 2026-10-14 | `2e92a5e` | Volver a registrarse tras borrar la propia cuenta (`users.deletion_reason`); purgada a mano la única cuenta, ya borrada |
 | 2026-10-16 | `fd9ce10` | Cuatro pasadas de rendimiento y robustez del backend/móvil; backend desplegado y verificado por versión, health/readiness y Swarm |
 | 2026-10-17 | `c008473` | Fotos privadas R2 UE, bajas externas antirrestauración, borrado físico y copias diarias cifradas de siete días (sin fotos); backoffice apagado |
+| 2026-10-17 | `4ce5ad0` | Textos/identidad, prueba legal preparada y backoffice activo con propietario nominativo/rotación; confianza HTTPS Swarm exacta y contactos sin transformación del borde |
 
 Publicación del 2026-10-16: commit `fd9ce10d6fd064b906663f6c2a21b9749026938a`, [CI 38871351664](https://github.com/akorda-software/cherry/actions/runs/38871351664) en verde (tests backend/móvil y build/push de imagen). Deploy manual por API de NiPoGi sobre la app existente `cherry-backend-mkeaem`, sin activar el job pausado del workflow. Sin migraciones nuevas ni cambios de contratos, secretos, red o infraestructura; se conservan 1 réplica, `stop-first`/rollback y el bind de fotos. Imagen previa para rollback: `ghcr.io/akorda-software/cherry-backend:2e92a5e9668f972f4a9af66d2756d2c3a692c787`. No se compilaron ni publicaron APK/IPA; los OAuth de Apple/Google para iOS quedan para el siguiente trabajo.
 
 Verificado: despliegue Dokploy `XQca1lsdNEN2f9CgWQUUE` en `done`, actualización Swarm `completed` (08:09 UTC), imagen esperada y volumen `/var/lib/cherry/uploads` conservado. Los endpoints públicos `/healthz` y `/readyz` y el healthcheck de origen devuelven 200 con el SHA exacto, estables durante al menos 35 segundos; `/api/config` público también devuelve 200. Sondeo público con `curl`: `urllib` desde Olares obtenía 403 del borde, sin modificar políticas para comprobarlo. No se realizaron pruebas de carga ni cambios en OAuth/tiendas.
 
 Pendiente:
-- `FORCE_SSL=false`: Traefik aún no confía en el `X-Forwarded-Proto` de Caddy (falta `forwardedHeaders.trustedIPs: [192.168.30.21/32]` en el entrypoint `web` de `/etc/dokploy/traefik/traefik.yml` y reiniciar Traefik); con `FORCE_SSL` activo antes, bucle de redirecciones. Desde fuera ya solo se entra por HTTPS (Caddy redirige); falta HSTS.
+- `FORCE_SSL=false`: confianza de Caddy en Traefik corregida el 17-10 para el panel;
+  falta validar/activar deliberadamente redirección/HSTS general. No se activó
+  incidentalmente el flag global. El panel exige HTTPS por su propio gate.
 - Quitar la LAN de `web_clients` en cherry-backend (ahora 80 abierto a 192.168.0.0/24) y el dominio `192.168.0.126` de Dokploy cuando no haga falta.
 - Guardar además una copia offline de la identidad age y mantener actualizado el
   paquete privado de recuperación. El circuito de backups/restauración está

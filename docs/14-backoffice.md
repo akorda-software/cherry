@@ -1,10 +1,12 @@
 # Backoffice, reclamaciones y privacidad
 
-Implementación del 2026-10-16, ampliada con gestión de equipo y borrado físico.
-Código/migraciones publicados el 2026-10-17 en `c008473`, pero el **panel permanece
-desactivado en producción** (`BACKOFFICE_ENABLED=false`, cero staff). Móvil sin
-compilar/distribuir. Moderación de fotos y bots fuera de alcance; esto no acredita
-cumplimiento legal ni cobertura operativa.
+Implementación del 2026-10-16, ampliada el 17 con equipo, borrado, acceso personal
+y recordatorios. **Panel activado en producción** en `4ce5ad0`:
+`https://cherry.akorda.es/backoffice/login`, un superusuario nominativo y cambio
+obligatorio de contraseña temporal antes de acceder a casos/equipo. Verificados
+login real, CSRF, cookies seguras, logout y rechazo HTTP/cabecera HTTPS falsificada.
+Móvil sin compilar/distribuir. Fotos/bots y cobertura humana independiente siguen
+pendientes; no equivale a cumplimiento jurídico ni apertura del servicio.
 
 ## Qué funciona
 
@@ -91,11 +93,21 @@ Los códigos de recuperación contienen 256 bits aleatorios, caducan en diez min
 
 ## Activación y transporte
 
-- `BACKOFFICE_ENABLED=false` por defecto: todas las rutas del panel devuelven 404. No se ha creado ninguna cuenta real ni se ha cambiado la configuración de producción.
+- `BACKOFFICE_ENABLED=false` por defecto: todas las rutas del panel devuelven 404.
+  Producción lo activa explícitamente desde el 17-10, con un propietario real.
 - El panel exige HTTPS aunque `FORCE_SSL` de la app principal esté desactivado: HTTP no reconocido devuelve **426**. Con terminación TLS en proxy, `BACKOFFICE_TRUSTED_PROXY_IPS` admite únicamente las **IP exactas de los peers directos** que controla el operador; solo desde ellos se acepta `X-Forwarded-Proto: https`. Sin lista no se confía en esa cabecera. No configurar la IP de un cliente, rangos amplios ni una cabecera aportada libremente desde Internet. Verificar que el proxy sobrescribe la cabecera y que no puede suplantarse su peer antes de activar.
+- Producción: Traefik confía cabeceras solo desde Caddy `192.168.30.21/32`;
+  la app observa el balanceador overlay `10.0.1.3`, como `::ffff:10.0.1.3`, no
+  la IP cambiante de Traefik. Normalización exacta, sin ampliar rangos. Si cambia
+  la red, verificar y ajustar deliberadamente; debe fallar cerrada. Las respuestas
+  llevan `no-transform` para impedir ocultación de correos/scripts de Cloudflare
+  incompatibles con la CSP. No se cambió la configuración global de Cloudflare.
 - Cookies firmadas, `Secure`, `HttpOnly`, `SameSite=Strict` y ruta `/backoffice`; expiración de servidor, CSRF en todas las mutaciones y renovación de la sesión al entrar. Las respuestas llevan `no-store`, `no-referrer`, `noindex` y CSP sin scripts ni recursos de terceros.
 - Los códigos y textos se filtran de los logs de parámetros Phoenix. No se conserva otra copia del body crudo para estas rutas.
-- El esquema requiere las migraciones `20261016100000`, `20261016120000`, `20261016130000` y `20261017100000`. Activar en otro entorno requiere aplicarlas, provisionar el superusuario, verificar TLS/proxy y probar el flujo operativo; no basta con cambiar el flag.
+- El esquema incluye además `20261017120000` (prueba legal) y
+  `20261017121000` (rotación inicial), aplicadas en producción. Activar otro
+  entorno requiere todas las migraciones, cuenta nominativa y pruebas de acceso;
+  no basta con cambiar el flag.
 
 ## Suspensión y recursos
 
@@ -108,8 +120,14 @@ La revisión no restaura otra medida que haya sustituido a la original ni una cu
 ## Límites y siguientes entregables
 
 - **Privacidad:** el panel recibe, clasifica y permite responder solicitudes; no genera exportaciones completas ni ejecuta operaciones por el mero hecho de responder. La baja desde Ajustes sí hace borrado físico y tiene limpieza externa durable. Siguen pendientes otros derechos, conservación de cuentas activas y reservas legales/backups. No se ha añadido un botón de borrado arbitrario de usuarios desde el panel.
-- **Legal:** hay landing y páginas públicas con borradores, pero faltan textos finales, versionado de aceptación/consentimientos, titular/contacto reales, matriz de aplicabilidad y revisión jurídica. `/eliminar-cuenta` ofrece un correo cuando se configura `INSTANCE_CONTACT_EMAIL`, sin obligar a instalar/iniciar sesión; sin ese dato avisa que la vía no está operativa.
-- **Operación:** sin plazos legales universales codificados, recordatorios, SLA garantizado ni cobertura de guardia. Hacen falta responsables y un procedimiento de escalado. Para recursos deben existir al menos dos cuentas de personas habilitadas; el sistema exige cuentas distintas, no puede acreditar su independencia real.
+- **Legal:** textos completos, identidad/contacto y matriz preparados/publicados,
+  con prueba de decisiones implementada. Aprobación y exigencia desactivadas;
+  art. 9.1/32 LOPDGDD, EIPD/DPD, contratos y decisiones de conservación requieren
+  cierre real. [Implementación](./16-textos-y-consentimiento.md).
+- **Operación:** recordatorio de mes natural para privacidad, no SLA ni prórroga
+  automática. Procedimientos/plantillas en `compliance/16`; falta adoptarlos y
+  ensayarlos con personas disponibles. Un propietario no cubre revisión por otra
+  persona. No se creó una cuenta de apoyo ficticia; puede invitarse a alguien real.
 - **Auditoría y conservación:** append-only para operaciones ordinarias, no un almacén inmutable frente al administrador de BD. La baja borra expedientes vinculados, descendientes, avisos y auditoría, evitando relatos huérfanos. No existe retención indefinida de la identidad borrada. Los expedientes sin baja siguen necesitando plazos, y los backups/reservas legales necesitan cierre específico.
 - **Separación de medidas ajenas (2026-10-17):** aprobada por el titular e implementada. Borrar al denunciante elimina el expediente original, relatos, avisos y auditoría; una suspensión vigente de otra cuenta y su revisión quedan en fichas nuevas mínimas, sin datos ni referencias al denunciante. No cambia la sanción automáticamente ni pierde un recurso pendiente. [Detalle](./15-borrado-y-web-publica.md).
 - **Evidencia:** todavía no se capturan mensajes concretos reportados ni evidencias históricas del perfil. No se debe suspender basándose únicamente en el número de reportes ni asumir que una acusación está acreditada.

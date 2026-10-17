@@ -51,6 +51,38 @@ config :cherry, :app_version, System.get_env("APP_VERSION", "dev")
 # Separate from end-user login; opt-in only after provisioning staff and testing HTTPS.
 config :cherry, :backoffice_enabled, System.get_env("BACKOFFICE_ENABLED", "false") == "true"
 
+# Optional for self-hosting; production uses a dedicated staff hostname. A bare,
+# exact hostname only: no scheme, port, path, wildcard or parent-domain matching.
+backoffice_host =
+  case System.get_env("BACKOFFICE_HOST", "") |> String.trim() |> String.downcase() do
+    "" ->
+      nil
+
+    host ->
+      valid? =
+        byte_size(host) <= 253 and
+          Enum.all?(String.split(host, "."), fn label ->
+            byte_size(label) in 1..63 and
+              Regex.match?(~r/\A[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\z/, label)
+          end)
+
+      if not valid?,
+        do: raise("BACKOFFICE_HOST must be an exact hostname without scheme, port or path")
+
+      host
+  end
+
+if backoffice_host &&
+     backoffice_host ==
+       System.get_env("PHX_HOST", "")
+       |> String.trim()
+       |> String.downcase()
+       |> String.trim_trailing(".") do
+  raise "BACKOFFICE_HOST must differ from the public PHX_HOST"
+end
+
+config :cherry, :backoffice_host, backoffice_host
+
 config :cherry,
        :backoffice_trusted_proxy_ips,
        System.get_env("BACKOFFICE_TRUSTED_PROXY_IPS", "")

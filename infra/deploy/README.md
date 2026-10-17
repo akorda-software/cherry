@@ -7,6 +7,12 @@ antiguos de copias locales/pgBackRest: [circuito vigente](../backup/README.md).
 
 ## Estado (2026-10-17)
 
+**Cambio de dominio preparado, no aplicado:** web/API en `cherry.org.es`, panel
+exclusivamente en `admin.cherry.org.es`. [Plan y estado](../../docs/17-dominios.md).
+Hasta verificar la migración, las referencias de producción siguientes conservan
+el dominio vigente `cherry.akorda.es`. No retirar su API: hay móviles instalados
+que todavía la usan. Sin compilación móvil ni cambios OAuth en este bloque.
+
 **Actualización posterior — legal/backoffice:** producción en
 `4ce5ad0e69d82342c9d5c93bf00c07fc6bb6cd13`,
 [CI 39037164818](https://github.com/akorda-software/cherry/actions/runs/39037164818)

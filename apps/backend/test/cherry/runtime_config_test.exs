@@ -9,7 +9,7 @@ defmodule Cherry.RuntimeConfigTest do
               PHX_SERVER CORS_ALLOWED_ORIGINS INSTANCE_NAME INSTANCE_COUNTRY INSTANCE_LOCALE
               INSTANCE_OPERATOR INSTANCE_CONTACT_EMAIL INSTANCE_PRIVACY_URL INSTANCE_TERMS_URL
               INSTANCE_SOURCE_URL AGE_VERIFICATION_MINIMUM_AGE AGE_VERIFICATION_DOCUMENTS
-              CSCA_PATHS CSCA_COUNTRIES)
+              CSCA_PATHS CSCA_COUNTRIES BACKOFFICE_HOST)
 
   @valid %{
     "DATABASE_URL" => "ecto://u:p@db/cherry",
@@ -42,6 +42,35 @@ defmodule Cherry.RuntimeConfigTest do
     config = read_prod(@valid)
     assert config[:cherry][CherryWeb.Endpoint][:url][:host] == "api.cherry.example"
     assert config[:cherry][CherryWeb.Endpoint][:http][:port] == 4000
+  end
+
+  test "the optional staff host is exact, normalized and separate from the public host" do
+    assert read_prod(@valid)[:cherry][:backoffice_host] == nil
+
+    assert read_prod(Map.put(@valid, "BACKOFFICE_HOST", " Admin.Cherry.Example "))[:cherry][
+             :backoffice_host
+           ] == "admin.cherry.example"
+
+    for host <- [
+          "https://admin.cherry.example",
+          "admin.cherry.example:443",
+          "admin.cherry.example/backoffice",
+          "*.cherry.example",
+          ".cherry.example",
+          "admin..cherry.example",
+          "admin.cherry.example.",
+          "-admin.cherry.example",
+          "admin_.cherry.example",
+          String.duplicate("a", 64) <> ".example"
+        ] do
+      assert_raise RuntimeError, ~r/BACKOFFICE_HOST must be an exact hostname/, fn ->
+        read_prod(Map.put(@valid, "BACKOFFICE_HOST", host))
+      end
+    end
+
+    assert_raise RuntimeError, ~r/BACKOFFICE_HOST must differ/, fn ->
+      read_prod(Map.put(@valid, "BACKOFFICE_HOST", "API.CHERRY.EXAMPLE"))
+    end
   end
 
   test "lists every missing variable in one error" do

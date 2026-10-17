@@ -109,6 +109,15 @@ Un proveedor sin audiencias rechaza todos sus logins; el backend lo avisa en el 
 
 `BACKOFFICE_ENABLED=false` por defecto. El equipo se provisiona expresamente desde consola con roles independientes del login móvil. El panel exige HTTPS; si termina TLS en proxy, `BACKOFFICE_TRUSTED_PROXY_IPS` lista únicamente las IP exactas de peers directos controlados que sobrescriben `X-Forwarded-Proto`, nunca rangos genéricos ni IP de usuarios. Sin reconocimiento de HTTPS, responde 426 incluso aunque la app principal permita HTTP. No actives el panel sin verificar el trayecto real y probar permisos/CSRF. [Alta, códigos de acceso y límites](./14-backoffice.md).
 
+Para separarlo de la web/API, configura `BACKOFFICE_HOST=admin.tu-dominio.example`
+(hostname exacto, sin esquema/puerto/ruta y distinto de `PHX_HOST`) y publica ambos
+hosts hacia la misma aplicación. La raíz del host administrativo redirige a
+`/backoffice`; sus rutas de producto/API/WebSocket no están disponibles. El panel
+devuelve 404 en cualquier otro host, sin redirigir contraseñas ni códigos. Cookies
+de equipo limitadas al host y ruta, sin `Domain` compartido. No se confía en
+`X-Forwarded-Host`. Sin `BACKOFFICE_HOST` se conserva el enrutado anterior para
+instancias autoalojadas. [Migración de la instancia oficial](./17-dominios.md).
+
 ### Instancia y país
 
 Quién gestiona la instancia y para qué país es. La app lo lee al arrancar de `GET /api/config` (público), así que **la misma compilación de la app sirve para cualquier instancia**: no hay que recompilar para cambiarlos. Se enseñan en «Acerca de». La política de nombre (`TRADEMARKS.md`, condición 5) pide decir en la app quién gestiona la instancia y cómo contactar: define al menos `INSTANCE_OPERATOR` e `INSTANCE_CONTACT_EMAIL`.

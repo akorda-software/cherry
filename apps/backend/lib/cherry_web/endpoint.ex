@@ -72,6 +72,14 @@ defmodule CherryWeb.Endpoint do
   plug(Plug.Session, @session_options)
   plug(CherryWeb.Router)
 
+  # Phoenix dispatches sockets before ordinary endpoint plugs. Wrap the generated
+  # pipeline so the host boundary also rejects WebSocket upgrades on the staff host.
+  @impl true
+  def call(conn, opts) do
+    conn = CherryWeb.Plugs.BackofficeHost.call(conn, [])
+    if conn.halted, do: conn, else: super(conn, opts)
+  end
+
   @doc """
   Custom body reader that caches the raw body for webhook signature verification.
   """

@@ -224,7 +224,7 @@ Una revisión adversarial independiente no encontró forma de falsificar ni alte
 - **Huella y borrado de cuenta:**
   - Con el borrado de cuenta actual (lógico), la fila de verificación se conserva, así que la persona no podría verificarse de nuevo en una cuenta nueva.
   - Con un borrado físico, `ON DELETE CASCADE` la elimina.
-  - Hay que decidir el plazo de conservación de la huella tras un borrado o un baneo (base legal: interés legítimo anti-fraude) y recogerlo en la EIPD (`06`).
+  - Política actual por decisión expresa del titular: la baja física elimina la huella y permite reutilizar el documento, también si la cuenta estaba suspendida; no hay retención antifraude residual. Con cuenta activa/suspendida la huella sigue vinculada a la verificación. Documentar riesgo de evasión y validar reservas legales/conservación en la evaluación correspondiente (`06`); no asumir interés legítimo ni retención indefinida por defecto.
 - **Clave de huella:** no se puede rotar sin volver a leer los documentos. Hay que guardarla con los backups.
 - **Obligatoriedad:** el flag bloquea la API REST social, pero falta:
   - excluir de los feeds a los perfiles no verificados;

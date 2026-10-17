@@ -86,6 +86,7 @@ defmodule Cherry.Dating.ProfileCards do
           fragment("ST_Distance(?::geography, ?::geography)", pl.coordinates, viewer.point),
         viewer_distance_km: viewer.distance_km,
         user_deleted_at: u.deleted_at,
+        user_suspended_at: u.suspended_at,
         liked_viewer:
           fragment(
             "EXISTS (SELECT 1 FROM swipe_actions s WHERE s.actor_profile_id = ? AND s.target_profile_id = ? AND s.action_type = 'like')",
@@ -183,6 +184,7 @@ defmodule Cherry.Dating.ProfileCards do
       score: 0,
       profile: profile,
       user_deleted_at: row.user_deleted_at,
+      user_suspended_at: row.user_suspended_at,
       liked_viewer: row.liked_viewer,
       viewer_liked: row.viewer_liked,
       blocked: row.blocked,

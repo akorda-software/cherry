@@ -1,0 +1,18 @@
+<.shell title="Invitación preparada" staff={@current_staff}>
+  <section class="login">
+    <h1>Invitación preparada.</h1>
+    <p>Para <strong>{@invited_staff.email}</strong>, con el rol {label(@invited_staff.role)}.</p>
+    <p>
+      Este código solo se muestra en esta respuesta, caduca en 24 horas y se consume al elegir contraseña.
+    </p>
+    <pre class="secret-code">{@code}</pre>
+    <p>
+      Entrégalo únicamente a esa persona por un canal privado. No lo pongas en una URL, un ticket ni un repositorio.
+    </p>
+    <p>Debe abrir <strong>/backoffice/invitation</strong> en esta instancia.</p>
+    <p>
+      No se ha enviado ningún correo. Generar otro código invalida este y revoca los accesos anteriores.
+    </p>
+    <a href={~p"/backoffice/team"}>Volver al equipo</a>
+  </section>
+</.shell>

@@ -199,6 +199,7 @@ defmodule Cherry.Dating.Profiles do
   # rest already holds.
   defp discoverable?(%Profile{} = profile) do
     !profile.is_paused and is_nil(profile.deleted_at) and
+      is_nil(Repo.get!(Cherry.Accounts.User, profile.user_id).suspended_at) and
       AgeVerifications.allows_discovery?(profile.user_id)
   end
 

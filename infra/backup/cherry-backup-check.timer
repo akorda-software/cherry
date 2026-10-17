@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Cherry backup freshness each hour
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=2min
+Unit=cherry-backup-check.service
+
+[Install]
+WantedBy=timers.target

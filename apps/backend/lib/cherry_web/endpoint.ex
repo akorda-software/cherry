@@ -38,7 +38,7 @@ defmodule CherryWeb.Endpoint do
   # legacy `profiles/`; never the `pending/` upload area nor `.tmp/`.
   # Directories are never listed. Deleted photos are removed from disk, so the
   # cache lifetime is one day (not "immutable"): caches forget them soon.
-  plug(Plug.Static,
+  plug(CherryWeb.Plugs.LocalUploads,
     at: "/uploads",
     from: {Cherry.Storage.Local, :uploads_dir, []},
     only: ~w(photos profiles),
@@ -79,7 +79,10 @@ defmodule CherryWeb.Endpoint do
     {:ok, body, conn} = Plug.Conn.read_body(conn, opts)
 
     # Identity documents (age verification) are never kept as a raw copy.
-    if String.starts_with?(conn.request_path, "/api/me/verification") do
+    if Enum.any?(
+         ["/api/me/verification", "/backoffice", "/api/me/cases"],
+         &String.starts_with?(conn.request_path, &1)
+       ) do
       {:ok, body, conn}
     else
       {:ok, body, Plug.Conn.put_private(conn, :raw_body, body)}

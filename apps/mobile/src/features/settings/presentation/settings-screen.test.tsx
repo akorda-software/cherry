@@ -90,7 +90,8 @@ describe("SettingsScreen", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Borrar cuenta" }));
 
     expect(await screen.findByRole("heading", { name: "¿Borrar tu cuenta?" })).toBeInTheDocument();
-    expect(screen.getByText("Cerramos tu sesión en todos tus dispositivos.")).toBeInTheDocument();
+    expect(screen.getByText(/Cerramos todas tus sesiones y eliminamos tu correo y la huella del DNI/)).toBeInTheDocument();
+    expect(screen.getByText(/El borrado de archivos y copias no siempre es instantáneo/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Mejor no" }));
 

@@ -113,14 +113,14 @@ Pendientes (ver `11-deuda-tecnica-pendiente.md`):
 
 Acciones de usuario:
 
-- Block, report, unmatch; pausar perfil; borrar cuenta.
+- Block, report, unmatch; pausar perfil; borrar cuenta. La baja elimina físicamente los datos vinculados, identidad de acceso y huella del DNI. Permite volver desde cero con el mismo documento, también tras suspensión; no mantiene una lista negra de identidad. Archivos externos con reintentos, sin promesa de destrucción instantánea de cachés/backups. [Detalle y pendientes](./15-borrado-y-web-publica.md).
 - «Ocultar» no es un estado separado en v1: equivale a dislike.
 
 Capacidades de admin:
 
-- Revisar usuarios, perfiles, reportes y fotos; deshabilitar cuentas.
+- Revisar expedientes y el texto público de perfiles reportados; advertir o suspender cuentas y resolver recursos.
 - Los endpoints admin pueden permanecer privados fuera del contrato móvil.
-- Hoy solo existen funciones de contexto (`list_reports`, `update_report`, `disable_profile`), sin rutas ni vistas.
+- Implementado un [backoffice privado](./14-backoffice.md) para expedientes, advertencias/suspensiones, comunicaciones y recursos humanos; activación explícita, separado del login móvil. No incluye visor/moderación de fotos ni conversaciones privadas.
 
 ## Métricas
 

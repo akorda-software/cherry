@@ -34,7 +34,7 @@ defmodule Cherry.Dating.Matching do
     # Revalidated under the pair lock, which `block_profile/1` also takes: a
     # block committed while this swipe waited always wins.
     |> Ecto.Multi.run(:not_blocked, fn repo, _changes ->
-      if pair_blocked?(repo, actor_id, target_id),
+      if pair_blocked?(repo, actor_id, target_id) or pair_suspended?(repo, actor_id, target_id),
         do: {:error, :blocked},
         else: {:ok, nil}
     end)
@@ -46,11 +46,12 @@ defmodule Cherry.Dating.Matching do
       if action_type == "like" do
         reverse_like =
           Repo.one(
-            from s in SwipeAction,
+            from(s in SwipeAction,
               where:
                 s.actor_profile_id == ^target_id and
                   s.target_profile_id == ^actor_id and
                   s.action_type == "like"
+            )
           )
 
         if reverse_like do
@@ -88,6 +89,28 @@ defmodule Cherry.Dating.Matching do
     else
       # Invalid ids fail later in the swipe changeset.
       :error -> false
+    end
+  end
+
+  defp pair_suspended?(repo, a, b) do
+    with {:ok, a} <- Ecto.UUID.cast(a), {:ok, b} <- Ecto.UUID.cast(b) do
+      # User locks serialize restriction with writes that passed an earlier REST check.
+      users =
+        repo.all(
+          from(u in Cherry.Accounts.User,
+            where:
+              u.id in subquery(
+                from(p in Cherry.Dating.Profile, where: p.id in ^[a, b], select: p.user_id)
+              ),
+            order_by: u.id,
+            lock: "FOR SHARE",
+            select: u.suspended_at
+          )
+        )
+
+      Enum.any?(users, &(!is_nil(&1)))
+    else
+      _ -> false
     end
   end
 

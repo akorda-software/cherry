@@ -40,6 +40,13 @@ function AppRouteHost() {
 }
 
 describe("private shell", () => {
+  it("keeps support available before onboarding finishes", async () => {
+    renderRoute(<PrivateLayout><div data-testid="support-before-profile">Buzón</div></PrivateLayout>, {
+      initialPath: appShellRoutes.support, onboardingRequired: true, ...signedIn
+    });
+    expect(await screen.findByTestId("support-before-profile")).toBeInTheDocument();
+    expect(screen.getByTestId("pathname")).toHaveTextContent(appShellRoutes.support);
+  });
   it("renders tab content inside the private shell with its own large title", async () => {
     renderRoute(
       <PrivateLayout>

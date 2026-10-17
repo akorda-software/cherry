@@ -7,11 +7,11 @@
 **Guideline 1.2 — contenido generado por usuarios.** Perfiles, fotos y chat la activan. Exige:
 
 - [ ] Filtrar contenido inaceptable (fotos: `03`; chat: filtro de enlaces, teléfonos e insultos en `05`).
-- [ ] Reportar contenido con respuesta a tiempo. En la práctica App Review pide **actuar sobre los reportes en 24 h** (`05`).
+- [ ] Reportar contenido con respuesta oportuna. **24 h es un objetivo operativo si se adopta, no un plazo universal establecido en Apple 1.2** (`05`, checklist `10`).
 - [x] Bloquear a usuarios abusivos (existe: `Cherry.Dating.Safety.block/2`).
 - [ ] Contacto publicado (web y ficha de la tienda).
 - [ ] **EULA/términos aceptados por el usuario con tolerancia cero** hacia contenido inaceptable y usuarios abusivos (`07`).
-- Desde junio de 2026, los fallos graves o repetidos de moderación pueden suponer la retirada inmediata de la app y de la cuenta de desarrollador.
+- El incumplimiento de las políticas puede provocar retirada/rechazo; comprobar siempre la versión oficial vigente, sin basar una obligación en fechas o interpretaciones de blogs.
 
 **Guideline 1.1.4.** Rechaza apps de «hookup» con pornografía o que faciliten la prostitución. La intención «casual» no es problema (Tinder y Feeld están publicadas), pero las normas de la comunidad deben prohibir ambas cosas (`07`).
 
@@ -22,7 +22,7 @@
 
 **Declared Age Range API.** Obligatoria solo donde la ley lo exige (Texas, Utah, Luisiana, Australia, Brasil, Singapur…). **En España no es obligatoria**; es una señal opcional que se puede leer (ver `02`).
 
-**Otros ya cubiertos:** Sign in with Apple (existe), borrar la cuenta desde la app (existe).
+**Implementación parcial:** existe soporte de Sign in with Apple, pendiente de configuración/prueba iOS. Existe baja desde la app, pero **no acredita supresión completa de datos asociados**; cerrar retención/excepciones y el procedimiento real (`10`).
 
 ## Google Play
 
@@ -35,6 +35,7 @@
   - [ ] Cumplir las leyes de protección infantil y denunciar a las autoridades.
   - [ ] Designar un **contacto de seguridad infantil** en Play Console.
 - [ ] Formulario de seguridad de los datos (Data safety) coherente con la política de privacidad (`06`).
+- [ ] URL web funcional para pedir eliminación de cuenta/datos sin reinstalar la app, además del flujo interno; no basta el buzón con sesión ni la baja lógica ([política oficial](https://support.google.com/googleplay/android-developer/answer/13327111?hl=es)).
 
 ## Fuentes
 

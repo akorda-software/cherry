@@ -35,6 +35,27 @@ defmodule Cherry.Release do
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
   end
 
+  @doc "Offline only: reapply erasures, invalidate sessions, reconcile photos."
+  def recover do
+    load_app()
+    Application.ensure_all_started(:req)
+    {:ok, :ok, _} = Ecto.Migrator.with_repo(Cherry.Repo, fn _ -> Cherry.Recovery.prepare!() end)
+
+    IO.puts(
+      "Database prepared; DO NOT REOPEN before storage reconciliation and staff access review."
+    )
+  end
+
+  def reconcile_storage do
+    load_app()
+    Application.ensure_all_started(:req)
+
+    {:ok, :ok, _} =
+      Ecto.Migrator.with_repo(Cherry.Repo, fn _ -> Cherry.Recovery.reconcile_storage!() end)
+
+    IO.puts("Storage reconciled; review staff roles/access before reopening. No gallery reset.")
+  end
+
   defp repos do
     Application.fetch_env!(@app, :ecto_repos)
   end

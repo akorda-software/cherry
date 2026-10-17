@@ -31,7 +31,8 @@ Verificado: despliegue Dokploy `XQca1lsdNEN2f9CgWQUUE` en `done`, actualización
 Pendiente:
 - `FORCE_SSL=false`: Traefik aún no confía en el `X-Forwarded-Proto` de Caddy (falta `forwardedHeaders.trustedIPs: [192.168.30.21/32]` en el entrypoint `web` de `/etc/dokploy/traefik/traefik.yml` y reiniciar Traefik); con `FORCE_SSL` activo antes, bucle de redirecciones. Desde fuera ya solo se entra por HTTPS (Caddy redirige); falta HSTS.
 - Quitar la LAN de `web_clients` en cherry-backend (ahora 80 abierto a 192.168.0.0/24) y el dominio `192.168.0.126` de Dokploy cuando no haga falta.
-- Sin backups de PostgreSQL ni de `/var/lib/cherry/uploads`.
+- Circuito diario cifrado de PostgreSQL en preparación/verificación: [backups](../backup/README.md).
+  **Sin copias de fotos por decisión expresa**; sustituye el plan antiguo de pgBackRest.
 - Swarm se anuncia con la IP pública (79.117.30.255) porque así la detecta el instalador. Da igual con un nodo y sus puertos están cerrados.
 - El panel de nipogi es accesible en `https://dokploynipogi.akorda.es` (el plan pedía solo VPN).
 - CI `deploy` sigue pausado.
@@ -75,7 +76,8 @@ sudo -u postgres psql -c 'REVOKE ALL ON DATABASE cherry_prod FROM PUBLIC;'
 - `listen_addresses = 'localhost,192.168.0.142'`
 - `shared_preload_libraries = 'pg_stat_statements'` (reinicia; imprescindible para k6)
 - Punto de partida: `shared_buffers = 4GB`, `effective_cache_size = 12GB`, `max_connections = 100`. `work_mem` al default hasta ver consultas reales.
-- Backups previstos con pgBackRest en el SATA local de ~1 TB y en R2; frecuencia externa orientativa de una o varias horas y unas diez copias recuperables recientes. Cadencia, esquema de copias/WAL y retención final por concretar al configurarlo (ver §8).
+- Política aprobada 2026-10-17: pg_dump completo diario cifrado con age a R2 privado UE,
+  siete días, sin fotos ni WAL/incrementales ni históricos adicionales. [Circuito y recuperación](../backup/README.md).
 
 `pg_hba.conf`: `host cherry_prod cherry 192.168.0.126/32 scram-sha-256`. Firewall VM: 5432 solo desde `.126`; SSH solo desde VPN.
 
@@ -117,9 +119,28 @@ Plan original, ya descartado: instalar Dokploy completo en la VM (`curl -sSL htt
   ```
 - Definir `PUBLIC_BASE_URL=https://<dominio>` para que las URLs absolutas no dependan de las cabeceras `Host` que lleguen tras Caddy/Traefik.
 - Tamaño: máx. 2 MB por foto (`UPLOAD_MAX_BYTES`) × 4 fotos por perfil; vigilar el disco de 40 GB de la VM o montar un disco/volumen dedicado. Ni Caddy ni Traefik limitan el cuerpo por defecto; Cloudflare (plan gratuito) admite hasta 100 MB.
-- Backups: `UPLOADS_DIR` forma parte del estado junto con PostgreSQL (ver §8). Borrar una foto o la cuenta borra el fichero; un barrido cada 10 min elimina subidas abandonadas. Como la caché es de un día, una foto borrada puede seguir en la CDN hasta 24 h (purgar en Cloudflare si urge).
+- **No se respalda `UPLOADS_DIR`**. Borrar una foto o la cuenta borra el fichero;
+  un barrido cada 10 min elimina subidas abandonadas. Este adaptador local conserva
+  una ruta pública; para fotos privadas de producción usar R2 privado. Sus cachés
+  antiguas requieren purga al migrar, no basta cambiar el adaptador.
 
-**`r2` (Cloudflare R2 o S3 compatible):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL_BASE` y `R2_ACCOUNT_ID` (R2) o `S3_ENDPOINT` + `S3_REGION` (MinIO, Garage…, direccionamiento path-style). El CORS del bucket debe permitir `PUT` con `Content-Type` e `If-None-Match`. Sin credenciales, `upload-intent` responde 503 `storage_not_configured`. Cambiar de `local` a `r2` no migra fotos: las antiguas siguen sirviéndose desde `/uploads` mientras exista el directorio. Las credenciales R2/S3 necesitan lectura, escritura **y borrado** de objetos: `complete` copia `pending/<key>` a `<key>` y borra el original, y el barrido (`Cherry.Dating.PhotoStorageSweeper`, cada 10 min) borra fotos borradas y subidas abandonadas. Con bucket público, añade una regla de ciclo de vida que borre el prefijo `pending/` a 1 día (defensa en profundidad: esas claves son aleatorias y el barrido ya las borra). Con `local` en prod, `PUBLIC_BASE_URL` es obligatoria (las URLs de fotos no se construyen con la cabecera `Host`).
+**`r2` privado (producción):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+`R2_BUCKET_NAME` y `R2_ACCOUNT_ID`, o `S3_ENDPOINT` + `S3_REGION` (UE:
+`https://ACCOUNT.eu.r2.cloudflarestorage.com`, región `auto`). Desactivar r2.dev
+y dominios públicos. `R2_PUBLIC_URL_BASE` solo reconoce referencias anteriores;
+ya no es obligatorio ni crea acceso público. La BD guarda una referencia sin
+firma; las respuestas autorizadas firman GET de 300 segundos, `private, no-store`.
+`POST /api/photos/read-url` renueva comprobando visibilidad/bloqueos/edad/estado.
+Las URLs siguen siendo bearer temporales y no revocan copias ya descargadas.
+
+El móvil sube el archivo directo a R2; el backend verifica HEAD + 32 bytes y
+publica por copia interna. CORS del origen web oficial: PUT/GET/HEAD con
+Content-Type e If-None-Match. Token limitado al bucket con lectura/escritura/
+borrado; pending/ caduca a un día como defensa adicional. Con `r2`, Phoenix
+**no sirve `/uploads`**, aunque quede el antiguo bind en el host. Migrar y
+verificar objetos antes del corte; conservar claves para snapshots antiguos,
+reescribir referencias y purgar cachés/rutas locales. Nunca activar el adaptador
+antes de trasladar las fotos. [Recuperación sin backup de fotos](../backup/README.md).
 
 ## 4. Publicación: cadena de confianza de IP real
 
@@ -164,16 +185,20 @@ Plan original, ya descartado: instalar Dokploy completo en la VM (`curl -sSL htt
 
 ## 8. Backups y operación antes de conservar datos reales
 
-Las primeras pruebas con datos ficticios regenerables pueden empezar con los backups y R2 todavía pendientes. Antes de conservar datos reales:
+El plan antiguo de pgBackRest/SATA/diez puntos queda **sustituido** por el
+[runbook de backups y recuperación](../backup/README.md): copia completa diaria
+independiente, age, R2 privado UE, siete días y limpieza explícita verificada;
+sin copias de imágenes. `PGDATA backup=0`: vzdump no protege PostgreSQL.
 
-- [ ] Configurar backup consistente de PostgreSQL al SATA de ~1 TB. **PGDATA tiene `backup=0` y no entra en vzdump**; copiar solo la VM es insuficiente.
-- [ ] Con `STORAGE_ADAPTER=local`, incluir `UPLOADS_DIR` (`/var/lib/cherry/uploads`) en los mismos destinos de backup que PostgreSQL.
-- [ ] Configurar también destino R2 como copia externa. Objetivo: una copia/punto recuperable cada hora o cada varias horas, reteniendo unas diez recientes. Fijar intervalo y política final según volumen/duración; no hay un cron ni una retención implementados todavía.
-- [ ] Definir con pgBackRest la combinación de completas, diferenciales/incrementales y WAL. Mantener todas las dependencias de cada punto recuperable; diez puntos no equivalen a diez objetos S3. Diez copias horarias cubren aproximadamente diez horas.
-- [ ] Guardar claves de backups y `MESSAGE_ENCRYPTION_KEY` fuera del servidor; comprobar una restauración desde la copia local y otra desde R2.
-- [ ] Configurar backup de Dokploy (incluidos su PostgreSQL interno y configuración) y copias de VMs al SATA; ajustar retención al espacio compartido de ~1 TB.
-- [ ] Completar monitorización de fallos de backup, disco, PostgreSQL y temperatura. Uptime externo informa de caídas, sin recuperación automática.
-- [ ] Resolver la decisión pendiente de LUKS y, si se incorpora UPS, verificar su funcionamiento; no dar ninguna de estas medidas por instalada.
+El registro externo de bajas debe estar activo antes de conservar copias:
+`ERASURE_JOURNAL_*`, bucket distinto sin TTL ciego. Restaurar aislado, reaplicar
+todos los registros, invalidar sesiones, conservar fotos válidas y limpiar solo
+objetos huérfanos después de cerrar las firmas. No reabrir con registro inaccesible.
+
+No añadir copias de VM/Dokploy con datos de Cherry al margen de ese circuito:
+ampliarían la conservación y el alcance de la reconciliación. El backup de
+infraestructura ajena no forma parte de este encargo. Pendientes separados:
+LUKS/UPS, observación de disco/temperatura y recuperación física del host.
 
 No se configura ahora alta disponibilidad, réplica externa ni VPS de reserva. Ante una caída del MS-A2 se acepta indisponibilidad hasta su recuperación, sin plazo garantizado. La restauración de backups recupera datos; no sustituye al servidor averiado.
 

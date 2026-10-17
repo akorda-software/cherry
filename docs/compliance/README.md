@@ -1,5 +1,7 @@
 # Cumplimiento legal y de tiendas
 
+**Checklist canónico de cierre:** [10 — Pendientes de cumplimiento y lanzamiento](./10-cierre-cumplimiento.md), revisado el 2026-10-16. Distingue ley, condiciones de tiendas y objetivos internos; las propuestas del dossier no determinan por sí solas aplicabilidad jurídica.
+
 Dossier de trabajo para poder publicar Cherry en App Store y Google Play cumpliendo la ley. Un archivo por frente; en cada uno, **por qué hay que hacerlo, qué hemos decidido, cómo lo construimos y en qué punto está**.
 
 > **Excepción a la regla canónica de `docs/`:** el resto de documentos describen solo lo implementado. Esta carpeta mezcla a propósito investigación, plan y estado, porque es donde se va avanzando poco a poco. Cuando algo se construya, se documenta también en el documento canónico que toque (`01`, `05`, `07`…) y aquí se marca como hecho.
@@ -20,15 +22,19 @@ Dossier de trabajo para poder publicar Cherry en App Store y Google Play cumplie
 | 02 | [Mayoría de edad](./02-mayoria-de-edad.md) | Verificación 18+: DNI por NFC, proveedor de respaldo, app europea | Prototipo en `feat/dni-nfc` (servidor probado; NFC sin probar con DNI real) |
 | 03 | [Fotos](./03-fotos.md) | Moderación automática, abuso infantil por huella, duplicados | Pendiente (hay zona de espera) |
 | 04 | [Bots y cuentas falsas](./04-bots-y-cuentas-falsas.md) | Atestación del dispositivo, una persona = una cuenta, señales | Pendiente |
-| 05 | [Reportes y moderación](./05-reportes-y-moderacion.md) | Panel, agentes de IA, plazos, avisos, recursos | Parcial (reportar y bloquear sí; panel no) |
-| 06 | [Privacidad y RGPD](./06-privacidad-rgpd.md) | Datos sensibles, EIPD, DPD, encargados, conservación | Pendiente |
+| 05 | [Reportes y moderación](./05-reportes-y-moderacion.md) | Panel, agentes de IA, plazos, avisos, recursos | Panel/buzón/recursos humanos locales; sin activar, fotos/IA y operación pendientes |
+| 06 | [Privacidad y RGPD](./06-privacidad-rgpd.md) | Datos sensibles, EIPD, DPD, encargados, conservación | Recepción/gestión de derechos local; ejecución/política/cierre jurídico pendientes |
 | 07 | [Textos legales](./07-textos-legales.md) | Términos, normas de la comunidad, privacidad, aviso legal | Pendiente |
 | 08 | [Costes, proveedores y financiación](./08-financiacion-y-proveedores.md) | Qué es de pago, a quién pedir créditos, forma legal, donaciones | Lista hecha; sin contactar |
+| 09 | [Backoffice y cumplimiento: implementación](./09-plan-backoffice.md) | Entregables, pruebas de cierre, dependencias y decisiones legales | Primer lote interno local; fotos aplazadas al final |
+| 10 | [Cierre de cumplimiento](./10-cierre-cumplimiento.md) | Lista verificable de pendientes técnicos, operativos, jurídicos y de tiendas | Pendiente de cerrar con el titular y asesoría |
+| 11 | [Agentes en reclamaciones](./11-agentes-en-reclamaciones.md) | Estudio de clasificación/asistencia y condiciones para un futuro piloto | Sin implementar, sin proveedor ni decisiones automáticas |
 
 ## Orden de trabajo propuesto
 
-1. **Prototipo de lectura NFC del DNI** (`02`): es la pieza con más riesgo técnico; hay que confirmar pronto que funciona en Android y iPhone.
-2. **Forma legal y contactos con proveedores** (`08`): en paralelo, porque las respuestas tardan.
-3. **Fotos: escaneo en la zona de espera** (`03`) y **panel de moderación** (`05`).
-4. **Atestación del dispositivo y señales anti-bot** (`04`).
-5. **Textos legales, EIPD y cuestionarios de las tiendas** (`06`, `07`, `01`), con revisión de abogado antes de publicar.
+Prioridad acordada el 2026-10-16:
+
+1. **Circuito humano interno** (`09`): backoffice, buzón, decisiones y recursos implementados localmente; falta activación/operación.
+2. **Privacidad y textos** (`06`, `07`): ejecución de derechos, conservación, consentimientos y textos versionados; decisiones del titular y revisión jurídica antes de automatizar borrados o declarar cumplimiento.
+3. **NFC, anti-abuso y proveedores** (`02`, `04`, `08`): frentes independientes, sin dar por aprobadas integraciones ni crear recursos facturables.
+4. **Fotos al final** (`03`), aplazadas expresamente por el propietario mientras investiga opciones con otro agente.

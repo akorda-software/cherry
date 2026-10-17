@@ -1,0 +1,70 @@
+<.shell title="Expedientes" staff={@current_staff}>
+  <div class="heading">
+    <div>
+      <h1>Expedientes</h1>
+      <p>Primero, los casos que necesitan más atención.</p>
+    </div>
+    <nav aria-label="Estado de expedientes">
+      <a href={~p"/backoffice"} aria-current={if @params["status"] != "resolved", do: "page"}>
+        Pendientes
+      </a>
+      <a
+        href={~p"/backoffice?status=resolved"}
+        aria-current={if @params["status"] == "resolved", do: "page"}
+      >
+        Resueltos
+      </a>
+    </nav>
+  </div>
+  <p :if={@cases == []} class="empty">
+    No hay expedientes en esta página. Comprueba la otra cola o vuelve a la primera página.
+  </p>
+  <div :if={@cases != []} class="table-scroll">
+    <table>
+      <caption class="sr-only">Expedientes de tu área de trabajo, hasta 50 por página</caption>
+      <thead>
+        <tr>
+          <th>Expediente</th>
+          <th>Tipo y motivo</th>
+          <th>Recibido</th>
+          <th>Responsable</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={record <- @cases}>
+          <td>
+            <a href={~p"/backoffice/cases/#{record.id}"}>{String.slice(record.id, 0, 8)}</a><span
+              :if={record.category == "underage"}
+              class="priority"
+            >Prioritario</span>
+          </td>
+          <td>{label(record.kind)}<span class="detail">{label(record.category)}</span></td>
+          <td><time>{record.inserted_at}</time></td>
+          <td>
+            {cond do
+              record.assigned_staff_id == @current_staff.id -> "Asignado a ti"
+              record.assigned_staff_id != nil -> "Otro miembro del equipo"
+              true -> "Sin asignar"
+            end}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <nav class="pagination" aria-label="Páginas">
+    <a
+      :if={@offset > 0}
+      href={
+        ~p"/backoffice?#{%{status: @params["status"] || "open", offset: max(0, @offset - 50)}}"
+      }
+    >
+      Anterior
+    </a>
+    <a
+      :if={length(@cases) == 50 and @offset < 10000}
+      href={~p"/backoffice?#{%{status: @params["status"] || "open", offset: @offset + 50}}"}
+    >
+      Siguiente
+    </a>
+  </nav>
+</.shell>

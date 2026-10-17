@@ -62,8 +62,9 @@ defmodule CherryWeb.OwnProfileJSON do
   def upload_intent(conn, upload) do
     %{
       storageKey: upload.storage_key,
-      uploadUrl: MediaUrl.absolute(conn, upload.upload_url),
-      publicUrl: MediaUrl.absolute(conn, upload.public_url),
+      uploadUrl: MediaUrl.reference(conn, upload.upload_url),
+      # Compatibility name: an unsigned reference, NOT a publicly readable URL.
+      publicUrl: MediaUrl.reference(conn, upload.public_url),
       method: upload.method,
       headers: upload.headers,
       expiresAt: upload.expires_at,

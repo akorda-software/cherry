@@ -48,6 +48,20 @@ end
 
 config :cherry, :app_version, System.get_env("APP_VERSION", "dev")
 
+# Separate from end-user login; opt-in only after provisioning staff and testing HTTPS.
+config :cherry, :backoffice_enabled, System.get_env("BACKOFFICE_ENABLED", "false") == "true"
+
+config :cherry,
+       :backoffice_trusted_proxy_ips,
+       System.get_env("BACKOFFICE_TRUSTED_PROXY_IPS", "")
+       |> String.split(",", trim: true)
+       |> Enum.map(fn ip ->
+         case :inet.parse_address(ip |> String.trim() |> String.to_charlist()) do
+           {:ok, address} -> address
+           _ -> raise "BACKOFFICE_TRUSTED_PROXY_IPS must contain exact IP addresses"
+         end
+       end)
+
 config :cherry, :metrics_token, System.get_env("METRICS_TOKEN")
 
 positive_env = fn name, default, maximum ->
@@ -269,6 +283,21 @@ end
 
 s3_endpoint = System.get_env("S3_ENDPOINT", "") |> String.trim()
 
+if System.get_env("ERASURE_JOURNAL_ENABLED", "false") == "true" do
+  for name <-
+        ~w(ERASURE_JOURNAL_ENDPOINT ERASURE_JOURNAL_BUCKET ERASURE_JOURNAL_ACCESS_KEY_ID ERASURE_JOURNAL_SECRET_ACCESS_KEY) do
+    if String.trim(System.get_env(name, "")) == "",
+      do: raise("missing required recovery journal setting: #{name}")
+  end
+end
+
+config :cherry, Cherry.Recovery.Journal,
+  enabled: System.get_env("ERASURE_JOURNAL_ENABLED", "false") == "true",
+  endpoint: System.get_env("ERASURE_JOURNAL_ENDPOINT"),
+  bucket: System.get_env("ERASURE_JOURNAL_BUCKET"),
+  access_key_id: System.get_env("ERASURE_JOURNAL_ACCESS_KEY_ID"),
+  secret_access_key: System.get_env("ERASURE_JOURNAL_SECRET_ACCESS_KEY")
+
 config :cherry, Cherry.Storage.R2,
   account_id: System.get_env("R2_ACCOUNT_ID"),
   # Endpoint S3 genérico (MinIO, Garage...). Vacío ⇒ R2 (<account_id>.r2.cloudflarestorage.com).
@@ -278,6 +307,7 @@ config :cherry, Cherry.Storage.R2,
   secret_access_key: System.get_env("R2_SECRET_ACCESS_KEY"),
   bucket_name: System.get_env("R2_BUCKET_NAME"),
   public_url_base: System.get_env("R2_PUBLIC_URL_BASE"),
+  read_url_ttl_seconds: 300,
   allowed_content_types: ["image/jpeg", "image/png", "image/webp"],
   max_upload_bytes:
     String.to_integer(

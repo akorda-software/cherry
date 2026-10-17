@@ -104,9 +104,17 @@ export function SettingsScreen() {
       </ListSection>
 
       <ListSection
-        footnote="Para bloquear o reportar a alguien, abre su perfil o vuestro chat y toca ⋯. Si bloqueas, dejáis de veros del todo y no le avisamos; los reportes son anónimos."
+        footnote="Para bloquear o reportar a alguien, abre su perfil o vuestro chat y toca ⋯. Si bloqueas, dejáis de veros del todo y no le avisamos; no mostramos tu identidad a la persona reportada."
         title="Privacidad y seguridad"
       >
+        <ListRow
+          icon="mail"
+          iconColor="cielo"
+          label="Buzón y privacidad"
+          description="Reclamaciones, respuestas del equipo y tus derechos sobre los datos."
+          onPress={() => router.push(appShellRoutes.support)}
+          testID="settings-support"
+        />
         <ListRow
           accessibilityHint={location.blocked ? "Abre los ajustes del sistema" : undefined}
           description={

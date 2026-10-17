@@ -2,18 +2,28 @@
 
 ## Suites
 
-Cifras de la última ejecución (2026-10-15), todas en verde:
+Cifras de la última ejecución (2026-10-17), todas en verde:
 
 | Suite | Comando | Tests |
 |---|---|---|
-| Backend (ExUnit) | `pnpm test:backend` → `mix test` en `apps/backend` | 668 |
-| Móvil (vitest + jsdom) | `pnpm --filter @cherry/mobile test` | 966 (127 ficheros) |
-| Mobile-shared (vitest) | `pnpm --filter @cherry/mobile-shared test` | 51 |
-| Contracts (vitest) | `pnpm test:contracts` | 28 |
+| Backend (ExUnit) | `pnpm test:backend` → `mix test` en `apps/backend` | 737 |
+| Móvil (vitest + jsdom) | `pnpm --filter @cherry/mobile test` | 975 (128 ficheros) |
+| Mobile-shared (vitest) | `pnpm --filter @cherry/mobile-shared test` | 53 |
+| Contracts (vitest) | `pnpm test:contracts` | 29 |
 
 `pnpm test:mobile` ejecuta: typecheck de mobile y mobile-shared → tests mobile-shared → tests mobile → tests contracts. `pnpm test` = móvil + backend.
 
 Cierre de la cuarta pasada: backend comprobado además con **Elixir 1.18.4 / OTP 28** (toolchain de CI); `mix format --check-formatted` global pasa con esa versión, incluido `mrz.ex` sin modificar. Bundles de producción Hermes Android/iOS exportados correctamente, sin instalar ni probar hardware. Los avisos conocidos de mocks DOM/`act` no hacen fallar la suite móvil.
+
+Lote de backoffice del 2026-10-16: suites integradas, typechecks, `mix compile --warnings-as-errors`, formato global y referencias locales OpenAPI comprobados. **En este lote no se compilaron/exportaron APK, IPA ni bundles móviles**, no se desplegó ni se activaron proveedores. No hay verificación visual/nativa nueva. Los avisos DOM/`act` ya conocidos no fallan la suite.
+
+Revisión posterior del mismo lote: responsabilidades de casework divididas, regresión HTTPS con `FORCE_SSL` activo, logs SQL sensibles en debug, reclamaciones reabiertas, validación de directorio de códigos, altas inválidas sin efectos parciales, lecturas idempotentes y envío de chat concurrente con suspensión. Detalle móvil actualizado por ID y reintento seguro. La suite integrada detectó contaminación del catálogo por un fixture real de concurrencia; se cambió a perfiles mínimos y se limpiaron únicamente sus tres etiquetas propias. Ejecución final: 702/974/53/29 sin fallos; no se han descartado errores de suite como si fueran éxito.
+
+Segundo lote: **725 backend / 974 móvil / 53 mobile-shared / 29 contracts**, typechecks, compilación backend con warnings como errores y formato/diff correctos. Incluye permisos de superusuario, invitaciones/contraseñas, revocación/bloqueo, último superusuario con cambios simultáneos, grafo de borrado, reintentos externos, rollback, reutilización de identidad, decisiones de verificación tardías y borrado concurrente con mensajes. Landing revisada visualmente en Chromium con HTML renderizado localmente a 1440 y 390 px; sin arrancar un servidor ni asignar puertos. No valida todavía navegación completa, backoffice visual ni dispositivos nativos.
+
+**Bloqueo de medidas ajenas resuelto el 2026-10-17:** el titular aprobó la ficha mínima independiente. Se prueba borrado completo del expediente/textos/identidad del denunciante, conservación de la medida y su revisión, aislamiento API/permisos, revisión por otro miembro del equipo y restauración humana. Recursos pendientes mantienen asignación/fecha y los resueltos no se reinician; rollback, descendientes indirectos y borrado posterior de la cuenta afectada no dejan fichas residuales.
+
+Cuatro pruebas con conexiones PostgreSQL reales cubren suspensión→borrado, borrado→decisión en espera, recurso en trámite→borrado y borrado de las dos cuentas a la vez. El móvil muestra `measure` y permite pedir revisión sin componentes ni builds nuevos. Ejecución integrada: **737/975/53/29**, typechecks correctos. Los plazos de backups y el análisis jurídico quedan expresamente fuera de este bloque. [Detalle](./15-borrado-y-web-publica.md).
 
 ## Entorno del backend
 
@@ -33,6 +43,7 @@ Cobertura: umbral 90 % configurado en `mix.exs` (`mix test --cover`).
 ## Qué se prueba
 
 ### Backend
+- Backoffice/casework: roles separados y permisos actuales, códigos de un uso y sesiones caducadas/revocadas, archivos de códigos 0600/exclusivos, CSRF, HTTPS y rechazo de cabeceras de proxy no confiables, XSS, conservación de borrador inválido y límites de solicitudes. Decisión/comunicaciones atómicas, autor del reporte no expuesto, suspensión/recurso/restauración y reapertura sin reescribir historia. Prueba con **conexiones PostgreSQL concurrentes reales** para consumo único, asignación y resolución única (`casework_concurrency_test.exs`), con limpieza acotada de sus fixtures.
 - Dominio dating (`dating_test.exs`, `discovery_test.exs`): perfiles draft, completitud, ranking v2 con sus filtros duros y puntuación, swipes, matches, conversaciones, caducidad.
 - Concurrencia real: dos likes simultáneos crean exactamente un match (`swipe_concurrency_test.exs`).
 - Eficiencia social/chat: número de consultas por lote/likes, preferencias precargadas obsoletas, keyset con empates al microsegundo y límites inválidos, caducidad por lotes y filas bloqueadas. Benchmark reproducible: [`apps/backend/bench/README.md`](../apps/backend/bench/README.md).
@@ -46,6 +57,7 @@ Cobertura: umbral 90 % configurado en `mix.exs` (`mix test --cover`).
 - Verificación de edad: autenticación pasiva con una PKI sintética generada en los tests (`test/support/document_pki.ex`: CSCA → firmante → SOD, DG1/DG2 falsos) y con SOD firmados por `openssl cms` (`test/fixtures/document/`, regenerables con `generate.sh`): RSA PKCS#1 v1.5, RSASSA-PSS, ECDSA con curva nombrada y brainpool con parámetros explícitos, firma inválida, DG manipulado, cadena rota, certificados caducados, extensiones críticas, MRZ TD1/TD3 con dígitos de control (especímenes de ICAO 9303), menores, huella, límite de intentos, API y que los DG no salen en los logs. Los CSCA españoles de `priv/csca` se parsean y autoverifican. Nunca datos de documentos reales.
 
 ### Móvil
+- Buzón: carga distinta de vacío, error/reintento, solicitud de privacidad conservada tras un fallo, respuesta/recurso humano y aislamiento de borradores/respuestas tardías al cambiar de cuenta; acceso desde el shell antes de completar onboarding.
 - Routing: navegación raíz, zona privada, cierre de sesión y runtime config (`test/router/*`).
 - Features (`src/features/**/*.test.ts`): sesión (refresh/retry), proveedores y callbacks de auth, onboarding (pasos, reanudación, preferencias, fecha de nacimiento), cola de discovery (optimismo, rollback, deshacer), likes, matches, chat (sesión de socket, mensajes), fotos, ubicación, seguridad, ajustes y pestaña Yo.
 - UI (`test/ui/*`): contrato de tokens/tema y componentes (botones, pegatinas, conmutador, campos, hojas, avisos, barra de pestañas).

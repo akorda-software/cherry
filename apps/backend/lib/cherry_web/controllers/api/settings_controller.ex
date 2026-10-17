@@ -45,6 +45,11 @@ defmodule CherryWeb.Controllers.Api.SettingsController do
       {:ok, _} ->
         json(conn, %{ok: true})
 
+      {:error, :erasure_journal_unavailable} ->
+        conn
+        |> put_status(:service_unavailable)
+        |> json(%{error: "erasure_protection_unavailable"})
+
       {:error, changeset} ->
         conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
     end

@@ -1,0 +1,12 @@
+[Unit]
+Description=Notify operator of Cherry backup failure (%i)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/cherry-backup-alert.py %i
+UMask=0077
+TimeoutStartSec=30s
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict

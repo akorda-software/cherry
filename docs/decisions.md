@@ -6,6 +6,18 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-10-17 — Medida ajena mínima y revisión tras borrar al denunciante
+
+- **Contexto:** borrar íntegramente una denuncia podía dejar suspendida a otra cuenta sin expediente desde el que recurrir. El titular aprueba separar datos de la persona borrada y derechos de esa otra cuenta.
+- **Decisión:** eliminar expediente original, vínculos, relatos, avisos y auditoría de la denuncia; conservar únicamente una ficha nueva de la suspensión vigente y su revisión, vinculada solo a la otra cuenta. Textos fijos sin datos/evidencia del denunciante. El recurso pendiente mantiene su estado y asignación; uno resuelto mantiene solo resultado/fecha/decisor. No se modifica automáticamente la sanción y se exige otra persona para revisar.
+- **Límites:** no retiene correo, huella ni lista negra de quien se borra. La ficha desaparece al borrar la cuenta a la que pertenece. Es una separación técnica de datos de otra persona, no una reserva legal ni una decisión de plazos de backups; ambos quedan para después. [Detalle](./15-borrado-y-web-publica.md).
+
+## D-2026-10-16 — Baja con borrado físico y sin identidad residual
+
+- **Contexto:** el propietario descarta conservar correo o huella documental de quienes piden la baja y acepta el coste de repetir alta/verificación.
+- **Decisión:** borrar físicamente cuenta y datos vinculados al solicitarlo, sin esperar al reingreso. El mismo acceso/DNI puede volver desde cero, incluso si la cuenta estaba suspendida; no se conserva un veto de identidad. Conversaciones compartidas y expedientes vinculados también se eliminan. Referencias externas mínimas duran solo lo necesario para ejecutar/reintentar su limpieza.
+- **Límites:** sustituye la baja lógica y su protección de reingreso durante suspensión, aceptando ese riesgo de evasión. No autoriza purgas masivas de registros históricos ni declara cerradas reservas legales, backups o condiciones de proveedores. Implementado solo localmente. [Detalle](./15-borrado-y-web-publica.md).
+
 ## D-2026-10-14 — NFC con los documentos de todos los países con lista de CSCA pública
 
 - **Contexto:** la instancia oficial es solo para España, pero en España vive y viaja mucha gente sin DNI español. Con Didit (selfie + documento) ya pueden verificarse con cualquier pasaporte o documento de identidad; por NFC solo valían los documentos españoles, porque `priv/csca` solo traía los CSCA de España.

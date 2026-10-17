@@ -1,0 +1,14 @@
+[Unit]
+Description=Check for missing or stale Cherry backups
+After=network-online.target
+OnFailure=cherry-backup-alert@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/cherry-backup.py status
+UMask=0077
+TimeoutStartSec=10min
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/run/lock

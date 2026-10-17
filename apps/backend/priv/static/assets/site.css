@@ -1,0 +1,286 @@
+@font-face {
+  font-family: Rubik;
+  src: url('/fonts/Rubik-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: Rubik;
+  src: url('/fonts/Rubik-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-display: swap;
+}
+:root {
+  --ink: #29233a;
+  --paper: #fff9fb;
+  --pink: #ffd9e8;
+  --mint: #c5f2d4;
+  --yellow: #ffe89a;
+  --berry: #9b2147;
+  color: var(--ink);
+  background: var(--paper);
+  font: 400 17px/1.65 Rubik, system-ui, sans-serif;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+a {
+  color: var(--berry);
+  text-underline-offset: .22em;
+}
+a:hover {
+  text-decoration-thickness: 3px;
+}
+:focus-visible {
+  outline: 3px solid var(--berry);
+  outline-offset: 5px;
+}
+h1, h2, h3 {
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -.035em;
+}
+h1 {
+  font-size: clamp(2.6rem, 5.4vw, 5rem);
+  margin: .4em 0;
+}
+h2 {
+  font-size: clamp(1.9rem, 3vw, 3rem);
+}
+h3 {
+  font-size: 1.25rem;
+  letter-spacing: -.015em;
+}
+p {
+  max-width: 70ch;
+}
+.skip {
+  position: absolute;
+  top: -100px;
+  padding: .7rem;
+  background: white;
+  z-index: 2;
+}
+.skip:focus {
+  top: 0;
+}
+.site-header, .site-footer, .page-width, .hero, .manifesto, .open-note {
+  max-width: 1180px;
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 4vw, 3rem);
+}
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 1.5rem;
+}
+.wordmark {
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -.05em;
+}
+.site-header nav, .site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.5rem;
+}
+.site-header nav {
+  font-size: .9rem;
+}
+.hero {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  align-items: center;
+  gap: 3rem;
+  padding-block: 3.5rem 5rem;
+}
+.lede {
+  font-size: 1.2rem;
+  line-height: 1.6;
+  max-width: 50ch;
+}
+.small {
+  font-size: .85rem;
+  max-width: 43ch;
+  margin-top: 1.5rem;
+}
+.button {
+  display: inline-block;
+  background: var(--mint);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  padding: .8rem 1.25rem;
+  border-radius: 10px;
+  box-shadow: 4px 4px 0 var(--ink);
+  font-weight: 900;
+  text-decoration: none;
+}
+.button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.button:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.button.secondary {
+  background: var(--paper);
+}
+.cherry-poster {
+  background: var(--pink);
+  border: 3px solid var(--ink);
+  border-radius: 45% 45% 20px 20px;
+  position: relative;
+  padding: 1rem;
+  box-shadow: 8px 8px 0 var(--ink);
+  transform: rotate(3deg);
+}
+.cherry-poster svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.poster-sticker {
+  position: absolute;
+  right: -.5rem;
+  bottom: 1.5rem;
+  background: var(--yellow);
+  border: 3px solid var(--ink);
+  padding: .45rem .9rem;
+  border-radius: 7px;
+  font-size: 1.1rem;
+  font-weight: 900;
+  transform: rotate(-8deg);
+}
+.manifesto {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 4rem;
+  padding-block: 3rem 5rem;
+  border-top: 3px solid var(--ink);
+}
+.manifesto h2 {
+  max-width: 13ch;
+  margin-top: .5rem;
+}
+.manifesto-list article {
+  display: flex;
+  gap: 1.3rem;
+  border-bottom: 2px solid var(--ink);
+  padding-block: 1rem;
+}
+.manifesto-list article > span {
+  font-size: 2rem;
+}
+.manifesto-list h3 {
+  margin: .3rem 0;
+}
+.manifesto-list p {
+  margin: .6rem 0;
+}
+.open-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3rem;
+  background: var(--mint);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  padding-block: 2rem;
+  margin-bottom: 3rem;
+}
+.open-note h2 {
+  margin: .3rem 0 1rem;
+}
+.open-note p {
+  max-width: 49ch;
+}
+.open-note .button {
+  flex-shrink: 0;
+}
+.draft {
+  background: var(--yellow);
+  border-left: 4px solid var(--ink);
+  padding: 1rem 1.25rem;
+  margin-block: 2rem;
+  font-size: .9rem;
+}
+.draft p {
+  margin: .4rem 0 0;
+}
+.document {
+  max-width: 810px;
+  margin: 2rem auto 5rem;
+  padding-inline: 1.5rem;
+}
+.document h1 {
+  font-size: clamp(2.3rem, 5vw, 4rem);
+}
+.document h2 {
+  font-size: 1.55rem;
+  margin: 2.2rem 0 .6rem;
+}
+.document p {
+  overflow-wrap: anywhere;
+}
+.site-footer {
+  border-top: 3px solid var(--ink);
+  margin-top: 4rem;
+  padding-block: 2rem 3rem;
+}
+.site-footer nav {
+  font-size: .9rem;
+}
+.site-footer .wordmark {
+  margin: 0;
+}
+.site-footer > p:last-child {
+  font-size: .85rem;
+}
+@media (max-width: 760px) {
+  .site-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding-top: 1.5rem;
+  }
+  .cherry-poster {
+    max-width: 360px;
+    width: 90%;
+    margin: 0 auto;
+  }
+  .manifesto {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .manifesto h2 {
+    max-width: 22ch;
+  }
+  .open-note {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-inline: 1.25rem;
+    padding-inline: 1.5rem;
+    gap: 1rem;
+  }
+  .document {
+    margin-top: 1rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

@@ -24,6 +24,7 @@ app/
 │   ├── filters                 # modal «Filtros»
 │   ├── edit/{photos,tags,bio,basics}
 │   ├── settings                # «Ajustes»
+│   ├── support                 # «Buzón y privacidad», también antes de acabar el perfil
 │   └── about                   # «Acerca de Cherry»
 └── (dev)/{kitchen-sink,art}    # escaparates del sistema de diseño; fuera de __DEV__ redirigen a /
 ```
@@ -92,6 +93,14 @@ Modal «Filtros» («Gratis, como todo aquí. En otras apps esto se paga.»): ra
 
 Desde el ⋯ del perfil completo y desde el menú del chat (no desde la tarjeta de swipe ni el feed). «Reportar a {nombre}» con motivo (Perfil falso, Fotos inapropiadas, Acoso o amenazas, Spam o estafa, Parece menor de edad, Bio ofensiva, Otro motivo) y detalles opcionales → `POST /api/users/:id/report`; después ofrece bloquear también. «Bloquear a {nombre}» → «Sí, bloquear» (`POST /api/users/:id/block`): «Has bloqueado a {nombre}. No volveréis a veros.».
 
+## Buzón y privacidad
+
+Desde Ajustes y desde el icono de sobre del onboarding: `/(app)/support`. No exige completar el perfil/verificar edad ni tener habilitada la actividad social. Lista paginada de reportes, reclamaciones, solicitudes de privacidad y decisiones dirigidas al usuario; al abrir un expediente se ve su estado, referencia y respuesta privada. No se revela quién reportó a la persona afectada.
+
+«Nueva reclamación» y «Ejercer mis derechos de privacidad» abren el formulario; el segundo permite acceso, rectificación, supresión, limitación, portabilidad y oposición. Se avisa de no incluir contraseñas/documentos/datos ajenos y de que la respuesta llegará al buzón, no al correo. El texto se conserva ante error y solo se limpia al confirmar el envío. No se guarda entre cuentas o tras salir de la pantalla.
+
+Una decisión recurrible ofrece «Pedir revisión humana». La revisión usa un expediente separado y debe hacerla otra cuenta de equipo. Carga, vacío, error inicial y reintento están diferenciados; una recarga fallida conserva el contenido previo. Esto gestiona la petición: no declara efectuada una exportación/supresión ni cumplimiento legal completo ([límites](./14-backoffice.md)).
+
 ## Likes
 
 «Les gustas» — «Aquí no escondemos nada…». Rejilla de polaroids con quienes te han dado like y aún no has respondido (`GET /api/likes/received`, paginado): foto, nombre, «N en común» y el sello «¡Te ha dado like!». Tocar abre el perfil.
@@ -131,7 +140,7 @@ La ubicación se refresca sola: con el perfil completo, al abrir la app y al vol
 - **Visibilidad:** «Pausar mi perfil».
 - **Privacidad y seguridad:** «Actualizar mi ubicación» (pide el permiso si hace falta; si está bloqueado, la fila pasa a «Activar la ubicación en Ajustes» y reintenta sola al volver; toast «Ubicación actualizada» y, si Descubrir ya tenía perfiles cargados, se recarga con la nueva zona) y filas informativas sobre la ubicación aproximada, el bloqueo y los reportes.
 - **Acerca de Cherry:** por qué es gratis, qué no hace y qué sí, código abierto y la versión. El botón «Ver el código» solo aparece si la app se compiló con `EXPO_PUBLIC_SOURCE_URL`.
-- **Borrar cuenta:** hoja «¿Borrar tu cuenta?» con las consecuencias y la sugerencia de pausar; hay que mantener pulsado el botón. `DELETE /api/me/account`, cierre de sesión y vuelta a la bienvenida («Nos da pena verte ir, pero lo entendemos 💜»).
+- **Borrar cuenta:** hoja «¿Borrar tu cuenta?» con las consecuencias y la sugerencia de pausar; hay que mantener pulsado el botón. `DELETE /api/me/account` borra físicamente cuenta/datos vinculados y conversaciones compartidas para ambas personas, cierra sesión y vuelve a bienvenida («Nos da pena verte ir, pero lo entendemos 💜»). La hoja explica que correo/huella del DNI desaparecen, se puede volver desde cero con el mismo documento y los archivos/copias no siempre se eliminan instantáneamente.
 - No hay ajustes de notificaciones, tema ni idioma.
 
 ## Contadores de las pestañas

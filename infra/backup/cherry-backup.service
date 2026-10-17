@@ -1,0 +1,19 @@
+[Unit]
+Description=Cherry daily encrypted PostgreSQL backup to private R2
+After=network-online.target postgresql.service
+Wants=network-online.target
+OnFailure=cherry-backup-alert@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/cherry-backup.py backup
+RuntimeDirectory=cherry-backup
+RuntimeDirectoryMode=0700
+UMask=0077
+TimeoutStartSec=75min
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/run/cherry-backup /run/lock

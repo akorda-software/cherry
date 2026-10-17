@@ -1,0 +1,90 @@
+<.shell title="Equipo y permisos" staff={@current_staff}>
+  <div class="heading">
+    <div>
+      <h1>Equipo y permisos</h1>
+      <p>Accesos personales, separados de las cuentas de Cherry.</p>
+    </div>
+  </div>
+  <p :if={@error} class="error" role="alert">{@error}</p>
+  <section class="workspace">
+    <div>
+      <h2>Personas del equipo</h2>
+      <p class="hint">
+        Cambiar permisos o desactivar una cuenta revoca sus sesiones. Debe quedar un superusuario activo.
+      </p>
+      <article :for={person <- @staff} class="team-person">
+        <h3>{person.email}</h3>
+        <p>
+          {if person.disabled_at,
+            do: "Acceso desactivado",
+            else: if(person.password_hash, do: "Cuenta activada", else: "Pendiente de activar")}
+        </p>
+        <.form for={%{}} action={~p"/backoffice/team/#{person.id}"}>
+          <label for={"role-#{person.id}"}>Permisos</label>
+          <select id={"role-#{person.id}"} name="role">
+            <option
+              :for={role <- ~w(superadmin admin moderator privacy)}
+              value={role}
+              selected={person.role == role}
+            >
+              {label(role)}
+            </option>
+          </select>
+          <label for={"disabled-#{person.id}"}>Estado</label>
+          <select id={"disabled-#{person.id}"} name="disabled">
+            <option value="false" selected={is_nil(person.disabled_at)}>Activo</option>
+            <option value="true" selected={not is_nil(person.disabled_at)}>Desactivado</option>
+          </select>
+          <button type="submit">Guardar permisos</button>
+        </.form>
+        <.form
+          :if={is_nil(person.disabled_at)}
+          for={%{}}
+          action={~p"/backoffice/team/#{person.id}/reset-access"}
+        >
+          <p class="hint">
+            La invitación de recuperación invalida la contraseña y todas las sesiones actuales.
+          </p>
+          <button class="secondary" type="submit">Restablecer acceso e invitar</button>
+        </.form>
+      </article>
+      <nav class="pagination" aria-label="Páginas del equipo">
+        <a :if={@offset > 0} href={~p"/backoffice/team?#{%{offset: max(@offset - 50, 0)}}"}>
+          Anterior
+        </a>
+        <a
+          :if={length(@staff) == 50 and @offset < 10000}
+          href={~p"/backoffice/team?#{%{offset: @offset + 50}}"}
+        >
+          Siguiente
+        </a>
+      </nav>
+    </div>
+    <aside>
+      <h2>Invitar a una persona</h2>
+      <.form for={%{}} action={~p"/backoffice/team"}>
+        <label for="invite-email">Correo</label>
+        <input id="invite-email" name="email" type="email" required maxlength="254" />
+        <label for="invite-role">Permisos iniciales</label>
+        <select id="invite-role" name="role">
+          <option value="moderator">Moderación</option>
+          <option value="privacy">Privacidad</option>
+          <option value="admin">Administración</option>
+          <option value="superadmin">Superusuario</option>
+        </select>
+        <button type="submit">Crear invitación</button>
+      </.form>
+      <h2>Qué permite cada rol</h2>
+      <dl>
+        <dt>Superusuario</dt>
+        <dd>Gestiona el equipo y todos los expedientes.</dd>
+        <dt>Administración</dt>
+        <dd>Atiende todas las áreas y recupera asignaciones. No concede permisos.</dd>
+        <dt>Moderación</dt>
+        <dd>Reportes, reclamaciones de servicio y recursos. Sin solicitudes de privacidad.</dd>
+        <dt>Privacidad</dt>
+        <dd>Solicitudes de derechos. Sin expedientes de moderación.</dd>
+      </dl>
+    </aside>
+  </section>
+</.shell>

@@ -40,6 +40,27 @@ defmodule Cherry.Dating.ConversationAccess do
     end
   end
 
+  @doc false
+  def lock_accounts(conversation_id) do
+    with {:ok, id} <- Ecto.UUID.cast(conversation_id) do
+      user_ids =
+        from([user_a: a, user_b: b] in query(id),
+          select: fragment("unnest(ARRAY[?, ?])", a.id, b.id)
+        )
+
+      Repo.all(
+        from(u in User,
+          where: u.id in subquery(user_ids),
+          order_by: u.id,
+          lock: "FOR SHARE",
+          select: u.id
+        )
+      )
+    else
+      _ -> []
+    end
+  end
+
   defp query(conversation_id) do
     from(c in Conversation,
       as: :conversation,
@@ -77,6 +98,7 @@ defmodule Cherry.Dating.ConversationAccess do
       [profile_a: a, profile_b: b, user_a: ua, user_b: ub],
       is_nil(a.deleted_at) and is_nil(b.deleted_at) and
         is_nil(ua.deleted_at) and is_nil(ub.deleted_at) and
+        is_nil(ua.suspended_at) and is_nil(ub.suspended_at) and
         not exists(subquery(blocked_pair))
     )
   end

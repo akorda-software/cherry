@@ -4,6 +4,10 @@ defmodule CherryWeb.Controllers.Api.ActivityController do
   alias Cherry.Dating.Social
 
   @doc "Contadores para los badges de las pestañas (`ActivitySummary`)."
+  def summary(%{assigns: %{current_user: %{suspended_at: %DateTime{}}}} = conn, _params) do
+    json(conn, %{receivedLikesCount: 0, newMatchesCount: 0, unreadConversationsCount: 0})
+  end
+
   def summary(conn, _params) do
     case conn.assigns.current_profile do
       nil ->

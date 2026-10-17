@@ -27,6 +27,7 @@ defmodule Cherry.Application do
       Cherry.Dating.MatchExpirySweeper,
       # Physically deletes deleted photos and abandoned uploads (no-op under the test sandbox).
       Cherry.Dating.PhotoStorageSweeper,
+      Cherry.Accounts.ErasureSweeper,
       # Start a worker by calling: Cherry.Worker.start_link(arg)
       # {Cherry.Worker, arg},
       # Start to serve requests, typically the last entry

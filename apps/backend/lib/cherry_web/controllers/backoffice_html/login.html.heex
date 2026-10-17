@@ -1,0 +1,50 @@
+<.shell title="Acceso privado">
+  <section class="login">
+    <h1>Cuidar de Cherry.</h1>
+    <p>
+      Acceso del equipo de atención y seguridad. Las cuentas de la app no permiten entrar aquí.
+    </p>
+    <p :if={@error} role="alert" class="error">{@error}</p>
+    <.form for={%{}} action={~p"/backoffice/login"}>
+      <h2>Con tu cuenta del equipo</h2>
+      <input type="hidden" name="method" value="password" />
+      <label for="email">Correo del equipo</label>
+      <input
+        id="email"
+        name="email"
+        type="email"
+        required
+        maxlength="254"
+        autocomplete="username"
+      />
+      <label for="password">Contraseña</label>
+      <input
+        id="password"
+        name="password"
+        type="password"
+        required
+        maxlength="256"
+        autocomplete="current-password"
+      />
+      <button type="submit">Entrar con mi cuenta</button>
+    </.form>
+    <p><a href={~p"/backoffice/invitation"}>Tengo una invitación</a></p>
+    <h2>Acceso de recuperación</h2>
+    <.form for={%{}} action={~p"/backoffice/login"}>
+      <label for="code">Código de un solo uso</label>
+      <input
+        id="code"
+        name="code"
+        type="password"
+        required
+        maxlength="128"
+        autocomplete="one-time-code"
+        spellcheck="false"
+      />
+      <p class="hint">
+        Se genera desde la consola del servidor y caduca en diez minutos. Nunca lo compartas.
+      </p>
+      <button type="submit">Entrar al backoffice</button>
+    </.form>
+  </section>
+</.shell>

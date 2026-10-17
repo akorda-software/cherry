@@ -2,6 +2,18 @@
 
 Registro de avance del proyecto. Convención: una entrada por unidad de trabajo, con estado. Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho.
 
+## 2026-10-17 — Medida ajena mínima tras borrar al denunciante [x]
+
+Separación aprobada por el titular: el expediente original y todos sus textos/vínculos/avisos/auditoría desaparecen; una suspensión vigente sobre otra cuenta queda en una ficha nueva mínima, con su vía de revisión independiente. No conserva identidad, relato ni datos del denunciante ni cambia automáticamente la sanción. Los recursos pendientes mantienen fecha/asignación y los resueltos solo resultado/fecha/decisor, sin duplicarse. Borrar después la cuenta afectada elimina las fichas. Gate transaccional compartido/exclusivo para no perder decisiones o recursos simultáneos; migración `20261017100000`, API/contrato y etiqueta móvil actualizados.
+
+**737 backend, 975 móvil, 53 mobile-shared y 29 contracts**, suites integradas y typechecks correctos. Cuatro regresiones PostgreSQL con conexiones reales y pruebas de minimización/recursos/rollback. Se resuelve el bloqueo del lote anterior; backups, reservas legales y validación jurídica quedan aplazados por el titular. Sin commit/push/despliegue ni compilación móvil. [Alcance](./15-borrado-y-web-publica.md).
+
+## 2026-10-16 — Segundo lote local: borrado, equipo y web pública [x]
+
+Borrado físico al solicitar baja, liberando correo/OAuth/huella del DNI; cascadas de expedientes/avisos/auditoría, limpieza de jobs y cola durable de archivos/sesiones de proveedor. Protección ante verificación tardía, firma de subida vigente y rollback; sin activar proveedores ni cambiar moderación de fotos. Superusuario y gestión web de equipo, invitaciones de un uso sin correo, contraseñas personales, revocación y bloqueo temporal, protección del último superusuario activado con concurrencia real. Landing y borradores legales/contacto/eliminación, enlaces propios desde config y estudio de agentes sin implementación.
+
+**725/974/53/29**, typechecks, compile warnings-as-errors y formato/diff correctos; capturas Chromium offline a 1440/390 px. **Bloqueo descubierto y reproducido en ese cierre:** borrar al denunciante dejaba una suspensión ajena sin expediente/recurso; resuelto en la entrada del 2026-10-17 tras decisión explícita del titular. Siguen pendientes backups/reservas legales y textos/contactos definitivos. Sin commit/push/despliegue ni compilación móvil; `.expo/devices.json` ajeno intacto. [Estado](./15-borrado-y-web-publica.md).
+
 ## Fase 0 — Fundación del starter ✅
 
 - [x] Monorepo pnpm + Turbo: `apps/mobile`, `apps/backend`, `packages/contracts`, `packages/mobile-shared`
@@ -52,8 +64,11 @@ Registro de avance del proyecto. Convención: una entrada por unidad de trabajo,
 - [ ] Refresco y cambio de ubicación después del onboarding
 - [ ] Métricas de producto sobre `analytics_events`
 - [ ] Anti-abuso: rate limits de swipes, login y creación de cuentas
-- [ ] Admin: revisión de reportes/usuarios (hoy solo funciones de contexto, sin rutas)
+- [x] Admin local: revisión de expedientes, roles, decisiones/suspensión, buzón y recursos; pendiente activar y operar en producción ([estado](./14-backoffice.md))
+- [x] Recepción y gestión local de solicitudes de privacidad, con permisos separados y respuesta privada; no equivale a ejecutar exportaciones/supresión
 - [ ] Purga de datos al borrar la cuenta
+
+**2026-10-16 — Primer lote interno de backoffice y cumplimiento:** panel privado por códigos de un solo uso, sesiones revocables, HTTPS/proxy de confianza y CSRF; cola, asignación/reasignación, decisiones motivadas, advertencia/suspensión reversible y auditoría. Buzón móvil con justificantes/reclamaciones/derechos de privacidad y recursos resueltos por una cuenta distinta; disponible antes de terminar el onboarding y durante una suspensión. Autor del reporte no expuesto y borradores/respuestas tardías aislados entre cuentas. **694 backend, 972 móvil, 53 mobile-shared y 29 contracts**, typechecks, compilación backend sin avisos, formato y OpenAPI correctos; concurrencia real de códigos/asignación/resolución probada. Nueva migración aplicada solo a la BD local de tests. Sin commit/push, despliegue, activación de personal real, proveedores externos ni compilación móvil. Fotos aplazadas expresamente; datos locales ajenos conservados. **No es cierre de cumplimiento:** ejecución de derechos, retención, textos/consentimientos y validación jurídica/operativa siguen pendientes ([detalle](./14-backoffice.md)).
 
 ---
 
@@ -73,6 +88,8 @@ Referencia vigente: [arquitectura del servidor propio](../infra/arquitectura.md)
 - [ ] Configurar backups locales y R2, fijar frecuencia/retención y probar restauración antes de conservar datos reales. R2 se configura más adelante.
 
 ## Registro de cambios
+
+- **2026-10-16 — Revisión del backoffice:** separadas recepción, buzón, revisión, efectos de decisión, comunicaciones y restricciones de cuenta. Corregidos bypass indirecto de HTTPS vía `FORCE_SSL`, reapertura de reclamaciones estimadas, orden de locks de logout, directorio privado de códigos, logs SQL sensibles y chat concurrente con suspensión; detalle móvil autoritativo y errores de envío/recarga separados. **702 backend, 974 móvil, 53 mobile-shared, 29 contracts**, typechecks/formato/compilación backend sin avisos correctos. La regresión de contaminación de etiquetas de fixtures fue corregida y la suite integrada repetida en verde. Lista de cierre jurídico/operativo/técnico en `compliance/10-cierre-cumplimiento.md`. Sin despliegue, compilación móvil, servicios externos ni cambios de fotos; modificación ajena `.expo/devices.json` conservada.
 
 - **2026-04-15** — Primer commit: starter base (monorepo, auth Phoenix-owned, shell, design system).
 - **2026-04-17** — Servicios auth mock para dev workflow; soporte react-native-svg y componentes UI.

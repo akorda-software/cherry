@@ -11,14 +11,35 @@ defmodule CherryWeb.MediaUrl do
 
   @spec absolute(Plug.Conn.t() | nil, String.t() | nil) :: String.t() | nil
   def absolute(_conn, nil), do: nil
-  def absolute(_conn, "http://" <> _ = url), do: url
-  def absolute(_conn, "https://" <> _ = url), do: url
+  def absolute(_conn, "http://" <> _ = url), do: remote(url)
+  def absolute(_conn, "https://" <> _ = url), do: remote(url)
 
   def absolute(conn, "/" <> _ = path) do
     base_url(conn) <> path
   end
 
   def absolute(_conn, other), do: other
+
+  # Signing is deliberately at the response boundary, after domain authorization.
+  # Never persist signed URLs or replace an unavailable signer with a public URL.
+  defp remote(url) do
+    case Cherry.Storage.R2.storage_key(url) do
+      nil ->
+        # Signing failure must not reveal a raw R2 download address.
+        if String.ends_with?(URI.parse(url).host || "", ".r2.cloudflarestorage.com"),
+          do: nil,
+          else: url
+
+      key ->
+        case Cherry.Storage.R2.presign_get(key) do
+          {:ok, signed} -> signed
+          _ -> nil
+        end
+    end
+  end
+
+  def reference(conn, "/" <> _ = path), do: base_url(conn) <> path
+  def reference(_conn, url), do: url
 
   @spec base_url(Plug.Conn.t() | nil) :: String.t()
   def base_url(conn) do

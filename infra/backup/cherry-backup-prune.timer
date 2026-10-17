@@ -1,0 +1,11 @@
+[Unit]
+Description=Expire Cherry backups independently of new backup success
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=30s
+Unit=cherry-backup-prune.service
+
+[Install]
+WantedBy=timers.target

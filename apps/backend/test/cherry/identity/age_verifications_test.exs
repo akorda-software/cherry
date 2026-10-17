@@ -45,6 +45,35 @@ defmodule Cherry.Identity.AgeVerificationsTest do
   end
 
   describe "verify_nfc/3" do
+    test "a stale account cannot create new attempts or verifications after erasure", ctx do
+      user = user_fixture()
+      {:ok, :deleted} = Cherry.Accounts.delete_account(user)
+      assert {:error, :verification_revoked} = verify(user, document(ctx))
+      assert {:error, :verification_revoked} = AgeVerifications.start_provider(user, nil)
+      assert attempts(user) == 0
+      refute AgeVerifications.get(user.id)
+    end
+
+    test "a provider decision arriving after erasure cannot recreate verification data" do
+      user = user_fixture()
+      decision = DiditStub.decision(user.id, "Approved")
+
+      Req.Test.stub(Cherry.Identity.Didit, fn conn ->
+        if conn.method == "GET" do
+          {:ok, :deleted} = Cherry.Accounts.delete_account(user)
+          Req.Test.json(conn, decision)
+        else
+          Plug.Conn.send_resp(conn, 200, "{}")
+        end
+      end)
+
+      assert {:error, :verification_revoked} =
+               AgeVerifications.check_provider(user, DiditStub.session_id(), now: @now)
+
+      refute Repo.get(Cherry.Accounts.User, user.id)
+      refute AgeVerifications.get(user.id)
+    end
+
     test "an adult's DNI stores only status, method, date and fingerprint", ctx do
       user = user_fixture()
       doc = document(ctx, personal_number: PKI.dni(12_345_678))
@@ -673,7 +702,12 @@ defmodule Cherry.Identity.AgeVerificationsTest do
         end)
 
       assert AgeVerifications.verified?(user.id)
-      assert log =~ "session erasure failed (503)"
+
+      assert Repo.get_by(Cherry.Accounts.ErasureTask,
+               kind: "provider",
+               reference: DiditStub.session_id()
+             )
+
       refute log =~ DiditStub.session_id()
     end
 

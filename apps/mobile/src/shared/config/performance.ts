@@ -19,5 +19,5 @@ export const discoveryPerformance = Object.freeze({
 export const imagePrefetchPerformance = Object.freeze({
   reuseMs: 30_000,
   maxEntries: 128,
-  cachePolicy: "memory-disk" as const
+  cachePolicy: "memory" as const
 });

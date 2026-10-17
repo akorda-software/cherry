@@ -1,6 +1,7 @@
 export const contractsPackageName = "@cherry/contracts";
 
 export * from "./auth";
+export * from "./casework";
 export * from "./common";
 export * from "./config";
 export * from "./discovery";

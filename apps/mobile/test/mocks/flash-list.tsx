@@ -6,6 +6,7 @@ interface FlashListProps<T> {
   renderItem(info: { item: T; index: number }): ReactNode;
   keyExtractor?(item: T, index: number): string;
   ListEmptyComponent?: ReactNode;
+  ListHeaderComponent?: ReactNode;
   ListFooterComponent?: ReactNode;
   estimatedItemSize?: number;
   numColumns?: number;
@@ -17,11 +18,13 @@ interface FlashListProps<T> {
 export function FlashList<T>({
   data,
   renderItem,
+  ListHeaderComponent,
   ListEmptyComponent,
   ListFooterComponent
 }: FlashListProps<T>) {
   return (
     <View testID="flash-list">
+      {ListHeaderComponent ?? null}
       {data.length === 0 && ListEmptyComponent ? ListEmptyComponent : null}
       {data.map((item, index) => (
         <View key={index}>{renderItem({ item, index })}</View>

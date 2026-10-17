@@ -1,0 +1,11 @@
+[Unit]
+Description=Cherry full independent database backup every day
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 UTC
+RandomizedDelaySec=5min
+Persistent=true
+Unit=cherry-backup.service
+
+[Install]
+WantedBy=timers.target

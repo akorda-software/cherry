@@ -24,8 +24,8 @@ defmodule CherryWeb.Controllers.Api.ConfigController do
         locale: instance.locale,
         operator: instance.operator,
         contactEmail: instance.contact_email,
-        privacyUrl: instance.privacy_url,
-        termsUrl: instance.terms_url,
+        privacyUrl: instance.privacy_url || CherryWeb.Endpoint.url() <> "/privacidad",
+        termsUrl: instance.terms_url || CherryWeb.Endpoint.url() <> "/condiciones",
         sourceUrl: instance.source_url
       },
       ageVerification: %{minimumAge: AgeVerifications.minimum_age()}

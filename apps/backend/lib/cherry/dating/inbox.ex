@@ -241,6 +241,7 @@ defmodule Cherry.Dating.Inbox do
       where: m.status == "active",
       where: is_nil(m.expires_at) or m.expires_at > ^now,
       where: is_nil(other.deleted_at) and is_nil(other_user.deleted_at),
+      where: is_nil(other_user.suspended_at),
       where: not exists(subquery(blocked_pair))
     )
   end

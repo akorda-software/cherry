@@ -60,6 +60,7 @@ defmodule Cherry.Dating.Safety do
          :ok <- validate_reason(reason),
          {:ok, details} <- normalize_details(details) do
       Repo.transaction(fn ->
+        Cherry.Casework.Lifecycle.participate!()
         lock_report_pair(reporter_id, target_id)
 
         case open_report(reporter_id, target_id) do
@@ -73,8 +74,12 @@ defmodule Cherry.Dating.Safety do
                    reason: reason,
                    details: details
                  }) do
-              {:ok, report} -> report
-              {:error, changeset} -> Repo.rollback(changeset)
+              {:ok, report} ->
+                Cherry.Casework.intake_report!(report)
+                report
+
+              {:error, changeset} ->
+                Repo.rollback(changeset)
             end
         end
       end)
@@ -194,7 +199,7 @@ defmodule Cherry.Dating.Safety do
   def report_profile(attrs \\ %{}) do
     %Report{}
     |> Report.changeset(attrs)
-    |> Repo.insert()
+    |> Repo.insert(log: false)
   end
 
   # ── Admin ─────────────────────────────────────────────────────────────
@@ -222,6 +227,6 @@ defmodule Cherry.Dating.Safety do
   def update_report(%Report{} = report, attrs) do
     report
     |> Report.changeset(attrs)
-    |> Repo.update()
+    |> Repo.update(log: false)
   end
 end

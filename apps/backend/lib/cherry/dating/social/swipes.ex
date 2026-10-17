@@ -48,6 +48,7 @@ defmodule Cherry.Dating.Social.Swipes do
           join: u in User,
           on: u.id == p.user_id,
           where: p.id == ^target_id and is_nil(p.deleted_at) and is_nil(u.deleted_at),
+          where: is_nil(u.suspended_at),
           where: not exists(subquery(blocked_pair_query(viewer_id, target_id))),
           select: %{
             discoverable: p.is_complete and p.is_discoverable and not p.is_paused,

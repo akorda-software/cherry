@@ -24,12 +24,24 @@ La zona de espera ya existente es el punto natural donde enganchar el análisis:
 | Pieza | Opción | Coste |
 |---|---|---|
 | Abuso infantil por huella | Microsoft PhotoDNA (hay que solicitarlo) / Cloudflare CSAM Scanning Tool (si las fotos de R2 se sirven por Cloudflare) | Gratis |
+| Clasificación de contenido | Azure AI Content Safety, API de imágenes; no confundir con PhotoDNA | Nivel F0: 5.000 imágenes/mes según tarifa pública consultada el 2026-10-16 |
 | Clasificación de contenido | Modelo de código abierto en nuestro servidor como primer filtro | Gratis (CPU) |
 | Clasificación de contenido | AWS Rekognition (~0,001 $/imagen), Google Vision SafeSearch, Sightengine (2.000 gratis al mes) | De pago, barato |
 | Duplicados | Huella perceptual propia | Gratis |
 | Comparación de caras | Modelo de código abierto (el mismo de `02`) | Gratis (CPU) |
 
 Para self-hosting, el modelo de código abierto debería funcionar sin servicios externos; los servicios de pago serían opcionales por configuración.
+
+### Microsoft: servicios distintos (verificado el 2026-10-16)
+
+- **PhotoDNA Cloud Service:** gratuito para clientes y desarrolladores que superen la evaluación de elegibilidad. Detecta coincidencias con huellas de material de abuso infantil conocido; no es un clasificador general de desnudos, no verifica edad ni identidad y una ausencia de coincidencia no demuestra que una imagen sea segura. El acceso requiere solicitud y aprobación, no solo una clave de Azure.
+- **Azure AI Content Safety:** clasifica contenido sexual, violencia, odio y autolesión en imágenes, con niveles de severidad. Su tarifa pública ofrece **5.000 imágenes al mes en Free/F0**; al agotar el cupo se detiene el uso, sin sobrecostes del propio nivel gratuito. Requiere suscripción Azure y un recurso compatible. Otros recursos de Azure pueden tener costes independientes: no se crearán ni cambiarán planes sin autorización.
+- Microsoft indica expresamente que **Content Safety no puede usarse para detectar imágenes ilegales de explotación infantil**. No sustituye a PhotoDNA ni al procedimiento de seguridad infantil. Tampoco garantiza ausencia de falsos positivos/negativos, autenticidad de una foto o cumplimiento de toda nuestra política.
+- **No integrar Azure Content Moderator antiguo:** está deprecado y su retirada anunciada es el **15 de marzo de 2027**. Para una integración nueva, evaluar Content Safety.
+- La API de clasificación devuelve señales, no una resolución jurídica. Los umbrales y motivos deben estar versionados y los casos dudosos deben poder revisarse. Fallos, timeout o cuota agotada dejan la imagen **pendiente**, no aprobada automáticamente ni rechazada como infracción.
+- Enviar fotos a Microsoft introduce un proveedor externo de tratamiento: comprobar región disponible, condiciones, retención y contrato antes de activarlo con datos reales. La integración técnica puede probarse con respuestas simuladas sin enviar fotos de usuarios.
+
+Todavía **no hay recurso Azure configurado, solicitud PhotoDNA acreditada ni integración implementada** en Cherry. Plan de trabajo y dependencias: [09 — Backoffice y cumplimiento](./09-plan-backoffice.md).
 
 ## Plan
 
@@ -44,4 +56,7 @@ Para self-hosting, el modelo de código abierto debería funcionar sin servicios
 ## Fuentes
 
 - [Precios de AWS Rekognition](https://aws.amazon.com/rekognition/pricing/) · [Precios de Sightengine](https://sightengine.com/pricing)
+- [Microsoft PhotoDNA: elegibilidad, coste y alcance](https://www.microsoft.com/en-us/photodna/faq)
+- [Precios de Azure AI Content Safety](https://azure.microsoft.com/en-us/pricing/details/content-safety/) · [Alcance y límites del servicio](https://learn.microsoft.com/en-us/azure/ai-services/content-safety/overview)
+- [Retirada de Azure Content Moderator](https://learn.microsoft.com/en-us/azure/ai-services/content-moderator/overview)
 - [Lo que hacen Match Group y Bumble con las fotos y la verificación](https://www.biometricupdate.com/202602/match-group-extends-facetec-liveness-to-hinge-adds-age-verification-for-uk-oz-users)

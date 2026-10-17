@@ -1,0 +1,127 @@
+<.shell title="Revisión de expediente" staff={@current_staff}>
+  <a href={~p"/backoffice"}>Volver a expedientes</a>
+  <div class="heading">
+    <div>
+      <h1>{label(@case.kind)}</h1>
+      <p>{label(@case.category)} · {@case.id}</p>
+    </div>
+    <span class="status">{label(@case.status)}</span>
+  </div>
+  <div class="workspace">
+    <section aria-label="Datos del expediente">
+      <p :if={@case.kind == "measure"} class="hint">
+        Ficha mínima de una suspensión vigente. El relato y los datos de otras personas no se conservan aquí. No es una nueva sanción ni acredita hechos adicionales; su revisión requiere decisión humana.
+      </p>
+      <h2>Solicitud recibida</h2>
+      <p class="statement">{@case.statement || "Sin detalles adicionales."}</p>
+      <p :if={@case.parent_case_id}>
+        <a href={~p"/backoffice/cases/#{@case.parent_case_id}"}>Consultar decisión recurrida</a>
+      </p>
+      <section :if={@profile} class="profile-excerpt">
+        <h2>Texto actual del perfil</h2>
+        <p><strong>{@profile.display_name}</strong></p>
+        <p class="statement">{@profile.bio}</p>
+        <p class="hint">
+          No es una captura histórica. No se muestra el chat, las fotos ni documentos de identidad.
+        </p>
+      </section>
+      <section :if={@case.status == "resolved"}>
+        <h2>Decisión: {label(@case.outcome)}</h2>
+        <p class="statement">{@case.response}</p>
+        <div :if={@case.reporter_response}>
+          <h3>Respuesta a quien reportó</h3>
+          <p class="statement">{@case.reporter_response}</p>
+        </div>
+        <p class="hint">
+          Comunicada en el buzón privado de cada destinatario. No se ha enviado correo.
+        </p>
+      </section>
+      <h2>Trazabilidad</h2>
+      <ol class="timeline">
+        <li :for={event <- @events}>
+          <time>{event.inserted_at}</time><strong>{label(event.action)}</strong>
+          <span>
+            {if event.staff_id,
+              do: "Equipo: #{String.slice(event.staff_id, 0, 8)}",
+              else: "Usuario o sistema"}
+          </span>
+        </li>
+      </ol>
+    </section>
+    <aside :if={@case.status == "open"}>
+      <h2>Revisar y responder</h2>
+      <p :if={@error} role="alert" class="error">{@error}</p>
+      <.form
+        :if={is_nil(@case.assigned_staff_id)}
+        for={%{}}
+        action={~p"/backoffice/cases/#{@case.id}/claim"}
+      >
+        <p>
+          Asígnate el expediente antes de resolverlo. Los recursos requieren una persona distinta de la decisión original.
+        </p>
+        <button type="submit">Asignarme expediente</button>
+      </.form>
+      <p :if={@case.assigned_staff_id && @case.assigned_staff_id != @current_staff.id}>
+        Este expediente está asignado a otra persona.
+      </p>
+      <.form
+        :if={
+          @case.assigned_staff_id && @case.assigned_staff_id != @current_staff.id &&
+            @current_staff.role in ["admin", "superadmin"]
+        }
+        for={%{}}
+        action={~p"/backoffice/cases/#{@case.id}/reassign"}
+      >
+        <button type="submit" class="secondary">Reasignarme expediente</button>
+      </.form>
+      <.form
+        :if={@case.assigned_staff_id == @current_staff.id}
+        for={%{}}
+        action={~p"/backoffice/cases/#{@case.id}/resolve"}
+      >
+        <label for="outcome">Decisión</label>
+        <select name="outcome" id="outcome" required>
+          <option value="">Seleccionar</option>
+          <option
+            :for={outcome <- @outcomes}
+            value={outcome}
+            selected={@form_values["outcome"] == outcome}
+          >
+            {label(outcome)}
+          </option>
+        </select>
+        <p class="hint">
+          Suspender limita la actividad social, no el acceso a recursos y privacidad. Una revocación puede restaurarla.
+        </p>
+        <p :if={@case.kind == "appeal"} class="hint">
+          Estimar el recurso de quien reportó o reclamó abre un expediente nuevo, sin sanción automática. Estimar el del afectado revoca la medida original si sigue vigente.
+        </p>
+        <label for="response">
+          {if @case.kind == "report",
+            do: "Motivo para la persona afectada",
+            else: "Respuesta a la solicitud"}
+        </label>
+        <textarea name="response" id="response" required minlength="20" maxlength="4000" rows="7">{@form_values["response"]}</textarea>
+        <p class="hint">
+          Explica los hechos acreditados y la norma aplicada. Indica que puede recurrir en su buzón. No identifiques al denunciante ni copies mensajes privados.
+        </p>
+        <div :if={@case.kind == "report"}>
+          <label for="reporter_response">Resultado para quien reportó</label>
+          <textarea
+            name="reporter_response"
+            id="reporter_response"
+            required
+            minlength="20"
+            maxlength="4000"
+            rows="5"
+          >{@form_values["reporter_response"]}</textarea>
+          <p class="hint">Solo el resultado necesario, sin datos privados de la otra persona.</p>
+        </div>
+        <p :if={@case.kind == "privacy"} class="hint">
+          Responder aquí no exporta ni borra datos. No declares una solicitud atendida si la operación correspondiente no se ha completado.
+        </p>
+        <button type="submit">Guardar decisión y comunicarla</button>
+      </.form>
+    </aside>
+  </div>
+</.shell>

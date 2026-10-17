@@ -98,6 +98,10 @@ defmodule Cherry.Dating.Messaging do
           :ok
       end
 
+      # A suspension and an already-started send must serialize on the accounts,
+      # not just on the match. Recheck visibility after acquiring these locks.
+      Cherry.Dating.ConversationAccess.lock_accounts(conversation_id)
+
       with {:ok, conversation} <-
              get_messageable_conversation(conversation_id, sender_profile_id),
            {:ok, message} <- %Message{} |> Message.changeset(attrs) |> Repo.insert() do

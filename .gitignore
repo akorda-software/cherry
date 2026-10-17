@@ -29,3 +29,4 @@ apps/mobile/.mobile-dev
 
 # Compilación de los módulos nativos locales
 apps/mobile/modules/*/android/build/
+infra/backup/__pycache__/

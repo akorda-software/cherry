@@ -37,12 +37,15 @@ defmodule Cherry.Dating.Photos do
   fails, see `Cherry.Dating.PhotoStorage`).
   """
   def delete_photo(%ProfilePhoto{} = photo) do
-    photo
-    |> ProfilePhoto.changeset(%{is_active: false})
-    |> Repo.update()
-    |> case do
-      {:ok, photo} -> {:ok, Cherry.Dating.PhotoStorage.purge_photo(photo)}
-      error -> error
+    with :ok <- Cherry.Recovery.Journal.record("photo", photo.id),
+         :ok <- Cherry.Recovery.Journal.record("storage", photo.storage_key) do
+      photo
+      |> ProfilePhoto.changeset(%{is_active: false})
+      |> Repo.update()
+      |> case do
+        {:ok, photo} -> {:ok, Cherry.Dating.PhotoStorage.purge_photo(photo)}
+        error -> error
+      end
     end
   end
 

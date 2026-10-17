@@ -1,0 +1,18 @@
+{
+  "database": "cherry_prod",
+  "age_recipient": "age1PUBLIC_RECIPIENT_ONLY",
+  "temporary_directory": "/run/cherry-backup",
+  "backup": {
+    "endpoint": "https://ACCOUNT.eu.r2.cloudflarestorage.com",
+    "bucket": "cherry-db-backups",
+    "access_key_id": "",
+    "secret_access_key": ""
+  },
+  "journal_gc_enabled": false,
+  "journal": {
+    "endpoint": "https://ACCOUNT.eu.r2.cloudflarestorage.com",
+    "bucket": "cherry-recovery-journal",
+    "access_key_id": "",
+    "secret_access_key": ""
+  }
+}

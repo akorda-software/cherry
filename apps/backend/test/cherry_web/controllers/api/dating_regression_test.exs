@@ -107,7 +107,7 @@ defmodule CherryWeb.Controllers.Api.DatingRegressionTest do
     assert ctx.authed_conn |> get("/api/me/profile") |> response(401)
     assert {:error, _} = CherryWeb.TokenAuth.authenticate(issued.session.access_token)
     assert {:error, _} = Sessions.refresh_session(issued.session.refresh_token)
-    assert Repo.get!(Cherry.Sessions.PushToken, push_token.id).status == "inactive"
+    refute Repo.get(Cherry.Sessions.PushToken, push_token.id)
 
     assert {:error, :account_deleted} =
              Sessions.issue_session(ctx.user, %{
@@ -118,14 +118,14 @@ defmodule CherryWeb.Controllers.Api.DatingRegressionTest do
 
     assert_receive %Phoenix.Socket.Broadcast{event: "disconnect"}
 
-    assert %{"error" => "conversation_not_active"} =
+    assert %{"error" => "not_participant"} =
              ctx.other_conn
              |> post("/api/conversations/#{ctx.conversation.id}/messages", %{
                "body" => "After deletion"
              })
              |> json_response(403)
 
-    assert Repo.get!(Dating.Profile, ctx.profile.id).deleted_at != nil
+    refute Repo.get(Dating.Profile, ctx.profile.id)
   end
 
   test "a user can delete their account before creating a profile" do

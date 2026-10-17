@@ -334,7 +334,8 @@ defmodule CherryWeb.Controllers.Api.ProfileControllerTest do
       assert URI.decode_query(URI.parse(upload_url).query)["X-Amz-SignedHeaders"] ==
                "content-type;host;if-none-match"
 
-      assert public_url == "https://cdn.example.test/#{storage_key}"
+      assert public_url ==
+               "https://test-account.r2.cloudflarestorage.com/test-bucket/#{storage_key}"
 
       intent = Repo.get_by!(ProfilePhotoUploadIntent, storage_key: storage_key)
       assert intent.profile_id == profile.id
@@ -416,7 +417,8 @@ defmodule CherryWeb.Controllers.Api.ProfileControllerTest do
                json_response(conn, 200)
 
       assert storage_key == upload.storage_key
-      assert public_url == upload.public_url
+      assert String.starts_with?(public_url, upload.public_url <> "?")
+      assert public_url =~ "X-Amz-Expires=300"
 
       # Published with a server-side copy out of pending/, then the copy source is deleted.
       assert_received {:r2_request, "PUT", copy_path, copy_headers}
@@ -463,12 +465,12 @@ defmodule CherryWeb.Controllers.Api.ProfileControllerTest do
   end
 
   describe "DELETE /api/me/account" do
-    test "soft deletes the profile", %{authed_conn: conn, profile: profile} do
+    test "physically deletes the profile and account", %{authed_conn: conn, profile: profile} do
       conn = delete(conn, "/api/me/account")
       assert json_response(conn, 200) == %{"ok" => true}
 
-      updated = Repo.get!(Dating.Profile, profile.id)
-      assert updated.deleted_at != nil
+      refute Repo.get(Dating.Profile, profile.id)
+      refute Repo.get(Cherry.Accounts.User, profile.user_id)
     end
   end
 

@@ -10,8 +10,11 @@ defmodule Cherry.Accounts.User do
     field(:email, :string)
     field(:display_name, :string)
     field(:deleted_at, :utc_datetime)
+    # A moderation restriction is not account deletion: rights and appeals stay available.
+    field(:suspended_at, :utc_datetime)
+    field(:suspension_case_id, :binary_id)
 
-    # `user_request` when the person deleted the account from the app (`Cherry.Accounts.delete_account/1`).
+    # Legacy soft-deletion marker; new account deletion physically removes the row.
     field(:deletion_reason, :string)
 
     timestamps(type: :utc_datetime)

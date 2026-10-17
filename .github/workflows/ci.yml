@@ -71,9 +71,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:mobile
 
+  test-backups:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python3 -m unittest discover -s infra/backup -p 'test_*.py'
+
   build:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [test-backend, test-mobile]
+    needs: [test-backend, test-mobile, test-backups]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

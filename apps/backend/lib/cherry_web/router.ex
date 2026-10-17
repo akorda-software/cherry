@@ -16,20 +16,60 @@ defmodule CherryWeb.Router do
 
   pipeline :authenticated_api do
     plug(:accepts, ["json"])
+    plug(:private_media_cache)
     plug(CherryWeb.Plugs.Authenticate)
     plug(CherryWeb.Plugs.TrackActivity)
+  end
+
+  defp private_media_cache(conn, _) do
+    conn
+    |> put_resp_header("cache-control", "private, no-store")
+    |> put_resp_header("referrer-policy", "no-referrer")
   end
 
   # Social surfaces: with AGE_VERIFICATION_REQUIRED=true (off by default) they
   # need a verified age. Blocking and reporting stay outside on purpose.
   pipeline :age_verified do
+    plug(CherryWeb.Plugs.RequireGoodStanding)
     plug(CherryWeb.Plugs.RequireAgeVerification)
+  end
+
+  pipeline :backoffice do
+    plug(:accepts, ["html"])
+    plug(:fetch_session)
+    plug(:put_secure_browser_headers)
+    plug(CherryWeb.Plugs.BackofficeSession)
+    plug(:protect_from_forgery)
+  end
+
+  scope "/backoffice", CherryWeb do
+    pipe_through(:backoffice)
+    get("/login", BackofficeController, :login)
+    post("/login", BackofficeController, :create_session)
+    get("/invitation", BackofficeController, :invitation)
+    post("/invitation", BackofficeController, :accept_invitation)
+    post("/logout", BackofficeController, :delete_session)
+    get("/", BackofficeController, :index)
+    get("/team", BackofficeTeamController, :index)
+    post("/team", BackofficeTeamController, :create)
+    post("/team/:id", BackofficeTeamController, :update)
+    post("/team/:id/reset-access", BackofficeTeamController, :reset_access)
+    get("/cases/:id", BackofficeController, :show)
+    post("/cases/:id/claim", BackofficeController, :claim)
+    post("/cases/:id/reassign", BackofficeController, :reassign)
+    post("/cases/:id/resolve", BackofficeController, :resolve)
   end
 
   scope "/", CherryWeb do
     pipe_through(:browser)
 
     get("/", PageController, :home)
+    get("/contacto", PageController, :contact)
+    get("/eliminar-cuenta", PageController, :deletion)
+
+    for slug <- ~w(privacidad condiciones normas seguridad-infantil transparencia) do
+      get("/#{slug}", PageController, :legal, assigns: %{legal_slug: slug})
+    end
   end
 
   scope "/", CherryWeb do
@@ -64,6 +104,7 @@ defmodule CherryWeb.Router do
     pipe_through(:authenticated_api)
 
     get("/bootstrap", BootstrapController, :show)
+    post("/photos/read-url", PhotoAccessController, :create)
   end
 
   scope "/api/me", CherryWeb.Controllers.Api do
@@ -96,6 +137,13 @@ defmodule CherryWeb.Router do
     delete("/account", SettingsController, :delete_account)
 
     get("/summary", ActivityController, :summary)
+
+    get("/cases", CaseworkController, :index)
+    post("/cases", CaseworkController, :create)
+    get("/cases/:id", CaseworkController, :show)
+    post("/cases/:id/appeal", CaseworkController, :appeal)
+    get("/notices", CaseworkController, :notices)
+    post("/notices/:id/read", CaseworkController, :read_notice)
 
     get("/verification", AgeVerificationController, :show)
     get("/verification/nfc/countries", AgeVerificationController, :nfc_countries)

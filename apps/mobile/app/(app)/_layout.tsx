@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from "react";
-import { Redirect, Stack } from "expo-router";
+import { Redirect, Stack, usePathname } from "expo-router";
 import { StyleSheet, View } from "react-native";
 
 import { refreshBootstrap, useAppBootstrap } from "../../src/features/app-bootstrap";
@@ -9,6 +9,7 @@ import { optionalStackScreens } from "../../src/features/optional-modules";
 import { appShellRoutes, ErrorState, LoadingScreen, Screen, useTheme } from "../../src/shared/ui";
 
 function PrivateGuard({ children }: PropsWithChildren) {
+  const pathname = usePathname();
   const { state } = useSessionShell();
   const { state: bootstrapState } = useAppBootstrap();
 
@@ -19,6 +20,9 @@ function PrivateGuard({ children }: PropsWithChildren) {
   if (state.status === "signed-out") {
     return <Redirect href={appShellRoutes.login} />;
   }
+
+  // Support and privacy do not require a complete profile, age verification or a healthy social bootstrap.
+  if (pathname === "/support" || pathname === appShellRoutes.support) return <>{children}</>;
 
   if (bootstrapState.status === "loading" || bootstrapState.status === "idle") {
     return <LoadingScreen testID="private-loading" />;
@@ -79,6 +83,7 @@ export default function PrivateLayoutRoute() {
         <Stack.Screen name="edit/bio" />
         <Stack.Screen name="edit/basics" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="support" />
         <Stack.Screen name="about" />
         <Stack.Screen name="verify/index" />
         <Stack.Screen name="verify/methods" />

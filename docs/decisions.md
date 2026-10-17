@@ -6,6 +6,24 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-10-17b — Fotos privadas y copias mínimas de recuperación
+
+- **Decisión expresa:** R2 privado con GET firmado de cinco minutos tras autorización,
+  manteniendo la subida/descarga directa; no cambiar a almacenamiento propio.
+  No garantiza impedir compartir una firma vigente ni capturas/descargas.
+- **Copias:** una completa independiente de PostgreSQL al día, age antes de subir,
+  R2 privado UE separado y siete días; sin fotos, WAL/incrementales ni históricos
+  mensuales/anuales. Sustituye el plan pgBackRest/SATA/diez puntos del despliegue.
+- **Recuperación:** registro externo mínimo de bajas e instrucciones técnicas,
+  previo a confirmar, sin correo/DNI/huella/relato; sobrevive al rollback y se
+  conserva hasta confirmar su aplicación y desaparición de copias capaces de
+  recuperar los datos. No es anónimo. Reaplicar todo antes de reabrir.
+- **Fotos al restaurar:** conservar las asociaciones válidas con objetos existentes;
+  retirar referencias ausentes/fotos retiradas y objetos sin asociación activa.
+  No resetear galerías ni respaldar imágenes. Quien pierda una asociación la sube
+  otra vez. Reserva legal y validación jurídica quedan para el siguiente bloque.
+- **Aplicado:** producción `c008473`, 2026-10-17. [Circuito y límites](../infra/backup/README.md).
+
 ## D-2026-10-17 — Medida ajena mínima y revisión tras borrar al denunciante
 
 - **Contexto:** borrar íntegramente una denuncia podía dejar suspendida a otra cuenta sin expediente desde el que recurrir. El titular aprueba separar datos de la persona borrada y derechos de esa otra cuenta.

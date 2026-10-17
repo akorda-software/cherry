@@ -6,6 +6,15 @@ incrementales, mensuales/anuales, réplica ni copia adicional local permanente.
 R2 no sustituye el backup de la BD. Esta configuración no certifica cumplimiento
 jurídico ni fija excepciones de conservación legal.
 
+**Activo y verificado en producción el 2026-10-17**, backend `c008473`, Dokploy
+`hvlN93QbxGTGZ0qYuEWTY`. Primer snapshot con protección activa: **11:08:23 UTC**;
+copia transitoria anterior al corte retirada. Tres timers habilitados, servicios
+backup/prune/check en `success`; GC condicionado del registro habilitado. Config
+y alertas root 0600. Validación Telegram solo de lectura (bot/canal), **sin mensaje
+de prueba ni evidencia de entrega de una alerta real**. El titular aún debe
+guardar una copia offline adicional de la identidad age; no se ha copiado a un
+dispositivo del usuario ni se afirma que exista esa copia.
+
 ## Circuito
 
 - `pg_dump -Fc --no-owner --no-acl`, consistente, por socket local como postgres.

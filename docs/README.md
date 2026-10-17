@@ -24,6 +24,7 @@ Documentación de referencia del proyecto. Organizada por temas; cada documento 
 | 13 | [Rendimiento](./13-rendimiento.md) | Optimizaciones verificadas, microbenchmark del onboarding y criterios para medir capacidad sin prometer concurrencia no probada |
 | 14 | [Backoffice y privacidad](./14-backoffice.md) | Acceso del equipo, expedientes, decisiones, buzón, recursos y límites operativos/legales |
 | 15 | [Borrado y web pública](./15-borrado-y-web-publica.md) | Borrado físico sin identidad residual, limpieza externa durable, landing y borradores legales |
+| — | [Backups y recuperación](../infra/backup/README.md) | Diario cifrado, siete días, sin imágenes; registro externo de bajas y restauración aislada |
 | — | [Cumplimiento](./compliance/README.md) | Dossier de trabajo legal y de tiendas (edad, fotos, bots, moderación, RGPD, textos legales, costes): investigación, decisiones, plan y estado |
 | — | [Decisiones](./decisions.md) | Registro cronológico de decisiones significativas (contexto, decisión, motivación) |
 | — | [Progress](./progress.md) | Avance por fases y registro de cambios |

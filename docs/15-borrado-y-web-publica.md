@@ -1,6 +1,11 @@
 # Borrado de cuentas y web pública
 
-Segundo lote local del 2026-10-16, ampliado el 2026-10-17 con la separación de medidas ajenas aprobada por el titular. **Sin desplegar ni compilar móviles.** La política de producto autorizada es borrar la cuenta sin conservar correo, identidad OAuth ni huella del documento, permitiendo volver a usar el mismo DNI. No se ha autorizado una purga masiva de registros anteriores ni se declara cerrado el cumplimiento jurídico.
+Lote del 2026-10-16, ampliado el 2026-10-17 con medidas ajenas mínimas y
+recuperación protegida. **Backend publicado el 2026-10-17 en `c008473`; móvil
+sin compilar/distribuir.** La política autorizada borra cuenta/correo/OAuth/huella
+y permite repetir el mismo DNI. Sin purga masiva de registros anteriores ni
+declaración de cierre jurídico; backoffice continúa desactivado. [Evidencia de
+producción y backups](../infra/deploy/README.md).
 
 ## Qué hace el borrado
 

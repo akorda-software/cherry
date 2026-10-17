@@ -2,6 +2,37 @@
 
 Registro de avance del proyecto. Convención: una entrada por unidad de trabajo, con estado. Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho.
 
+## 2026-10-17 — Fotos privadas y recuperación protegida en producción [x]
+
+R2 UE privado en tres buckets separados (fotos, copias, registro de bajas),
+tokens distintos y limitados por bucket. Dos fotos migradas desde disco con
+hashes verificados y claves conservadas para snapshots antiguos; GET firmado
+300 s en respuestas autorizadas, renovación con visibilidad/bloqueo/edad/estado.
+Sin firma se rechaza; firma caducada 403; antiguas rutas locales/CDN retiradas y
+404. El móvil renueva URLs y evita nuevas cachés en disco, **solo código, sin
+APK/IPA ni publicación móvil**. No se implementa moderación ni bots.
+
+Copia completa diaria pg_dump→age→R2 privado, siete días, sin fotos, verificada
+por descarga de ciphertext; limpieza cada 15 min, check horario y alertas en el
+canal operativo existente (solo validación de lectura, sin envío de prueba).
+Registro externo previo de bajas e instrucciones técnicas sin identidad/relatos,
+acuse y GC condicionado por todas las copias y la BD viva. Recuperación aislada
+reaplica todos los registros, invalida sesiones y conserva fotos disponibles;
+solo retira referencias ausentes y objetos huérfanos, sin reiniciar galerías.
+Ensayo real desde R2/age/PostgreSQL/migraciones: una cuenta, dos fotos, cero
+sesiones/credenciales/jobs; BD y ciphertext del ensayo eliminados.
+
+**754 backend, 979 móvil, 54 mobile-shared, 29 contratos y seis backups**, formato,
+typechecks, compile sin avisos y diff correctos. Código previo aprobado incluido
+en `d1a022d`; `c008473` incorpora CSS al contexto Docker. [CI 39027167214](https://github.com/akorda-software/cherry/actions/runs/39027167214)
+correcto y GHCR publicado; deploy manual NiPoGi `hvlN93QbxGTGZ0qYuEWTY` en `done`,
+Swarm 1/1, health/readiness 200 con SHA exacto. Borrado y migraciones publicados;
+backoffice apagado, cero staff/tareas de borrado; una cuenta y dos fotos conservadas.
+Primera copia protegida 11:08:23 UTC y tres timers activos. Sin cambios de
+firewall/DNS/OAuth; CI deploy sigue pausado y `.expo/devices.json` ajeno intacto.
+Clave age privada en Olares fuera de producción/R2: **pendiente copia offline
+del titular**. Jurídico y validación nativa siguen pendientes. [Runbook](../infra/backup/README.md).
+
 ## 2026-10-17 — Medida ajena mínima tras borrar al denunciante [x]
 
 Separación aprobada por el titular: el expediente original y todos sus textos/vínculos/avisos/auditoría desaparecen; una suspensión vigente sobre otra cuenta queda en una ficha nueva mínima, con su vía de revisión independiente. No conserva identidad, relato ni datos del denunciante ni cambia automáticamente la sanción. Los recursos pendientes mantienen fecha/asignación y los resueltos solo resultado/fecha/decisor, sin duplicarse. Borrar después la cuenta afectada elimina las fichas. Gate transaccional compartido/exclusivo para no perder decisiones o recursos simultáneos; migración `20261017100000`, API/contrato y etiqueta móvil actualizados.
@@ -66,7 +97,7 @@ Borrado físico al solicitar baja, liberando correo/OAuth/huella del DNI; cascad
 - [ ] Anti-abuso: rate limits de swipes, login y creación de cuentas
 - [x] Admin local: revisión de expedientes, roles, decisiones/suspensión, buzón y recursos; pendiente activar y operar en producción ([estado](./14-backoffice.md))
 - [x] Recepción y gestión local de solicitudes de privacidad, con permisos separados y respuesta privada; no equivale a ejecutar exportaciones/supresión
-- [ ] Purga de datos al borrar la cuenta
+- [x] Borrado físico de BD y protección externa de bajas; excepciones legales y demás derechos pendientes ([alcance](./15-borrado-y-web-publica.md))
 
 **2026-10-16 — Primer lote interno de backoffice y cumplimiento:** panel privado por códigos de un solo uso, sesiones revocables, HTTPS/proxy de confianza y CSRF; cola, asignación/reasignación, decisiones motivadas, advertencia/suspensión reversible y auditoría. Buzón móvil con justificantes/reclamaciones/derechos de privacidad y recursos resueltos por una cuenta distinta; disponible antes de terminar el onboarding y durante una suspensión. Autor del reporte no expuesto y borradores/respuestas tardías aislados entre cuentas. **694 backend, 972 móvil, 53 mobile-shared y 29 contracts**, typechecks, compilación backend sin avisos, formato y OpenAPI correctos; concurrencia real de códigos/asignación/resolución probada. Nueva migración aplicada solo a la BD local de tests. Sin commit/push, despliegue, activación de personal real, proveedores externos ni compilación móvil. Fotos aplazadas expresamente; datos locales ajenos conservados. **No es cierre de cumplimiento:** ejecución de derechos, retención, textos/consentimientos y validación jurídica/operativa siguen pendientes ([detalle](./14-backoffice.md)).
 

@@ -46,12 +46,12 @@ Arquitectura acordada para Cherry en el servidor propio: hardware, VMs, red, run
 |---|---|
 | Samsung 990 Pro 2 TB (`local-lvm`) | Proxmox + discos de sistema de las VMs + `/var/lib/docker` |
 | **Samsung PM1735 U.2 1,62 TB** | **PGDATA** — raw block a VM 102 (`scsi1`, virtio-scsi-single, iothread, cache=none, discard, `backup=0`) |
-| SATA ~1 TB | Destino previsto de backups locales de PostgreSQL y de las VMs; capacidad compartida con ISOs. Configuración y restauración pendientes. |
+| SATA ~1 TB | Capacidad compartida con ISOs; el plan de copias locales de PostgreSQL queda descartado por la política mínima del 2026-10-17 (§11). |
 
 | VM | vCPU | RAM | IP | Contenido |
 |---|---|---|---|---|
 | 100 caddy | 2 | 2 GB | 192.168.30.21 | Debian 13, Caddy systemd |
-| 101 cherry-backend | 8 (host) | 16 GB | 192.168.0.126 | Debian 13, Docker, Swarm, Dokploy, Traefik, cherry |
+| 101 cherry-backend | 8 (host) | 16 GB | 192.168.0.126 | Debian 13, Docker, Swarm, Traefik, cherry; servidor remoto del panel Dokploy NiPoGi |
 | 102 cherry-db | 8 (host) | 24 GB | 192.168.0.142 | Debian 13, PostgreSQL 17.11 + PostGIS 3.6.4 |
 
 Asignación: 18 vCPU sobre 32 hilos lógicos y 42/64 GB de RAM; las vCPU comparten el procesador físico. Sin ballooning ni pinning; ampliación por métricas (CPU>60% 15 min, p95 latencia, cache hit<99%, IO wait sostenido).
@@ -146,23 +146,38 @@ main  → build imagen (APP_VERSION=sha, cache GHA) → push GHCR:<sha>
 6. Preparar cuentas y perfiles ficticios reproducibles para probar sin R2; probar login, feed, matching y chat mediante API. Las pruebas completas desde móvil dependerán de terminar sus pantallas pendientes.
 7. Comprobar arranque, migraciones, REST, WebSocket y un despliegue con reconexión; después realizar carga progresiva y medir latencias/temperatura.
 
-**Antes de conservar datos reales:** implementar y probar las copias descritas en §11, guardar las claves necesarias para restaurar y verificar recuperación. R2 (fotos y backups) se configurará más adelante. Las pruebas iniciales usarán datos ficticios que puedan regenerarse.
+**Actualización 2026-10-17:** el backend ya está desplegado; R2 privado para fotos
+y el circuito del §11 están activos. Las tareas de puesta en marcha anteriores
+son el plan inicial, no el estado operativo vigente: ver [runbook](deploy/README.md).
 
 ## 11. Backups y disponibilidad acordados
 
-| Aspecto | Acuerdo inicial | Estado |
+| Aspecto | Acuerdo vigente 2026-10-17 | Estado |
 |---|---|---|
-| Backup local | Copias de PostgreSQL en el SATA de ~1 TB, además de copias de las VMs/configuración | Pendiente de configurar y probar restauración |
-| Backup externo | R2 como respaldo independiente del servidor | Pendiente; no se configura en esta fase |
-| Frecuencia externa | Objetivo de cada hora o cada varias horas; cadencia exacta por fijar al implementar según volumen y duración | Orientación aceptada, sin tarea programada todavía |
-| Retención externa | Objetivo de unas 10 copias/puntos de recuperación recientes | Pendiente de concretar política automática |
+| Backup local | Ninguna copia adicional permanente de datos de Cherry | Solo temporal cifrado de la tarea, sin dump en claro |
+| Backup externo | Completo PostgreSQL pg_dump→age→R2 privado UE, independiente | Activo y restauración aislada real probada |
+| Frecuencia externa | Diario 03:15 UTC +0–5 min | Timer persistente activo |
+| Retención externa | Siete días por fecha del contenido; sin imágenes | Limpieza verificada cada 15 min + lifecycle R2; check horario |
+| Bajas tras snapshot | Registro privado externo mínimo, sin identidad/relatos; no TTL ciego | Activo; reaplicación completa obligatoria al restaurar |
 | Caída del MS-A2 | Se acepta que la aplicación quede fuera de servicio hasta recuperar el servidor | Sin failover, réplica externa ni VPS de reserva |
 
-PGDATA está en el disco con `backup=0`: **el backup de la VM no incluye los datos de PostgreSQL**. El plan local debe incluir expresamente una copia consistente de la base de datos. pgBackRest sigue siendo la herramienta prevista; el esquema de completas/diferenciales/incrementales y WAL se decidirá al implementar las copias. La retención debe conservar todo lo necesario para restaurar cada punto, no limitarse a borrar objetos S3 hasta dejar diez archivos.
+PGDATA sigue con `backup=0`: **vzdump no respalda PostgreSQL**. El plan antiguo
+pgBackRest/SATA/diez puntos queda sustituido por [backups y recuperación](backup/README.md).
+No hay WAL, incrementales ni históricos mensuales/anuales. Fotos solo en su
+bucket privado, sin copias; al restaurar se conservan referencias/objetos válidos
+y se eliminan únicamente bajas, referencias ausentes y objetos huérfanos.
 
-La cobertura temporal de las diez copias dependerá de su frecuencia: diez copias horarias cubren aproximadamente diez horas, no diez días. Ante una avería se recuperará hasta la última copia válida; la pérdida de datos posible dependerá de ese intervalo y de si se configura archivado de WAL. No hay todavía un tiempo de recuperación comprometido ni una política de copias operativa.
+Se acepta perder aproximadamente 24 horas de cambios si funcionan las copias;
+si fallan, puede ser más. No hay tiempo de recuperación garantizado. La limpieza
+no promete eliminación instantánea durante caídas del proveedor/host; el
+lifecycle tampoco tiene garantía de ejecución al segundo.
 
-Las claves de cifrado de los backups y `MESSAGE_ENCRYPTION_KEY` deben conservarse fuera del MS-A2. También queda pendiente proteger la configuración de Dokploy y las VMs. Las copias solo se considerarán operativas después de comprobar una restauración.
+Identidad age privada y paquete actual de secretos de recuperación en Olares,
+fuera de producción/R2 (0700/0600); copia offline adicional a cargo del titular.
+Restauración cerrada al público, con reaplicación de **todos** los registros,
+invalidación de sesiones y revisión humana de accesos. No añadir copias de VM o
+Dokploy con datos de Cherry al margen de esta conservación/protección. La
+recuperación física del host completo sigue pendiente.
 
 ## 12. Evolución posterior y plan B
 

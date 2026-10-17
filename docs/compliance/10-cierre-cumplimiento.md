@@ -37,10 +37,12 @@ El panel/buzón local cubre recepción, decisiones y recursos. **No demuestra qu
 - [x] Cola local durable de eliminación de archivos/sesiones externas nuevas registradas, con reintentos y limpieza tras caducidad de firmas. Pruebas con datos sintéticos; conversaciones compartidas desaparecen para ambas personas.
 - [x] **Separación aprobada el 2026-10-17:** se elimina el expediente del denunciante y se mantiene solo una ficha mínima de la suspensión de la otra cuenta y su revisión, sin datos ni enlaces al denunciante. No levanta/reimpone la sanción; conserva recursos pendientes y exige revisión independiente. Probado con concurrencia real. [Alcance](../15-borrado-y-web-publica.md).
 - [ ] Validar el borrado real en proveedores, reconciliación de bajas/sesiones antiguas y alcance/plazos de bloqueo o reserva legal (art. 32 LOPDGDD cuando corresponda). La política implementada no contiene una excepción legal automática. Una sanción no elimina derechos.
-- [ ] Cierre operativo de backups/restauración: política aprobada (diario completo,
-  cifrado, siete días, sin imágenes), registro externo y recuperación implementados;
-  primer descifrado/restauración aislada probado. Ver [runbook](../../infra/backup/README.md)
-  para activación/evidencia final. No promete borrado instantáneo ni cierra reservas legales.
+- [x] Circuito técnico de backups/restauración activo y probado el 2026-10-17:
+  diario completo cifrado, siete días, sin imágenes; registro externo y
+  reaplicación de bajas, ensayo aislado real y timers activos en producción.
+  [Evidencia/límites](../../infra/backup/README.md). No promete borrado instantáneo
+  ni cierra reservas legales; falta la copia offline adicional de la clave age
+  por el titular y la validación física/nativa/operativa pendiente.
 
 ## 6. Riesgo, EIPD y DPD — titular + asesoría de privacidad
 

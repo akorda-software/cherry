@@ -1,8 +1,35 @@
 # Deploy del backend en el home server
 
-Runbook operativo del despliegue de `apps/backend`. Arquitectura completa: [`../arquitectura.md`](../arquitectura.md) · Decisión de arquitectura: `docs/decisions.md` **D-2026-09-04**. Objetivo actual: primer despliegue y pruebas en el servidor propio. El acuerdo operativo vigente del 2026-09-05 acepta downtime de segundos o minutos, backups locales + R2 pendientes y ausencia de failover externo.
+Runbook operativo del despliegue de `apps/backend`. Arquitectura completa:
+[`../arquitectura.md`](../arquitectura.md). Se acepta downtime de segundos/minutos,
+sin failover externo. La política de copias del 2026-10-17 sustituye los planes
+antiguos de copias locales/pgBackRest: [circuito vigente](../backup/README.md).
 
-## Estado (2026-10-16)
+## Estado (2026-10-17)
+
+**Producción actual:** `c0084736b734f2e31ea820f7a192d7c577eee3ea`, [CI
+39027167214](https://github.com/akorda-software/cherry/actions/runs/39027167214)
+correcto, despliegue manual Dokploy `hvlN93QbxGTGZ0qYuEWTY` en `done`, Swarm
+1/1 e imagen exacta. Incluye borrado físico y sus migraciones previas, fotos
+privadas R2 y registro externo; backoffice explícitamente **desactivado**, sin
+personal provisionado. La landing/textos publicados siguen siendo borradores,
+no apertura ni cierre jurídico. Sin APK/IPA ni cambios OAuth, DNS o firewall.
+
+Traslado de dos fotos sin cambiar claves: GET privado firmado 200/206, sin firma
+rechazado (400), firma caducada 403. Los dos originales locales se retiraron tras
+verificar hashes en R2; caché de las URLs antiguas purgada por archivo. Esas rutas
+responden 404 también desde Internet. `/healthz`, `/readyz`, CSS y acceso no
+autenticado a fotos verificados. Tokens R2 deniegan otros buckets. El bind local
+sigue configurado pero vacío; no se usa para servir/subir ni se respalda.
+
+Backups activos en cherry-db: diario 03:15 UTC (+0–5 min), limpieza cada 15 min y
+comprobación horaria, tres servicios con resultado `success`. Primera copia
+protegida 2026-10-17 11:08:23 UTC, cifrada y verificada por descarga; retirada la
+copia transitoria anterior al corte. Registro probado con UUID sintético inexistente
+y acuse real; ambos objetos de prueba retirados. Inventario final: una cuenta,
+dos fotos, cero tareas de borrado y cero staff. No ejecutar rollback ciego a
+`fd9ce10`: no soporta lecturas privadas y los archivos locales ya no existen;
+mantener el acceso privado/cerrado mientras se corrige hacia delante.
 
 **Publicado en `https://cherry.akorda.es`** (desde el 2026-10-14; antes solo LAN). Cadena: Cloudflare (CNAME proxificado a `home.akorda.es`) → Caddy (bloque `cherry.akorda.es { reverse_proxy 192.168.0.126:80 }`) → Traefik → contenedor. En el UCG-Fiber, la regla `DMZ-Caddy to cherry-backend 80` (192.168.30.21 → 192.168.0.126 TCP 80; la de vuelta la deriva UniFi). `http://192.168.0.126` sigue respondiendo desde la LAN. Cambio respecto al plan original (D-2026-10-13b en `docs/decisions.md`): **el panel es el Dokploy de nipogi** (`nipogi-dokploy`, 192.168.0.121, v0.30.8) y cherry-backend es un *servidor remoto* suyo. En la VM solo corren Docker, Swarm de un nodo y Traefik; sin panel ni su PostgreSQL.
 
@@ -11,7 +38,7 @@ Runbook operativo del despliegue de `apps/backend`. Arquitectura completa: [`../
 | cherry-db | Rol `cherry`, `cherry_prod` (postgis, pg_stat_statements, pgcrypto, uuid-ossp), `conf.d/10-cherry.conf` (listen LAN, 4 GB shared_buffers), `pg_hba` solo `.126`. nftables: 22 desde LAN/VPN, 5432 solo desde `.126` |
 | cherry-backend | Docker 28.5 + Swarm + Traefik 3.6 (Setup Server de Dokploy). Root por SSH solo desde 192.168.0.121 con su clave (`sshd_config.d/05-dokploy.conf`, `from=` en `authorized_keys`). `daemon.json` con rotación de logs, `cron.weekly/docker-image-prune`. Snapshot Proxmox `antes-dokploy`. nftables (tabla `inet cherry_fw`, no toca las de Docker): 22 desde LAN/VPN; 80 desde Caddy **y la LAN** (quitar la LAN al publicar); 443 y puertos de Swarm cerrados |
 | Dokploy | Proyecto `cherry` → entorno `production` → app `backend` (`cherry-backend-mkeaem`): imagen pública `ghcr.io/akorda-software/cherry-backend:<sha>`, 1 réplica, `stop-first`, rollback, healthcheck `/healthz`, bind `/var/lib/cherry/uploads`, dominios `cherry.akorda.es` y `192.168.0.126`, ambos sin HTTPS en Traefik (TLS en Cloudflare/Caddy) |
-| Env | `PHX_HOST=cherry.akorda.es`, `PHX_URL_SCHEME=https`, `PUBLIC_BASE_URL=https://cherry.akorda.es`, `FORCE_SSL=false` (ver pendientes), `GOOGLE_WEB_CLIENT_ID` (cliente web del proyecto Cherry de Google Cloud; `GOOGLE_IOS_CLIENT_ID` cuando haya cliente iOS), `AGE_VERIFICATION_REQUIRED=true` (sin ella la verificación de edad no es obligatoria). Secretos en `~/.config/cherry-deploy/prod-secrets.env` (Olares) → pasar a Bitwarden |
+| Env | `PHX_HOST=cherry.akorda.es`, `PHX_URL_SCHEME=https`, `PUBLIC_BASE_URL=https://cherry.akorda.es`, `FORCE_SSL=false` (ver pendientes), `STORAGE_ADAPTER=r2`, `ERASURE_JOURNAL_ENABLED=true`, `BACKOFFICE_ENABLED=false`, `AGE_VERIFICATION_REQUIRED=true`. OAuth preservado. Paquete vigente de recuperación en `~/.config/cherry-recovery/production.env` (Olares, 0600), junto a identidad age y credenciales limitadas |
 
 Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): el CI publica la imagen `ghcr.io/akorda-software/cherry-backend:<sha>` en cada push a `main`; después, con la API de Dokploy de nipogi, `application.saveDockerProvider` con la imagen nueva y `application.deploy`. Comprobar con `curl http://192.168.0.126/healthz` (devuelve el `version` desplegado).
 
@@ -23,6 +50,7 @@ Despliegues (cómo se hace hoy, mientras el job `deploy` del CI sigue pausado): 
 | 2026-10-14 | `cd3226e` | Mismo código: client ID web del proyecto Cherry y verificación de edad obligatoria |
 | 2026-10-14 | `2e92a5e` | Volver a registrarse tras borrar la propia cuenta (`users.deletion_reason`); purgada a mano la única cuenta, ya borrada |
 | 2026-10-16 | `fd9ce10` | Cuatro pasadas de rendimiento y robustez del backend/móvil; backend desplegado y verificado por versión, health/readiness y Swarm |
+| 2026-10-17 | `c008473` | Fotos privadas R2 UE, bajas externas antirrestauración, borrado físico y copias diarias cifradas de siete días (sin fotos); backoffice apagado |
 
 Publicación del 2026-10-16: commit `fd9ce10d6fd064b906663f6c2a21b9749026938a`, [CI 38871351664](https://github.com/akorda-software/cherry/actions/runs/38871351664) en verde (tests backend/móvil y build/push de imagen). Deploy manual por API de NiPoGi sobre la app existente `cherry-backend-mkeaem`, sin activar el job pausado del workflow. Sin migraciones nuevas ni cambios de contratos, secretos, red o infraestructura; se conservan 1 réplica, `stop-first`/rollback y el bind de fotos. Imagen previa para rollback: `ghcr.io/akorda-software/cherry-backend:2e92a5e9668f972f4a9af66d2756d2c3a692c787`. No se compilaron ni publicaron APK/IPA; los OAuth de Apple/Google para iOS quedan para el siguiente trabajo.
 
@@ -31,8 +59,9 @@ Verificado: despliegue Dokploy `XQca1lsdNEN2f9CgWQUUE` en `done`, actualización
 Pendiente:
 - `FORCE_SSL=false`: Traefik aún no confía en el `X-Forwarded-Proto` de Caddy (falta `forwardedHeaders.trustedIPs: [192.168.30.21/32]` en el entrypoint `web` de `/etc/dokploy/traefik/traefik.yml` y reiniciar Traefik); con `FORCE_SSL` activo antes, bucle de redirecciones. Desde fuera ya solo se entra por HTTPS (Caddy redirige); falta HSTS.
 - Quitar la LAN de `web_clients` en cherry-backend (ahora 80 abierto a 192.168.0.0/24) y el dominio `192.168.0.126` de Dokploy cuando no haga falta.
-- Circuito diario cifrado de PostgreSQL en preparación/verificación: [backups](../backup/README.md).
-  **Sin copias de fotos por decisión expresa**; sustituye el plan antiguo de pgBackRest.
+- Guardar además una copia offline de la identidad age y mantener actualizado el
+  paquete privado de recuperación. El circuito de backups/restauración está
+  activado/verificado; no incluye fotos ni certifica recuperación del host completo.
 - Swarm se anuncia con la IP pública (79.117.30.255) porque así la detecta el instalador. Da igual con un nodo y sus puertos están cerrados.
 - El panel de nipogi es accesible en `https://dokploynipogi.akorda.es` (el plan pedía solo VPN).
 - CI `deploy` sigue pausado.

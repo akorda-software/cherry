@@ -1,6 +1,10 @@
 # Backoffice, reclamaciones y privacidad
 
-Implementación local del 2026-10-16, ampliada con gestión de equipo y borrado físico por petición del propietario. **No desplegada ni activada en producción.** La moderación de fotos y los bots quedan fuera de este lote. Esta funcionalidad no acredita por sí sola cumplimiento legal ni cobertura operativa.
+Implementación del 2026-10-16, ampliada con gestión de equipo y borrado físico.
+Código/migraciones publicados el 2026-10-17 en `c008473`, pero el **panel permanece
+desactivado en producción** (`BACKOFFICE_ENABLED=false`, cero staff). Móvil sin
+compilar/distribuir. Moderación de fotos y bots fuera de alcance; esto no acredita
+cumplimiento legal ni cobertura operativa.
 
 ## Qué funciona
 

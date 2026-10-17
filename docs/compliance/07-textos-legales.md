@@ -1,6 +1,12 @@
 # Textos legales
 
-**Estado:** landing y páginas propias con borradores explícitos implementadas localmente, sin desplegar. «Acerca de» recibe enlaces a privacidad/condiciones por defecto desde la API y respeta URLs externas configuradas. Textos definitivos, datos del titular/contacto y aceptaciones siguen pendientes. [Web y límites](../15-borrado-y-web-publica.md) · [Checklist de cierre](./10-cierre-cumplimiento.md).
+**Estado 17-10-2026:** textos completos y configurables publicados, con Albert como
+titular actual, NIF/domicilio/contacto propios y cooperativa solo futura. Aviso
+legal/cookies añadidos; datos faltantes explícitos, sin aprobación jurídica
+inventada. Prueba separada de condiciones, mayoría de edad y consentimiento
+sensible implementada; pantalla móvil sin compilar/distribuir y obligatoriedad
+desactivada. [Implementación](../16-textos-y-consentimiento.md) ·
+[Expediente y aprobaciones pendientes](./12-expediente-juridico.md).
 
 ## Qué hace falta
 
@@ -22,6 +28,6 @@
 ## Plan
 
 1. [x] Borradores informativos de privacidad, condiciones, normas, seguridad infantil, transparencia y páginas de contacto/eliminación; sin inventar datos del titular ni aprobación jurídica.
-2. [ ] Aceptación explícita en el onboarding.
-3. [ ] Publicación en la web y enlaces desde la app y las tiendas.
+2. [x] Código/prueba de aceptación separada antes de onboarding/social; falta distribución/validación nativa y activación deliberada.
+3. [x] Publicación web y enlaces propios en app; fichas de tiendas siguen pendientes del lote de distribución.
 4. [ ] Revisión legal.

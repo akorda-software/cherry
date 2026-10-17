@@ -4,9 +4,11 @@ import { formatAppVersion, normalizeSourceUrl, resolveSourceUrl } from "./app-in
 import { deleteAccountConsequences } from "./delete-account";
 
 describe("deleteAccountConsequences", () => {
-  it("covers what the backend really does: hidden profile, closed sessions, deactivated account", () => {
+  it("explains physical erasure, reusable identity and external cleanup without instant-copy promises", () => {
     expect(deleteAccountConsequences).toHaveLength(3);
     expect(deleteAccountConsequences.join(" ")).not.toMatch(/borramos todos tus datos/i);
+    expect(deleteAccountConsequences.join(" ")).toContain("huella del DNI");
+    expect(deleteAccountConsequences.join(" ")).toContain("no siempre es instantáneo");
   });
 });
 

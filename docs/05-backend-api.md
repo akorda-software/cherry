@@ -84,7 +84,7 @@ Caducidad: 30 días sin mensajes (`config :cherry, :match_expiry_days`), aplicad
 | `POST /api/users/:profile_id/report` | Reporte de moderación: `reason` ∈ `fake_profile`, `inappropriate_photos`, `harassment`, `spam`, `underage`, `offensive_bio`, `other` (si no → 422 `invalid_report_reason`); `details` opcional ≤ 1000 (422 `details_too_long`); 422 `cannot_report_self`; 404 `profile_not_found` (también si el perfil o su cuenta están borrados: no se distingue de uno inexistente). Idempotente: con un reporte abierto del mismo reporter sobre el mismo perfil devuelve ese reporte sin crear otro |
 | `POST /api/me/pause` / `POST /api/me/unpause` | Pausa/restaura descubribilidad (si el perfil sigue completo y, con la verificación de edad obligatoria, verificado) |
 | `GET /api/me/verification` / `POST /api/me/verification/nfc` / `POST /api/me/verification/provider` / `POST /api/me/verification/provider/check` | Verificación de edad por NFC o con selfie + documento en Didit (contrato en `06-contratos-mobile-backend.md`). Con `AGE_VERIFICATION_REQUIRED=true`, un perfil sin verificación válida queda «pendiente de verificar»: se puede editar, pero `is_discoverable` es falso (distinto de `is_paused`) y la API social responde 403 `age_verification_required`. Verificarse lo hace descubrible si está completo y no pausado. Un documento de menor → 422 `{error: "underage", accountDeleted: true}` y borrado físico de toda la cuenta (`Cherry.Accounts.purge_account/1`): fotos y subidas del almacenamiento, usuario y, en cascada, perfil, matches, mensajes, reportes, sesiones, tokens e intentos; no se guarda nada del documento |
-| `DELETE /api/me/account` | Soft-delete de cuenta y perfil (funciona también sin perfil): revoca todas las sesiones y tokens push, desconecta sus sockets e impide volver a entrar con esa cuenta. Las fotos se borran físicamente del almacenamiento; el resto de registros (perfil, matches, mensajes cifrados, reportes) se conserva |
+| `DELETE /api/me/account` | Borrado físico de la cuenta y sus datos vinculados, también sin perfil o suspendida: correo, identidad OAuth, huella del documento, perfil, actividad, conversaciones compartidas, expedientes, avisos y auditoría asociada. Sesiones/dispositivos/push desaparecen por cascada y se desconectan sus sockets. El mismo acceso/DNI puede volver a registrarse desde cero. Archivos y sesiones externas registradas tienen limpieza reintentable independiente; no promete borrar instantáneamente cachés/backups |
 
 ## Tags (autenticado)
 
@@ -110,7 +110,26 @@ Solo con `STORAGE_ADAPTER=local` (`Cherry.Storage.Local`, D-2026-09-29):
 
 ## Admin
 
-Sin rutas HTTP ni vistas; capacidades en contexto (`Cherry.Dating.list_reports/2`, `update_report/2`, `disable_profile/1`) para tooling interno futuro. Hoy los reportes se revisan directamente en la tabla `reports`.
+Backoffice HTML en `/backoffice`, desactivado por defecto (`BACKOFFICE_ENABLED`), con cuentas independientes y roles `superadmin`, `admin`, `moderator`, `privacy`. Bootstrap/recuperación por código de consola; invitaciones de un uso y contraseña personal para el equipo, sesiones revocables, HTTPS/CSRF. Solo `superadmin` gestiona `/backoffice/team` y sus POST de alta, permisos y recuperación. Cola, detalle auditado, asignación, decisiones motivadas, advertencia/suspensión y revisión humana independiente. Mutaciones POST en `/backoffice/cases/:id/{claim,reassign,resolve}`. No acepta el Bearer móvil como privilegio de equipo. [Operación y límites](./14-backoffice.md).
+
+Web pública en `/`, `/privacidad`, `/condiciones`, `/normas`, `/seguridad-infantil`, `/transparencia`, `/contacto` y `/eliminar-cuenta`. Textos marcados como borradores; contacto no operativo si falta `INSTANCE_CONTACT_EMAIL`. `GET /api/config` entrega por defecto las URLs propias de privacidad/condiciones, respetando las URLs externas configuradas. Sin rastreadores ni recursos web de terceros.
+
+Desde el 2026-10-17, `SupportCase.kind` incluye `measure`: ficha mínima de una suspensión vigente sobre otra cuenta cuyo expediente original se borra. Solo la persona afectada puede consultarla/recurrirla por la API; no incluye identidad ni texto del denunciante. Los recursos ya presentados conservan su estado sin duplicarse. El POST público de solicitudes no permite crear `measure`. [Separación](./15-borrado-y-web-publica.md).
+
+## Buzón y solicitudes de privacidad
+
+Autenticación de usuario normal, sin exigir perfil completo, verificación de edad ni ausencia de suspensión. Todas las respuestas usan `Cache-Control: no-store`.
+
+| Ruta | Efecto |
+|---|---|
+| `GET /api/me/cases?offset` | Hasta 50 expedientes propios o decisiones dirigidas al usuario; sin identidad de denunciante/equipo. Offset 0–10000 |
+| `POST /api/me/cases` | `{kind: privacy\|complaint, category, statement}`. Privacidad: access/rectification/erasure/restriction/portability/objection; reclamación: service/safety/other. Texto 10–4000; máximo 10 solicitudes nuevas/24 h por cuenta. Recibo y auditoría atómicos |
+| `GET /api/me/cases/:id` | Proyección privada del caso; ajeno, inexistente o UUID inválido → 404 `case_not_found` |
+| `POST /api/me/cases/:id/appeal` | `{statement}`. Un recurso por persona/decisión de reporte o reclamación; 409 si duplicado/no recurrible; no lo decide la misma cuenta de equipo |
+| `GET /api/me/notices?offset` | Justificantes y resoluciones de este destinatario, 50 por página; no envío externo |
+| `POST /api/me/notices/:id/read` | Marca leído un aviso propio; ajeno/no existente → 404 |
+
+El nuevo reporte de safety crea también expediente y justificante sin cambiar su respuesta anterior. Una suspensión devuelve 403 `account_suspended` en las rutas sociales y oculta al usuario a terceros; no impide el buzón, los reportes, la baja o las solicitudes de privacidad. **Solicitar supresión o marcar una solicitud respondida no ejecuta un borrado ni una exportación**. [Contratos y operación](./14-backoffice.md).
 
 ## Push
 

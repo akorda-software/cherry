@@ -1,4 +1,4 @@
-import { Image } from "expo-image";
+import { PrivatePhotoImage as Image } from "../../media/private-photo-image";
 import { memo, type PropsWithChildren } from "react";
 import { type StyleProp, Text, View, type ViewStyle } from "react-native";
 

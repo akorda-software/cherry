@@ -1,0 +1,37 @@
+<.site
+  title="Eliminar mi cuenta"
+  description="Cómo solicitar la eliminación de una cuenta de Cherry desde la app o sin reinstalarla."
+  instance={@instance}
+>
+  <article class="document">
+    <h1>Irte también debería ser fácil.</h1>
+    <p class="lede">Eliminar tu cuenta de {@instance.name}.</p>
+    <.draft />
+    <h2>Desde la aplicación</h2>
+    <p>
+      Abre Ajustes → Borrar mi cuenta y confirma el borrado. No se puede deshacer. Un registro posterior empieza desde cero, también con el mismo DNI.
+    </p>
+    <h2>Sin la aplicación o sin acceso a tu cuenta</h2>
+    <p :if={@instance.contact_email}>
+      Solicita la eliminación escribiendo a <a href={"mailto:" <> @instance.contact_email}>{@instance.contact_email}</a>. Indica que quieres eliminar tu cuenta de {@instance.name} y el correo con el que accedes. El equipo verificará la solicitud de forma proporcionada antes de borrar; un correo recibido no autoriza por sí solo a eliminar cuentas ajenas.
+    </p>
+    <p :if={!@instance.contact_email}>
+      El operador todavía debe configurar un correo público para recibir solicitudes. Esta vía no está operativa y no debe declararse como disponible en las tiendas hasta entonces.
+    </p>
+    <p>
+      No necesitas reinstalar la app. No envíes contraseñas, códigos de acceso ni documentos de identidad por correo.
+    </p>
+    <h2>Qué se elimina</h2>
+    <p>
+      La cuenta y los datos vinculados en la base de datos, incluidos correo, huella del documento, perfil, preferencias, likes, matches, conversaciones y expedientes. Las conversaciones compartidas desaparecen para ambas personas.
+    </p>
+    <p>
+      El borrado no levanta automáticamente medidas sobre otras cuentas: solo puede quedar una ficha mínima de su suspensión y su revisión, sin tu identidad, relato ni datos personales. El expediente original se elimina.
+    </p>
+    <h2>Archivos, fallos y copias</h2>
+    <p>
+      Se ordena eliminar fotos y subidas pendientes del almacenamiento. Si el proveedor falla, el sistema reintenta la eliminación conservando temporalmente solo las referencias necesarias. Los plazos de backups, cachés y cualquier reserva legal deben completarse antes del lanzamiento. No prometemos destrucción instantánea de toda copia ni podemos borrar capturas ajenas.
+    </p>
+    <p>Más información en <a href={~p"/privacidad"}>Privacidad</a>.</p>
+  </article>
+</.site>

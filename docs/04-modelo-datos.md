@@ -54,6 +54,25 @@ Extensión PostGIS + uuid-ossp. Tablas:
 | 20260929180000 | `profile_locations` solo admite puntos: las filas no-punto existentes pasan a su centroide en la rejilla de 500 m (las vacías se borran) y se añade el CHECK `profile_locations_coordinates_point` |
 | 20260929181000 | Limpieza física de fotos: `storage_deleted_at` en `profile_photos` y `profile_photo_upload_intents`, índices para el barrido y para el límite de intents por perfil/hora. Las fotos ya inactivas o de cuentas ya borradas se limpian en el primer barrido |
 
+## Backoffice y expedientes (20261016100000)
+
+- `backoffice_staff`: correo normalizado único, rol (incluido `superadmin`), deshabilitación, hash PBKDF2 de contraseña y bloqueo temporal por intentos; identidad independiente de las cuentas de producto.
+- `backoffice_credentials`: hashes SHA-256 de códigos/sesiones con tipo, expiración y FK a staff; índice único por hash.
+- `casework_cases`: tipo/categoría, relato, solicitante/afectado, reporte original opcional, caso padre, asignación y decisión motivada. Un caso por reporte y un recurso por padre/solicitante; índices de cola y propietario.
+- `casework_notices`: recibos/respuestas por destinatario; unicidad caso/usuario/evento e índice de buzón. Se borran al purgar al destinatario.
+- `casework_audit`: acciones/actor/caso/metadata mínima, sin cuerpos de evidencia; append-only para las operaciones ordinarias. El borrado de una cuenta elimina su auditoría y la de sus expedientes, no deja relatos huérfanos.
+- `users.suspended_at` / `suspension_case_id`: restricción social reversible, separada de `deleted_at`. Importación de reportes abiertos preexistentes, sin inventar decisiones históricas.
+
+`20261016120000` cambia a cascada las referencias de solicitante/afectado/padre de expediente y las de usuario/expediente de auditoría. El borrado elimina también descendientes y avisos de esos casos. No ejecuta una purga masiva de bajas antiguas al migrar.
+
+- `erasure_tasks`: tipo, referencia de objeto/sesión externa, siguiente intento y momento seguro de finalización. Sin correo, usuario ni huella del DNI. Desaparece al confirmar el borrado; las firmas de subida aún vigentes conservan la referencia hasta caducidad + cinco minutos para repetir la limpieza.
+- `verification_provider_sessions`: sesión de verificación externa y usuario, para poder eliminar sesiones nuevas aunque el usuario no vuelva a consultar. Al borrar la cuenta, la referencia pasa a `erasure_tasks` y desaparece la vinculación al usuario.
+- `backoffice_login_attempts` (`20261016130000`): límite temporal por hash de la IP de conexión, sin aceptar cabeceras de IP aportadas por clientes. La misma migración añade contraseña/bloqueo y el rol `superadmin`.
+
+Siguen pendientes conservación de cuentas activas, backups y reservas legales. [Detalle](./14-backoffice.md).
+
+`20261017100000` añade el tipo de expediente `measure`: ficha nueva, resuelta e inmutable desde la resolución ordinaria, para mantener exclusivamente una suspensión vigente de otra cuenta y su recurso al borrar al denunciante. Sin solicitante, reporte, padre, relato ni respuesta al denunciante; categoría genérica, medida/fecha/decisor y comunicación fija. Un recurso pendiente o resuelto se traslada a un registro nuevo mínimo sin textos históricos. Estas filas dependen solo de la cuenta afectada y desaparecen al borrarla; no se conserva la identidad de la persona borrada. `Lifecycle` coordina recepción/decisiones y borrado para que el grafo sea estable.
+
 ## Índices y consultas prioritarias
 
 - GiST en `profile_locations.coordinates` — candidatos por distancia (`ST_DWithin` del radio exterior del tramo).
@@ -72,6 +91,6 @@ Extensión PostGIS + uuid-ossp. Tablas:
 
 ## Desactivación de cuentas y verificación de fotos (2026-09-05)
 
-`users.deleted_at` impide autenticación y emisión de nuevas sesiones. La migración `20260905170000` propaga los perfiles ya borrados a sus cuentas y revoca credenciales. La eliminación mediante API actualiza cuenta/perfil/sesiones/push en una transacción. Los registros se conservan.
+`users.deleted_at` mantiene compatibilidad con bajas históricas e impide autenticación y emisión de sesiones. La migración histórica `20260905170000` propagaba perfiles borrados a sus cuentas. Desde el segundo lote local del 2026-10-16, la API de eliminación hace borrado físico: no crea nuevas bajas lógicas ni listas de identidad bloqueada.
 
 `20260905170100` caduca los intents de fotos antiguos pendientes: las nuevas firmas incluyen `If-None-Match: *` para impedir sustituir una foto validada. No modifica fotos ya registradas.

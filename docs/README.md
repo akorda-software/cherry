@@ -22,6 +22,8 @@ Documentación de referencia del proyecto. Organizada por temas; cada documento 
 | 11 | [Deuda técnica pendiente](./11-deuda-tecnica-pendiente.md) | Gaps conocidos entre producto, contrato, docs y código |
 | 12 | [Monta tu instancia](./12-self-hosting.md) | Self-hosting: imagen, variables obligatorias, BD, fotos, proxy TLS, Google/Apple y compilar la app contra tu servidor |
 | 13 | [Rendimiento](./13-rendimiento.md) | Optimizaciones verificadas, microbenchmark del onboarding y criterios para medir capacidad sin prometer concurrencia no probada |
+| 14 | [Backoffice y privacidad](./14-backoffice.md) | Acceso del equipo, expedientes, decisiones, buzón, recursos y límites operativos/legales |
+| 15 | [Borrado y web pública](./15-borrado-y-web-publica.md) | Borrado físico sin identidad residual, limpieza externa durable, landing y borradores legales |
 | — | [Cumplimiento](./compliance/README.md) | Dossier de trabajo legal y de tiendas (edad, fotos, bots, moderación, RGPD, textos legales, costes): investigación, decisiones, plan y estado |
 | — | [Decisiones](./decisions.md) | Registro cronológico de decisiones significativas (contexto, decisión, motivación) |
 | — | [Progress](./progress.md) | Avance por fases y registro de cambios |

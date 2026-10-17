@@ -87,7 +87,7 @@ defmodule CherryWeb.Controllers.Api.DevTestLoginTest do
            })
            |> json_response(201)
 
-    devices = Repo.all(from d in Device, where: d.user_id == ^id, order_by: d.installation_id)
+    devices = Repo.all(from(d in Device, where: d.user_id == ^id, order_by: d.installation_id))
 
     assert Enum.map(devices, &{&1.installation_id, &1.platform, &1.device_name}) == [
              {"pixel-install", "android", "Pixel 9"},
@@ -95,7 +95,7 @@ defmodule CherryWeb.Controllers.Api.DevTestLoginTest do
            ]
   end
 
-  test "rejects invalid emails and deleted accounts", %{conn: conn} do
+  test "rejects invalid emails and allows a fresh signup after erasure", %{conn: conn} do
     assert %{"error" => "invalid_email"} =
              conn
              |> post("/api/auth/dev/test-login", %{"email" => "not-an-email"})
@@ -109,9 +109,12 @@ defmodule CherryWeb.Controllers.Api.DevTestLoginTest do
     {:ok, user} = Accounts.create_user(%{email: "gone@cherry.dev", display_name: "Gone"})
     {:ok, :deleted} = Accounts.delete_account(user)
 
-    assert %{"error" => "account_deleted"} =
+    assert %{"user" => %{"id" => new_id}} =
              build_conn()
              |> post("/api/auth/dev/test-login", %{"email" => "gone@cherry.dev"})
-             |> json_response(403)
+             |> json_response(201)
+
+    assert new_id != user.id
+    refute Repo.get(Cherry.Accounts.User, user.id)
   end
 end

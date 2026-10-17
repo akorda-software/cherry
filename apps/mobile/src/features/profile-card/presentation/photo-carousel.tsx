@@ -1,4 +1,4 @@
-import { Image } from "expo-image";
+import { PrivatePhotoImage as Image } from "../../../shared/media/private-photo-image";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type NativeScrollEvent,

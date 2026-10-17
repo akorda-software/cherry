@@ -31,16 +31,33 @@ Reglas de routing móvil:
 - Pausado → shell con estado de visibilidad pausada.
 - `ageVerification.required` y `status` distinto de `verified` → perfil «pendiente de verificar»: editable, pero invisible (`isDiscoverable: false` con `isPaused: false`); no es una pausa.
 - Discovery bloqueado hasta perfil completo y descubrible.
+- Excepción del shell: `/(app)/support` exige sesión, pero no perfil completo ni bootstrap social correcto; el buzón/privacidad sigue accesible antes del onboarding y durante una suspensión.
 
 `nextOnboardingStep` es conveniencia del backend (derivado de `missing`), no frontera de seguridad.
 
 ## Sesiones
+
+Una suspensión de moderación **no revoca la sesión de producto**: la API social responde `403 account_suspended`, pero se mantienen los endpoints de buzón, recursos, privacidad, reporte y baja. Borrar una cuenta suspendida no habilita volver a registrarse con esa misma identidad como si se tratara de una baja ordinaria.
 
 - Access token como `Authorization: Bearer <token>` en REST y `?token=` en WebSocket.
 - 401 REST ⇒ refrescar una vez con el refresh token, persistir nuevo bundle y reintentar una vez; si falla, limpiar secure storage y volver a signed-out.
 - Refresh rota siempre el token; el reuso de un refresh revoca la familia.
 - `DELETE /api/me/account` desactiva el usuario, oculta su perfil, revoca todas sus sesiones y tokens push y desconecta sus sockets. Funciona aunque no haya perfil. Es borrado lógico: conserva los registros y no admite nuevas sesiones con esa cuenta. Si la persona vuelve a entrar con la misma cuenta de Google/Apple, el callback de login borra del todo la cuenta anterior y crea una nueva desde cero (onboarding y verificación de edad incluidos).
 - En bootstrap, si el access token cacheado ya está expirado, refrescar antes de llamar.
+
+## Buzón y derechos de privacidad
+
+La proyección de expedientes `SupportCase` también admite `kind: "measure"` (2026-10-17). Es la ficha mínima de una suspensión vigente sobre la propia cuenta, sin relato ni datos del denunciante borrado. Usa los mismos detalle/avisos/recurso humano; `canAppeal` sigue siendo autoritativo. No permite crear fichas desde el cliente ni reinicia recursos ya presentados.
+
+DTOs en `packages/contracts/src/casework.ts`, cliente en `packages/mobile-shared/src/api/casework-api.ts` y esquema exacto en OpenAPI. `SupportCase` contiene `id`, `kind`, `category`, `status`, `statement` (solo el propio), `outcome`, la `response` dirigida a ese destinatario, fechas y `canAppeal`; no incluye IDs de denunciante, afectado ni equipo. `canAppeal` pasa a falso cuando esa persona ya presentó su recurso.
+
+- Listas `/api/me/cases` y `/api/me/notices`: 50 por página con `offset` acotado; respuestas `no-store`.
+- Nueva solicitud: `{kind: "privacy", category: "access" | "rectification" | "erasure" | "restriction" | "portability" | "objection", statement}` o `{kind: "complaint", category: "service" | "safety" | "other", statement}`. El texto se recorta en extremos y se valida entre 10 y 4000 caracteres; 10 solicitudes nuevas/24 h por cuenta. No se aceptan estado, asignación o propietario enviados por el cliente.
+- Recurso: `POST /api/me/cases/:id/appeal` con `{statement}`; una vez por persona/decisión de reporte o reclamación. Lo revisa otra cuenta de equipo.
+- Avisos: `{id, caseId, event: "received" | "resolved", message, readAt, insertedAt}`. `POST /api/me/notices/:id/read` solo permite marcar un aviso propio.
+- Errores: 401 sin sesión, 404 `case_not_found` para ID ajeno/incorrecto, 409 `case_conflict`, 422 `errors` de validación y 429 `case_rate_limited`.
+
+Enviar una petición de supresión **no borra datos** ni una de acceso genera automáticamente una exportación. [Alcance operativo real](./14-backoffice.md).
 
 ## Onboarding draft
 
@@ -264,7 +281,7 @@ Diseño y estado: `docs/compliance/02-mayoria-de-edad.md`. Contrato en `packages
 
 `GET /api/config` (sin sesión) devuelve, además de `features`:
 
-- `instance`: `{name, country, locale, operator, contactEmail, privacyUrl, termsUrl, sourceUrl}` (variables `INSTANCE_*`; los cinco últimos pueden ser `null`). La app los enseña en «Acerca de» (quién gestiona la instancia, contacto, textos legales y «Ver el código» si la compilación no trae `EXPO_PUBLIC_SOURCE_URL`).
+- `instance`: `{name, country, locale, operator, contactEmail, privacyUrl, termsUrl, sourceUrl}` (variables `INSTANCE_*`; operador/contacto/código pueden ser `null`). Sin URLs legales externas, `privacyUrl` y `termsUrl` apuntan a `/privacidad` y `/condiciones` del origen configurado del backend; sus textos son provisionales hasta completar su validación. La app los enseña en «Acerca de» (quién gestiona la instancia, contacto, textos legales y «Ver el código» si la compilación no trae `EXPO_PUBLIC_SOURCE_URL`).
 - `ageVerification`: `{minimumAge}` (`AGE_VERIFICATION_MINIMUM_AGE`, 18 por defecto). La app la usa en el paso de la fecha de nacimiento; el backend la aplica al documento y a la fecha de nacimiento del perfil (`missing: ["birth_date"]`).
 
 Ambos son opcionales en `BootstrapConfig` (`@cherry/contracts`): con un servidor anterior, la app no enseña datos de la instancia y usa 18.

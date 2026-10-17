@@ -26,7 +26,8 @@ defmodule Cherry.Dating.PhotoUploads do
       # Signing happens before the transaction; storage never holds the row
       # lock. Quotas and insertion share the lock with photo completion/reorder.
       Repo.transaction(fn ->
-        Repo.one!(from p in Profile, where: p.id == ^profile.id, lock: "FOR UPDATE")
+        Repo.one(from(p in Profile, where: p.id == ^profile.id, lock: "FOR UPDATE")) ||
+          Repo.rollback(:profile_not_found)
 
         with :ok <- validate_active_photo_limit(profile.id),
              :ok <- validate_upload_intent_quota(profile.id),
@@ -56,17 +57,22 @@ defmodule Cherry.Dating.PhotoUploads do
 
       Ecto.Multi.new()
       |> Ecto.Multi.run(:lock, fn repo, _ ->
-        repo.one!(from p in Profile, where: p.id == ^profile.id, lock: "FOR UPDATE")
-
-        current_intent =
-          repo.one!(
-            from i in ProfilePhotoUploadIntent, where: i.id == ^intent.id, lock: "FOR UPDATE"
-          )
-
-        with :ok <- validate_upload_completion(current_intent, attrs),
+        with %Profile{} <-
+               repo.one(from(p in Profile, where: p.id == ^profile.id, lock: "FOR UPDATE")),
+             %ProfilePhotoUploadIntent{} = current_intent <-
+               repo.one(
+                 from(i in ProfilePhotoUploadIntent,
+                   where: i.id == ^intent.id,
+                   lock: "FOR UPDATE"
+                 )
+               ),
+             :ok <- validate_upload_completion(current_intent, attrs),
              :ok <- validate_active_photo_limit(profile.id),
              :ok <- validate_photo_position_available(profile.id, intent.position) do
           {:ok, :locked}
+        else
+          nil -> {:error, :profile_erased}
+          error -> error
         end
       end)
       |> Ecto.Multi.insert(
@@ -85,8 +91,22 @@ defmodule Cherry.Dating.PhotoUploads do
       )
       |> Repo.transaction()
       |> case do
-        {:ok, %{photo: photo}} -> {:ok, photo}
-        {:error, _step, changeset, _changes} -> {:error, changeset}
+        {:ok, %{photo: photo}} ->
+          {:ok, photo}
+
+        {:error, :lock, :profile_erased, _} ->
+          task =
+            Cherry.Accounts.ErasureTasks.enqueue!(
+              "storage",
+              intent.storage_key,
+              DateTime.add(intent.expires_at, 300)
+            )
+
+          Cherry.Accounts.ErasureTasks.process(task.id)
+          {:error, :upload_intent_not_found}
+
+        {:error, _step, changeset, _changes} ->
+          {:error, changeset}
       end
     else
       nil -> {:error, :upload_intent_not_found}

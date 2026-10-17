@@ -159,7 +159,34 @@ defmodule Cherry.Identity.AgeVerifications do
     with :ok <- check_provider_available(),
          :ok <- check_unverified(user_id),
          :ok <- register_attempt(user_id, now) do
-      Didit.create_session(user_id, callback)
+      case Didit.create_session(user_id, callback) do
+        {:ok, session} -> register_provider_session(user_id, session)
+        error -> error
+      end
+    end
+  end
+
+  defp register_provider_session(user_id, session) do
+    result =
+      Repo.transaction(fn ->
+        if Repo.one(
+             from(u in User, where: u.id == ^user_id and is_nil(u.deleted_at), lock: "FOR UPDATE")
+           ) do
+          Repo.insert!(%Cherry.Identity.ProviderSession{id: session.session_id, user_id: user_id},
+            on_conflict: :nothing,
+            log: false
+          )
+
+          session
+        else
+          Cherry.Accounts.ErasureTasks.enqueue!("provider", session.session_id)
+          :account_erased
+        end
+      end)
+
+    case result do
+      {:ok, :account_erased} -> {:error, :verification_revoked}
+      other -> other
     end
   end
 
@@ -371,14 +398,19 @@ defmodule Cherry.Identity.AgeVerifications do
   # After a final decision Didit must not keep the photos, the selfie nor the
   # data it read. A failure does not undo the user's verification.
   defp erase_session(session_id) do
-    case Didit.delete_session(session_id) do
-      :ok ->
-        :ok
+    {:ok, task} =
+      Repo.transaction(fn ->
+        task = Cherry.Accounts.ErasureTasks.enqueue!("provider", session_id)
 
-      {:error, status} ->
-        Logger.warning("age verification (provider): session erasure failed (#{status})")
-        :error
-    end
+        Repo.delete_all(from(s in Cherry.Identity.ProviderSession, where: s.id == ^session_id),
+          log: false
+        )
+
+        task
+      end)
+
+    Cherry.Accounts.ErasureTasks.process(task.id)
+    :ok
   end
 
   defp log_provider_outcome({:ok, _}),
@@ -437,7 +469,7 @@ defmodule Cherry.Identity.AgeVerifications do
     longest = limits |> Enum.map(&elem(&1, 1)) |> Enum.max()
 
     Repo.transaction(fn ->
-      Repo.one!(from(u in User, where: u.id == ^user_id, select: u.id, lock: "FOR UPDATE"))
+      lock_active_user!(user_id)
 
       from(a in AgeVerificationAttempt,
         where: a.user_id == ^user_id and a.inserted_at <= ^DateTime.add(now, -longest, :second)
@@ -566,6 +598,30 @@ defmodule Cherry.Identity.AgeVerifications do
   defp method(%Mrz{format: :td3}), do: "nfc_passport"
 
   defp store(user_id, method, fingerprint, now) do
+    Repo.transaction(fn ->
+      # Verification may finish after erasure has committed. Serialize the
+      # final write, not the remote verification, and never recreate its data.
+      lock_active_user!(user_id)
+
+      case store_verification(user_id, method, fingerprint, now) do
+        {:ok, verification} -> verification
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp lock_active_user!(user_id) do
+    Repo.one(
+      from(u in User,
+        where: u.id == ^user_id and is_nil(u.deleted_at),
+        select: u.id,
+        lock: "FOR UPDATE"
+      )
+    ) ||
+      Repo.rollback(:verification_revoked)
+  end
+
+  defp store_verification(user_id, method, fingerprint, now) do
     case get(user_id) do
       %AgeVerification{status: "verified", document_fingerprint: ^fingerprint} = existing ->
         {:ok, existing}
@@ -606,10 +662,13 @@ defmodule Cherry.Identity.AgeVerifications do
   # (no call into Cherry.Dating) so the contexts do not call each other back.
   defp refresh_discoverable(user_id, now) do
     from(p in Profile,
+      join: u in Cherry.Accounts.User,
+      on: u.id == p.user_id,
       where: p.user_id == ^user_id,
       update: [
         set: [
-          is_discoverable: p.is_complete and not p.is_paused and is_nil(p.deleted_at),
+          is_discoverable:
+            p.is_complete and not p.is_paused and is_nil(p.deleted_at) and is_nil(u.suspended_at),
           updated_at: ^now
         ]
       ]

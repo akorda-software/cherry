@@ -130,7 +130,19 @@ config :logger, :default_formatter,
 
 # Never log identity documents (age verification) nor credentials. Keys that
 # contain any of these strings are replaced by [FILTERED] in request logs.
-config :phoenix, :filter_parameters, ["password", "dg1", "dg2", "sod", "can", "mrz"]
+config :phoenix, :filter_parameters, [
+  "password",
+  "dg1",
+  "dg2",
+  "sod",
+  "can",
+  "mrz",
+  "code",
+  "token",
+  "statement",
+  "response",
+  "details"
+]
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason

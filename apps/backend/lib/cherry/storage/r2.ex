@@ -11,9 +11,9 @@ defmodule Cherry.Storage.R2 do
   `delete_object/1` borra objetos (fotos borradas, cuentas borradas, subidas
   abandonadas).
 
-  Un bucket con acceso público expone también `pending/`: las claves son
-  aleatorias y el barrido las borra al caducar el intent, pero conviene añadir
-  una regla de ciclo de vida que borre `pending/` a 1 día.
+  El bucket debe ser privado, sin dominio público ni r2.dev. Las URLs guardadas
+  son referencias sin autorización; solo al serializar una respuesta ya
+  autorizada se firma un GET de cinco minutos. Nunca se firma `pending/`.
 
   Sin `:endpoint` se usa R2 (`https://<account_id>.r2.cloudflarestorage.com`,
   región `auto`). Con `:endpoint` (env `S3_ENDPOINT`, p. ej.
@@ -94,7 +94,7 @@ defmodule Cherry.Storage.R2 do
        %{
          storage_key: storage_key,
          upload_url: upload_url,
-         public_url: build_public_url(Keyword.fetch!(config, :public_url_base), storage_key),
+         public_url: endpoint.origin <> canonical_uri,
          method: "PUT",
          headers: %{"Content-Type" => content_type, "If-None-Match" => "*"},
          expires_at: expires_at,
@@ -131,7 +131,125 @@ defmodule Cherry.Storage.R2 do
   @impl Cherry.Storage
   def public_url(storage_key) do
     with {:ok, config} <- config() do
-      {:ok, build_public_url(Keyword.fetch!(config, :public_url_base), storage_key)}
+      endpoint = endpoint(config)
+      {:ok, endpoint.origin <> object_path(config, endpoint, storage_key)}
+    end
+  end
+
+  @doc "Temporary bearer URL. Call only for a photo the current viewer may see."
+  def presign_get(storage_key, now \\ DateTime.utc_now()) do
+    with {:ok, config} <- config(),
+         true <- readable_key?(storage_key) do
+      endpoint = endpoint(config)
+      path = object_path(config, endpoint, storage_key)
+      ttl = config[:read_url_ttl_seconds]
+      date = Calendar.strftime(now, "%Y%m%d")
+      amz_date = Calendar.strftime(now, "%Y%m%dT%H%M%SZ")
+      scope = "#{date}/#{region(config)}/s3/aws4_request"
+
+      query =
+        canonical_query_string([
+          {"X-Amz-Algorithm", @algorithm},
+          {"X-Amz-Credential", "#{config[:access_key_id]}/#{scope}"},
+          {"X-Amz-Date", amz_date},
+          {"X-Amz-Expires", to_string(ttl)},
+          {"X-Amz-SignedHeaders", "host"},
+          {"response-cache-control", "private, no-store, max-age=0"}
+        ])
+
+      request =
+        Enum.join(
+          ["GET", path, query, "host:#{endpoint.host_header}\n", "host", @payload_hash],
+          "\n"
+        )
+
+      to_sign = Enum.join([@algorithm, amz_date, scope, sha256_hex(request)], "\n")
+
+      signature =
+        config[:secret_access_key]
+        |> signing_key(date, region(config))
+        |> hmac(to_sign)
+        |> Base.encode16(case: :lower)
+
+      {:ok, "#{endpoint.origin}#{path}?#{query}&X-Amz-Signature=#{signature}"}
+    else
+      false -> {:error, :invalid_photo_key}
+      error -> error
+    end
+  end
+
+  @doc "Resolve our stored references, including URLs predating the private bucket migration."
+  def storage_key(url) when is_binary(url) do
+    with {:ok, config} <- config() do
+      endpoint = endpoint(config)
+      bases = [endpoint.origin <> object_path(config, endpoint, ""), config[:public_url_base]]
+
+      Enum.find_value(bases, fn base ->
+        prefix = if is_binary(base), do: String.trim_trailing(base, "/") <> "/"
+
+        if prefix && String.starts_with?(url, prefix) do
+          key = url |> String.replace_prefix(prefix, "") |> URI.decode()
+          if readable_key?(key), do: key
+        end
+      end)
+    else
+      _ -> nil
+    end
+  end
+
+  def storage_key(_), do: nil
+
+  defp readable_key?(key) when is_binary(key) do
+    String.starts_with?(key, ["photos/", "profiles/"]) and
+      not Enum.any?(String.split(key, "/"), &(&1 in ["", ".", ".."])) and
+      not String.contains?(key, ["?", "#", "\\", <<0>>])
+  end
+
+  defp readable_key?(_), do: false
+
+  @doc "Authenticated existence check used by isolated recovery; errors never mean missing."
+  def object_exists?(key) do
+    with {:ok, config} <- config() do
+      case object_request(config, key, :head) do
+        {:ok, _} -> {:ok, true}
+        {:error, :upload_object_not_found} -> {:ok, false}
+        error -> error
+      end
+    end
+  end
+
+  @doc "Authenticated object inventory, used only during isolated recovery."
+  def list_objects(token \\ nil, acc \\ []) do
+    with {:ok, config} <- config() do
+      params = [{"list-type", "2"}, {"max-keys", "1000"}]
+      params = if token, do: params ++ [{"continuation-token", token}], else: params
+
+      with {:ok, %{body: xml}} <- object_request(config, "", :get, params: params),
+           true <- String.contains?(xml, "<ListBucketResult") and not String.contains?(xml, "<!"),
+           keys <-
+             Regex.scan(~r/<Key>([^<]+)<\/Key>/, xml, capture: :all_but_first) |> List.flatten(),
+           true <-
+             Enum.all?(
+               keys,
+               fn key ->
+                 Regex.match?(~r/^(pending\/)?(photos|profiles)\/[a-zA-Z0-9_.\/-]+$/, key) and
+                   readable_key?(Storage.published_key(key) || key)
+               end
+             ) do
+        if String.contains?(xml, "<IsTruncated>false</IsTruncated>") do
+          {:ok, acc ++ keys}
+        else
+          case Regex.run(~r/<NextContinuationToken>([^<]+)<\/NextContinuationToken>/, xml) do
+            [_, next] when next != token ->
+              list_objects(String.replace(next, "&amp;", "&"), acc ++ keys)
+
+            _ ->
+              {:error, :invalid_object_listing}
+          end
+        end
+      else
+        _ -> {:error, :storage_unavailable}
+      end
     end
   end
 
@@ -237,7 +355,7 @@ defmodule Cherry.Storage.R2 do
   defp config do
     config = Application.get_env(:cherry, @config_key, [])
 
-    required = [:access_key_id, :secret_access_key, :bucket_name, :public_url_base]
+    required = [:access_key_id, :secret_access_key, :bucket_name]
 
     if Enum.all?(required, &configured?(Keyword.get(config, &1))) and
          (configured?(Keyword.get(config, :account_id)) or valid_endpoint?(config[:endpoint])) do
@@ -246,7 +364,8 @@ defmodule Cherry.Storage.R2 do
          [
            allowed_content_types: ["image/jpeg", "image/png", "image/webp"],
            max_upload_bytes: 2_000_000,
-           upload_url_ttl_seconds: 600
+           upload_url_ttl_seconds: 600,
+           read_url_ttl_seconds: 300
          ],
          config
        )}
@@ -328,8 +447,4 @@ defmodule Cherry.Storage.R2 do
   end
 
   defp uri_encode(value), do: URI.encode(to_string(value), &URI.char_unreserved?/1)
-
-  defp build_public_url(base, storage_key) do
-    String.trim_trailing(base, "/") <> "/" <> encode_path(storage_key)
-  end
 end

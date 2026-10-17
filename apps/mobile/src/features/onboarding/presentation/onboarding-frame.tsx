@@ -1,10 +1,10 @@
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 import { Keyboard, type LayoutChangeEvent, Platform, StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { usePathname } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Button, IconButton, ProgressBar, Text, useTheme } from "../../../shared/ui";
+import { appShellRoutes, Button, IconButton, ProgressBar, Text, useTheme } from "../../../shared/ui";
 import { useStepCtaStore } from "../application/step-cta-store";
 import { ONBOARDING_STEP_KEYS, stepFromPathname, stepIndex, stepProgress } from "../domain/steps";
 import { stepAccent } from "./step-tones";
@@ -55,6 +55,7 @@ export function OnboardingFrame({ children }: PropsWithChildren) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  const router = useRouter();
   const step = stepFromPathname(pathname);
   const cta = useStepCtaStore((state) => (step ? state.byStep[step] : undefined));
   const navigation = useOnboardingNavigation();
@@ -120,6 +121,7 @@ export function OnboardingFrame({ children }: PropsWithChildren) {
               testID="onboarding-progress"
               value={step ? stepProgress(step) : 0}
             />
+            <IconButton accessibilityLabel="Buzón y privacidad" icon="mail" size="md" onPress={() => router.push(appShellRoutes.support)} />
           </View>
 
           {cta && !cta.hidden ? (

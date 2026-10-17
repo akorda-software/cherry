@@ -16,7 +16,7 @@ defmodule Cherry.Sessions do
 
     Multi.new()
     |> Multi.run(:active_user, fn repo, _changes ->
-      case repo.one(from u in User, where: u.id == ^user.id, lock: "FOR UPDATE") do
+      case repo.one(from(u in User, where: u.id == ^user.id, lock: "FOR UPDATE")) do
         %User{deleted_at: nil} = active_user -> {:ok, active_user}
         _ -> {:error, :account_deleted}
       end
@@ -64,7 +64,7 @@ defmodule Cherry.Sessions do
           # tokens. Re-read after waiting: another refresh may have rotated this
           # token, or logout/account deletion may have revoked the family.
           family =
-            Repo.one!(
+            Repo.one(
               from(s in SessionFamily,
                 where: s.id == ^token.session_family_id,
                 lock: "FOR UPDATE",
@@ -72,8 +72,11 @@ defmodule Cherry.Sessions do
               )
             )
 
-          token = Repo.get!(RefreshToken, token.id)
-          refresh_locked_token(%{token | session_family: family})
+          token = Repo.get(RefreshToken, token.id)
+
+          if family && token,
+            do: refresh_locked_token(%{token | session_family: family}),
+            else: {:error, :invalid_refresh_token}
       end
     end)
     |> case do

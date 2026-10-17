@@ -1,4 +1,4 @@
-import { Image } from "expo-image";
+import { PrivatePhotoImage as Image } from "../../media/private-photo-image";
 import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 
 import { useTheme } from "../providers/theme-provider";

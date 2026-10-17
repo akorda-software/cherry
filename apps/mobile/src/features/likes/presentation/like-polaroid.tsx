@@ -1,4 +1,4 @@
-import { Image } from "expo-image";
+import { PrivatePhotoImage as Image } from "../../../shared/media/private-photo-image";
 import { memo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {

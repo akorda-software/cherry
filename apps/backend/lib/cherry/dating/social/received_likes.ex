@@ -103,6 +103,7 @@ defmodule Cherry.Dating.Social.ReceivedLikes do
       on: u.id == p.user_id,
       where: s.target_profile_id == ^viewer_id and s.action_type == "like",
       where: is_nil(p.deleted_at) and is_nil(u.deleted_at),
+      where: is_nil(u.suspended_at),
       where: p.is_complete and p.is_discoverable and not p.is_paused,
       where: not exists(subquery(responded)),
       where: not exists(subquery(blocked))

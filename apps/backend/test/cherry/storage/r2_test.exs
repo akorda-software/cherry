@@ -63,8 +63,43 @@ defmodule Cherry.Storage.R2Test do
     assert uri.path == "/bucket/profiles/p1/a.jpg"
     assert query["X-Amz-Credential"] =~ ~r"^access/\d{8}/auto/s3/aws4_request$"
     assert query["X-Amz-SignedHeaders"] == "content-type;host;if-none-match"
-    assert upload.public_url == "https://cdn.test/profiles/p1/a.jpg"
-    assert {:ok, "https://cdn.test/profiles/p1/a.jpg"} = R2.public_url("profiles/p1/a.jpg")
+
+    assert upload.public_url ==
+             "https://account.r2.cloudflarestorage.com/bucket/profiles/p1/a.jpg"
+
+    assert {:ok, "https://account.r2.cloudflarestorage.com/bucket/profiles/p1/a.jpg"} =
+             R2.public_url("profiles/p1/a.jpg")
+  end
+
+  test "private references need no public base; read signatures expire and cannot expose pending objects" do
+    Application.put_env(
+      :cherry,
+      R2,
+      Keyword.delete(Application.get_env(:cherry, R2), :public_url_base)
+    )
+
+    assert {:ok, reference} = R2.public_url("photos/a.jpg")
+    refute reference =~ "X-Amz"
+    assert R2.storage_key(reference) == "photos/a.jpg"
+    assert {:ok, signed} = R2.presign_get("photos/a.jpg", ~U[2026-10-17 10:00:00Z])
+    query = URI.decode_query(URI.parse(signed).query)
+    assert query["X-Amz-Date"] == "20261017T100000Z"
+    assert query["X-Amz-Expires"] == "300"
+    assert query["X-Amz-SignedHeaders"] == "host"
+    assert query["response-cache-control"] == "private, no-store, max-age=0"
+    assert byte_size(query["X-Amz-Signature"]) == 64
+
+    for key <- ["pending/photos/a.jpg", "photos/../a.jpg", "photos/a.jpg?x=1", "other/a.jpg"] do
+      assert {:error, :invalid_photo_key} = R2.presign_get(key)
+    end
+  end
+
+  test "media response signs references but the database reference stays unsigned" do
+    {:ok, url} = R2.public_url("photos/a.jpg")
+    assert CherryWeb.MediaUrl.absolute(nil, url) =~ "X-Amz-Signature="
+    assert CherryWeb.MediaUrl.reference(nil, url) == url
+    assert R2.storage_key("https://cdn.test/photos/a.jpg") == "photos/a.jpg"
+    assert CherryWeb.MediaUrl.absolute(nil, "https://cdn.test/photos/a.jpg") =~ "X-Amz-Signature="
   end
 
   describe "generic S3 endpoint (MinIO, Garage...)" do

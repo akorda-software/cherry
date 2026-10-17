@@ -60,8 +60,8 @@ defmodule CherryWeb.Controllers.Api.ConfigControllerTest do
                "locale" => "es-ES",
                "operator" => nil,
                "contactEmail" => nil,
-               "privacyUrl" => nil,
-               "termsUrl" => nil,
+               "privacyUrl" => CherryWeb.Endpoint.url() <> "/privacidad",
+               "termsUrl" => CherryWeb.Endpoint.url() <> "/condiciones",
                "sourceUrl" => nil
              }
 

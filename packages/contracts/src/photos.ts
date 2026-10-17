@@ -1,4 +1,4 @@
-/** Foto de OTRO perfil (cards, perfil público). `url` siempre absoluta. */
+/** Foto de OTRO perfil. `url` absoluta; con R2 es una autorización temporal, no persistirla. */
 export interface PhotoSummary {
   id: string;
   url: string;
@@ -34,6 +34,7 @@ export interface PhotoUploadIntentRequest {
 export interface PhotoUploadIntent {
   storageKey: string;
   uploadUrl: string;
+  /** Nombre histórico: referencia sin autorización de lectura, no es una foto pública. */
   publicUrl: string;
   method: "PUT";
   headers: Record<string, string>;
@@ -82,3 +83,8 @@ export type PhotoUploadErrorCode =
 
 export const MIN_PROFILE_PHOTOS = 2;
 export const MAX_PROFILE_PHOTOS = 4;
+
+export interface PhotoReadUrlResponse {
+  url: string;
+  expiresAt: string;
+}

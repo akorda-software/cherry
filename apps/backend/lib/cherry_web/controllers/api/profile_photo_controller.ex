@@ -110,9 +110,21 @@ defmodule CherryWeb.Controllers.Api.ProfilePhotoController do
         end
 
       if photo && photo.profile_id == profile.id do
-        Dating.delete_photo(photo)
-        Dating.sync_completed_profile_state(profile)
-        json(conn, %{ok: true})
+        case Dating.delete_photo(photo) do
+          {:ok, _} ->
+            Dating.sync_completed_profile_state(profile)
+            json(conn, %{ok: true})
+
+          {:error, :erasure_journal_unavailable} ->
+            conn
+            |> put_status(:service_unavailable)
+            |> json(%{error: "erasure_protection_unavailable"})
+
+          {:error, changeset} ->
+            conn
+            |> put_status(:unprocessable_entity)
+            |> json(%{errors: ChangesetJSON.errors(changeset)})
+        end
       else
         conn
         |> put_status(:not_found)

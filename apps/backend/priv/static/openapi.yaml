@@ -18,6 +18,7 @@ tags:
   - name: Settings
   - name: Push Notifications
   - name: Verification
+  - name: Casework
 paths:
   /api/auth/{provider}/callback:
     post:
@@ -267,6 +268,50 @@ paths:
                     $ref: '#/components/schemas/DiscoveryPreference'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/photos/read-url:
+    post:
+      tags: [Profile]
+      summary: Renew a private photo read URL after checking current viewer access.
+      description: |
+        The object key alone does not authorize access. Own photos remain available
+        during onboarding/suspension; other profiles require current visibility,
+        no block, good standing and age verification when enabled. Private R2 GET
+        URLs expire after 300 seconds; do not persist or log them. Bearer URLs can
+        be shared until expiry and cannot revoke already downloaded copies.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [storageKey]
+              properties:
+                storageKey:
+                  type: string
+                  maxLength: 512
+      responses:
+        '200':
+          description: Temporary read authorization (private, no-store).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expiresAt]
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Private storage signer unavailable.
   /api/me/photos:
     get:
       tags: [Profile]
@@ -595,8 +640,8 @@ paths:
   /api/me/account:
     delete:
       tags: [Settings]
-      summary: Deactivate the account, hide the profile and revoke all sessions.
-      description: Works before onboarding too. Records are retained; future logins to this account are denied.
+      summary: Permanently erase the account and its linked data.
+      description: Works before onboarding and for suspended accounts. Removes email, provider identity, document fingerprint, profile, shared conversations, linked cases, notices and audit from the database. The same login and document may create a new account from scratch. External files and tracked verification sessions have durable deletion retries; the response does not guarantee instantaneous erasure of caches or backups.
       security:
         - bearerAuth: []
       responses:
@@ -615,6 +660,136 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ActivitySummary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/me/cases:
+    get:
+      tags: [Casework]
+      summary: Private cases for the current user, including decisions addressed to them.
+      description: Available before onboarding/verification and during suspension. No reporter or staff identities. Responses use Cache-Control no-store.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CaseOffset'
+      responses:
+        '200':
+          description: Up to 50 cases, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [cases]
+                properties:
+                  cases:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SupportCase'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Casework]
+      summary: Submit a privacy request or a service complaint.
+      description: At most ten new requests per account per rolling 24 hours. Sending an erasure request does not itself delete data.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupportCaseRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/SupportCase'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: case_rate_limited.
+  /api/me/cases/{id}:
+    get:
+      tags: [Casework]
+      summary: Read a case belonging to or addressed to the current user.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          $ref: '#/components/responses/SupportCase'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/me/cases/{id}/appeal:
+    post:
+      tags: [Casework]
+      summary: Request review of a resolved report/complaint, once per user and original case.
+      description: Review must be done by a different staff account. An appeal alone does not reverse a measure.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [statement]
+              properties:
+                statement:
+                  type: string
+                  minLength: 10
+                  maxLength: 4000
+      responses:
+        '201':
+          $ref: '#/components/responses/SupportCase'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: case_conflict (already appealed or not appealable).
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/me/notices:
+    get:
+      tags: [Casework]
+      summary: Private acknowledgements and decision messages, newest first, up to 50.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CaseOffset'
+      responses:
+        '200':
+          description: Notices for this user only; no email or external delivery.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [notices]
+                properties:
+                  notices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CaseNotice'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/me/notices/{id}/read:
+    post:
+      tags: [Casework]
+      summary: Mark a notice owned by this user as read.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
   /api/me/verification:
@@ -1229,6 +1404,15 @@ components:
       scheme: bearer
       bearerFormat: Phoenix.Token
   parameters:
+    CaseOffset:
+      name: offset
+      in: query
+      description: Invalid offsets fall back to zero. Page size is fixed at 50.
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 10000
+        default: 0
     InboxLimit:
       name: limit
       in: query
@@ -1251,6 +1435,16 @@ components:
         type: string
         format: uuid
   responses:
+    SupportCase:
+      description: The current user's private case projection.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [case]
+            properties:
+              case:
+                $ref: '#/components/schemas/SupportCase'
     Ok:
       description: Operation succeeded.
       content:
@@ -1301,6 +1495,92 @@ components:
                 items:
                   type: string
   schemas:
+    SupportCase:
+      type: object
+      required: [id, kind, category, status, statement, outcome, response, insertedAt, resolvedAt, canAppeal]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [report, complaint, privacy, appeal, measure]
+        category:
+          type: string
+        status:
+          type: string
+          enum: [open, resolved]
+        statement:
+          type: string
+          nullable: true
+          description: Only the submitter sees their own statement; hidden from the reported person.
+        outcome:
+          type: string
+          nullable: true
+          enum: [dismissed, warning, suspend, answered, refused, upheld, overturned, null]
+        response:
+          type: string
+          nullable: true
+          description: The appropriate message for this recipient, never the other party's message.
+        insertedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        canAppeal:
+          type: boolean
+    SupportCaseRequest:
+      oneOf:
+        - type: object
+          required: [kind, category, statement]
+          properties:
+            kind:
+              type: string
+              enum: [privacy]
+            category:
+              type: string
+              enum: [access, rectification, erasure, restriction, portability, objection]
+            statement:
+              type: string
+              minLength: 10
+              maxLength: 4000
+        - type: object
+          required: [kind, category, statement]
+          properties:
+            kind:
+              type: string
+              enum: [complaint]
+            category:
+              type: string
+              enum: [service, safety, other]
+            statement:
+              type: string
+              minLength: 10
+              maxLength: 4000
+    CaseNotice:
+      type: object
+      required: [id, caseId, event, message, readAt, insertedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        caseId:
+          type: string
+          format: uuid
+        event:
+          type: string
+          enum: [received, resolved]
+        message:
+          type: string
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        insertedAt:
+          type: string
+          format: date-time
     AgeVerification:
       type: object
       required: [status, method, verifiedAt]
@@ -1827,6 +2107,7 @@ components:
         publicUrl:
           type: string
           format: uri
+          description: Historical field name; unsigned storage reference, not public read access.
         method:
           type: string
           example: PUT
@@ -2293,4 +2574,3 @@ components:
             insertedAt:
               type: string
               format: date-time
-

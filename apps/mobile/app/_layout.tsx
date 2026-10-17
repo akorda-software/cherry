@@ -22,6 +22,7 @@ import {
   type AppBootstrapService
 } from "../src/features/app-bootstrap";
 import { SessionShellProvider, type SessionShellServices } from "../src/features/auth/presentation";
+import { PhotoAccessProvider } from "../src/features/photos/presentation/photo-access-provider";
 import { createJsonHttpClient } from "../src/shared/api";
 import { RuntimeConfigProvider } from "../src/shared/config";
 import { fontFamilies, lightTheme, ThemeProvider, ToastHost } from "../src/shared/ui";
@@ -98,9 +99,11 @@ export function RootLayout({
             >
               <SessionShellProvider services={services}>
                 <AppBootstrapProvider service={resolvedAppBootstrapService}>
+                  <PhotoAccessProvider>
                   {children ?? <Slot />}
                   <ToastHost />
                   {bootSplash ? <BootSplashGate /> : null}
+                  </PhotoAccessProvider>
                 </AppBootstrapProvider>
               </SessionShellProvider>
             </RuntimeConfigProvider>

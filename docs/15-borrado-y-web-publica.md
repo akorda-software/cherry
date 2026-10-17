@@ -1,0 +1,74 @@
+# Borrado de cuentas y web pública
+
+Segundo lote local del 2026-10-16, ampliado el 2026-10-17 con la separación de medidas ajenas aprobada por el titular. **Sin desplegar ni compilar móviles.** La política de producto autorizada es borrar la cuenta sin conservar correo, identidad OAuth ni huella del documento, permitiendo volver a usar el mismo DNI. No se ha autorizado una purga masiva de registros anteriores ni se declara cerrado el cumplimiento jurídico.
+
+## Qué hace el borrado
+
+`DELETE /api/me/account` conserva `{ok: true}` y funciona antes del onboarding y durante una suspensión. `Accounts.Erasure` borra en una transacción la cuenta y sus datos vinculados: perfil, ubicación, preferencias, fotos/metadatos/intents, etiquetas, swipes, matches, conversaciones/mensajes, bloqueos/reportes, identidades, verificaciones/intentos, dispositivos, sesiones y tokens. Elimina analítica y jobs de notificación/broadcast asociados antes de perder sus referencias.
+
+La migración `20261016120000` hace cascada también sobre expedientes en los que es solicitante/afectado, sus descendientes, avisos y auditoría vinculada. No deja el relato intacto con una FK a `NULL`. Las conversaciones compartidas se eliminan para las dos personas; no se borran las cuentas ni otros datos independientes de sus interlocutores.
+
+### Medidas sobre otras cuentas — separación aprobada e implementada el 2026-10-17
+
+El titular ha aprobado separar la medida sobre otra cuenta sin conservar datos de quien se borra. Si A denuncia a B, el equipo suspende a B y A pide borrado, `Casework.Erasure` crea una ficha **nueva** `kind: measure` vinculada exclusivamente a B, traslada la referencia de su suspensión y elimina el expediente original, sus descendientes, textos, avisos y auditoría. No conserva enlaces a la denuncia anterior ni identidad, correo, relato, categoría detallada o respuestas que puedan identificar a A.
+
+- **Mínimo conservado:** B, medida/estado, fecha de decisión y cuenta del personal que la decidió para exigir revisión por otra persona; texto explicativo fijo y categoría genérica de seguridad. No copia evidencia ni motivos en texto libre. La auditoría nueva no enlaza al expediente ni a la persona borrados.
+- **Sin decisiones automáticas:** no cambia `suspended_at`, no levanta ni vuelve a imponer la suspensión y no altera visibilidad. No interpreta que la desaparición de evidencia confirme o revoque una sanción. La ficha advierte al equipo de esos límites.
+- **Recurso utilizable:** aparece en el buzón/API y en el panel. Quien tomó la decisión no puede resolver su recurso; una revisión humana favorable restaura la cuenta si esa medida sigue vigente.
+- **Recursos ya presentados:** se trasladan a registros nuevos y mínimos, retirando texto anterior y mensajes libres. Un recurso pendiente mantiene fecha y asignación; no se pierde ni se duplica. Uno resuelto conserva solo resultado, fecha y decisor, sin reiniciar el cupo de revisión. No se inventa su contenido.
+- **Borrado de B:** elimina también esa ficha, sus revisiones y sus avisos/auditoría. No crea una lista negra de B ni retiene datos de A. Las medidas ya revocadas no generan fichas nuevas por borrar A.
+- **Concurrencia:** `Lifecycle` usa un advisory lock transaccional compartido para recepción/revisión y exclusivo para el tramo de borrado en BD. Las operaciones ordinarias pueden coexistir; el borrado obtiene un grafo estable que incluye descendientes y no puede perder una suspensión/recurso que se confirme a la vez. No se mantiene ese lock durante la limpieza externa posterior al commit.
+
+La migración `20261017100000` incorpora el tipo `measure`. Revertirla se niega a descartar silenciosamente fichas existentes: antes habría que migrar su vía de revisión. No se han fijado aquí plazos de backups, conservación general o reservas legales; el titular los ha aplazado para el siguiente bloque. Esta separación resuelve el bloqueo técnico detectado, no certifica cumplimiento jurídico.
+
+Al confirmar la transacción se desconectan sockets y se intenta la limpieza externa. La huella del DNI queda libre inmediatamente en BD; volver a registrarse crea una cuenta nueva y exige completar otra vez los requisitos habilitados. Incluso una cuenta suspendida puede borrar y volver: no se mantiene una lista negra de identidad tras la baja.
+
+Si se compone la operación dentro de una transacción mayor, no se borran objetos
+ni se difunde una desconexión antes de su commit. Con el registro externo activo,
+la **solicitud** ya recibida sobrevive a un rollback: el barrido continúa después
+el borrado pedido, en lugar de perderlo por un fallo de SQL o de la respuesta.
+
+## Limpieza externa sin cuentas fantasma
+
+`erasure_tasks` contiene únicamente tipo/referencia del objeto o sesión externa, siguiente intento y momento seguro de finalización. **No contiene cuenta, correo ni DNI/huella.** Son referencias temporales, no datos anónimos ni una excepción indefinida de identidad.
+
+- El almacenamiento elimina tanto la clave definitiva como `pending/`. Los fallos conservan la tarea y se reintentan; una excepción del proveedor no convierte un borrado de BD ya confirmado en un error engañoso de la API.
+- Una URL firmada todavía puede recibir una subida. Por eso, además del intento inicial, se repite la eliminación después de su caducidad + cinco minutos. Reencolar no acorta esa ventana ni pierde la fila original.
+- Un `complete` iniciado antes de la baja que termina de publicar después detecta la desaparición del perfil y vuelve a programar la limpieza. Un perfil borrado no puede crear nuevos intents desde una struct obsoleta.
+- Las sesiones nuevas de Didit se registran en `verification_provider_sessions`. Una decisión final o la baja traspasa su referencia a limpieza durable; la asociación al usuario se elimina. Un `404` al borrar equivale a ausencia confirmada. No se activa Didit por existir este soporte.
+- `ErasureSweeper` revisa hasta 50 tareas por pasada, inicialmente a los diez segundos y cada minuto; bloqueos `SKIP LOCKED` permiten varios nodos. No funciona automáticamente en el sandbox de tests. La tarea se elimina al confirmar la limpieza, una vez cerrada la ventana de firmas.
+
+No se garantiza borrado instantáneo durante una caída del proveedor ni se cambia ahora la moderación de fotos. Tampoco se purgan automáticamente caches/CDN/backups externos o sesiones históricas de proveedor que versiones anteriores no registraban. Esas obligaciones operativas y sus plazos deben cerrarse antes del lanzamiento. No se ha implementado una reserva/bloqueo legal de datos: validar su alcance antes de afirmar que esta política satisface íntegramente la normativa española.
+
+### Copias y fotos privadas (implementación 2026-10-17)
+
+El nuevo circuito de recuperación añade registro
+externo previo para cuentas/fotos retiradas e instrucciones técnicas de limpieza;
+no contiene correo, identidad OAuth, DNI/huella ni relatos. No es anónimo. Un
+fallo del registro impide confirmar la baja (503); la eliminación externa puede
+seguir pendiente de reintentos sin conservar la cuenta. La limpieza del registro
+requiere acuse, desaparición de todas las copias capaces de recuperar el dato y
+comprobación de la BD viva, no una caducidad ciega.
+
+R2 privado conserva objetos sin copia adicional. La BD guarda claves y
+referencias sin firma; las respuestas autorizadas generan lecturas de 300 s,
+renovables con controles de visibilidad/bloqueo/edad/estado. No se puede impedir
+compartir una firma vigente ni conservar una captura/descarga anterior. El móvil
+preparado renueva firmas y evita nuevas cachés de fotos en disco; **sin compilar
+ni distribuir móvil en este encargo**. La moderación continúa aplazada.
+
+## Landing e información pública
+
+Phoenix sirve `/`, `/privacidad`, `/condiciones`, `/normas`, `/seguridad-infantil`, `/transparencia`, `/contacto` y `/eliminar-cuenta`. Sustituye la página de ejemplo; no añade una nueva aplicación web, framework ni proveedor.
+
+Diseño propio: rosa `#ffd9e8`, menta `#c5f2d4`, amarillo `#ffe89a`, papel `#fff9fb` y tinta `#29233a`; Rubik local de la app, títulos negros de la familia, bordes y sombras duras, ilustración de cerezas sin fotos de usuarios ficticios. Sin fuentes remotas, scripts de seguimiento ni testimonios/cifras inventados. Licencia de fuentes incluida en `priv/static/fonts/OFL.txt`.
+
+Todos los textos están **marcados como provisionales**; no se anuncian descargas ni apertura. `PublicSite` versiona el borrador, no una aceptación del usuario. Faltan datos definitivos del titular/contacto, bases jurídicas, conservación, proveedores y revisión profesional. `INSTANCE_OPERATOR`, `INSTANCE_CONTACT_EMAIL` e `INSTANCE_SOURCE_URL` personalizan la información; no se inventa un titular o correo.
+
+`/eliminar-cuenta` explica la ruta de la app y permite solicitarlo por el correo configurado sin reinstalar ni iniciar sesión. No es un endpoint de borrado anónimo: el operador debe verificar la solicitud antes de actuar. Sin correo real, la página declara que la vía no está operativa; no presentarla como completada en Google Play.
+
+`GET /api/config` entrega URLs absolutas propias para privacidad y condiciones cuando no se han definido `INSTANCE_PRIVACY_URL`/`INSTANCE_TERMS_URL`. La app ya las abre desde Acerca de. URLs externas explícitas conservan prioridad. Esto no añade consentimientos/aceptaciones al onboarding.
+
+## Comprobaciones
+
+Pruebas focales: grafo completo de borrado, conservación de cuentas ajenas, reutilización de correo/huella, baja suspendida sin lista negra, fallo/reintento de archivos y proveedor, firma de subida aún vigente, rollback sin efectos externos y concurrencia real con envío de mensajes. La web prueba acceso público, contacto configurable, borradores, escape HTML y cabeceras/CSP. [Estrategia y límites](./09-estrategia-pruebas.md).

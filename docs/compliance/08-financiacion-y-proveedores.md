@@ -6,7 +6,8 @@
 
 - App Attest (iOS) y Play Integrity (Android).
 - «Restrict Declared Minors» de Google Play y Declared Age Range de Apple.
-- Microsoft PhotoDNA y Cloudflare CSAM Scanning Tool (hay que solicitarlos).
+- Microsoft PhotoDNA: gratuito para solicitantes aprobados tras evaluación, no activado todavía. Cloudflare CSAM Scanning Tool: opción pendiente de confirmar/solicitar según arquitectura.
+- Azure AI Content Safety F0: **5.000 imágenes/mes**, según [tarifa oficial](https://azure.microsoft.com/en-us/pricing/details/content-safety/) consultada el 2026-10-16. Al llegar al cupo se detiene el uso del nivel gratuito, sin sobrecostes propios; otros recursos de Azure no están incluidos. Moderación general, **no** detección de material de abuso infantil conocido (ver `03`).
 - Lectura NFC del DNI y comparación de caras con modelos de código abierto (solo coste de servidor).
 - Panel de moderación, filtro del chat, límites de uso y duplicados (desarrollo propio).
 

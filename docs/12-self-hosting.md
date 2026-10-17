@@ -103,6 +103,10 @@ Para entrar hace falta además al menos un proveedor de login (§6):
 
 Un proveedor sin audiencias rechaza todos sus logins; el backend lo avisa en el log al arrancar (error si no hay ninguno configurado).
 
+### Backoffice privado
+
+`BACKOFFICE_ENABLED=false` por defecto. El equipo se provisiona expresamente desde consola con roles independientes del login móvil. El panel exige HTTPS; si termina TLS en proxy, `BACKOFFICE_TRUSTED_PROXY_IPS` lista únicamente las IP exactas de peers directos controlados que sobrescriben `X-Forwarded-Proto`, nunca rangos genéricos ni IP de usuarios. Sin reconocimiento de HTTPS, responde 426 incluso aunque la app principal permita HTTP. No actives el panel sin verificar el trayecto real y probar permisos/CSRF. [Alta, códigos de acceso y límites](./14-backoffice.md).
+
 ### Instancia y país
 
 Quién gestiona la instancia y para qué país es. La app lo lee al arrancar de `GET /api/config` (público), así que **la misma compilación de la app sirve para cualquier instancia**: no hay que recompilar para cambiarlos. Se enseñan en «Acerca de». La política de nombre (`TRADEMARKS.md`, condición 5) pide decir en la app quién gestiona la instancia y cómo contactar: define al menos `INSTANCE_OPERATOR` e `INSTANCE_CONTACT_EMAIL`.

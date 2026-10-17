@@ -15,6 +15,13 @@ defmodule CherryWeb.Plugs.ForceSSL do
 
   @impl true
   def call(conn, _opts) do
+    # Preserve adapter facts before Plug.SSL can rewrite scheme/peer from headers.
+    conn =
+      Plug.Conn.put_private(conn, :transport_origin, %{
+        scheme: conn.scheme,
+        peer_ip: conn.remote_ip
+      })
+
     case Application.get_env(:cherry, :force_ssl, false) do
       false -> conn
       ssl_opts -> Plug.SSL.call(conn, Plug.SSL.init(ssl_opts))

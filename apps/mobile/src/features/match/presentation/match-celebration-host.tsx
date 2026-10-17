@@ -1,4 +1,4 @@
-import { Image } from "expo-image";
+import { PrivatePhotoImage as Image } from "../../../shared/media/private-photo-image";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal, StyleSheet, useWindowDimensions, View } from "react-native";

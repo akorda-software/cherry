@@ -81,11 +81,11 @@ describe("shared image prefetch", () => {
     expect(native).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps the adapter's existing memory-disk policy and shares native calls", () => {
+  it("uses memory only, without creating a persistent photo archive", () => {
     prefetchImageUrls(["https://images.example.test/a", "https://images.example.test/b"]);
     prefetchImageUrls(["https://images.example.test/b"]);
     expect(nativePrefetch).toHaveBeenCalledExactlyOnceWith(
-      ["https://images.example.test/a", "https://images.example.test/b"], "memory-disk"
+      ["https://images.example.test/a", "https://images.example.test/b"], "memory"
     );
   });
 });

@@ -1,0 +1,29 @@
+<.site
+  title="Titular y contacto"
+  description="Quién gestiona esta instancia de Cherry y cómo contactar con su equipo."
+  instance={@instance}
+>
+  <article class="document">
+    <h1>Estamos al otro lado.</h1>
+    <p class="lede">Titular, atención y privacidad de esta instancia.</p>
+    <.draft />
+    <h2>Quién gestiona el servicio</h2>
+    <p :if={@instance.operator}>{@instance.operator}</p>
+    <p :if={!@instance.operator}>
+      El titular de esta instancia todavía no está configurado. No debe abrirse al público sin identificarlo y completar los datos legales exigibles.
+    </p>
+    <h2>Contacto sin iniciar sesión</h2>
+    <p :if={@instance.contact_email}>
+      <a href={"mailto:" <> @instance.contact_email}>{@instance.contact_email}</a>
+    </p>
+    <p :if={!@instance.contact_email}>
+      El correo de atención todavía no está configurado. Esta página no recibe solicitudes hasta que el operador habilite un contacto real.
+    </p>
+    <p>
+      En la aplicación también puedes utilizar Ajustes → Buzón y privacidad. No es un chat de atención en directo.
+    </p>
+    <p>
+      Para pedir una eliminación, consulta <a href={~p"/eliminar-cuenta"}>Eliminar mi cuenta</a>. No envíes tu contraseña ni una copia del DNI por correo.
+    </p>
+  </article>
+</.site>

@@ -1,0 +1,15 @@
+<.site title={@document.title} description={@document.intro} instance={@instance}>
+  <article class="document">
+    <a href={~p"/"}>Volver a Cherry</a>
+    <h1>{@document.title}</h1>
+    <p class="lede">{@document.intro}</p>
+    <.draft />
+    <section :for={{heading, content} <- @document.sections}>
+      <h2>{heading}</h2>
+      <p>{content}</p>
+    </section>
+    <p>
+      ¿Necesitas ayuda? <a href={~p"/contacto"}>Contacta con el operador de esta instancia</a>.
+    </p>
+  </article>
+</.site>

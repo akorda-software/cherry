@@ -29,13 +29,26 @@ defmodule Cherry.Dating.Social.PublicProfiles do
     profile = row.profile
 
     cond do
-      profile.deleted_at != nil or row.user_deleted_at != nil -> false
-      profile.id == viewer_id -> true
-      row.blocked -> false
-      match != nil -> true
-      Social.viewer_status(viewer) != :ok -> false
-      not (profile.is_complete and profile.is_discoverable and not profile.is_paused) -> false
-      true -> Compatibility.compatible?(viewer, profile.id)
+      profile.deleted_at != nil or row.user_deleted_at != nil or row.user_suspended_at != nil ->
+        false
+
+      profile.id == viewer_id ->
+        true
+
+      row.blocked ->
+        false
+
+      match != nil ->
+        true
+
+      Social.viewer_status(viewer) != :ok ->
+        false
+
+      not (profile.is_complete and profile.is_discoverable and not profile.is_paused) ->
+        false
+
+      true ->
+        Compatibility.compatible?(viewer, profile.id)
     end
   end
 

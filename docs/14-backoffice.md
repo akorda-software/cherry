@@ -1,18 +1,18 @@
 # Backoffice, reclamaciones y privacidad
 
 Implementación del 2026-10-16, ampliada el 17 con equipo, borrado, acceso personal
-y recordatorios. **Panel activado en producción** en `4ce5ad0`:
-`https://cherry.akorda.es/backoffice/login`, un superusuario nominativo y cambio
+y recordatorios. **Panel activado en producción**, migrado a dominio propio en
+`dd45b47`, con un superusuario nominativo y cambio
 obligatorio de contraseña temporal antes de acceder a casos/equipo. Verificados
 login real, CSRF, cookies seguras, logout y rechazo HTTP/cabecera HTTPS falsificada.
 Móvil sin compilar/distribuir. Fotos/bots y cobertura humana independiente siguen
 pendientes; no equivale a cumplimiento jurídico ni apertura del servicio.
 
-**Dominio propio acordado, todavía sin aplicar:** `https://cherry.org.es` para
-web/API y un host separado para el equipo. El código permite restringir
-el panel al host administrativo con `BACKOFFICE_HOST`; no basta con crear DNS.
-La URL anterior sigue siendo la vigente hasta completar DNS/TLS/despliegue y
-verificar la separación en producción.
+**Dominio propio activo:** `https://cherry.org.es` para web/API y un host
+separado para el equipo. `BACKOFFICE_HOST` restringe el panel
+al host administrativo; da 404 en cualquier otro host. Verificados TLS y
+login real/CSRF/cookies/logout; API y sockets no se sirven en el host admin.
+La API antigua permanece para móviles instalados; no se recompilaron.
 
 ## Qué funciona
 

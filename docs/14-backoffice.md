@@ -8,6 +8,12 @@ login real, CSRF, cookies seguras, logout y rechazo HTTP/cabecera HTTPS falsific
 Móvil sin compilar/distribuir. Fotos/bots y cobertura humana independiente siguen
 pendientes; no equivale a cumplimiento jurídico ni apertura del servicio.
 
+**Dominio propio acordado, todavía sin aplicar:** `https://cherry.org.es` para
+web/API y un host separado para el equipo. El código permite restringir
+el panel al host administrativo con `BACKOFFICE_HOST`; no basta con crear DNS.
+La URL anterior sigue siendo la vigente hasta completar DNS/TLS/despliegue y
+verificar la separación en producción.
+
 ## Qué funciona
 
 - Backoffice web en `/backoffice`, dentro de Phoenix y sin compilación móvil. Cola de 50 expedientes por página, prioridad de posibles menores, estados pendiente/resuelto, asignación y reasignación por administración.

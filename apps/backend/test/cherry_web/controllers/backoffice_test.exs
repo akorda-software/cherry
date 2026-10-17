@@ -56,6 +56,7 @@ defmodule CherryWeb.BackofficeTest do
     assert cookie.http_only and cookie.secure
     assert cookie.same_site == "Strict"
     assert cookie.path == "/backoffice"
+    refute Map.has_key?(cookie, :domain)
     assert get_resp_header(conn, "cache-control") == ["no-store, no-transform"]
     assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
     assert get_resp_header(conn, "x-robots-tag") == ["noindex, nofollow"]

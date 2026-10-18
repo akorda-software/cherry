@@ -12,7 +12,7 @@ Guía genérica para montar una instancia propia de Cherry: backend Phoenix + Po
 | Backend | Imagen Docker de `apps/backend/Dockerfile` o release de Elixir (Elixir 1.18, OTP 28) | Escucha HTTP en `PORT` (4000 por defecto) |
 | Proxy TLS | Cualquiera (Caddy, nginx, Traefik…) | Termina HTTPS y reenvía a Phoenix, con WebSocket |
 | Almacenamiento de fotos | Disco local (volumen persistente) o bucket S3 compatible | `STORAGE_ADAPTER=local` o `r2` |
-| Cuentas de desarrollador | Google Cloud (Google Sign-In) y Apple Developer (Sign in with Apple, iOS) | Solo hay login con Google y Apple |
+| Cuentas de desarrollador | Google Cloud (Google Sign-In) y Apple Developer (Sign in with Apple) | Apple nativo iOS; Android requiere además Services ID y clave de servidor (§6) |
 | Toolchain móvil | Node 24, pnpm 10, Expo SDK 54 | Android Studio / Xcode, o EAS Build |
 
 No hay imagen publicada para terceros: constrúyela tú desde el repositorio.
@@ -234,7 +234,7 @@ Cambiar de adaptador no migra fotos.
 
 ## 6. Login con Google y Apple
 
-Cherry solo admite Google y Apple. La app obtiene un token de identidad del proveedor y el backend lo valida contra las audiencias configuradas; después Phoenix emite su propia sesión.
+Cherry solo admite Google y Apple. Con Google y Apple nativo, la app obtiene un token de identidad del proveedor y el backend lo valida contra las audiencias configuradas; después Phoenix emite su propia sesión. Apple Android utiliza un código efímero ligado al móvil tras un intercambio servidor–Apple, no un token en el deep link.
 
 ### Google
 
@@ -246,14 +246,104 @@ En Google Cloud Console, dentro de un mismo proyecto:
    - **Android**: con el nombre de paquete (`EXPO_ANDROID_PACKAGE`) y la huella SHA-1 del certificado con el que firmas la app (la de depuración y la de publicación son distintas; si publicas en Google Play, la de la clave de firma de Play). No se copia a ninguna variable, pero sin él el login falla en Android.
    - **iOS**: con el bundle ID (`EXPO_IOS_BUNDLE_IDENTIFIER`). Su client ID va en `GOOGLE_IOS_CLIENT_ID` (backend) y `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` (app), y su «iOS URL scheme» (el client ID invertido, `com.googleusercontent.apps.…`) en `GOOGLE_IOS_URL_SCHEME` (app).
 
-### Apple
+### Apple nativo (iOS)
 
 En Apple Developer:
 
-1. Activa la capacidad **Sign in with Apple** en el App ID de tu bundle ID.
+1. Activa la capacidad **Sign in with Apple** en el App ID de tu bundle ID, como **Primary App ID** si vas a asociarle el Services ID de Android.
 2. Pon ese bundle ID en `APPLE_AUDIENCES` (backend). Si no lo defines, el backend usa `EXPO_IOS_BUNDLE_IDENTIFIER` o `app.cherry.mobile`.
+3. La configuración Expo declara `ios.usesAppleSignIn` y el plugin `expo-apple-authentication`; la firma/provisioning debe incluir esa capacidad. No basta con crear la ficha de App Store Connect.
 
-Sign in with Apple se ofrece en iOS.
+### Apple mediante navegador (Android, activación controlada)
+
+Implementado tras flags **apagados por defecto**. Las pruebas automatizadas usan
+Apple simulado: no acreditan un login real, firma ni aprobación de tienda. No
+activar para el público antes de completar las pruebas y los pendientes de abajo.
+
+En Apple Developer → Certificates, Identifiers & Profiles:
+
+1. Conserva el Bundle ID de iOS (`app.cherry.mobile` en la app oficial). Crea un
+   **Services ID** distinto, por ejemplo `app.cherry.browser`, habilita **Sign in
+   with Apple** y asócialo al **mismo Primary App ID** de iOS. No basta con que los
+   correos coincidan: la app identifica la cuenta por el `sub` firmado de Apple.
+2. En su configuración web registra el dominio público de la API y la Return URL
+   exacta `https://TU_HOST/api/auth/apple/browser/callback`. Para Cherry España:
+   **`https://cherry.org.es/api/auth/apple/browser/callback`**, dominio
+   **`cherry.org.es`**, nunca el host del panel (`BACKOFFICE_HOST`). No registres una URL ficticia,
+   una IP, localhost ni el esquema de la app como retorno de Apple.
+3. Crea una **Key** con **Sign in with Apple**, asociada a ese Primary App ID.
+   Conserva el **Team ID**, **Key ID** y el archivo privado **`.p8`**. Apple permite
+   descargarlo una vez: custódialo también offline de forma segura. No subirlo al
+   repositorio, app, chat ni logs; base64 es codificación, **no cifrado**.
+
+Variables **solo del backend** (almacén privado de producción o `.env` ignorado
+local; archivos privados `0600` y directorio `0700`):
+
+| Variable | Contenido |
+|---|---|
+| `APPLE_BROWSER_ENABLED` | `false` hasta la activación controlada; `true` exige toda la configuración válida al arrancar |
+| `APPLE_BROWSER_CLIENT_ID` | Services ID; **no** añadirlo a `APPLE_AUDIENCES` |
+| `APPLE_BROWSER_REDIRECT_URI` | Return URL HTTPS exacta en `PHX_HOST`, ruta anterior, sin query/fragmento |
+| `APPLE_BROWSER_APP_REDIRECT_URIS` | Lista de retornos de app exactos, p. ej. `cherry://auth/apple`; `cherry-dev://auth/apple` solo si autorizas también esa build interna |
+| `APPLE_TEAM_ID` / `APPLE_KEY_ID` | Identificadores Apple de 10 caracteres |
+| `APPLE_PRIVATE_KEY_BASE64` | PEM completo del `.p8` P-256 en base64, una línea; **secreto exclusivamente del servidor** |
+
+En la build móvil: `EXPO_PUBLIC_APPLE_BROWSER_ENABLED=true` y el esquema
+`EXPO_APP_SCHEME` correspondiente a la lista anterior. No necesita Services ID,
+Team ID, Key ID ni clave en el cliente. No cambia Google; Apple nativo iOS envía
+también su código de autorización para el canje y la revocación en servidor;
+web sigue sin ofrecer Apple. Requiere build nativa propia, no Expo Go. Un cambio
+del nombre visible a OpenCherry no exige cambiar Bundle ID, paquete ni OAuth.
+
+**Protocolo y límites:**
+
+- El móvil crea un verificador aleatorio y envía solo su desafío S256, un nonce y
+  un estado local a `POST /api/auth/apple/browser`.
+- El navegador de sistema abre exclusivamente Apple (`response_type=code`,
+  `scope=email`, `response_mode=form_post`). Apple hace POST al callback HTTPS;
+  el backend consume su estado una vez, canjea el código con un client secret
+  ES256 de cinco minutos y verifica firma, emisor, audiencia y nonce del ID token.
+- No se usan cookies de sesión ni CSRF de navegador en ese callback: el estado
+  OAuth es obligatorio. Solo se redirige al retorno previamente permitido. La
+  URL contiene un código opaco de un uso de **60 s**, nunca tokens Apple/Cherry.
+- El móvil comprueba retorno y estado y envía `providerToken=apple-browser:…` y
+  `nonce=<verificador>` al callback Apple habitual. Solo ese verificador permite
+  consumir el código y crear sesión; interceptar el deep link no basta.
+- No se fusionan cuentas por email. Si otro proveedor ya ocupa el correo,
+  responde `409 identity_conflict`: entrar con el método original.
+- Estado inicial válido **5 min**, máximo **512 entradas** y **30 inicios/minuto
+  por peer directo**; con un balanceador compartido, ese límite se comparte.
+  Estado y handoff solo en memoria; reiniciar
+  exige repetir el login. Mantener **una réplica**; varias necesitan un almacén
+  compartido o una afinidad que abarque app y navegador, no solo cookies.
+- Se exige HTTPS incluso con `FORCE_SSL=false`. Tras proxy se reutiliza la lista
+  exacta `BACKOFFICE_TRUSTED_PROXY_IPS`; solo peers controlados que sobrescriban
+  `X-Forwarded-Proto`. No ampliar rangos ni confiar en cabeceras del cliente.
+  Excluir estas rutas de caché, redirecciones y registros de cuerpo/query/Location
+  en todos los proxies; las respuestas son `private, no-store` y `no-referrer`.
+
+**Antes de darlo por operativo:** desplegar expresamente el backend configurado,
+probar en Android primer acceso y repetición, cancelación, email real/oculto,
+sesión después de reiniciar app y acceso iOS a la misma cuenta agrupada. Probar
+también caducidad/reintento y que no se duplican identidades. El callback no existe
+en producción hasta desplegar y activar este bloque.
+
+**Revocación al borrar:** el servidor canjea el código tanto del navegador como
+de iOS (cuando `APPLE_BROWSER_ENABLED=true`, el código nativo es obligatorio).
+Descarta el access token y guarda únicamente el refresh token cifrado con la
+clave vigente `MESSAGE_ENCRYPTION_KEY`, fuera de `provider_data` y separado por
+client ID. No regenerar esa clave al desplegar. Al borrar traslada la instrucción
+cifrada a la outbox y al registro externo, sin cuenta, correo ni subject Apple.
+Apple confirma con HTTP 200 en `/auth/revoke`; una caída deja la cuenta borrada
+y solo la instrucción pendiente de reintento. Tras confirmar se retiran la tarea
+y su objeto externo. Los backups cifrados previos caducan con los siete días
+habituales; la restauración debe seguir reaplicando las bajas antes de abrir.
+Identidades antiguas sin credencial requieren volver a entrar para obtenerla.
+Las pruebas simuladas no acreditan todavía revocación real con Apple ni cierran
+los demás bloqueos legales y de seguridad/moderación del servicio.
+
+Referencias: [Apple en otras plataformas](https://developer.apple.com/documentation/signinwithapple/incorporating-sign-in-with-apple-into-other-platforms)
+y [Expo WebBrowser SDK 54](https://docs.expo.dev/versions/v54.0.0/sdk/webbrowser/).
 
 ### Dónde se configura cada cosa
 
@@ -263,6 +353,7 @@ Sign in with Apple se ofrece en iOS.
 | Client ID iOS de Google | `GOOGLE_IOS_CLIENT_ID` | `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` + `GOOGLE_IOS_URL_SCHEME` |
 | Bundle ID de iOS | `APPLE_AUDIENCES` | `EXPO_IOS_BUNDLE_IDENTIFIER` |
 | Paquete de Android | — (va en el cliente OAuth Android) | `EXPO_ANDROID_PACKAGE` |
+| Apple navegador Android | `APPLE_BROWSER_*`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY_BASE64` | `EXPO_PUBLIC_APPLE_BROWSER_ENABLED` + `EXPO_APP_SCHEME` |
 
 ## 7. Proxy TLS
 
@@ -295,7 +386,7 @@ La app lee estas variables **en tiempo de compilación** desde `apps/mobile/.env
 | `EXPO_PUBLIC_API_BASE_URL_ANDROID` | `http://10.0.2.2:4000` | URL de la API en Android (el valor por defecto es el host visto desde el emulador). Con `http://` el build permite tráfico en claro; con `https://` no |
 | `EXPO_PUBLIC_API_BASE_URL_IOS` | `http://localhost:4000` | URL de la API en iOS |
 | `EXPO_PUBLIC_API_BASE_URL_WEB` | vacío (mismo origen) | URL de la API en web |
-| `EXPO_APP_NAME` | `Cherry` | Nombre de la app en el teléfono y en las tiendas, y en los textos de permisos del sistema (fotos, cámara, ubicación, NFC) |
+| `EXPO_APP_NAME` | `OpenCherry` | Nombre del cliente en el teléfono y en las tiendas, y en los textos de permisos del sistema (fotos, cámara, ubicación, NFC); la instancia propia sigue siendo Cherry España |
 | `EXPO_APP_SLUG` | `cherry` | Slug del proyecto de Expo/EAS |
 | `EXPO_APP_SCHEME` | `cherry` | Esquema de deep links (`cherry://`); también es la vuelta del flujo de Didit |
 | `EXPO_ANDROID_PACKAGE` | `app.cherry.mobile` | Paquete de Android |
@@ -303,6 +394,7 @@ La app lee estas variables **en tiempo de compilación** desde `apps/mobile/.env
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | vacío | Client ID web de Google (§6) |
 | `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | vacío | Client ID iOS de Google (§6) |
 | `GOOGLE_IOS_URL_SCHEME` | vacío | «iOS URL scheme» de Google (client ID invertido). Sin él no se añade el plugin de Google Sign-In en iOS |
+| `EXPO_PUBLIC_APPLE_BROWSER_ENABLED` | `false` | Ofrece Apple en Android mediante el backend configurado (§6); iOS conserva Apple nativo y web sigue deshabilitado |
 | `EXPO_PUBLIC_SOURCE_URL` | vacío | Enlace «Ver el código» de «Acerca de» (tu fork; ver la nota de AGPL arriba). Sin ella se usa `INSTANCE_SOURCE_URL` del servidor |
 | `EXPO_PUBLIC_MOCK_AUTH` | `false` | Solo desarrollo: login y bootstrap simulados, sin backend |
 | `EXPO_PUBLIC_TEST_LOGIN` | — | Builds internas: enseña los accesos de prueba del login fuera de desarrollo. El backend solo los acepta si corre con `MIX_ENV=dev` |
@@ -314,7 +406,7 @@ EXPO_PUBLIC_API_BASE_URL_ANDROID=https://api.tu-dominio.example
 EXPO_PUBLIC_API_BASE_URL_IOS=https://api.tu-dominio.example
 EXPO_PUBLIC_API_BASE_URL_WEB=https://api.tu-dominio.example
 
-EXPO_APP_NAME=Cherry
+EXPO_APP_NAME=OpenCherry
 EXPO_ANDROID_PACKAGE=tu.dominio.cherry
 EXPO_IOS_BUNDLE_IDENTIFIER=tu.dominio.cherry
 

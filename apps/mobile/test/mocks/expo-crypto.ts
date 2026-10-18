@@ -3,7 +3,8 @@ export const CryptoDigestAlgorithm = {
 };
 
 export const CryptoEncoding = {
-  HEX: "hex"
+  HEX: "hex",
+  BASE64: "base64"
 };
 
 export const getRandomBytes = vi.fn((length: number) => new Uint8Array(length));

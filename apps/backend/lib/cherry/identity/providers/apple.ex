@@ -5,27 +5,95 @@ defmodule Cherry.Identity.Providers.Apple do
   alias Cherry.Identity.Providers.AppleJwksCache
   alias Cherry.Identity.Providers.JwtVerifier
 
-  def verify(%{"provider_token" => provider_token, "id_token" => id_token, "nonce" => nonce}) do
-    verify(%{provider_token: provider_token, id_token: id_token, nonce: nonce})
+  # Browser grants are not Apple ID tokens. Only the initiating mobile verifier
+  # can redeem them, once; browser audiences never widen the native allowlist.
+  def verify(%{provider_token: "apple-browser:" <> grant, nonce: verifier}),
+    do: Cherry.Identity.AppleBrowser.redeem(grant, verifier)
+
+  def verify(
+        %{"provider_token" => provider_token, "id_token" => id_token, "nonce" => nonce} = params
+      ) do
+    verify(%{
+      provider_token: provider_token,
+      id_token: id_token,
+      nonce: nonce,
+      authorization_code: params["authorization_code"]
+    })
   end
 
-  def verify(%{"provider_token" => provider_token, "nonce" => nonce}) do
-    verify(%{provider_token: provider_token, nonce: nonce})
+  def verify(%{"provider_token" => provider_token, "nonce" => nonce} = params) do
+    verify(%{
+      provider_token: provider_token,
+      nonce: nonce,
+      authorization_code: params["authorization_code"]
+    })
   end
 
-  def verify(%{provider_token: provider_token, id_token: id_token, nonce: nonce})
+  def verify(%{provider_token: provider_token, id_token: id_token, nonce: nonce} = params)
       when is_binary(provider_token) and provider_token != "" and is_binary(id_token) and
              id_token != "" and
              is_binary(nonce) and nonce != "" do
-    verify_identity_token(id_token, nonce)
+    verify_native(id_token, nonce, params[:authorization_code])
   end
 
-  def verify(%{provider_token: provider_token, nonce: nonce})
+  def verify(%{provider_token: provider_token, nonce: nonce} = params)
       when is_binary(provider_token) and provider_token != "" and is_binary(nonce) and nonce != "" do
-    verify_identity_token(provider_token, nonce)
+    verify_native(provider_token, nonce, params[:authorization_code])
   end
 
   def verify(_params), do: {:error, :invalid_provider_token}
+
+  defp verify_native(token, nonce, code) do
+    with {:ok, claims} <- verify_identity_token(token, nonce) do
+      if Cherry.Identity.AppleBrowser.enabled?() do
+        client =
+          Enum.find(
+            List.wrap(claims.provider_data["aud"]),
+            &(&1 in Cherry.Auth.provider_config(:apple)[:audiences])
+          )
+
+        with {:ok, tokens} <- Cherry.Identity.AppleCodeExchange.exchange(code, client),
+             {:ok, exchanged} <- verify_identity_token(tokens.id_token, nonce),
+             true <-
+               exchanged.subject == claims.subject and
+                 exchanged.provider_data["aud"] == claims.provider_data["aud"] do
+          {:ok,
+           %{claims | revocation_credential: Cherry.Identity.AppleRevocation.credential(tokens)}}
+        else
+          {:error, reason} -> {:error, reason}
+          _ -> {:error, :invalid_provider_token}
+        end
+      else
+        {:ok, claims}
+      end
+    end
+  end
+
+  def verify_browser(token, expected_nonce) do
+    config = Application.get_env(:cherry, :apple_browser, [])
+
+    with true <- config[:enabled] == true,
+         {:ok, provider_config} <- provider_config(),
+         {:ok, %{header: header, claims: claims}} <-
+           JwtVerifier.verify(
+             token,
+             Keyword.put(provider_config, :audiences, [config[:client_id]])
+           ),
+         true <- claims["nonce"] == expected_nonce,
+         {:ok, subject} <- required_claim(claims, "sub"),
+         {:ok, email} <- required_claim(claims, "email") do
+      {:ok,
+       %ProviderClaims{
+         subject: subject,
+         email: email,
+         display_name: display_name(claims),
+         provider_data: %{"aud" => claims["aud"], "iss" => claims["iss"], "kid" => header["kid"]}
+       }}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invalid_provider_token}
+    end
+  end
 
   defp verify_identity_token(token, nonce) do
     with {:ok, provider_config} <- provider_config(),

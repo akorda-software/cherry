@@ -19,6 +19,12 @@ describe("describeAuthError", () => {
     );
   });
 
+  it("explains an identity conflict without suggesting unsafe email linking", () => {
+    expect(describeAuthError(apiError(409, "identity_conflict"), "apple")).toBe(
+      "Ya existe una cuenta con este correo. Entra con el método que utilizaste al crearla."
+    );
+  });
+
   it("reuses the friendly network and server copy", () => {
     expect(describeAuthError(new TypeError("Network request failed"), "apple")).toBe(
       "Parece que no hay conexión. Revisa tu internet e inténtalo de nuevo."

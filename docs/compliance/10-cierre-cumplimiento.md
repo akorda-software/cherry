@@ -96,6 +96,7 @@ obligatoriedad móvil sigue apagada hasta distribución y revisión.
 ## 12. Tiendas y distribución — distinto de cumplir la ley
 
 - [ ] App Store: UGC/contacto, privacidad, eliminación real de cuenta/datos con excepciones justificadas, autenticación y cuestionarios/clasificación vigentes. OAuth iOS pendientes antes de construir/enviar.
+- [ ] Sign in with Apple: revocación implementada para navegador/iOS con credencial cifrada, outbox, reintentos y recuperación; pendiente acreditar canje y revocación reales con Apple. Identidades anteriores sin credencial deben volver a entrar. Validar además Services ID agrupado con iOS y login real en ambos dispositivos; una activación para pruebas internas no es autorización de lanzamiento ([configuración y límites](../12-self-hosting.md#apple-mediante-navegador-android-activación-controlada)).
 - [ ] Google Play: categoría, restricciones de menores aplicables, normas/contacto/declaración de seguridad infantil, Data safety y **URL web para solicitar eliminación sin reinstalar la app**.
 - [ ] Etiquetas/formularios coincidentes con todos los SDK, conservación y proveedores activos. No marcar eliminación satisfecha solo por existir un botón de baja.
 - [ ] Licencias/atribuciones y oferta del código correspondiente cuando lo exijan AGPL y dependencias distribuidas; comprobar el enlace de código y condiciones de distribución.

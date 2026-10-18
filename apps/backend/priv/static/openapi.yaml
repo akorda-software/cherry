@@ -87,6 +87,92 @@ paths:
                 $ref: '#/components/schemas/SessionResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: identity_conflict — a different provider identity already occupies the email. Never merges by email.
+  /api/auth/apple/browser:
+    post:
+      tags: [Auth]
+      summary: Start the optional Android Apple browser flow (HTTPS only).
+      description: |
+        Disabled by default. Returns the Apple authorization URL, not a session.
+        State lasts five minutes, in memory on one backend node; restart requires retry.
+        No session cookies. Private, no-store. Redirect must exactly match the server allowlist.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codeChallenge, nonce, state, redirectUri]
+              properties:
+                codeChallenge:
+                  type: string
+                  pattern: '^[A-Za-z0-9_-]{43}$'
+                  description: Unpadded base64url SHA-256 of the mobile verifier (S256).
+                nonce:
+                  type: string
+                  pattern: '^[0-9a-f]{64}$'
+                  description: SHA-256 hex nonce passed to Apple and checked against the signed ID token.
+                state:
+                  type: string
+                  pattern: '^[0-9a-f]{64}$'
+                  description: Mobile state checked on return; backend generates separate one-use OAuth state.
+                redirectUri:
+                  type: string
+                  example: cherry://auth/apple
+      responses:
+        '200':
+          description: Authorization request created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authorizationUrl]
+                properties:
+                  authorizationUrl:
+                    type: string
+                    format: uri
+        '404':
+          description: Apple browser flow disabled.
+        '422':
+          description: Invalid challenge, nonce, state or redirect URI.
+        '426':
+          description: HTTPS required; forwarded scheme only trusted from configured direct proxy peers.
+        '429':
+          description: Rate or capacity limit reached; retry later.
+  /api/auth/apple/browser/callback:
+    post:
+      tags: [Auth]
+      summary: Receive Apple's HTTPS form_post response, not a mobile session endpoint.
+      description: |
+        No browser-cookie session/CSRF. Valid one-use OAuth state is required.
+        Backend exchanges the authorization code and verifies Apple's signed token.
+        Does not create an account or session until the mobile redeems the handoff.
+        Return carries only a one-use opaque code (60 seconds) and mobile state,
+        or a fixed error; never Apple/Cherry tokens. Private, no-store, no-referrer.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [state]
+              properties:
+                state: {type: string}
+                code: {type: string}
+                error: {type: string}
+      responses:
+        '302':
+          description: Return to the previously allowed app URI with code or fixed error and mobile state.
+          headers:
+            Location:
+              schema: {type: string}
+        '400':
+          description: Missing, expired or consumed state, or wrong callback host.
+        '404':
+          description: Apple browser flow disabled.
+        '426':
+          description: HTTPS required.
   /api/auth/dev/test-login:
     post:
       tags: [Auth]
@@ -1766,7 +1852,7 @@ components:
       properties:
         providerToken:
           type: string
-          description: Google provider token when provider is google.
+          description: Google or native Apple identity token; Android Apple uses apple-browser:<one-use-handoff> plus its verifier in nonce.
         idToken:
           type: string
           description: Apple identity token when provider is apple.
@@ -1774,7 +1860,7 @@ components:
           type: string
         nonce:
           type: string
-          description: Raw nonce used for Apple sign-in validation.
+          description: Raw nonce for native Apple validation, or the initiating mobile verifier (43–128 unreserved characters) for Apple browser handoff redemption.
         device:
           $ref: '#/components/schemas/DeviceRequest'
     RefreshTokenRequest:

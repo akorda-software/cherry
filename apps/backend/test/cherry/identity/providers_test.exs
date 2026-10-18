@@ -89,6 +89,22 @@ defmodule Cherry.Identity.ProvidersTest do
       assert {:error, :invalid_provider_token} = Google.verify(%{provider_token: "not-a-jwt"})
     end
 
+    test "rejects non-object JWT headers and claims without crashing", %{provider_config: config} do
+      [header, claims, signature] =
+        ProviderTokenFactory.google_token!(config.google_key) |> String.split(".")
+
+      for value <- [[], "not-an-object", nil, 42] do
+        encoded = value |> Jason.encode!() |> Base.url_encode64(padding: false)
+
+        for token <- [
+              Enum.join([encoded, claims, signature], "."),
+              Enum.join([header, encoded, signature], ".")
+            ] do
+          assert {:error, :invalid_provider_token} = Google.verify(%{provider_token: token})
+        end
+      end
+    end
+
     test "rejects tokens without an email claim", %{provider_config: provider_config} do
       token = ProviderTokenFactory.google_token!(provider_config.google_key, %{"email" => nil})
 

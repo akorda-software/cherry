@@ -7,6 +7,7 @@ import { createLogoutSession } from "../application/logout-session";
 import { createSessionManager } from "../application/session-manager";
 import type { SessionShellServices } from "../presentation";
 import { createAppleProvider } from "./apple-provider";
+import type { AppleCredential } from "./apple-provider";
 import { createGoogleProvider } from "./google-provider";
 import { createTestSignInService } from "./test-sign-in-service";
 
@@ -35,12 +36,7 @@ interface AuthDependencies {
     signIn(): Promise<{ providerToken: string }>;
   };
   nativeApple: {
-    signIn(): Promise<{
-      providerToken: string;
-      authorizationCode: string;
-      idToken: string;
-      nonce: string;
-    }>;
+    signIn(): Promise<AppleCredential>;
   };
   navigation: {
     goToSignedOut(): void;

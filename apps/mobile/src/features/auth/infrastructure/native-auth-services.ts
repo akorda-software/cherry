@@ -3,12 +3,15 @@ import * as Device from "expo-device";
 import * as Application from "expo-application";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import * as AppleAuthentication from "expo-apple-authentication";
+import * as WebBrowser from "expo-web-browser";
+import { Platform } from "react-native";
 
 import { createAuthApi, createSessionApi, type HttpClient } from "@cherry/mobile-shared";
 import { createSecureSessionStorage } from "@cherry/mobile-shared";
 import { resolveSecureStore } from "../../../shared/storage";
 import { createGoogleNativeAdapter } from "../infrastructure/google-native-adapter";
 import { createAppleNativeAdapter } from "../infrastructure/apple-native-adapter";
+import { createAppleBrowserAdapter } from "./apple-browser-adapter";
 import { assembleAuthServices } from "../infrastructure/auth-assembly";
 import { createNativeDevice } from "../infrastructure/native-device";
 import type { SessionShellServices } from "../presentation";
@@ -91,9 +94,15 @@ export function createNativeAuthServices({
     iosClientId: resolvedGoogleIosClientId
   });
 
-  const nativeApple = createAppleNativeAdapter({
-    module: AppleAuthentication
-  });
+  const appScheme = Constants.expoConfig?.scheme;
+  const nativeApple =
+    Platform.OS === "android" && Constants.expoConfig?.extra?.appleBrowserEnabled === true
+      ? createAppleBrowserAdapter({
+          httpClient,
+          browser: WebBrowser,
+          scheme: typeof appScheme === "string" ? appScheme : appScheme?.[0] ?? ""
+        })
+      : createAppleNativeAdapter({ module: AppleAuthentication });
 
   const device = createNativeDevice({
     getInstallationId: getInstallationIdAsync,

@@ -13,6 +13,7 @@ defmodule Cherry.Identity.ProviderIdentity do
     field(:provider_subject, :string)
     field(:provider_email, :string)
     field(:provider_data, :map, default: %{})
+    field(:apple_revocation, :map, default: %{}, redact: true)
 
     belongs_to(:user, User)
 
@@ -21,7 +22,13 @@ defmodule Cherry.Identity.ProviderIdentity do
 
   def changeset(identity, attrs) do
     identity
-    |> cast(attrs, [:provider, :provider_subject, :provider_email, :provider_data])
+    |> cast(attrs, [
+      :provider,
+      :provider_subject,
+      :provider_email,
+      :provider_data,
+      :apple_revocation
+    ])
     |> validate_required([:provider, :provider_subject, :provider_data])
     |> put_assoc(:user, Map.fetch!(attrs, :user))
     |> unique_constraint([:provider, :provider_subject])

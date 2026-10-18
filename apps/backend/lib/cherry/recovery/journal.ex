@@ -5,7 +5,7 @@ defmodule Cherry.Recovery.Journal do
   alias Cherry.Dating.ProfilePhoto
   import Ecto.Query
 
-  @kinds ~w(account photo storage provider)
+  @kinds ~w(account photo storage provider apple)
   @prefix "v1/requests/"
 
   def enabled?, do: config()[:enabled] == true
@@ -42,6 +42,10 @@ defmodule Cherry.Recovery.Journal do
         error -> {:halt, error}
       end
     end)
+  end
+
+  def confirm_apple(reference) do
+    if enabled?(), do: acknowledge(event_key("apple", reference)), else: :ok
   end
 
   @doc "Replay pending requests normally, ALL retained requests on isolated recovery."
@@ -91,18 +95,31 @@ defmodule Cherry.Recovery.Journal do
 
   defp replay_key(key, all?) do
     with {:ok, applied?} <- applied?(key) do
-      if applied? and not all? do
-        :ok
-      else
-        with {:ok, %{status: 200, body: body}} <- request(:get, key),
-             {:ok, event} <- Jason.decode(body),
-             :ok <- validate_event(key, event),
-             :ok <- apply_event(event) do
-          # Do not acknowledge a nested transaction before its outer commit.
-          if Repo.in_transaction?(), do: :ok, else: acknowledge(key)
-        else
-          _ -> {:error, :recovery_replay_failed}
-        end
+      cond do
+        applied? and String.starts_with?(key, @prefix <> "apple/") ->
+          scrub_apple(key)
+
+        applied? and not all? ->
+          :ok
+
+        true ->
+          with {:ok, %{status: 200, body: body}} <- request(:get, key),
+               {:ok, event} <- Jason.decode(body),
+               :ok <- validate_event(key, event),
+               :ok <- apply_event(event) do
+            # Do not acknowledge a nested transaction before its outer commit.
+            if Repo.in_transaction?(), do: :ok, else: acknowledge(key)
+          else
+            {:ok, %{status: 404}} ->
+              # Another account event in this pass may already have completed
+              # and scrubbed this Apple instruction after listing it.
+              if String.starts_with?(key, @prefix <> "apple/"),
+                do: :ok,
+                else: {:error, :recovery_replay_failed}
+
+            _ ->
+              {:error, :recovery_replay_failed}
+          end
       end
     end
   end
@@ -140,7 +157,7 @@ defmodule Cherry.Recovery.Journal do
   end
 
   defp apply_event(%{"kind" => kind, "reference" => reference, "finalize_after" => value})
-       when kind in ["storage", "provider"] do
+       when kind in ["storage", "provider", "apple"] do
     {:ok, deadline, _} = DateTime.from_iso8601(value)
     task = ErasureTasks.enqueue!(kind, reference, deadline)
     ErasureTasks.process(task.id)
@@ -188,7 +205,25 @@ defmodule Cherry.Recovery.Journal do
            body: Jason.encode!(%{completed_at: DateTime.to_iso8601(DateTime.utc_now())}),
            headers: [{"content-type", "application/json"}, {"if-none-match", "*"}]
          ) do
-      {:ok, %{status: status}} when status in [200, 201, 204, 412] -> :ok
+      {:ok, %{status: status}} when status in [200, 201, 204, 412] ->
+        if String.starts_with?(key, @prefix <> "apple/"), do: scrub_apple(key), else: :ok
+
+      _ ->
+        {:error, :erasure_journal_unavailable}
+    end
+  end
+
+  defp scrub_apple(key) do
+    # Keep the acknowledgement until deleting the sensitive request succeeds.
+    # On a crash/retry, replay sees the acknowledgement and only scrubs, without
+    # resurrecting an already completed revocation task.
+    with {:ok, %{status: status}} when status in [200, 204, 404] <- request(:delete, key),
+         {:ok, %{status: 404}} <- request(:head, key) do
+      # The marker contains only a completion date; a failed marker cleanup is
+      # harmless and the backup GC already removes orphan acknowledgements.
+      request(:delete, applied_key(key))
+      :ok
+    else
       _ -> {:error, :erasure_journal_unavailable}
     end
   end
@@ -210,7 +245,7 @@ defmodule Cherry.Recovery.Journal do
            Enum.all?(
              keys,
              &Regex.match?(
-               ~r/^v1\/requests\/(account|photo|storage|provider)\/[a-f0-9-]+\.json$/,
+               ~r/^v1\/requests\/(account|photo|storage|provider|apple)\/[a-f0-9-]+\.json$/,
                &1
              )
            ) do

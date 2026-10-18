@@ -253,6 +253,80 @@ storage_adapter = System.get_env("STORAGE_ADAPTER", "") |> String.trim() |> Stri
 uploads_dir = System.get_env("UPLOADS_DIR", "") |> String.trim()
 public_base_url = System.get_env("PUBLIC_BASE_URL", "") |> String.trim()
 
+# Apple browser flow (Android). All credentials stay on the backend. A Services
+# ID is not an iOS Bundle ID and is deliberately NOT added to APPLE_AUDIENCES.
+apple_browser_enabled = System.get_env("APPLE_BROWSER_ENABLED", "false") == "true"
+apple_browser_client_id = System.get_env("APPLE_BROWSER_CLIENT_ID", "") |> String.trim()
+apple_browser_redirect = System.get_env("APPLE_BROWSER_REDIRECT_URI", "") |> String.trim()
+apple_browser_app_uris = split_csv_env.("APPLE_BROWSER_APP_REDIRECT_URIS", "")
+apple_team_id = System.get_env("APPLE_TEAM_ID", "") |> String.trim()
+apple_key_id = System.get_env("APPLE_KEY_ID", "") |> String.trim()
+
+apple_private_key =
+  if apple_browser_enabled do
+    redirect = URI.parse(apple_browser_redirect)
+
+    unless redirect.scheme == "https" and is_binary(redirect.host) and
+             redirect.host not in ["", backoffice_host] and redirect.port == 443 and
+             redirect.path == "/api/auth/apple/browser/callback" and
+             is_nil(redirect.userinfo) and is_nil(redirect.query) and is_nil(redirect.fragment) do
+      raise "APPLE_BROWSER_REDIRECT_URI must be the public HTTPS /api/auth/apple/browser/callback URL"
+    end
+
+    if config_env() == :prod and redirect.host != System.get_env("PHX_HOST") do
+      raise "APPLE_BROWSER_REDIRECT_URI must use the public PHX_HOST"
+    end
+
+    native_audiences =
+      split_csv_env.(
+        "APPLE_AUDIENCES",
+        System.get_env("EXPO_IOS_BUNDLE_IDENTIFIER", "app.cherry.mobile")
+      )
+
+    unless Regex.match?(~r/\A[A-Za-z0-9][A-Za-z0-9.-]{2,254}\z/, apple_browser_client_id) and
+             apple_browser_client_id not in native_audiences do
+      raise "APPLE_BROWSER_CLIENT_ID must be a Services ID distinct from native APPLE_AUDIENCES"
+    end
+
+    unless apple_browser_app_uris != [] and
+             Enum.all?(apple_browser_app_uris, fn value ->
+               uri = URI.parse(value)
+
+               is_binary(uri.scheme) and
+                 uri.scheme not in ~w(http https file data javascript intent exp exps) and
+                 uri.host == "auth" and uri.path == "/apple" and is_nil(uri.userinfo) and
+                 is_nil(uri.port) and is_nil(uri.query) and is_nil(uri.fragment)
+             end) do
+      raise "APPLE_BROWSER_APP_REDIRECT_URIS must list exact custom-scheme://auth/apple app URLs"
+    end
+
+    unless Regex.match?(~r/\A[A-Z0-9]{10}\z/, apple_team_id) and
+             Regex.match?(~r/\A[A-Z0-9]{10}\z/, apple_key_id) do
+      raise "APPLE_TEAM_ID and APPLE_KEY_ID must be the 10-character Apple identifiers"
+    end
+
+    try do
+      pem = System.get_env("APPLE_PRIVATE_KEY_BASE64", "") |> Base.decode64!()
+      [entry] = :public_key.pem_decode(pem)
+      key = :public_key.pem_entry_decode(entry)
+      true = elem(key, 0) == :ECPrivateKey
+      true = elem(key, 3) == {:namedCurve, {1, 2, 840, 10045, 3, 1, 7}}
+      key
+    rescue
+      _ ->
+        raise "APPLE_PRIVATE_KEY_BASE64 must encode the private Sign in with Apple P-256 PEM key"
+    end
+  end
+
+config :cherry, :apple_browser,
+  enabled: apple_browser_enabled,
+  client_id: apple_browser_client_id,
+  redirect_uri: apple_browser_redirect,
+  app_redirect_uris: apple_browser_app_uris,
+  team_id: apple_team_id,
+  key_id: apple_key_id,
+  private_key: apple_private_key
+
 if config_env() != :test do
   case storage_adapter do
     "" ->

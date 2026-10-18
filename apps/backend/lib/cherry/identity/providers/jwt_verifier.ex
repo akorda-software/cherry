@@ -41,7 +41,7 @@ defmodule Cherry.Identity.Providers.JwtVerifier do
 
   defp decode_json_segment(segment) do
     with {:ok, payload} <- decode_binary_segment(segment),
-         {:ok, decoded} <- Jason.decode(payload) do
+         {:ok, decoded} when is_map(decoded) <- Jason.decode(payload) do
       {:ok, decoded}
     else
       _error -> {:error, :invalid_provider_token}

@@ -88,8 +88,15 @@ defmodule CherryWeb.Router do
   end
 
   scope "/api", CherryWeb.Controllers.Api do
+    # No browser-cookie session / browser CSRF: Apple form_post is authenticated
+    # by one-use OAuth state; the app must prove possession again at redemption.
+    post("/auth/apple/browser/callback", AppleBrowserController, :callback)
+  end
+
+  scope "/api", CherryWeb.Controllers.Api do
     pipe_through(:api)
 
+    post("/auth/apple/browser", AppleBrowserController, :create)
     post("/auth/:provider/callback", AuthController, :create)
     post("/auth/dev/test-login", AuthController, :test_login)
     post("/session/refresh", SessionController, :refresh)

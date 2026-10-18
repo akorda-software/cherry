@@ -19,6 +19,7 @@ defmodule Cherry.Application do
        name: Cherry.Identity.Providers.AppleJwksCache,
        jwks_url: "https://appleid.apple.com/auth/keys",
        unavailable_error: :apple_jwks_unavailable},
+      Cherry.Identity.AppleBrowser,
       {DNSCluster, query: Application.get_env(:cherry, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Cherry.PubSub},
       # Periodic IDF tag-weight refresh for discovery (no-op under the test sandbox).

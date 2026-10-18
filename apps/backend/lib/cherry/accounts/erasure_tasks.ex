@@ -67,6 +67,9 @@ defmodule Cherry.Accounts.ErasureTasks do
 
   defp erase(%{kind: "storage", reference: key}), do: Cherry.Storage.delete_upload_objects(key)
 
+  defp erase(%{kind: "apple", reference: encrypted}),
+    do: Cherry.Identity.AppleRevocation.revoke(encrypted)
+
   defp erase(%{kind: "provider", reference: id}) do
     if Cherry.Identity.Didit.configured?() do
       case Cherry.Identity.Didit.delete_session(id) do
@@ -75,6 +78,15 @@ defmodule Cherry.Accounts.ErasureTasks do
       end
     else
       {:error, :provider_unavailable}
+    end
+  end
+
+  defp finish(%{kind: "apple"} = task, :ok, at) do
+    # Remove the external encrypted credential as soon as Apple confirms. Never
+    # leave it in the long-lived anti-restoration journal after acknowledgement.
+    case Cherry.Recovery.Journal.confirm_apple(task.reference) do
+      :ok -> Repo.delete!(task, log: false)
+      _ -> retry(task, at)
     end
   end
 
@@ -88,7 +100,9 @@ defmodule Cherry.Accounts.ErasureTasks do
     end
   end
 
-  defp finish(task, _, at),
+  defp finish(task, _, at), do: retry(task, at)
+
+  defp retry(task, at),
     do: Repo.update!(Ecto.Changeset.change(task, not_before: DateTime.add(at, 60)), log: false)
 
   defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)

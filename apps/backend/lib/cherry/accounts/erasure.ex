@@ -51,7 +51,7 @@ defmodule Cherry.Accounts.Erasure do
             )
           )
 
-          tasks = storage_tasks(profiles) ++ provider_tasks(id)
+          tasks = storage_tasks(profiles) ++ provider_tasks(id) ++ apple_tasks(id)
 
           case Cherry.Recovery.Journal.record_tasks(tasks) do
             :ok -> :ok
@@ -118,6 +118,18 @@ defmodule Cherry.Accounts.Erasure do
   defp provider_tasks(id) do
     Repo.all(from(s in ProviderSession, where: s.user_id == ^id, select: s.id), log: false)
     |> Enum.map(&ErasureTasks.enqueue!("provider", &1).id)
+  end
+
+  defp apple_tasks(id) do
+    Repo.all(
+      from(i in Cherry.Identity.ProviderIdentity,
+        where: i.user_id == ^id and i.provider == "apple" and not is_nil(i.apple_revocation),
+        select: i.apple_revocation
+      ),
+      log: false
+    )
+    |> Enum.flat_map(&Map.values/1)
+    |> Enum.map(&ErasureTasks.enqueue!("apple", &1).id)
   end
 
   defp forget_jobs(profiles, matches) do

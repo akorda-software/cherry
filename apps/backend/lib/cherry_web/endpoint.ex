@@ -88,7 +88,7 @@ defmodule CherryWeb.Endpoint do
 
     # Identity documents (age verification) are never kept as a raw copy.
     if Enum.any?(
-         ["/api/me/verification", "/backoffice", "/api/me/cases"],
+         ["/api/me/verification", "/backoffice", "/api/me/cases", "/api/auth/apple/browser"],
          &String.starts_with?(conn.request_path, &1)
        ) do
       {:ok, body, conn}

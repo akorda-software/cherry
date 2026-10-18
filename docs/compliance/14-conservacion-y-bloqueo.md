@@ -8,6 +8,7 @@ redactar esta política. **No equivale a validar esa decisión frente al art. 32
 | Datos | Inicio / conservación técnica actual | Borrado y límite | Decisión pendiente |
 |---|---|---|---|
 | Cuenta, email, identidades OAuth | Mientras exista cuenta; no caducidad por inactividad | Borrado físico; misma identidad puede reingresar | Necesidad de revisión de inactividad y reservas jurídicas |
+| Credencial limitada Apple | Refresh token cifrado mientras exista la identidad, separado por client ID | Tras borrar queda solo una instrucción cifrada sin cuenta/email/subject, en outbox y registro externo hasta confirmación de revocación; después se elimina. Backups previos: caducidad ordinaria de siete días y reaplicación de bajas | Canje/revocación reales aún pendientes de prueba; identidades antiguas necesitan nuevo acceso |
 | Perfil/preferencias/tags/ubicación | Cuenta activa y cambios por usuario | Se borran con cuenta; no archivo de coordenadas exactas | Minimización, campos sensibles y base |
 | Fotos e intents | Fotos hasta borrado; intents 10 min + gracia técnica actual 5 min | Objeto eliminado con outbox/reintentos; firmas GET 300 s, copias ajenas fuera de control | Moderación/cachés de clientes instalados; no fotos en backups |
 | Likes, matches, mensajes y lecturas | Según ciclo de cuenta y funciones; no prometer purga de mensajes por antigüedad inexistente | Borrar cuenta elimina conversaciones compartidas para ambos | Revisión de necesidad/plazos de cuentas activas y efectos en terceros |

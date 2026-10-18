@@ -1,9 +1,9 @@
 import { createAuthCallbackPayload, type AuthCallbackPayload } from "@cherry/contracts";
 
-interface NativeAppleCredential {
+export interface AppleCredential {
   providerToken: string;
-  authorizationCode: string;
-  idToken: string;
+  authorizationCode?: string;
+  idToken?: string;
   nonce: string;
 }
 
@@ -14,7 +14,7 @@ interface DeviceDetails {
 }
 
 interface CreateAppleProviderOptions {
-  signIn(): Promise<NativeAppleCredential>;
+  signIn(): Promise<AppleCredential>;
   getDevice(): Promise<DeviceDetails>;
 }
 

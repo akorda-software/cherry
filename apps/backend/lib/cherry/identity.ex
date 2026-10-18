@@ -28,12 +28,53 @@ defmodule Cherry.Identity do
               create_identity(provider, claims)
             end
           else
-            {:ok, %{user: identity.user, identity: identity, claims: claims}}
+            update_revocation(identity, claims)
           end
 
         nil ->
           create_identity(provider, claims)
       end
+    end
+  end
+
+  defp update_revocation(identity, %{revocation_credential: nil} = claims),
+    do: {:ok, %{user: identity.user, identity: identity, claims: claims}}
+
+  defp update_revocation(identity, claims) do
+    # Serialize credential rotation with account deletion. The erasure path locks
+    # this same account before taking a snapshot of its provider identities.
+    case Repo.transaction(
+           fn ->
+             user =
+               Repo.one(
+                 from(u in Accounts.User,
+                   where: u.id == ^identity.user_id,
+                   lock: "FOR NO KEY UPDATE"
+                 ),
+                 log: false
+               )
+
+             fresh = Repo.get(ProviderIdentity, identity.id, log: false)
+             if is_nil(user) or is_nil(fresh), do: Repo.rollback(:invalid_provider_token)
+
+             updated =
+               Repo.update!(
+                 Ecto.Changeset.change(fresh,
+                   apple_revocation:
+                     Cherry.Identity.AppleRevocation.merge(
+                       fresh.apple_revocation,
+                       claims.revocation_credential
+                     )
+                 ),
+                 log: false
+               )
+
+             %{user: user, identity: updated, claims: claims}
+           end,
+           log: false
+         ) do
+      {:ok, result} -> {:ok, result}
+      error -> error
     end
   end
 
@@ -49,9 +90,11 @@ defmodule Cherry.Identity do
         provider_subject: claims.subject,
         provider_email: claims.email,
         provider_data: claims.provider_data,
+        apple_revocation:
+          Cherry.Identity.AppleRevocation.merge(%{}, claims.revocation_credential),
         user: user
       })
-      |> repo.insert()
+      |> repo.insert(log: false)
     end)
     |> Repo.transaction()
     |> case do

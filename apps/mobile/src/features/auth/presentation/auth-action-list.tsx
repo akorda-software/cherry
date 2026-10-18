@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
+import Constants from "expo-constants";
 import type { AuthProvider } from "@cherry/mobile-shared";
 import { Platform, Pressable, StyleSheet, Text as RNText, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -49,13 +50,16 @@ const soonColors = {
 } as const;
 
 /**
- * Sign in with Apple: `enabled` donde hay flujo nativo (iOS); `soon`, visible pero deshabilitado
- * («Próximamente»), en Android y en web, que de momento no lo tienen.
+ * iOS uses the native flow. Android is enabled only for builds explicitly
+ * configured for a backend with the Apple browser flow. Web stays disabled.
  */
 export type AppleSignInAvailability = "enabled" | "soon";
 
-export function defaultAppleAvailability(os: string = Platform.OS): AppleSignInAvailability {
-  return os === "ios" ? "enabled" : "soon";
+export function defaultAppleAvailability(
+  os: string = Platform.OS,
+  browserEnabled = Constants.expoConfig?.extra?.appleBrowserEnabled === true
+): AppleSignInAvailability {
+  return os === "ios" || (os === "android" && browserEnabled) ? "enabled" : "soon";
 }
 
 interface AuthActionListProps {

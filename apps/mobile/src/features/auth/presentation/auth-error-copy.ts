@@ -40,6 +40,10 @@ export function describeAuthError(error: unknown, attempt: AuthAttempt): string 
 
   const code = apiErrorCode(error);
 
+  if (code === "identity_conflict") {
+    return "Ya existe una cuenta con este correo. Entra con el método que utilizaste al crearla.";
+  }
+
   if (code === "account_deleted") {
     return "Esta cuenta se borró y ya no se puede usar para entrar.";
   }

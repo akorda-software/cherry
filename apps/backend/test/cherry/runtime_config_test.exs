@@ -9,7 +9,9 @@ defmodule Cherry.RuntimeConfigTest do
               PHX_SERVER CORS_ALLOWED_ORIGINS INSTANCE_NAME INSTANCE_COUNTRY INSTANCE_LOCALE
               INSTANCE_OPERATOR INSTANCE_CONTACT_EMAIL INSTANCE_PRIVACY_URL INSTANCE_TERMS_URL
               INSTANCE_SOURCE_URL AGE_VERIFICATION_MINIMUM_AGE AGE_VERIFICATION_DOCUMENTS
-              CSCA_PATHS CSCA_COUNTRIES BACKOFFICE_HOST)
+              CSCA_PATHS CSCA_COUNTRIES BACKOFFICE_HOST APPLE_BROWSER_ENABLED
+              APPLE_BROWSER_CLIENT_ID APPLE_BROWSER_REDIRECT_URI APPLE_BROWSER_APP_REDIRECT_URIS
+              APPLE_TEAM_ID APPLE_KEY_ID APPLE_PRIVATE_KEY_BASE64 APPLE_AUDIENCES EXPO_IOS_BUNDLE_IDENTIFIER)
 
   @valid %{
     "DATABASE_URL" => "ecto://u:p@db/cherry",
@@ -83,6 +85,55 @@ defmodule Cherry.RuntimeConfigTest do
     assert error.message =~ "SECRET_KEY_BASE is missing"
     assert error.message =~ "MESSAGE_ENCRYPTION_KEY is missing"
     assert error.message =~ "mix phx.gen.secret"
+  end
+
+  test "Apple browser flow defaults off and validates its complete server-only configuration" do
+    refute read_prod(@valid)[:cherry][:apple_browser][:enabled]
+    key = :public_key.generate_key({:namedCurve, :secp256r1})
+    pem = :public_key.pem_encode([:public_key.pem_entry_encode(:PrivateKeyInfo, key)])
+
+    env =
+      Map.merge(@valid, %{
+        "APPLE_BROWSER_ENABLED" => "true",
+        "APPLE_BROWSER_CLIENT_ID" => "app.cherry.browser",
+        "APPLE_BROWSER_REDIRECT_URI" =>
+          "https://api.cherry.example/api/auth/apple/browser/callback",
+        "APPLE_BROWSER_APP_REDIRECT_URIS" => "cherry://auth/apple,cherry-dev://auth/apple",
+        "APPLE_TEAM_ID" => "TEAM123456",
+        "APPLE_KEY_ID" => "KEY1234567",
+        "APPLE_PRIVATE_KEY_BASE64" => Base.encode64(pem)
+      })
+
+    browser = read_prod(env)[:cherry][:apple_browser]
+    assert browser[:enabled]
+
+    assert browser[:private_key] ==
+             :public_key.pem_entry_decode(:public_key.pem_entry_encode(:PrivateKeyInfo, key))
+
+    assert browser[:app_redirect_uris] == ["cherry://auth/apple", "cherry-dev://auth/apple"]
+
+    assert read_prod(env)[:cherry][Cherry.Auth][:providers][:apple][:audiences] == [
+             "app.cherry.mobile"
+           ]
+
+    for {name, value} <- [
+          {"APPLE_BROWSER_CLIENT_ID", "app.cherry.mobile"},
+          {"APPLE_BROWSER_REDIRECT_URI",
+           "http://api.cherry.example/api/auth/apple/browser/callback"},
+          {"APPLE_BROWSER_REDIRECT_URI", "https://wrong.example/api/auth/apple/browser/callback"},
+          {"APPLE_BROWSER_REDIRECT_URI", "https://api.cherry.example/wrong"},
+          {"APPLE_BROWSER_REDIRECT_URI",
+           "https://api.cherry.example/api/auth/apple/browser/callback?extra=yes"},
+          {"APPLE_BROWSER_APP_REDIRECT_URIS", "https://evil.example/auth/apple"},
+          {"APPLE_BROWSER_APP_REDIRECT_URIS", "cherry://auth/apple?extra=yes"},
+          {"APPLE_BROWSER_APP_REDIRECT_URIS", "cherry://auth/apple.evil"},
+          {"APPLE_BROWSER_APP_REDIRECT_URIS", ""},
+          {"APPLE_TEAM_ID", ""},
+          {"APPLE_KEY_ID", "wrong"},
+          {"APPLE_PRIVATE_KEY_BASE64", "bad-key"}
+        ] do
+      assert_raise RuntimeError, ~r/APPLE_/, fn -> read_prod(Map.put(env, name, value)) end
+    end
   end
 
   test "rejects weak or placeholder secrets" do

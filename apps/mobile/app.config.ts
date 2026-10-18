@@ -18,15 +18,14 @@ function readOptionalEnv(name: string): string | undefined {
 
 /**
  * Un APK release bloquea HTTP en claro. Si el backend configurado para Android es `http://`
- * (desarrollo en la LAN), se permite; con `https://` (producción) no se toca nada.
+ * (desarrollo en la LAN), se permite; con HTTPS se desactiva explícitamente,
+ * también al reutilizar un directorio nativo generado antes para desarrollo.
  */
-const withCleartextForHttpBackend: ConfigPlugin<string | undefined> = (config, apiBaseUrl) =>
+export const withCleartextForHttpBackend: ConfigPlugin<string | undefined> = (config, apiBaseUrl) =>
   withAndroidManifest(config, (mod) => {
-    if (apiBaseUrl?.startsWith("http://")) {
-      const application = mod.modResults.manifest.application?.[0];
-      if (application) {
-        application.$["android:usesCleartextTraffic"] = "true";
-      }
+    const application = mod.modResults.manifest.application?.[0];
+    if (application) {
+      application.$["android:usesCleartextTraffic"] = apiBaseUrl?.startsWith("http://") ? "true" : "false";
     }
     return mod;
   });
@@ -34,7 +33,7 @@ const withCleartextForHttpBackend: ConfigPlugin<string | undefined> = (config, a
 export default (): ExpoConfig => {
   const googleIosUrlScheme = readOptionalEnv("GOOGLE_IOS_URL_SCHEME");
   // Nombre de la app en la tienda y en los textos de permisos del sistema.
-  const appName = readOptionalEnv("EXPO_APP_NAME") ?? "Cherry";
+  const appName = readOptionalEnv("EXPO_APP_NAME") ?? "OpenCherry";
 
   const config: ExpoConfig = {
     name: appName,
@@ -60,7 +59,8 @@ export default (): ExpoConfig => {
       favicon: "./assets/images/favicon.png"
     },
     ios: {
-      bundleIdentifier: readOptionalEnv("EXPO_IOS_BUNDLE_IDENTIFIER") ?? "app.cherry.mobile"
+      bundleIdentifier: readOptionalEnv("EXPO_IOS_BUNDLE_IDENTIFIER") ?? "app.cherry.mobile",
+      usesAppleSignIn: true
     },
     plugins: [
       ...(googleIosUrlScheme
@@ -105,7 +105,8 @@ export default (): ExpoConfig => {
       apiBaseUrlIos: readOptionalEnv("EXPO_PUBLIC_API_BASE_URL_IOS"),
       apiBaseUrlWeb: readOptionalEnv("EXPO_PUBLIC_API_BASE_URL_WEB"),
       googleWebClientId: readOptionalEnv("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID"),
-      googleIosClientId: readOptionalEnv("EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID")
+      googleIosClientId: readOptionalEnv("EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID"),
+      appleBrowserEnabled: readOptionalEnv("EXPO_PUBLIC_APPLE_BROWSER_ENABLED") === "true"
     }
   };
 

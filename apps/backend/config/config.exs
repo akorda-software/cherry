@@ -139,6 +139,12 @@ config :phoenix, :filter_parameters, [
   "mrz",
   "code",
   "token",
+  "nonce",
+  "state",
+  "verifier",
+  "challenge",
+  # Apple's first form_post can include an opaque JSON `user` profile string.
+  "user",
   "statement",
   "response",
   "details"

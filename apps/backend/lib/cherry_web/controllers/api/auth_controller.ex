@@ -5,6 +5,8 @@ defmodule CherryWeb.Controllers.Api.AuthController do
   alias Cherry.Identity
   alias Cherry.Sessions
 
+  plug(:private_headers)
+
   def create(conn, %{"provider" => provider} = params) do
     with {:ok, resolved_provider} <- parse_provider(provider),
          {:ok, %{user: user}} <-
@@ -14,11 +16,21 @@ defmodule CherryWeb.Controllers.Api.AuthController do
       |> put_status(:created)
       |> json(session_payload(issued.session))
     else
+      {:error, %Ecto.Changeset{}} ->
+        # Never merge distinct provider identities based only on an email match.
+        conn |> put_status(:conflict) |> json(%{error: "identity_conflict"})
+
       {:error, reason} ->
         conn
         |> put_status(:unauthorized)
         |> json(%{error: Atom.to_string(reason)})
     end
+  end
+
+  defp private_headers(conn, _) do
+    conn
+    |> put_resp_header("cache-control", "private, no-store")
+    |> put_resp_header("referrer-policy", "no-referrer")
   end
 
   @doc """

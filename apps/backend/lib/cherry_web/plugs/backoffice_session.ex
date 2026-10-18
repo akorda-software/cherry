@@ -16,7 +16,7 @@ defmodule CherryWeb.Plugs.BackofficeSession do
       )
 
     if Application.get_env(:cherry, :backoffice_enabled, false) do
-      if https?(conn) do
+      if CherryWeb.TransportSecurity.https?(conn) do
         # The transport was validated above, not inferred from a free-form header.
         conn = %{conn | scheme: :https}
         conn = fetch_cookies(conn, signed: [@cookie])
@@ -74,26 +74,4 @@ defmodule CherryWeb.Plugs.BackofficeSession do
   end
 
   defp require_password_change(conn), do: conn
-
-  defp https?(conn) do
-    origin = conn.private[:transport_origin] || %{scheme: conn.scheme, peer_ip: conn.remote_ip}
-
-    origin.scheme == :https or
-      (trusted_peer?(origin.peer_ip) and
-         get_req_header(conn, "x-forwarded-proto") == ["https"])
-  end
-
-  # An IPv4 socket accepted by the dual-stack listener can be represented as
-  # ::ffff:a.b.c.d. Normalize the address, never broaden the configured allowlist.
-  defp trusted_peer?(ip) do
-    Enum.any?(
-      Application.get_env(:cherry, :backoffice_trusted_proxy_ips, []),
-      &(normalize_ip(&1) == normalize_ip(ip))
-    )
-  end
-
-  defp normalize_ip({0, 0, 0, 0, 0, 65_535, a, b}),
-    do: {div(a, 256), rem(a, 256), div(b, 256), rem(b, 256)}
-
-  defp normalize_ip(ip), do: ip
 end

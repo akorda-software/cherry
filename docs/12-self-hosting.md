@@ -326,7 +326,9 @@ del nombre visible a OpenCherry no exige cambiar Bundle ID, paquete ni OAuth.
 probar en Android primer acceso y repetición, cancelación, email real/oculto,
 sesión después de reiniciar app y acceso iOS a la misma cuenta agrupada. Probar
 también caducidad/reintento y que no se duplican identidades. El callback no existe
-en producción hasta desplegar y activar este bloque.
+en una instancia hasta desplegar y activar este bloque. En Cherry España se ha
+desplegado/activado expresamente el 18-10-2026 para pruebas internas con APK
+OpenCherry, no como lanzamiento público; las pruebas reales siguen pendientes.
 
 **Revocación al borrar:** el servidor canjea el código tanto del navegador como
 de iOS (cuando `APPLE_BROWSER_ENABLED=true`, el código nativo es obligatorio).

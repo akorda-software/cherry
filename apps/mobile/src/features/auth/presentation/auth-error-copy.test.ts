@@ -19,9 +19,12 @@ describe("describeAuthError", () => {
     );
   });
 
-  it("explains an identity conflict without suggesting unsafe email linking", () => {
-    expect(describeAuthError(apiError(409, "identity_conflict"), "apple")).toBe(
-      "Ya existe una cuenta con este correo. Entra con el método que utilizaste al crearla."
+  it.each([
+    ["apple", "Google", "Apple"],
+    ["google", "Apple", "Google"]
+  ] as const)("guides a %s conflict to the original login and linking inside Settings", (attempt, original, added) => {
+    expect(describeAuthError(apiError(409, "identity_conflict"), attempt)).toBe(
+      `Ya existe una cuenta con este correo. Entra con ${original} y vincula ${added} desde Ajustes → Métodos de acceso.`
     );
   });
 

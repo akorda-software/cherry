@@ -41,7 +41,11 @@ export function describeAuthError(error: unknown, attempt: AuthAttempt): string 
   const code = apiErrorCode(error);
 
   if (code === "identity_conflict") {
-    return "Ya existe una cuenta con este correo. Entra con el método que utilizaste al crearla.";
+    if (attempt === "apple" || attempt === "google") {
+      const originalProvider = attempt === "apple" ? "google" : "apple";
+      return `Ya existe una cuenta con este correo. Entra con ${providerName[originalProvider]} y vincula ${providerName[attempt]} desde Ajustes → Métodos de acceso.`;
+    }
+    return "Ya existe una cuenta con este correo. Entra con tu método habitual y vincula el otro desde Ajustes → Métodos de acceso.";
   }
 
   if (code === "account_deleted") {

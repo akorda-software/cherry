@@ -359,8 +359,10 @@ logs ni URLs. No cambia el ID de cuenta, correo de contacto, perfil o conversaci
 funciona también con el correo oculto de Apple. No se mueve una identidad que ya
 pertenezca a otra cuenta ni se sustituye otra del mismo proveedor.
 
-Un conflicto de correo en el login ofrece entrar primero con el otro método y
-abrir esta pantalla; no vincula nada automáticamente ni conserva la prueba fallida.
+Un conflicto de correo en el login muestra solo el aviso de error indicando
+entrar con el otro método y vincular desde Ajustes → Métodos de acceso. No añade
+botones duplicados ni cambia la navegación normal tras entrar; tampoco vincula
+nada automáticamente ni conserva la prueba fallida.
 Los retornos Apple con la app abierta los consume solo el adaptador de navegador,
 sin desmontar la pantalla autenticada; un arranque frío obliga a reintentar.
 

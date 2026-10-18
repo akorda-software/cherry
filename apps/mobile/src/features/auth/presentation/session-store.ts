@@ -5,13 +5,12 @@ import type { AuthCallbackPayload, SessionBundle } from "@cherry/contracts";
 import type { AuthProvider } from "@cherry/mobile-shared";
 
 import { describeAuthError } from "./auth-error-copy";
-import { apiErrorCode } from "../../../shared/api";
 
 export type BusyProvider = AuthProvider | "test";
 
 export type AuthShellState =
   | { status: "loading"; session: null; error: null; busyProvider: null }
-  | { status: "signed-out"; session: null; error: string | null; busyProvider: BusyProvider | null; conflictProvider?: AuthProvider | null }
+  | { status: "signed-out"; session: null; error: string | null; busyProvider: BusyProvider | null }
   | { status: "signed-in"; session: SessionBundle; error: null; busyProvider: null };
 
 interface NativeAuthResult {
@@ -54,7 +53,6 @@ interface SessionStoreState {
   session: SessionBundle | null;
   error: string | null;
   busyProvider: BusyProvider | null;
-  conflictProvider: AuthProvider | null;
 
   services: SessionShellServices;
   configure(services: SessionShellServices): void;
@@ -87,7 +85,6 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   session: null,
   error: null,
   busyProvider: null,
-  conflictProvider: null,
   services: defaultServices,
 
   configure: (services) => {
@@ -97,7 +94,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
 
   bootstrap: async () => {
     const { services } = get();
-    set({ status: "loading", session: null, error: null, busyProvider: null, conflictProvider: null });
+    set({ status: "loading", session: null, error: null, busyProvider: null });
 
     try {
       const session = await services.bootstrapSession.execute();
@@ -118,7 +115,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
 
   signInWith: async (provider) => {
     const { services } = get();
-    set({ status: "signed-out", session: null, error: null, busyProvider: provider, conflictProvider: null });
+    set({ status: "signed-out", session: null, error: null, busyProvider: provider });
 
     try {
       const authentication = await services.authProviders[provider].authenticate();
@@ -133,7 +130,6 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         status: "signed-out",
         session: null,
         error: describeAuthError(error, provider),
-        conflictProvider: apiErrorCode(error) === "identity_conflict" ? provider : null,
         busyProvider: null
       });
     }
@@ -145,7 +141,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       return;
     }
 
-    set({ status: "signed-out", session: null, error: null, busyProvider: "test", conflictProvider: null });
+    set({ status: "signed-out", session: null, error: null, busyProvider: "test" });
 
     try {
       const session = await services.testSignIn.execute(email);
@@ -170,7 +166,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       // La sesión local ya se ha borrado; si revocarla en el servidor falla (sin red,
       // cuenta ya borrada), la persona sale igualmente.
     } finally {
-      set({ status: "signed-out", session: null, error: null, busyProvider: null, conflictProvider: null });
+      set({ status: "signed-out", session: null, error: null, busyProvider: null });
     }
   },
 
@@ -223,8 +219,7 @@ export function useSessionShell(): {
       status: s.status,
       session: s.session,
       error: s.error,
-      busyProvider: s.busyProvider,
-      conflictProvider: s.conflictProvider
+      busyProvider: s.busyProvider
     }))
   ) as AuthShellState;
 

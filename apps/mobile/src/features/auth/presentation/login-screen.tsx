@@ -1,5 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
-import type { AuthProvider } from "@cherry/mobile-shared";
+import { type ReactNode, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text as RNText, View } from "react-native";
 import Animated, {
@@ -16,9 +15,9 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 
-import { appShellRoutes, Button, FormMessage, Mascot, Text, useTheme } from "../../../shared/ui";
+import { FormMessage, Mascot, Text, useTheme } from "../../../shared/ui";
 import { withAlpha } from "../../../shared/ui/utils/color";
-import { AuthActionList, defaultAppleAvailability } from "./auth-action-list";
+import { AuthActionList } from "./auth-action-list";
 import { LoginBackdrop } from "./login-backdrop";
 import { LOGIN_STAGGER_MS, Rise } from "./login-entrance";
 import { useSessionShell } from "./session-shell-provider";
@@ -132,19 +131,15 @@ export function LoginScreen() {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const { state, signInWith, signInAsTest } = useSessionShell();
-  const [linkAfterLogin, setLinkAfterLogin] = useState<AuthProvider | null>(null);
 
   useEffect(() => {
     if (state.status === "signed-in") {
-      router.replace(linkAfterLogin ? appShellRoutes.authMethods : afterSignInPath);
+      router.replace(afterSignInPath);
     }
-  }, [router, state.status, linkAfterLogin]);
+  }, [router, state.status]);
 
   const busyProvider = state.status === "signed-out" ? state.busyProvider : null;
   const error = state.status === "signed-out" ? state.error : null;
-  const conflict = state.status === "signed-out" ? state.conflictProvider : null;
-  const otherProvider = conflict === "apple" ? "google" : "apple";
-  const providerName = { google: "Google", apple: "Apple" };
   const sidePadding = {
     paddingLeft: insets.left + theme.semantic.layout.screenPadding,
     paddingRight: insets.right + theme.semantic.layout.screenPadding
@@ -197,15 +192,7 @@ export function LoginScreen() {
             </Rise>
             {error ? (
               <View style={[styles.error, { backgroundColor: withAlpha(c.white, 0.7) }]}>
-                 <FormMessage tone="error">{error}</FormMessage>
-                 {conflict ? <>
-                   <Text>Entra primero con tu método habitual. Después podrás vincular ambos accesos sin crear otro perfil.</Text>
-                   {otherProvider !== "apple" || defaultAppleAvailability() === "enabled" ?
-                     <Button disabled={busyProvider !== null} variant="secondary" onPress={() => {
-                       setLinkAfterLogin(conflict);
-                       void signInWith(otherProvider);
-                     }}>{`Entrar con ${providerName[otherProvider]} para vincular ${providerName[conflict]}`}</Button> : null}
-                 </> : null}
+                <FormMessage tone="error">{error}</FormMessage>
               </View>
             ) : null}
             <AuthActionList

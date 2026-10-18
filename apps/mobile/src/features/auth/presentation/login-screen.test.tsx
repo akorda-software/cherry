@@ -47,14 +47,28 @@ describe("LoginScreen", () => {
     expect(screen.getByRole("button", { name: "Continuar con Apple" })).toBeInTheDocument();
   });
 
-  it("an email conflict offers the original login then navigates to explicit linking, never auto-linking", async () => {
+  it.each([
+    ["apple", "Apple", "Google"],
+    ["google", "Google", "Apple"]
+  ] as const)("a %s conflict keeps only the red message and the existing provider buttons", async (attempt, added, original) => {
+    const conflict = { execute: async () => { throw Object.assign(new Error("identity_conflict"), { status: 409, code: "identity_conflict" }); } };
+    const success = { execute: async () => sessionFixture };
     renderRoute(<LoginScreen />, { services: { completeAuth: {
-      apple: { execute: async () => { throw Object.assign(new Error("identity_conflict"), { status: 409, code: "identity_conflict" }); } },
-      google: { execute: async () => sessionFixture }
+      apple: attempt === "apple" ? conflict : success,
+      google: attempt === "google" ? conflict : success
     } } });
-    fireEvent.click(await screen.findByRole("button", { name: "Continuar con Apple" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Entrar con Google para vincular Apple" }));
-    await waitFor(() => expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/auth-methods"));
+    const providerButton = await screen.findByRole("button", { name: `Continuar con ${added}` });
+    const originalButtons = screen.getAllByRole("button");
+    fireEvent.click(providerButton);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      `Ya existe una cuenta con este correo. Entra con ${original} y vincula ${added} desde Ajustes → Métodos de acceso.`
+    );
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getAllByRole("button")).toEqual(originalButtons);
+    expect(screen.queryByRole("button", { name: /para vincular/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Entra primero con tu método habitual/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: `Continuar con ${original}` }));
+    await waitFor(() => expect(screen.getByTestId("pathname")).toHaveTextContent(/^\/$/));
   });
 
   it("greets with Mochi in love, the logo of the app", async () => {

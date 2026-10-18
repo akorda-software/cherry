@@ -9,6 +9,7 @@ export const appShellRoutes = {
   chats: "/(app)/(tabs)/chats",
   me: "/(app)/(tabs)/me",
   settings: "/(app)/settings",
+  authMethods: "/(app)/auth-methods",
   support: "/(app)/support",
   legal: "/(app)/legal",
   filters: "/(app)/filters",

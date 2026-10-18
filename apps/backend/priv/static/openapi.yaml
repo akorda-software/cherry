@@ -764,6 +764,91 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/Ok'
+  /api/me/auth-methods:
+    get:
+      tags: [Auth]
+      summary: List the current account's linked sign-in providers, without subjects or credentials.
+      description: HTTPS required through the exact trusted proxy chain. Available before onboarding and during suspension. Responses are private/no-store.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Linked providers and last-method protection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMethodsSnapshot'
+        '401':
+          description: Missing or revoked application session.
+        '426':
+          description: HTTPS required.
+  /api/me/auth-methods/{provider}:
+    post:
+      tags: [Auth]
+      summary: Explicitly link a provider after proving ownership of both identities.
+      description: Requires a live application session, a signed proof issued within five minutes from an already linked provider, and a fresh proof from the target. Never merges accounts by email, transfers an identity from another user, replaces another identity of the same provider, changes the contact email, or creates a new profile. Device fields are not required. Apple browser proofs use their one-use handoff and verifier.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, apple]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/AuthMethodProof'
+                - type: object
+                  required: [credential]
+      responses:
+        '200':
+          description: Linked methods; account and session are not replaced.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMethodsSnapshot'
+        '409':
+          description: identity_in_use or provider_already_linked; no account merging.
+        '422':
+          description: reauthentication_required; invalid, stale or wrong-owner proof. Not a bearer-refresh challenge.
+  /api/me/auth-methods/{provider}/unlink:
+    post:
+      tags: [Auth]
+      summary: Remove a sign-in provider after reauthenticating with the method being kept.
+      description: Never removes the last method. Records a minimal external identity-UUID tombstone for recovery, confirms Apple revocation before removing Apple, and revokes other sessions while retaining the freshly reauthenticated current session. A durable removal intent may finish after a failed HTTP response; refresh the list before retrying. A restored snapshot without a remaining method fails recovery closed.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, apple]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthMethodProof'
+      responses:
+        '200':
+          description: Remaining providers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMethodsSnapshot'
+        '409':
+          description: last_auth_method; no provider was removed.
+        '422':
+          description: reauthentication_required, reauth_with_remaining_method or apple_reauthentication_required.
+        '503':
+          description: erasure_protection_unavailable or apple_revocation_pending; do not claim completed removal.
   /api/me/account:
     delete:
       tags: [Settings]
@@ -1863,6 +1948,44 @@ components:
           description: Raw nonce for native Apple validation, or the initiating mobile verifier (43–128 unreserved characters) for Apple browser handoff redemption.
         device:
           $ref: '#/components/schemas/DeviceRequest'
+    AuthMethodsSnapshot:
+      type: object
+      required: [methods]
+      properties:
+        methods:
+          type: array
+          items:
+            type: object
+            required: [provider, canUnlink]
+            properties:
+              provider:
+                type: string
+                enum: [google, apple]
+              canUnlink:
+                type: boolean
+    AuthMethodCredential:
+      type: object
+      required: [providerToken]
+      properties:
+        providerToken:
+          type: string
+        idToken:
+          type: string
+        authorizationCode:
+          type: string
+        nonce:
+          type: string
+    AuthMethodProof:
+      type: object
+      required: [currentProvider, currentCredential]
+      properties:
+        currentProvider:
+          type: string
+          enum: [google, apple]
+        currentCredential:
+          $ref: '#/components/schemas/AuthMethodCredential'
+        credential:
+          $ref: '#/components/schemas/AuthMethodCredential'
     RefreshTokenRequest:
       type: object
       required: [refreshToken]

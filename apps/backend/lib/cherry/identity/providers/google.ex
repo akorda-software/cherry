@@ -19,6 +19,7 @@ defmodule Cherry.Identity.Providers.Google do
          subject: subject,
          email: email,
          display_name: display_name(claims),
+         issued_at: claims["iat"],
          provider_data: %{
            "aud" => claims["aud"],
            "email_verified" => Map.get(claims, "email_verified"),

@@ -5,7 +5,7 @@ defmodule Cherry.Recovery.Journal do
   alias Cherry.Dating.ProfilePhoto
   import Ecto.Query
 
-  @kinds ~w(account photo storage provider apple)
+  @kinds ~w(account photo storage provider apple identity)
   @prefix "v1/requests/"
 
   def enabled?, do: config()[:enabled] == true
@@ -137,6 +137,9 @@ defmodule Cherry.Recovery.Journal do
     end
   end
 
+  defp apply_event(%{"kind" => "identity", "reference" => id}),
+    do: Cherry.Identity.AuthMethods.erase_for_recovery(id)
+
   defp apply_event(%{"kind" => "photo", "reference" => id}) do
     case Repo.get(ProfilePhoto, id, log: false) do
       nil ->
@@ -174,7 +177,9 @@ defmodule Cherry.Recovery.Journal do
     with true <- key == event_key(kind, reference),
          {:ok, _, _} <- DateTime.from_iso8601(event["requested_at"] || ""),
          {:ok, _, _} <- DateTime.from_iso8601(event["finalize_after"] || ""),
-         true <- kind not in ["account", "photo"] or match?({:ok, _}, Ecto.UUID.cast(reference)) do
+         true <-
+           kind not in ["account", "photo", "identity"] or
+             match?({:ok, _}, Ecto.UUID.cast(reference)) do
       :ok
     else
       _ -> {:error, :invalid_recovery_event}
@@ -185,7 +190,7 @@ defmodule Cherry.Recovery.Journal do
 
   defp event_key(kind, reference) do
     id =
-      if kind in ["account", "photo"],
+      if kind in ["account", "photo", "identity"],
         do: reference,
         else: :crypto.hash(:sha256, reference) |> Base.encode16(case: :lower)
 
@@ -245,7 +250,7 @@ defmodule Cherry.Recovery.Journal do
            Enum.all?(
              keys,
              &Regex.match?(
-               ~r/^v1\/requests\/(account|photo|storage|provider|apple)\/[a-f0-9-]+\.json$/,
+               ~r/^v1\/requests\/(account|photo|storage|provider|apple|identity)\/[a-f0-9-]+\.json$/,
                &1
              )
            ) do

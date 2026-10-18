@@ -8,6 +8,10 @@ defmodule Cherry.Identity do
   alias Cherry.Identity.ProviderIdentity
   alias Cherry.Repo
 
+  def verify_provider(provider, params) do
+    with {:ok, module} <- provider(provider), do: module.verify(params)
+  end
+
   def resolve_provider_login(provider, params) when is_atom(provider) do
     with {:ok, provider_module} <- provider(provider),
          {:ok, claims} <- provider_module.verify(params) do

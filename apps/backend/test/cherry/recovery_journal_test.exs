@@ -107,4 +107,67 @@ defmodule Cherry.RecoveryJournalTest do
     Req.Test.stub(Journal, fn conn -> Plug.Conn.send_resp(conn, 403, "") end)
     assert {:error, :erasure_journal_unavailable} = Journal.replay(all: true)
   end
+
+  test "identity tombstones remove restored associations, keep the account and fail closed for the last method",
+       %{user: user} do
+    google =
+      %Cherry.Identity.ProviderIdentity{}
+      |> Cherry.Identity.ProviderIdentity.changeset(%{
+        user: user,
+        provider: "google",
+        provider_subject: "synthetic-google",
+        provider_data: %{}
+      })
+      |> Repo.insert!()
+
+    key = "v1/requests/identity/#{google.id}.json"
+
+    event =
+      Jason.encode!(%{
+        version: 1,
+        kind: "identity",
+        reference: google.id,
+        requested_at: "2026-01-01T00:00:00Z",
+        finalize_after: "2026-01-01T00:00:00Z"
+      })
+
+    Req.Test.stub(Journal, fn conn ->
+      case {conn.method, conn.request_path} do
+        {"GET", "/ledger/"} ->
+          Plug.Conn.send_resp(
+            conn,
+            200,
+            "<ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>#{key}</Key></Contents></ListBucketResult>"
+          )
+
+        {"GET", _} ->
+          Plug.Conn.send_resp(conn, 200, event)
+
+        {"HEAD", _} ->
+          Plug.Conn.send_resp(conn, 200, "")
+
+        {"PUT", _} ->
+          Plug.Conn.send_resp(conn, 412, "")
+      end
+    end)
+
+    assert {:error, :recovery_replay_pending} = Journal.replay(all: true)
+    assert Repo.get(Cherry.Identity.ProviderIdentity, google.id)
+
+    apple =
+      %Cherry.Identity.ProviderIdentity{}
+      |> Cherry.Identity.ProviderIdentity.changeset(%{
+        user: user,
+        provider: "apple",
+        provider_subject: "synthetic-apple",
+        provider_data: %{}
+      })
+      |> Repo.insert!()
+
+    assert {:ok, 1} = Journal.replay(all: true)
+    refute Repo.get(Cherry.Identity.ProviderIdentity, google.id)
+    assert Repo.get(Cherry.Identity.ProviderIdentity, apple.id)
+    assert Repo.get(Cherry.Accounts.User, user.id)
+    assert {:ok, 1} = Journal.replay(all: true)
+  end
 end

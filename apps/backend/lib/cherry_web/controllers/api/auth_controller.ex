@@ -9,9 +9,9 @@ defmodule CherryWeb.Controllers.Api.AuthController do
 
   def create(conn, %{"provider" => provider} = params) do
     with {:ok, resolved_provider} <- parse_provider(provider),
-         {:ok, %{user: user}} <-
+         {:ok, %{user: user, identity: identity}} <-
            Identity.resolve_provider_login(resolved_provider, normalize_params(params)),
-         {:ok, issued} <- Sessions.issue_session(user, normalize_device(params)) do
+         {:ok, issued} <- Sessions.issue_session(user, normalize_device(params), identity.id) do
       conn
       |> put_status(:created)
       |> json(session_payload(issued.session))

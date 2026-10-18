@@ -40,6 +40,13 @@ function AppRouteHost() {
 }
 
 describe("private shell", () => {
+  it("keeps access-method management available before onboarding finishes", async () => {
+    renderRoute(<PrivateLayout><div data-testid="methods-before-profile">Accesos</div></PrivateLayout>, {
+      initialPath: appShellRoutes.authMethods, onboardingRequired: true, ...signedIn
+    });
+    expect(await screen.findByTestId("methods-before-profile")).toBeInTheDocument();
+    expect(screen.getByTestId("pathname")).toHaveTextContent(appShellRoutes.authMethods);
+  });
   it("keeps support available before onboarding finishes", async () => {
     renderRoute(<PrivateLayout><div data-testid="support-before-profile">Buzón</div></PrivateLayout>, {
       initialPath: appShellRoutes.support, onboardingRequired: true, ...signedIn

@@ -142,6 +142,12 @@ config :phoenix, :filter_parameters, [
   "nonce",
   "state",
   "verifier",
+  "credential",
+  # Phoenix filtering is case-sensitive; mobile JSON uses camelCase keys.
+  "Credential",
+  "Token",
+  "Code",
+  "Challenge",
   "challenge",
   # Apple's first form_post can include an opaque JSON `user` profile string.
   "user",

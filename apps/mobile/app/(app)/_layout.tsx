@@ -24,7 +24,7 @@ function PrivateGuard({ children }: PropsWithChildren) {
   }
 
   // Support and privacy do not require a complete profile, age verification or a healthy social bootstrap.
-  if (["/support", appShellRoutes.support, "/settings", appShellRoutes.settings, "/about", appShellRoutes.about, "/legal", appShellRoutes.legal].includes(pathname)) return <>{children}</>;
+  if (["/support", appShellRoutes.support, "/settings", appShellRoutes.settings, "/auth-methods", appShellRoutes.authMethods, "/about", appShellRoutes.about, "/legal", appShellRoutes.legal].includes(pathname)) return <>{children}</>;
 
   if (bootstrapState.status === "loading" || bootstrapState.status === "idle") {
     return <LoadingScreen testID="private-loading" />;
@@ -87,6 +87,7 @@ export default function PrivateLayoutRoute() {
         <Stack.Screen name="edit/bio" />
         <Stack.Screen name="edit/basics" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="auth-methods" />
         <Stack.Screen name="support" />
         <Stack.Screen name="legal" />
         <Stack.Screen name="about" />

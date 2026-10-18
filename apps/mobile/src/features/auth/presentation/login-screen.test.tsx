@@ -47,6 +47,16 @@ describe("LoginScreen", () => {
     expect(screen.getByRole("button", { name: "Continuar con Apple" })).toBeInTheDocument();
   });
 
+  it("an email conflict offers the original login then navigates to explicit linking, never auto-linking", async () => {
+    renderRoute(<LoginScreen />, { services: { completeAuth: {
+      apple: { execute: async () => { throw Object.assign(new Error("identity_conflict"), { status: 409, code: "identity_conflict" }); } },
+      google: { execute: async () => sessionFixture }
+    } } });
+    fireEvent.click(await screen.findByRole("button", { name: "Continuar con Apple" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Entrar con Google para vincular Apple" }));
+    await waitFor(() => expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/auth-methods"));
+  });
+
   it("greets with Mochi in love, the logo of the app", async () => {
     const view = renderRoute(<LoginScreen />);
 

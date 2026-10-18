@@ -83,6 +83,13 @@ describe("SettingsScreen", () => {
     expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/about");
   });
 
+  it("opens access-method management", async () => {
+    stubBackend(() => ({ status: 404, body: {} }));
+    renderSettings();
+    fireEvent.click(await screen.findByRole("button", { name: "Métodos de acceso" }));
+    expect(screen.getByTestId("pathname")).toHaveTextContent("/(app)/auth-methods");
+  });
+
   it("explains what deleting does and lets you back out", async () => {
     const backend = stubBackend(() => ({ status: 404, body: {} }));
     renderSettings();

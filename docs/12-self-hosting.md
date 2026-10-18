@@ -349,6 +349,41 @@ los demás bloqueos legales y de seguridad/moderación del servicio.
 Referencias: [Apple en otras plataformas](https://developer.apple.com/documentation/signinwithapple/incorporating-sign-in-with-apple-into-other-platforms)
 y [Expo WebBrowser SDK 54](https://docs.expo.dev/versions/v54.0.0/sdk/webbrowser/).
 
+### Vincular Google y Apple a una cuenta
+
+En **Ajustes → Métodos de acceso** se listan los métodos vinculados. Para añadir
+uno, la app pide confirmar el proveedor ya asociado y después el nuevo. Ambas
+pruebas firmadas deben haberse emitido en los últimos cinco minutos y se validan
+en el servidor, con sesión activa. Las pruebas no se guardan en el estado móvil,
+logs ni URLs. No cambia el ID de cuenta, correo de contacto, perfil o conversaciones;
+funciona también con el correo oculto de Apple. No se mueve una identidad que ya
+pertenezca a otra cuenta ni se sustituye otra del mismo proveedor.
+
+Un conflicto de correo en el login ofrece entrar primero con el otro método y
+abrir esta pantalla; no vincula nada automáticamente ni conserva la prueba fallida.
+Los retornos Apple con la app abierta los consume solo el adaptador de navegador,
+sin desmontar la pantalla autenticada; un arranque frío obliga a reintentar.
+
+Para quitar un método hay que confirmar con el que se conservará. Nunca se retira
+el último. Se cierran las demás sesiones y se vuelve a comprobar la asociación
+antes de emitir sesiones nuevas; se desconectan también los sockets abiertos
+(la sesión conservada puede reconectar). Esto cubre incluso si un login se verificó
+antes de retirarla.
+Apple requiere credencial de revocación y confirmación previa de Apple; una caída
+no se presenta como retirada terminada ni deja un token antiguo en una cola que
+pueda revocar una vinculación nueva. Identidades Apple anteriores sin credencial
+deben volver a entrar con Apple antes de retirarse.
+
+El registro externo conserva una intención `identity` con el UUID de la asociación,
+sin correo/subject. Si hay rollback o falla la respuesta, el barrido puede completar
+esa retirada; actualizar la lista antes de reintentar. El registro protege también
+restauraciones; una vinculación posterior tiene otro UUID y no se elimina por la
+baja antigua. Un snapshot que solo contiene el método retirado se queda cerrado
+hasta resolver el acceso, nunca se reabre ignorando la baja. Actualizar el script
+de backups para reconocer `identity` antes de activar esta versión. Los endpoints
+`/api/me/auth-methods` y sus mutaciones requieren HTTPS y respuestas no-store;
+las pruebas inválidas responden 422, no disparan refresco/repetición del bearer.
+
 ### Dónde se configura cada cosa
 
 | Dato | Backend (`apps/backend`) | App (`apps/mobile/.env`) |

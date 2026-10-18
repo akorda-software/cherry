@@ -77,6 +77,15 @@ export function SettingsScreen() {
         />
         <ListRow
           disabled={signingOut}
+          icon="shield-check"
+          iconColor="cielo"
+          label="Métodos de acceso"
+          description="Vincular Google y Apple a la misma cuenta."
+          onPress={() => router.push(appShellRoutes.authMethods)}
+          testID="settings-auth-methods"
+        />
+        <ListRow
+          disabled={signingOut}
           icon="logout"
           iconColor="melocoton"
           label="Cerrar sesión"

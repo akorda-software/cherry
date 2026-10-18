@@ -14,6 +14,17 @@ export interface AuthCallbackPayload {
   nonce?: string;
 }
 
+export type AuthMethodProvider = "google" | "apple";
+export type AuthMethodCredential = Omit<AuthCallbackPayload, "device">;
+export interface AuthMethodsSnapshot {
+  methods: Array<{ provider: AuthMethodProvider; canUnlink: boolean }>;
+}
+export interface AuthMethodProof {
+  currentProvider: AuthMethodProvider;
+  currentCredential: AuthMethodCredential;
+  credential?: AuthMethodCredential;
+}
+
 export function createAuthCallbackPayload(
   payload: AuthCallbackPayload
 ): AuthCallbackPayload {

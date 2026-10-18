@@ -87,6 +87,7 @@ defmodule Cherry.Identity.Providers.Apple do
          subject: subject,
          email: email,
          display_name: display_name(claims),
+         issued_at: claims["iat"],
          provider_data: %{"aud" => claims["aud"], "iss" => claims["iss"], "kid" => header["kid"]}
        }}
     else
@@ -107,6 +108,7 @@ defmodule Cherry.Identity.Providers.Apple do
          subject: subject,
          email: email,
          display_name: display_name(claims),
+         issued_at: claims["iat"],
          provider_data: %{
            "aud" => claims["aud"],
            "iss" => claims["iss"],

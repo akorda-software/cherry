@@ -123,6 +123,9 @@ defmodule CherryWeb.Router do
 
     get("/legal", LegalController, :show)
     post("/legal", LegalController, :create)
+    get("/auth-methods", AuthMethodController, :index)
+    post("/auth-methods/:provider", AuthMethodController, :create)
+    post("/auth-methods/:provider/unlink", AuthMethodController, :delete)
     get("/profile", ProfileController, :show)
     put("/profile", ProfileController, :update)
     post("/profile/complete", ProfileController, :complete)

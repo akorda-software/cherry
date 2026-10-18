@@ -2,6 +2,7 @@ export const mobileSharedPackageName = "@cherry/mobile-shared";
 
 export * from "./api/activity-api";
 export * from "./api/auth-api";
+export * from "./api/auth-methods-api";
 export * from "./api/chat-api";
 export * from "./api/casework-api";
 export * from "./api/config-api";

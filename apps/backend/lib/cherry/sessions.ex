@@ -11,14 +11,28 @@ defmodule Cherry.Sessions do
   alias Cherry.Sessions.RefreshToken
   alias Cherry.Sessions.SessionFamily
 
-  def issue_session(%User{} = user, device_attrs) do
+  def issue_session(%User{} = user, device_attrs, identity_id \\ nil) do
     current_time = now()
 
     Multi.new()
     |> Multi.run(:active_user, fn repo, _changes ->
       case repo.one(from(u in User, where: u.id == ^user.id, lock: "FOR UPDATE")) do
-        %User{deleted_at: nil} = active_user -> {:ok, active_user}
-        _ -> {:error, :account_deleted}
+        %User{deleted_at: nil} = active_user ->
+          # A provider may have been unlinked after verification but before this
+          # account lock. Never mint a session from that removed association.
+          if is_nil(identity_id) or
+               repo.exists?(
+                 from(i in Cherry.Identity.ProviderIdentity,
+                   where: i.id == ^identity_id and i.user_id == ^user.id
+                 )
+               ) do
+            {:ok, active_user}
+          else
+            {:error, :identity_unlinked}
+          end
+
+        _ ->
+          {:error, :account_deleted}
       end
     end)
     |> Multi.run(:device, fn repo, _changes ->
@@ -136,6 +150,20 @@ defmodule Cherry.Sessions do
     |> Repo.update_all(set: [status: "revoked", revoked_at: revoked_at])
 
     from(p in PushToken, where: p.user_id == ^user_id)
+    |> Repo.update_all(set: [status: "inactive", disabled_at: revoked_at])
+
+    :ok
+  end
+
+  def revoke_other_sessions(user_id, keep_id) do
+    revoked_at = now()
+    families = from(s in SessionFamily, where: s.user_id == ^user_id and s.id != ^keep_id)
+    Repo.update_all(families, set: [revoked_at: revoked_at])
+
+    from(r in RefreshToken, where: r.session_family_id in subquery(select(families, [s], s.id)))
+    |> Repo.update_all(set: [status: "revoked", revoked_at: revoked_at])
+
+    from(p in PushToken, where: p.user_id == ^user_id and p.session_family_id != ^keep_id)
     |> Repo.update_all(set: [status: "inactive", disabled_at: revoked_at])
 
     :ok

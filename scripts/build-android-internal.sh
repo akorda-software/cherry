@@ -7,8 +7,12 @@ cd "$repo_root/apps/mobile"
 
 # Keep the development application ID/signing identity used by Google Android.
 # Do not overwrite .env, upload to a store or put server credentials in a bundle.
-export EXPO_APP_NAME=OpenCherry
 export EXPO_ANDROID_PACKAGE="${EXPO_ANDROID_PACKAGE:-app.cherry.mobile.dev}"
+if [[ "$EXPO_ANDROID_PACKAGE" == *.dev ]]; then
+  export EXPO_APP_NAME="Cherry Dev"
+else
+  export EXPO_APP_NAME=Cherry
+fi
 export EXPO_APP_SCHEME="${EXPO_APP_SCHEME:-cherry-dev}"
 export EXPO_PUBLIC_API_BASE_URL_ANDROID=https://cherry.org.es
 export EXPO_PUBLIC_API_BASE_URL_IOS=https://cherry.org.es

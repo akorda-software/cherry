@@ -293,7 +293,9 @@ En la build móvil: `EXPO_PUBLIC_APPLE_BROWSER_ENABLED=true` y el esquema
 Team ID, Key ID ni clave en el cliente. No cambia Google; Apple nativo iOS envía
 también su código de autorización para el canje y la revocación en servidor;
 web sigue sin ofrecer Apple. Requiere build nativa propia, no Expo Go. Un cambio
-del nombre visible a OpenCherry no exige cambiar Bundle ID, paquete ni OAuth.
+del título de tienda a OpenCherry no exige cambiar Bundle ID, paquete ni OAuth.
+El nombre bajo el icono sigue siendo **Cherry**, o **Cherry Dev** en desarrollo;
+el título comercial de la ficha de tienda se gestiona de forma independiente.
 
 **Protocolo y límites:**
 
@@ -328,7 +330,7 @@ sesión después de reiniciar app y acceso iOS a la misma cuenta agrupada. Proba
 también caducidad/reintento y que no se duplican identidades. El callback no existe
 en una instancia hasta desplegar y activar este bloque. En Cherry España se ha
 desplegado/activado expresamente el 18-10-2026 para pruebas internas con APK
-OpenCherry, no como lanzamiento público; las pruebas reales siguen pendientes.
+Cherry Dev, no como lanzamiento público; las pruebas reales siguen pendientes.
 
 **Revocación al borrar:** el servidor canjea el código tanto del navegador como
 de iOS (cuando `APPLE_BROWSER_ENABLED=true`, el código nativo es obligatorio).
@@ -388,7 +390,7 @@ La app lee estas variables **en tiempo de compilación** desde `apps/mobile/.env
 | `EXPO_PUBLIC_API_BASE_URL_ANDROID` | `http://10.0.2.2:4000` | URL de la API en Android (el valor por defecto es el host visto desde el emulador). Con `http://` el build permite tráfico en claro; con `https://` no |
 | `EXPO_PUBLIC_API_BASE_URL_IOS` | `http://localhost:4000` | URL de la API en iOS |
 | `EXPO_PUBLIC_API_BASE_URL_WEB` | vacío (mismo origen) | URL de la API en web |
-| `EXPO_APP_NAME` | `OpenCherry` | Nombre del cliente en el teléfono y en las tiendas, y en los textos de permisos del sistema (fotos, cámara, ubicación, NFC); la instancia propia sigue siendo Cherry España |
+| `EXPO_APP_NAME` | `Cherry` | Nombre bajo el icono y en los permisos del sistema; desarrollo usa `Cherry Dev`. El título de tienda `OpenCherry` es independiente; la instancia propia sigue siendo Cherry España |
 | `EXPO_APP_SLUG` | `cherry` | Slug del proyecto de Expo/EAS |
 | `EXPO_APP_SCHEME` | `cherry` | Esquema de deep links (`cherry://`); también es la vuelta del flujo de Didit |
 | `EXPO_ANDROID_PACKAGE` | `app.cherry.mobile` | Paquete de Android |
@@ -408,7 +410,7 @@ EXPO_PUBLIC_API_BASE_URL_ANDROID=https://api.tu-dominio.example
 EXPO_PUBLIC_API_BASE_URL_IOS=https://api.tu-dominio.example
 EXPO_PUBLIC_API_BASE_URL_WEB=https://api.tu-dominio.example
 
-EXPO_APP_NAME=OpenCherry
+EXPO_APP_NAME=Cherry
 EXPO_ANDROID_PACKAGE=tu.dominio.cherry
 EXPO_IOS_BUNDLE_IDENTIFIER=tu.dominio.cherry
 

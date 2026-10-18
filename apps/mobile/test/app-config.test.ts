@@ -1,10 +1,32 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("expo/config-plugins", () => ({
-  withAndroidManifest: (config: unknown, callback: (value: unknown) => unknown) => callback(config)
+  withAndroidManifest: (config: Record<string, unknown>, callback: (value: unknown) => unknown) =>
+    callback({ modResults: { manifest: { application: [{ $: {} }] } }, ...config })
 }));
 
-import { withCleartextForHttpBackend } from "../app.config";
+import createAppConfig, { withCleartextForHttpBackend } from "../app.config";
+
+afterEach(() => vi.unstubAllEnvs());
+
+describe("installed app name", () => {
+  it("defaults to Cherry independently of the OpenCherry store title", () => {
+    vi.stubEnv("EXPO_APP_NAME", undefined);
+    expect(createAppConfig().name).toBe("Cherry");
+  });
+
+  it("keeps the explicit Cherry Dev name and its separate identity", () => {
+    vi.stubEnv("EXPO_APP_NAME", "Cherry Dev");
+    vi.stubEnv("EXPO_ANDROID_PACKAGE", "app.cherry.mobile.dev");
+    vi.stubEnv("EXPO_IOS_BUNDLE_IDENTIFIER", "app.cherry.mobile.dev");
+    vi.stubEnv("EXPO_APP_SCHEME", "cherry-dev");
+    const config = createAppConfig();
+    expect(config.name).toBe("Cherry Dev");
+    expect(config.android?.package).toBe("app.cherry.mobile.dev");
+    expect(config.ios?.bundleIdentifier).toBe("app.cherry.mobile.dev");
+    expect(config.scheme).toBe("cherry-dev");
+  });
+});
 
 describe("Android cleartext configuration", () => {
   it.each(["https://cherry.example", undefined])("removes stale development HTTP permission for %s", (url) => {

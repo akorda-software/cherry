@@ -32,8 +32,8 @@ export const withCleartextForHttpBackend: ConfigPlugin<string | undefined> = (co
 
 export default (): ExpoConfig => {
   const googleIosUrlScheme = readOptionalEnv("GOOGLE_IOS_URL_SCHEME");
-  // Nombre de la app en la tienda y en los textos de permisos del sistema.
-  const appName = readOptionalEnv("EXPO_APP_NAME") ?? "OpenCherry";
+  // Nombre bajo el icono y en los permisos; el título de tienda se gestiona aparte.
+  const appName = readOptionalEnv("EXPO_APP_NAME") ?? "Cherry";
 
   const config: ExpoConfig = {
     name: appName,

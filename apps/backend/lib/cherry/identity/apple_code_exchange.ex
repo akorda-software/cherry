@@ -53,8 +53,8 @@ defmodule Cherry.Identity.AppleCodeExchange do
           retry: false,
           redirect: false,
           receive_timeout: 5_000,
-          finch: [pool_timeout: 5_000],
-          connect_options: [timeout: 5_000]
+          # Req 0.7 rejects combining :finch with legacy :connect_options.
+          finch: [pool_timeout: 5_000, conn_opts: [transport_opts: [timeout: 5_000]]]
         ],
         config[:req_options] || []
       )

@@ -69,6 +69,24 @@ defmodule Cherry.AppleRevocationTest do
     })
   end
 
+  test "real Finch transport builds for exchange and revocation without conflicting options" do
+    # Req.Test bypasses Finch entirely. A missing Unix socket exercises the real
+    # production adapter/configuration without contacting Apple or opening a port.
+    socket = Path.join(System.tmp_dir!(), "cherry-apple-missing-#{Ecto.UUID.generate()}.sock")
+
+    config =
+      Application.fetch_env!(:cherry, :apple_browser)
+      |> Keyword.put(:req_options, unix_socket: socket)
+
+    Application.put_env(:cherry, :apple_browser, config)
+
+    assert {:error, :apple_exchange_failed} =
+             AppleCodeExchange.exchange("synthetic-native-code", @native)
+
+    assert {:error, :apple_revocation_pending} =
+             AppleCodeExchange.revoke(@native, "synthetic-native-refresh")
+  end
+
   test "native code is exchanged server-side and only an encrypted refresh instruction is persisted",
        %{token: token} do
     assert {:ok, %{identity: identity}} = login(token)

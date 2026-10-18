@@ -30,15 +30,34 @@ export const withCleartextForHttpBackend: ConfigPlugin<string | undefined> = (co
     return mod;
   });
 
+// Prebuild reuses intent filters when switching between the two installed apps.
+// Never let one variant capture the other's Apple browser return.
+export const withIsolatedAuthScheme: ConfigPlugin<string> = (config, scheme) =>
+  withAndroidManifest(config, (mod) => {
+    const activity = mod.modResults.manifest.application?.[0]?.activity?.find(
+      (entry) => entry.$["android:name"] === ".MainActivity"
+    );
+    for (const filter of activity?.["intent-filter"] ?? []) {
+      if (filter.data) {
+        filter.data = filter.data.filter((data) => {
+          const candidate = data.$["android:scheme"];
+          return (candidate !== "cherry" && candidate !== "cherry-dev") || candidate === scheme;
+        });
+      }
+    }
+    return mod;
+  });
+
 export default (): ExpoConfig => {
   const googleIosUrlScheme = readOptionalEnv("GOOGLE_IOS_URL_SCHEME");
   // Nombre bajo el icono y en los permisos; el título de tienda se gestiona aparte.
   const appName = readOptionalEnv("EXPO_APP_NAME") ?? "Cherry";
+  const appScheme = readOptionalEnv("EXPO_APP_SCHEME") ?? "cherry";
 
   const config: ExpoConfig = {
     name: appName,
     slug: readOptionalEnv("EXPO_APP_SLUG") ?? "cherry",
-    scheme: readOptionalEnv("EXPO_APP_SCHEME") ?? "cherry",
+    scheme: appScheme,
     version: "0.0.0",
     platforms: ["android", "ios", "web"],
     userInterfaceStyle: "light",
@@ -114,5 +133,8 @@ export default (): ExpoConfig => {
     nfcUsageDescription: `${appName} lee el chip de tu DNI o pasaporte para comprobar que eres mayor de edad. Solo se guarda que lo eres.`
   });
 
-  return withCleartextForHttpBackend(withNfc, readOptionalEnv("EXPO_PUBLIC_API_BASE_URL_ANDROID"));
+  return withIsolatedAuthScheme(
+    withCleartextForHttpBackend(withNfc, readOptionalEnv("EXPO_PUBLIC_API_BASE_URL_ANDROID")),
+    appScheme
+  );
 };

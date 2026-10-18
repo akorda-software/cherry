@@ -5,7 +5,7 @@ vi.mock("expo/config-plugins", () => ({
     callback({ modResults: { manifest: { application: [{ $: {} }] } }, ...config })
 }));
 
-import createAppConfig, { withCleartextForHttpBackend } from "../app.config";
+import createAppConfig, { withCleartextForHttpBackend, withIsolatedAuthScheme } from "../app.config";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -39,5 +39,21 @@ describe("Android cleartext configuration", () => {
     const application = { $: { "android:usesCleartextTraffic": "false" } };
     withCleartextForHttpBackend({ modResults: { manifest: { application: [application] } } } as never, "http://192.0.2.1:4000");
     expect(application.$["android:usesCleartextTraffic"]).toBe("true");
+  });
+});
+
+describe("Android auth scheme isolation", () => {
+  it.each(["cherry", "cherry-dev", "selfhosted-cherry"])("only keeps the active Cherry variant for %s", (scheme) => {
+    const filter = { data: ["cherry", "cherry-dev", "https", "exp+cherry", "selfhosted-cherry"].map(
+      (value) => ({ $: { "android:scheme": value } })
+    ) };
+    const launcher = { action: [{ $: { "android:name": "android.intent.action.MAIN" } }] };
+    const application = { activity: [{ $: { "android:name": ".MainActivity" }, "intent-filter": [launcher, filter] }] };
+    withIsolatedAuthScheme({ modResults: { manifest: { application: [application] } } } as never, scheme);
+    expect(filter.data.map((data) => data.$["android:scheme"])).toEqual([
+      ...(scheme === "cherry" || scheme === "cherry-dev" ? [scheme] : []),
+      "https", "exp+cherry", "selfhosted-cherry"
+    ]);
+    expect(launcher).not.toHaveProperty("data");
   });
 });

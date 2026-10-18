@@ -297,6 +297,24 @@ del título de tienda a OpenCherry no exige cambiar Bundle ID, paquete ni OAuth.
 El nombre bajo el icono sigue siendo **Cherry**, o **Cherry Dev** en desarrollo;
 el título comercial de la ficha de tienda se gestiona de forma independiente.
 
+**APKs internas de Cherry España:** `scripts/build-android-internal.sh` genera
+por defecto Cherry Dev contra `https://cherry.org.es`, con Apple navegador activo.
+Para actualizar también la Cherry normal ya instalada, sin cambiar su identidad:
+
+```bash
+EXPO_ANDROID_PACKAGE=app.cherry.mobile EXPO_APP_SCHEME=cherry \
+  EXPO_APP_SLUG=cherry EXPO_IOS_BUNDLE_IDENTIFIER=app.cherry.mobile \
+  bash scripts/build-android-internal.sh
+```
+
+Ambas apuntan a la misma instancia de producción; tener dos iconos no crea una
+instancia de desarrollo. Estos overrides no sobrescriben `.env`. El script
+regenera solo la caché de autolinking si cambia el paquete, y el plugin aísla
+`cherry` de `cherry-dev` para no capturar el retorno de la otra app. Antes de
+instalar con `adb install -r`, comprobar paquete y firma compatibles; no
+desinstalar para esquivar un conflicto de firma. Son builds con firma interna,
+no artefactos firmados/autorizados para publicar en tiendas.
+
 **Protocolo y límites:**
 
 - El móvil crea un verificador aleatorio y envía solo su desafío S256, un nonce y

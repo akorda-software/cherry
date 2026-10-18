@@ -29,6 +29,20 @@ export CI=1
 test -x "$JAVA_HOME/bin/java"
 test -d "$ANDROID_HOME"
 pnpm exec expo prebuild --platform android --no-install
+# React Native's generated autolinking cache otherwise retains the previous
+# package's BuildConfig references when alternating Cherry and Cherry Dev.
+node --input-type=module - "$EXPO_ANDROID_PACKAGE" <<'NODE'
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
+const cache = "android/build/generated/autolinking/autolinking.json";
+if (existsSync(cache)) {
+  const cachedPackage = JSON.parse(readFileSync(cache, "utf8")).project?.android?.packageName;
+  if (cachedPackage !== process.argv[2]) {
+    unlinkSync(cache);
+    const fingerprint = "android/build/generated/autolinking/package.json.sha";
+    if (existsSync(fingerprint)) unlinkSync(fingerprint);
+  }
+}
+NODE
 cd android
 ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a \
   --no-daemon --console=plain --max-workers=4

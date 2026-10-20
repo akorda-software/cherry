@@ -1,9 +1,11 @@
 defmodule CherryWeb.BackofficeTeamController do
   use CherryWeb, :controller
   alias Cherry.Backoffice.Team
+  alias Cherry.Casework
   alias CherryWeb.Plugs.BackofficeSession
   plug(:put_layout, false)
   plug(:put_root_layout, false)
+  plug(:put_view, html: CherryWeb.BackofficeHTML)
   plug(:require_staff)
 
   defp require_staff(conn, opts), do: BackofficeSession.require_staff(conn, opts)
@@ -19,8 +21,16 @@ defmodule CherryWeb.BackofficeTeamController do
 
   def update(conn, %{"id" => id} = params) do
     case Team.update(conn.assigns.current_staff, id, params) do
-      {:ok, _} -> redirect(conn, to: ~p"/backoffice/team")
-      error -> failure(conn, error)
+      {:ok, staff} ->
+        conn
+        |> put_flash(
+          :info,
+          "Cambios guardados para #{staff.email}. Sus sesiones abiertas se han cerrado."
+        )
+        |> redirect(to: ~p"/backoffice/team")
+
+      error ->
+        failure(conn, error)
     end
   end
 
@@ -31,37 +41,66 @@ defmodule CherryWeb.BackofficeTeamController do
     end
   end
 
-  defp listing(conn, params, error) do
-    offset = Cherry.Casework.offset(params)
+  def activity(conn, params) do
+    params = Map.take(params, ~w(group person offset))
 
-    case Team.list(conn.assigns.current_staff, offset) do
-      {:ok, staff} ->
-        conn
-        |> put_view(html: CherryWeb.BackofficeHTML)
-        |> render(:team, staff: staff, error: error, offset: offset)
+    case Casework.activity(conn.assigns.current_staff, params) do
+      {:ok, data} ->
+        render(
+          conn,
+          :activity,
+          Map.merge(data, %{params: params, offset: Casework.offset(params)})
+        )
 
       _ ->
-        conn |> put_status(:forbidden) |> text("Solo el superusuario puede gestionar el equipo.")
+        forbidden(conn)
     end
   end
 
-  defp invitation(conn, %{staff: staff, code: code}) do
-    conn
-    |> put_view(html: CherryWeb.BackofficeHTML)
-    |> render(:invitation_created, invited_staff: staff, code: code)
+  defp listing(conn, params, error) do
+    offset = Casework.offset(params)
+    actor = conn.assigns.current_staff
+
+    with {:ok, staff} <- Team.list(actor, offset),
+         {:ok, signals} <- Team.signals(actor, Enum.map(staff, & &1.id)) do
+      render(conn, :team, staff: staff, signals: signals, error: error, offset: offset)
+    else
+      _ -> forbidden(conn)
+    end
   end
 
-  defp failure(conn, {:error, :forbidden}),
-    do: conn |> put_status(:forbidden) |> text("No tienes permiso para gestionar el equipo.")
+  defp invitation(conn, %{staff: staff, code: code}),
+    do: render(conn, :invitation_created, invited_staff: staff, code: code)
 
-  defp failure(conn, {:error, :not_found}),
-    do: conn |> put_status(:not_found) |> text("Cuenta no encontrada.")
+  defp forbidden(conn) do
+    conn
+    |> put_status(:forbidden)
+    |> render(:error,
+      title: "Solo para superusuarios",
+      message:
+        "La gestión del equipo y el registro de actividad están reservados al superusuario. Si necesitas un cambio de permisos, pídeselo."
+    )
+  end
+
+  defp failure(conn, {:error, :forbidden}), do: forbidden(conn)
+
+  defp failure(conn, {:error, :not_found}) do
+    conn
+    |> put_status(:not_found)
+    |> render(:error,
+      title: "No encontramos esa cuenta",
+      message: "Puede que la referencia esté mal copiada. Vuelve al equipo y elige a la persona."
+    )
+  end
 
   defp failure(conn, {:error, :last_superadmin}),
     do:
       conn
       |> put_status(:conflict)
-      |> listing(%{}, "Debe quedar al menos un superusuario activo.")
+      |> listing(
+        %{},
+        "Debe quedar al menos un superusuario activo. Activa antes a otra persona como superusuario."
+      )
 
   defp failure(conn, _),
     do:

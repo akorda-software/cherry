@@ -1,0 +1,111 @@
+<.shell title="Actividad" staff={@current_staff} section="activity" flash={@flash}>
+  <div class="page-head">
+    <div>
+      <h1>Actividad</h1>
+      <p class="muted">
+        Quién ha hecho qué en el panel, de lo más reciente a lo más antiguo. Se guarda la acción, nunca el texto de relatos, respuestas o notas.
+      </p>
+    </div>
+  </div>
+
+  <div class="filters">
+    <nav class="chips" aria-label="Tipo de actividad">
+      <a
+        href={~p"/backoffice/activity?#{Map.take(@params, ["person"])}"}
+        class="chip"
+        aria-current={if @params["group"] in [nil, ""], do: "true"}
+      >
+        Todo menos consultas
+      </a>
+      <a
+        :for={group <- ~w(decisions assignments notes intake team access views all)}
+        href={
+          ~p"/backoffice/activity?#{Map.merge(Map.take(@params, ["person"]), %{"group" => group})}"
+        }
+        class="chip"
+        aria-current={if @params["group"] == group, do: "true"}
+      >
+        {if group == "all", do: "Todo", else: activity_group_label(group)}
+      </a>
+    </nav>
+    <form class="person-filter" action={~p"/backoffice/activity"} method="get">
+      <input :if={@params["group"]} type="hidden" name="group" value={@params["group"]} />
+      <label for="person">Persona</label>
+      <select id="person" name="person">
+        <option value="">Todo el equipo y el sistema</option>
+        <option
+          :for={member <- @people}
+          value={member.id}
+          selected={@params["person"] == member.id}
+        >
+          {member.email}
+        </option>
+      </select>
+      <button class="btn btn-sm" type="submit">Filtrar</button>
+    </form>
+  </div>
+
+  <div :if={@entries == []} class="card empty">
+    <CherryWeb.Brand.mochi size={88} />
+    <h2>Sin actividad con estos filtros.</h2>
+    <a class="btn" href={~p"/backoffice/activity"}>Quitar filtros</a>
+  </div>
+
+  <div :if={@entries != []} class="card table-card">
+    <table class="queue log">
+      <caption class="sr-only">Registro de actividad, hasta 50 por página</caption>
+      <thead>
+        <tr>
+          <th scope="col">Cuándo</th>
+          <th scope="col">Quién</th>
+          <th scope="col">Qué</th>
+          <th scope="col">Expediente</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={event <- @entries}>
+          <td>
+            <span class="age">{ago(event.inserted_at)}</span>
+            <time class="detail" datetime={iso(event.inserted_at)}>
+              {date(event.inserted_at)}
+            </time>
+          </td>
+          <td>
+            <span class={["log-actor", event.staff_id == @current_staff.id && "is-me"]}>
+              {actor(event, @names, @current_staff)}
+            </span>
+          </td>
+          <td>
+            <strong class={"log-action log-" <> event.action}>{label(event.action)}</strong>
+            <span :if={event_detail(event, @names, @current_staff)} class="detail">
+              {event_detail(event, @names, @current_staff)}
+            </span>
+          </td>
+          <td>
+            <a :if={event.case_id} class="case-id" href={~p"/backoffice/cases/#{event.case_id}"}>
+              {short_id(event.case_id)}
+            </a>
+            <span :if={!event.case_id} class="muted">—</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <nav class="pagination" aria-label="Páginas">
+    <a
+      :if={@offset > 0}
+      class="btn btn-sm"
+      href={~p"/backoffice/activity?#{Map.put(@params, "offset", max(0, @offset - 50))}"}
+    >
+      Anterior
+    </a>
+    <a
+      :if={length(@entries) == 50 and @offset < 10000}
+      class="btn btn-sm"
+      href={~p"/backoffice/activity?#{Map.put(@params, "offset", @offset + 50)}"}
+    >
+      Siguiente
+    </a>
+  </nav>
+</.shell>

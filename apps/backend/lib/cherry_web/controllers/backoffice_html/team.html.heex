@@ -1,90 +1,181 @@
-<.shell title="Equipo y permisos" staff={@current_staff}>
-  <div class="heading">
+<.shell title="Equipo y permisos" staff={@current_staff} section="team" flash={@flash}>
+  <div class="page-head">
     <div>
       <h1>Equipo y permisos</h1>
-      <p>Accesos personales, separados de las cuentas de Cherry.</p>
+      <p class="muted">
+        Accesos personales, separados de las cuentas de Cherry. Una persona, una cuenta.
+      </p>
     </div>
   </div>
-  <p :if={@error} class="error" role="alert">{@error}</p>
-  <section class="workspace">
-    <div>
-      <h2>Personas del equipo</h2>
-      <p class="hint">
-        Cambiar permisos o desactivar una cuenta revoca sus sesiones. Debe quedar un superusuario activo.
-      </p>
-      <article :for={person <- @staff} class="team-person">
-        <h3>{person.email}</h3>
-        <p>
-          {if person.disabled_at,
-            do: "Acceso desactivado",
-            else: if(person.password_hash, do: "Cuenta activada", else: "Pendiente de activar")}
+  <p :if={@error} class="alert alert-error" role="alert">{@error}</p>
+  <div class="workspace">
+    <section class="column" aria-labelledby="people-title">
+      <div class="section-head">
+        <h2 id="people-title">Personas del equipo</h2>
+        <p class="hint">
+          Cambiar permisos o desactivar una cuenta cierra sus sesiones. Debe quedar un superusuario activo.
         </p>
-        <.form for={%{}} action={~p"/backoffice/team/#{person.id}"}>
-          <label for={"role-#{person.id}"}>Permisos</label>
-          <select id={"role-#{person.id}"} name="role">
-            <option
-              :for={role <- ~w(superadmin admin moderator privacy)}
-              value={role}
-              selected={person.role == role}
-            >
-              {label(role)}
-            </option>
-          </select>
-          <label for={"disabled-#{person.id}"}>Estado</label>
-          <select id={"disabled-#{person.id}"} name="disabled">
-            <option value="false" selected={is_nil(person.disabled_at)}>Activo</option>
-            <option value="true" selected={not is_nil(person.disabled_at)}>Desactivado</option>
-          </select>
-          <button type="submit">Guardar permisos</button>
+      </div>
+      <article
+        :for={person <- @staff}
+        class={["card person", person.disabled_at && "is-disabled"]}
+      >
+        <% invitation = @signals.invitations[person.id]
+
+        status =
+          cond do
+            person.disabled_at -> :disabled
+            person.password_hash -> :active
+            is_nil(invitation) -> :console
+            DateTime.compare(invitation, DateTime.utc_now()) == :gt -> :invited
+            true -> :expired
+          end
+
+        blocked? =
+          person.login_blocked_until &&
+            DateTime.compare(person.login_blocked_until, DateTime.utc_now()) == :gt
+
+        last_login = @signals.last_login[person.id]
+        open_cases = Map.get(@signals.open_cases, person.id, 0) %>
+        <header class="person-head">
+          <span class="avatar" aria-hidden="true">{initial(person.email)}</span>
+          <div>
+            <h3>{person.email}</h3>
+            <p class="person-state">
+              <span class={"role role-" <> person.role}>{label(person.role)}</span>
+              <span :if={status == :disabled} class="state state-disabled">
+                Acceso desactivado
+              </span>
+              <span :if={status == :active} class="state state-active">Cuenta activada</span>
+              <span :if={status == :console} class="state state-active">
+                Entra con código de consola
+              </span>
+              <span :if={status == :invited} class="state state-pending">
+                Invitación pendiente hasta el {date(invitation)}
+              </span>
+              <span :if={status == :expired} class="state state-late">Invitación caducada</span>
+              <span :if={!person.disabled_at && blocked?} class="state state-late">
+                Bloqueada por intentos hasta las {time(person.login_blocked_until)} UTC
+              </span>
+              <span :if={person.id == @current_staff.id} class="state">Eres tú</span>
+            </p>
+          </div>
+        </header>
+        <ul class="person-facts">
+          <li>
+            <CherryWeb.Brand.icon name="key" />
+            {if last_login, do: "Último acceso " <> ago(last_login), else: "Nunca ha entrado"}
+          </li>
+          <li>
+            <CherryWeb.Brand.icon name="inbox" />
+            {plural(
+              open_cases,
+              "1 expediente abierto asignado",
+              "%d expedientes abiertos asignados"
+            )}
+          </li>
+          <li>
+            <CherryWeb.Brand.icon name="clock" />
+            <a href={~p"/backoffice/activity?#{%{person: person.id}}"}>Ver su actividad</a>
+          </li>
+        </ul>
+        <p :if={status == :expired} class="alert alert-warn">
+          La invitación ya no sirve. Usa «Restablecer acceso e invitar» para generar otra y entrégala por un canal privado.
+        </p>
+        <p :if={person.id == @current_staff.id} class="hint person-self">
+          Es tu cuenta: tu contraseña y tus sesiones están en <a href={~p"/backoffice/account"}>Mi acceso</a>.
+          Para cambiar tus permisos, pídeselo a otra persona superusuaria.
+        </p>
+        <.form
+          :if={person.id != @current_staff.id}
+          for={%{}}
+          action={~p"/backoffice/team/#{person.id}"}
+          class="person-form"
+        >
+          <div class="field">
+            <label for={"role-#{person.id}"}>Permisos</label>
+            <select id={"role-#{person.id}"} name="role">
+              <option
+                :for={role <- ~w(superadmin admin moderator privacy)}
+                value={role}
+                selected={person.role == role}
+              >
+                {label(role)}
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label for={"disabled-#{person.id}"}>Estado</label>
+            <select id={"disabled-#{person.id}"} name="disabled">
+              <option value="false" selected={is_nil(person.disabled_at)}>Activo</option>
+              <option value="true" selected={not is_nil(person.disabled_at)}>Desactivado</option>
+            </select>
+          </div>
+          <button class="btn btn-sm" type="submit">Guardar cambios</button>
         </.form>
         <.form
-          :if={is_nil(person.disabled_at)}
+          :if={is_nil(person.disabled_at) and person.id != @current_staff.id}
           for={%{}}
           action={~p"/backoffice/team/#{person.id}/reset-access"}
+          class="person-reset"
         >
           <p class="hint">
-            La invitación de recuperación invalida la contraseña y todas las sesiones actuales.
+            Invalida su contraseña y todas sus sesiones, y genera una invitación nueva.
           </p>
-          <button class="secondary" type="submit">Restablecer acceso e invitar</button>
+          <button class="btn btn-sm btn-danger" type="submit">
+            Restablecer acceso e invitar
+          </button>
         </.form>
       </article>
       <nav class="pagination" aria-label="Páginas del equipo">
-        <a :if={@offset > 0} href={~p"/backoffice/team?#{%{offset: max(@offset - 50, 0)}}"}>
+        <a
+          :if={@offset > 0}
+          class="btn btn-sm"
+          href={~p"/backoffice/team?#{%{offset: max(@offset - 50, 0)}}"}
+        >
           Anterior
         </a>
         <a
           :if={length(@staff) == 50 and @offset < 10000}
+          class="btn btn-sm"
           href={~p"/backoffice/team?#{%{offset: @offset + 50}}"}
         >
           Siguiente
         </a>
       </nav>
-    </div>
-    <aside>
-      <h2>Invitar a una persona</h2>
-      <.form for={%{}} action={~p"/backoffice/team"}>
-        <label for="invite-email">Correo</label>
-        <input id="invite-email" name="email" type="email" required maxlength="254" />
-        <label for="invite-role">Permisos iniciales</label>
-        <select id="invite-role" name="role">
-          <option value="moderator">Moderación</option>
-          <option value="privacy">Privacidad</option>
-          <option value="admin">Administración</option>
-          <option value="superadmin">Superusuario</option>
-        </select>
-        <button type="submit">Crear invitación</button>
-      </.form>
-      <h2>Qué permite cada rol</h2>
-      <dl>
-        <dt>Superusuario</dt>
-        <dd>Gestiona el equipo y todos los expedientes.</dd>
-        <dt>Administración</dt>
-        <dd>Atiende todas las áreas y recupera asignaciones. No concede permisos.</dd>
-        <dt>Moderación</dt>
-        <dd>Reportes, reclamaciones de servicio y recursos. Sin solicitudes de privacidad.</dd>
-        <dt>Privacidad</dt>
-        <dd>Solicitudes de derechos. Sin expedientes de moderación.</dd>
-      </dl>
+    </section>
+    <aside class="side">
+      <section class="card card-invite" aria-labelledby="invite-title">
+        <h2 id="invite-title">Invitar a una persona</h2>
+        <.form for={%{}} action={~p"/backoffice/team"} class="stack">
+          <div class="field">
+            <label for="invite-email">Correo</label>
+            <input id="invite-email" name="email" type="email" required maxlength="254" />
+          </div>
+          <div class="field">
+            <label for="invite-role">Permisos iniciales</label>
+            <select id="invite-role" name="role">
+              <option value="moderator">Moderación</option>
+              <option value="privacy">Privacidad</option>
+              <option value="admin">Administración</option>
+              <option value="superadmin">Superusuario</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">Crear invitación</button>
+          <p class="hint">
+            No se envía ningún correo: verás un código de un solo uso para entregarlo en privado.
+          </p>
+        </.form>
+      </section>
+      <section class="card" aria-labelledby="roles-title">
+        <h2 id="roles-title">Qué permite cada rol</h2>
+        <dl class="roles">
+          <div :for={role <- ~w(superadmin admin moderator privacy)}>
+            <dt><span class={"role role-" <> role}>{label(role)}</span></dt>
+            <dd>{role_text(role)}</dd>
+          </div>
+        </dl>
+      </section>
     </aside>
-  </section>
+  </div>
 </.shell>

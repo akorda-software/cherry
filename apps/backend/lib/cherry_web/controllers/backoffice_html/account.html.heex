@@ -1,35 +1,89 @@
-<.shell title="Mi acceso" staff={@current_staff}>
-  <section class="login">
-    <h1>Tu acceso personal</h1>
-    <p :if={@current_staff.password_change_required} class="hint">
-      Sustituye la contraseña temporal antes de consultar expedientes o gestionar el equipo.
-    </p>
-    <p>
-      La nueva contraseña revoca todas tus sesiones e invitaciones. Después vuelve a iniciar sesión.
-    </p>
-    <p :if={@error} role="alert" class="error">{@error}</p>
-    <.form for={%{}} action={~p"/backoffice/account"}>
-      <label for="current-password">Contraseña actual</label>
-      <input
-        id="current-password"
-        name="current_password"
-        type="password"
-        required
-        autocomplete="current-password"
-        maxlength="256"
-      />
-      <label for="password">Contraseña nueva</label>
-      <input
-        id="password"
-        name="password"
-        type="password"
-        required
-        autocomplete="new-password"
-        minlength="16"
-        maxlength="256"
-      />
-      <p class="hint">Utiliza una frase larga y única o un gestor. No compartas tu cuenta.</p>
-      <button type="submit">Cambiar contraseña y cerrar sesiones</button>
-    </.form>
-  </section>
+<.shell title="Mi acceso" staff={@current_staff} section="account" flash={@flash}>
+  <div class="page-head">
+    <div>
+      <h1>Mi acceso</h1>
+      <p class="muted">Tu cuenta del equipo es personal. No la compartas con nadie.</p>
+    </div>
+  </div>
+  <p :if={@current_staff.password_change_required} class="alert alert-warn">
+    Sustituye la contraseña temporal antes de consultar expedientes o gestionar el equipo.
+  </p>
+  <div class="account-grid">
+    <section
+      :if={!@current_staff.password_change_required}
+      class="card"
+      aria-labelledby="me-title"
+    >
+      <h2 id="me-title">Tu cuenta</h2>
+      <dl class="summary">
+        <div>
+          <dt>Correo</dt>
+          <dd>{@current_staff.email}</dd>
+        </div>
+        <div>
+          <dt>Rol</dt>
+          <dd>
+            <span class={"role role-" <> @current_staff.role}>{label(@current_staff.role)}</span>
+            <span class="role-text">{role_text(@current_staff.role)}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Sesiones abiertas</dt>
+          <dd>
+            {plural(@sessions.count, "1 sesión", "%d sesiones")}
+            <span :if={@sessions.current} class="role-text">
+              Esta caduca a las {time(@sessions.current.expires_at)} UTC.
+            </span>
+          </dd>
+        </div>
+      </dl>
+      <.form for={%{}} action={~p"/backoffice/account/sessions"} class="sessions-form">
+        <button class="btn btn-sm" type="submit" disabled={@sessions.count <= 1}>
+          <CherryWeb.Brand.icon name="logout" /> Cerrar mis otras sesiones
+        </button>
+        <p class="hint">
+          {if @sessions.count <= 1,
+            do: "Solo tienes esta sesión abierta.",
+            else: "Útil si entraste desde otro equipo y no cerraste sesión."}
+        </p>
+      </.form>
+    </section>
+
+    <section class="card" aria-labelledby="password-title">
+      <h2 id="password-title">Cambiar contraseña</h2>
+      <p class="muted">
+        La nueva contraseña cierra todas tus sesiones, también esta. Después vuelve a entrar.
+      </p>
+      <p :if={@error} role="alert" class="alert alert-error">{@error}</p>
+      <.form for={%{}} action={~p"/backoffice/account"} class="stack">
+        <div class="field">
+          <label for="current-password">Contraseña actual</label>
+          <input
+            id="current-password"
+            name="current_password"
+            type="password"
+            required
+            autocomplete="current-password"
+            maxlength="256"
+          />
+        </div>
+        <div class="field">
+          <label for="password">Contraseña nueva</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            autocomplete="new-password"
+            minlength="16"
+            maxlength="256"
+          />
+          <p class="hint">Al menos 16 caracteres. Mejor una frase larga y única, o un gestor.</p>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">
+          Cambiar contraseña y cerrar sesiones
+        </button>
+      </.form>
+    </section>
+  </div>
 </.shell>

@@ -153,7 +153,9 @@ config :phoenix, :filter_parameters, [
   "user",
   "statement",
   "response",
-  "details"
+  "details",
+  # Internal backoffice notes on a case.
+  "note"
 ]
 
 # Use Jason for JSON parsing in Phoenix

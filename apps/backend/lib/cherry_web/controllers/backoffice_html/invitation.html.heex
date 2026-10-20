@@ -1,35 +1,42 @@
-<.shell title="Aceptar invitación">
-  <section class="login">
-    <h1>Tu sitio en el equipo.</h1>
-    <p>
-      Pega el código que te ha entregado el superusuario por un canal privado y elige tu contraseña.
-    </p>
-    <p :if={@error} class="error" role="alert">{@error}</p>
-    <.form for={%{}} action={~p"/backoffice/invitation"}>
-      <label for="invite-code">Código de invitación</label>
-      <input
-        id="invite-code"
-        name="code"
-        type="password"
-        required
-        maxlength="128"
-        autocomplete="one-time-code"
-      />
-      <label for="new-password">Contraseña nueva</label>
-      <input
-        id="new-password"
-        name="password"
-        type="password"
-        required
-        minlength="16"
-        maxlength="256"
-        autocomplete="new-password"
-      />
-      <p class="hint">
-        Al menos 16 caracteres. Usa una frase larga y única o un gestor de contraseñas.
+<.shell title="Aceptar invitación" flash={@flash}>
+  <section class="auth" aria-labelledby="auth-title">
+    <div class="auth-card">
+      <div class="auth-badge"><CherryWeb.Brand.mochi size={64} /></div>
+      <h1 id="auth-title">Tu sitio en el equipo.</h1>
+      <p class="muted">
+        Pega el código que te ha entregado el superusuario por un canal privado y elige tu contraseña.
       </p>
-      <button type="submit">Activar mi acceso</button>
-    </.form>
-    <p><a href={~p"/backoffice/login"}>Volver al acceso</a></p>
+      <p :if={@error} class="alert alert-error" role="alert">{@error}</p>
+      <.form for={%{}} action={~p"/backoffice/invitation"} class="stack">
+        <div class="field">
+          <label for="invite-code">Código de invitación</label>
+          <input
+            id="invite-code"
+            name="code"
+            type="password"
+            required
+            maxlength="128"
+            autocomplete="one-time-code"
+          />
+        </div>
+        <div class="field">
+          <label for="new-password">Contraseña nueva</label>
+          <input
+            id="new-password"
+            name="password"
+            type="password"
+            required
+            minlength="16"
+            maxlength="256"
+            autocomplete="new-password"
+          />
+          <p class="hint">
+            Al menos 16 caracteres. Usa una frase larga y única o un gestor de contraseñas.
+          </p>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Activar mi acceso</button>
+      </.form>
+      <p class="auth-link"><a href={~p"/backoffice/login"}>Volver al acceso</a></p>
+    </div>
   </section>
 </.shell>

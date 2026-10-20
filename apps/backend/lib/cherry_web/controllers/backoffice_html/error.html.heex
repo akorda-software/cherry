@@ -1,0 +1,13 @@
+<.shell title={@title} staff={@current_staff} flash={@flash}>
+  <section class="auth" aria-labelledby="error-title">
+    <div class="auth-card error-card">
+      <span class="auth-badge" aria-hidden="true"><CherryWeb.Brand.mochi size={64} /></span>
+      <h1 id="error-title">{@title}</h1>
+      <p class="muted">{@message}</p>
+      <div class="error-actions">
+        <a class="btn btn-primary" href={~p"/backoffice/cases"}>Ir a expedientes</a>
+        <a class="btn" href={~p"/backoffice"}>Inicio</a>
+      </div>
+    </div>
+  </section>
+</.shell>

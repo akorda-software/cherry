@@ -271,6 +271,64 @@ defmodule Cherry.Backoffice.Access do
 
   def logout(_), do: {:ok, :ok}
 
+  @doc "How many sessions the member has open and when the current one expires."
+  def sessions(%Staff{id: id}, token) do
+    current = if is_binary(token), do: hash(token)
+
+    rows =
+      Repo.all(
+        from(c in Credential,
+          where: c.staff_id == ^id and c.kind == "session" and c.expires_at > ^now(),
+          select: %{
+            token_hash: c.token_hash,
+            inserted_at: c.inserted_at,
+            expires_at: c.expires_at
+          }
+        )
+      )
+
+    %{
+      count: length(rows),
+      current:
+        case Enum.find(rows, &(&1.token_hash == current)) do
+          nil -> nil
+          row -> Map.delete(row, :token_hash)
+        end
+    }
+  end
+
+  @doc "Revokes every other session of the member and keeps the one in use."
+  def revoke_other_sessions(%Staff{id: id}, token) when is_binary(token) do
+    Repo.transaction(fn ->
+      # Same staff -> credential lock order as logout/disable/exchange.
+      staff =
+        Repo.one(
+          from(s in Staff, where: s.id == ^id and is_nil(s.disabled_at), lock: "FOR UPDATE")
+        ) || Repo.rollback(:forbidden)
+
+      current = hash(token)
+
+      if !Repo.exists?(
+           from(c in Credential,
+             where: c.staff_id == ^staff.id and c.kind == "session" and c.token_hash == ^current
+           )
+         ),
+         do: Repo.rollback(:forbidden)
+
+      {count, _} =
+        Repo.delete_all(
+          from(c in Credential,
+            where: c.staff_id == ^staff.id and c.kind == "session" and c.token_hash != ^current
+          )
+        )
+
+      Audit.record!("staff_sessions_revoked", %{staff_id: staff.id, metadata: %{count: count}})
+      count
+    end)
+  end
+
+  def revoke_other_sessions(_, _), do: {:error, :forbidden}
+
   def authorize!(%Staff{id: id}, permission) do
     staff =
       Repo.one(from(s in Staff, where: s.id == ^id and is_nil(s.disabled_at), lock: "FOR SHARE")) ||

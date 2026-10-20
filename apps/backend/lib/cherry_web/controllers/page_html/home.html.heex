@@ -1,100 +1,500 @@
 <.site
-  title="Conocer gente, sin trucos"
-  description="Cherry: una app de citas gratuita, de código abierto y sin anuncios. Conoce el proyecto y cómo cuida tus datos."
+  title="La app para conocer gente que es de todos"
+  description="Cherry es una app para conocer gente hecha para la gente: todo el mundo tiene la app entera, sin límites, y siempre sabes por qué ves a cada persona."
   instance={@instance}
 >
-  <section class="hero">
+  <section class="hero" aria-labelledby="hero-title">
     <div class="hero-copy">
-      <h1>Las buenas conexiones no llevan tarifa.</h1>
+      <h1 id="hero-title">La app para conocer gente que es de <mark>todos.</mark></h1>
       <p class="lede">
-        Una app para conocer gente sin suscripciones, sin anuncios y sin convertir tu atención en un negocio.
+        En Cherry todo el mundo tiene la app entera, sin límites ni letra pequeña, y siempre sabes por qué ves a cada persona. Pareja, algo casual, amistad o a ver qué pasa: tú decides.
       </p>
-      <a class="button" href={~p"/transparencia"}>Conoce Cherry</a>
-      <p class="small">
-        El proyecto está en preparación. Todavía no anunciamos su disponibilidad en las tiendas.
+      <div class="actions">
+        <a class="btn btn-primary btn-lg" href="#como-funciona">Así funciona</a>
+        <a class="btn btn-lg" href="#por-que">Por qué ves a quien ves</a>
+      </div>
+      <p class="status-note">
+        <span class="status-dot" aria-hidden="true"></span>
+        Cherry está en preparación y todavía no está en las tiendas.
       </p>
     </div>
-    <div class="cherry-poster" aria-hidden="true">
-      <svg viewBox="0 0 400 400" role="presentation">
-        <path
-          d="M136 213C158 142 185 96 213 64C211 131 250 160 279 217"
-          fill="none"
-          stroke="#29233a"
-          stroke-width="12"
-          stroke-linecap="round"
-        />
-        <path
-          d="M212 69C268 23 313 45 320 76C271 98 238 94 212 69Z"
-          fill="#c5f2d4"
-          stroke="#29233a"
-          stroke-width="7"
-        />
-        <circle cx="124" cy="271" r="83" fill="#ff9fbf" stroke="#29233a" stroke-width="7" />
-        <circle cx="280" cy="271" r="83" fill="#ff9fbf" stroke="#29233a" stroke-width="7" />
-        <path
-          d="M100 256v9m48-9v9m108-9v9m48-9v9"
-          stroke="#29233a"
-          stroke-width="7"
-          stroke-linecap="round"
-        />
-        <path
-          d="M112 281q12 14 24 0m132 0q12 14 24 0"
-          fill="none"
-          stroke="#29233a"
-          stroke-width="5"
-          stroke-linecap="round"
-        />
-        <path
-          d="M72 231q10-19 28-22m130 22q10-19 28-22"
-          fill="none"
-          stroke="#fff9fb"
-          stroke-width="9"
-          stroke-linecap="round"
-        />
-      </svg>
-      <span class="poster-sticker">Gratis. De verdad.</span>
+
+    <div
+      class="scene"
+      role="img"
+      aria-label="Dos perfiles de Cherry con etiquetas en común, un sello de match y el primer mensaje: ¿Ruta y café el sábado?"
+    >
+      <.sheet id="hoja-portada-b" paper="cuadriculada" class="paper-limonada sheet-hero-b" />
+      <.sheet id="hoja-portada-a" paper="rayada" class="paper-cielo sheet-hero-a" />
+      <.deco shape="heart" class="deco-fresa deco-hero-heart" lift={2} />
+      <div class="polaroid polaroid-a" aria-hidden="true">
+        <span class="washi washi-left"></span>
+        <div class="photo">
+          <svg viewBox="0 0 240 190" preserveAspectRatio="xMidYMid slice">
+            <rect width="240" height="190" fill="#D8F0FF" />
+            <circle cx="176" cy="52" r="24" fill="#FFC53D" stroke="#1D1426" stroke-width="3.5" />
+            <path
+              d="M-6 150 62 70l38 40 34-46 112 96v40H-6Z"
+              fill="#A58BFF"
+              stroke="#1D1426"
+              stroke-width="3.5"
+              stroke-linejoin="round"
+            />
+            <path
+              d="m62 70 38 40-14-6-12 10-12-12-10 8Z"
+              fill="#fff"
+              stroke="#1D1426"
+              stroke-width="3"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M-6 168c40-22 82-30 128-22s84 4 124-12v66H-6Z"
+              fill="#62D98C"
+              stroke="#1D1426"
+              stroke-width="3.5"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M96 196c6-14 18-26 34-34"
+              fill="none"
+              stroke="#1D1426"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-dasharray="2 9"
+            />
+          </svg>
+          <span class="name-sticker">Lucía, 29</span>
+        </div>
+        <ul class="mini-tags">
+          <li class="shared">🥾 Senderismo</li>
+          <li class="shared">☕ Café</li>
+          <li>🐶 Perros</li>
+        </ul>
+      </div>
+
+      <div class="polaroid polaroid-b" aria-hidden="true">
+        <span class="washi washi-right"></span>
+        <div class="photo">
+          <svg viewBox="0 0 240 190" preserveAspectRatio="xMidYMid slice">
+            <rect width="240" height="190" fill="#E9E3FF" />
+            <path d="M0 132h240v58H0Z" fill="#FFF1D0" stroke="#1D1426" stroke-width="3.5" />
+            <rect
+              x="38"
+              y="112"
+              width="112"
+              height="26"
+              rx="4"
+              fill="#5EC0FF"
+              stroke="#1D1426"
+              stroke-width="3.5"
+              transform="rotate(-6 94 125)"
+            />
+            <ellipse
+              cx="150"
+              cy="140"
+              rx="56"
+              ry="11"
+              fill="#fff"
+              stroke="#1D1426"
+              stroke-width="3.5"
+            />
+            <path
+              d="M188 92c22-2 24 30 0 30"
+              fill="none"
+              stroke="#1D1426"
+              stroke-width="7"
+              stroke-linecap="round"
+            />
+            <path
+              d="M188 92c22-2 24 30 0 30"
+              fill="none"
+              stroke="#FF6B57"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M112 78h80l-8 52c-1 6-6 10-12 10h-40c-6 0-11-4-12-10Z"
+              fill="#FF6B57"
+              stroke="#1D1426"
+              stroke-width="3.5"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M136 64c-6-8 6-12 0-22M156 62c-6-8 6-12 0-22M176 64c-6-8 6-12 0-22"
+              fill="none"
+              stroke="#1D1426"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+            <path
+              d="M140 104c4 4 9 4 13 0"
+              fill="none"
+              stroke="#1D1426"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span class="name-sticker">Dani, 31</span>
+        </div>
+        <ul class="mini-tags">
+          <li class="shared">☕ Café</li>
+          <li class="shared">🥾 Senderismo</li>
+          <li>🎮 Videojuegos</li>
+        </ul>
+      </div>
+
+      <div class="stamp" aria-hidden="true"><span>¡Match!</span></div>
+      <p class="typing" aria-hidden="true"><span></span><span></span><span></span></p>
+      <p class="bubble" aria-hidden="true">¿Ruta y café el sábado?</p>
+      <.deco shape="sparkle" class="deco-limonada deco-hero-sparkle" />
     </div>
+    <.deco shape="star" class="deco-limonada deco-hero-star" lift={3} />
   </section>
-  <section class="manifesto" aria-labelledby="manifiesto">
-    <h2 id="manifiesto">Que encajéis importa más que que os quedéis.</h2>
-    <div class="manifesto-list">
-      <article>
-        <span aria-hidden="true">🏷️</span>
-        <div>
-          <h3>Lo que tenéis en común</h3>
-          <p>
-            Etiquetas y preferencias para encontrar personas compatibles. Los límites que marcas cuentan en las dos direcciones.
-          </p>
-        </div>
-      </article>
-      <article>
-        <span aria-hidden="true">💬</span>
-        <div>
-          <h3>Os gustáis. Habláis.</h3>
-          <p>
-            Likes visibles y conversación tras un match mutuo. Sin pagar para descubrir quién quiere conocerte.
-          </p>
-        </div>
-      </article>
-      <article>
-        <span aria-hidden="true">🌱</span>
-        <div>
-          <h3>Tú decides cuándo parar</h3>
-          <p>
-            Pausa, bloquea, reporta o elimina tu cuenta. Volver a empezar no recupera una cuenta borrada.
-          </p>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="open-note">
-    <div>
-      <h2>El código, a la vista.<br />Tus datos, no.</h2>
+
+  <section class="pass-section" aria-labelledby="para-todos">
+    <div class="section-copy">
+      <h2 id="para-todos">Todo, para todo el mundo.</h2>
       <p>
-        Cherry es de código abierto. Eso permite revisar cómo está hecha, no acceder a los perfiles ni a las conversaciones de sus usuarios.
+        Aquí no hay cuentas de primera y de segunda. Desde el primer día ves quién te ha dado like, das todos los likes que quieras y usas todos los filtros. Igual que tú, todos los demás.
       </p>
     </div>
-    <a class="button secondary" href={~p"/privacidad"}>Qué pasa con tus datos</a>
+    <div class="pass-wrap">
+      <.sheet id="hoja-carne" paper="cosida" class="paper-lavanda sheet-pass" />
+      <svg class="pass-seal" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+        <path class="seal-shadow" d={seal_path()} transform="translate(3 3)" />
+        <path class="seal-face" d={seal_path()} />
+        <circle class="seal-ring" cx="50" cy="50" r="31" />
+      </svg>
+      <.deco shape="plus" class="deco-lavanda deco-pass-plus" lift={2} />
+      <div class="pass">
+        <span class="pass-shine" aria-hidden="true"></span>
+        <div class="pass-head">
+          <CherryWeb.Brand.mochi size={52} />
+          <div>
+            <p class="pass-title">Carné de Cherry</p>
+            <p>Para cualquier persona mayor de edad</p>
+          </div>
+        </div>
+        <dl class="pass-rows">
+          <div>
+            <dt>Válido para</dt>
+            <dd>Todo</dd>
+          </div>
+          <div>
+            <dt>Caduca</dt>
+            <dd>Nunca</dd>
+          </div>
+        </dl>
+        <ul class="pass-list">
+          <li>
+            <span class="tick"><CherryWeb.Brand.icon name="check" /></span>
+            Ver quién te ha dado like
+          </li>
+          <li>
+            <span class="tick"><CherryWeb.Brand.icon name="check" /></span>
+            Dar todos los likes que quieras
+          </li>
+          <li>
+            <span class="tick"><CherryWeb.Brand.icon name="check" /></span>
+            Deshacer el último «no»
+          </li>
+          <li>
+            <span class="tick"><CherryWeb.Brand.icon name="check" /></span>
+            Filtrar por edad y distancia
+          </li>
+          <li>
+            <span class="tick"><CherryWeb.Brand.icon name="check" /></span> Hablar con cada match
+          </li>
+          <li>
+            <span class="tick"><CherryWeb.Brand.icon name="check" /></span>
+            Deslizar o bajar por el feed
+          </li>
+        </ul>
+        <div class="pass-stamp" aria-hidden="true"><span>Sin límites</span></div>
+      </div>
+    </div>
   </section>
+
+  <section class="why-section" id="por-que" aria-labelledby="por-que-title">
+    <div class="why-art" aria-hidden="true">
+      <.sheet id="hoja-por-que" paper="rota" class="paper-menta sheet-why" />
+      <svg class="why-spot" viewBox="0 0 100 100" focusable="false">
+        <circle class="spot-shadow" cx="51.5" cy="51.5" r="46" />
+        <circle class="spot-face" cx="50" cy="50" r="46" />
+        <circle class="spot-ring" cx="50" cy="50" r="37" />
+      </svg>
+      <.deco shape="heart" class="deco-fresa deco-why-heart" lift={2} />
+      <div class="polaroid polaroid-why">
+        <span class="washi washi-left"></span>
+        <div class="photo">
+          <svg viewBox="0 0 240 190" preserveAspectRatio="xMidYMid slice">
+            <rect width="240" height="190" fill="#EEF9D0" />
+            <path d="M0 150h240v40H0Z" fill="#FFF1D0" stroke="#1D1426" stroke-width="3.5" />
+            <circle cx="70" cy="128" r="30" fill="#fff" stroke="#1D1426" stroke-width="3.5" />
+            <circle cx="172" cy="128" r="30" fill="#fff" stroke="#1D1426" stroke-width="3.5" />
+            <path
+              d="M70 128 98 82h56l18 46M98 82l26 46h48M124 128 154 82M92 70h18M146 70l8 12"
+              fill="none"
+              stroke="#FF6B57"
+              stroke-width="7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle cx="124" cy="128" r="6" fill="#1D1426" />
+            <circle cx="70" cy="128" r="5" fill="#1D1426" />
+            <circle cx="172" cy="128" r="5" fill="#1D1426" />
+            <circle cx="196" cy="44" r="18" fill="#FFC53D" stroke="#1D1426" stroke-width="3.5" />
+          </svg>
+          <span class="name-sticker">Marta, 34</span>
+        </div>
+      </div>
+      <div class="why-note">
+        <p class="why-note-title">¿Por qué te sale Marta?</p>
+        <ul>
+          <li>
+            <CherryWeb.Brand.icon name="sparkle" class="why-icon" />Tenéis 3 etiquetas en común
+          </li>
+          <li><CherryWeb.Brand.icon name="heart" class="why-icon" />Buscáis lo mismo</li>
+          <li>
+            <CherryWeb.Brand.icon name="check" class="why-icon" />Le encajas tú a ella también
+          </li>
+          <li><CherryWeb.Brand.icon name="pin" class="why-icon" />Vive a unos 4 km</li>
+        </ul>
+        <p class="why-note-foot">Y ella ve lo mismo de ti.</p>
+      </div>
+    </div>
+    <div class="section-copy">
+      <h2 id="por-que-title">Sabes por qué ves a cada persona.</h2>
+      <p>
+        Cherry no esconde cómo decide. Primero solo te enseña a gente que encaja contigo y con la que tú encajas: edad, lo que buscáis, distancia y lo que cada uno ha bloqueado.
+      </p>
+      <p>
+        Después ordena sobre todo por lo que tenéis en común, y reparte la atención para que no se la lleven siempre los mismos. Nadie paga por salir antes y no hay trucos para que pases más horas mirando la pantalla.
+      </p>
+      <p><a href={~p"/transparencia"}>Las reglas, contadas con detalle</a></p>
+    </div>
+  </section>
+
+  <section class="tags-section" aria-labelledby="etiquetas">
+    <div class="section-copy">
+      <h2 id="etiquetas">Tus etiquetas mandan.</h2>
+      <p>
+        Hay {catalog_size()} etiquetas en {catalog_categories()} categorías. Eliges hasta 8 que vayan contigo y bloqueas hasta 5 que no. Quien lleve una que has bloqueado no aparece nunca en tu Descubrir, y tú tampoco en el suyo.
+      </p>
+      <p>Lo que tenéis en común pesa más que la distancia.</p>
+      <ul class="legend">
+        <li>
+          <span class="sticker sticker-liked">
+            <CherryWeb.Brand.icon name="heart" class="sticker-icon" /> Te gusta
+          </span>
+          Va contigo y sale en tu perfil.
+        </li>
+        <li>
+          <span class="sticker sticker-shared">
+            <CherryWeb.Brand.icon name="sparkle" class="sticker-icon" /> En común
+          </span>
+          La otra persona también la lleva.
+        </li>
+        <li>
+          <span class="sticker sticker-blocked">
+            <CherryWeb.Brand.icon name="close" class="sticker-icon" /> <s>Bloqueada</s>
+          </span>
+          No verás a nadie que la lleve.
+        </li>
+      </ul>
+    </div>
+    <fieldset class="tag-board">
+      <legend>Prueba: marca las que van contigo.</legend>
+      <.sheet id="hoja-etiquetas" paper="milimetrada" class="paper-lima sheet-tags" grain={0.8} />
+      <.deco shape="cherry" class="deco-fresa deco-tags-cherry" lift={2} />
+      <%= for tag <- landing_tags() do %>
+        <input
+          type="checkbox"
+          class="tag-input"
+          id={"tag-" <> tag.slug}
+          name="demo"
+          value={tag.slug}
+        />
+        <label for={"tag-" <> tag.slug} class={"sticker sticker-pick cat-" <> tag.category}>
+          <span aria-hidden="true">{tag.emoji}</span>
+          {tag.label}
+          <span class="pick-mark" aria-hidden="true">
+            <CherryWeb.Brand.icon name="heart" class="sticker-icon pick-heart" />
+            <span class="pick-plus">+</span>
+          </span>
+        </label>
+      <% end %>
+      <p class="tag-count" aria-hidden="true">
+        <CherryWeb.Brand.icon name="heart" class="sticker-icon" />
+        <span class="tag-counter"></span> de 8
+      </p>
+      <p class="tag-limit" aria-live="polite">
+        En tu perfil caben 8. Quita alguna para dejar sitio.
+      </p>
+    </fieldset>
+  </section>
+
+  <section class="steps-section" id="como-funciona" aria-labelledby="pasos">
+    <h2 id="pasos">De cero a hablar, en cuatro pasos.</h2>
+    <.deco shape="sparkle" class="deco-cielo deco-steps-sparkle" lift={3} />
+    <ol class="steps">
+      <li class="step step-cielo">
+        <span class="step-number" aria-hidden="true">1</span>
+        <h3>Entra con Google o Apple.</h3>
+        <p>Sin contraseñas nuevas ni formularios eternos.</p>
+      </li>
+      <li class="step step-lavanda">
+        <span class="step-number" aria-hidden="true">2</span>
+        <h3>Comprueba tu edad.</h3>
+        <p>Con el chip de tu DNI, NIE o pasaporte.</p>
+        <a class="step-link" href="#tu-documento">Qué pasa con tu documento</a>
+      </li>
+      <li class="step step-lima">
+        <span class="step-number" aria-hidden="true">3</span>
+        <h3>Haz tu perfil.</h3>
+        <p>De 2 a 4 fotos, una bio corta, qué buscas y tus etiquetas. Lo justo para empezar.</p>
+      </li>
+      <li class="step step-fresa">
+        <span class="step-number" aria-hidden="true">4</span>
+        <h3>Desliza o baja por el feed.</h3>
+        <p>
+          Si os gustáis los dos, hay match y podéis hablar. En Likes ves siempre quién te ha dado like.
+        </p>
+      </li>
+    </ol>
+    <div class="age-check">
+      <div class="age-art" aria-hidden="true">
+        <.sheet id="hoja-pasos" paper="cuadriculada" class="paper-cielo sheet-steps" grain={0.6} />
+        <div class="idcard">
+          <p class="idcard-head">Documento de identidad <span class="idcard-chip"></span></p>
+          <div class="idcard-body">
+            <span class="idcard-photo">
+              <svg viewBox="0 0 60 80">
+                <circle cx="30" cy="31" r="14" />
+                <path d="M4 80c2-17 12-26 26-26s24 9 26 26Z" />
+              </svg>
+              <span class="redact"></span>
+            </span>
+            <dl class="idcard-fields">
+              <div>
+                <dt>Nombre</dt>
+                <dd>Marta García<span class="redact"></span></dd>
+              </div>
+              <div>
+                <dt>Nacimiento</dt>
+                <dd>14 03 1992<span class="redact"></span></dd>
+              </div>
+              <div>
+                <dt>Número</dt>
+                <dd>12345678Z<span class="redact"></span></dd>
+              </div>
+            </dl>
+          </div>
+          <p class="idcard-mrz">
+            IDESP<span>AAA000000<span class="redact"></span></span>&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+          </p>
+        </div>
+        <p class="id-stamp"><span>Borrado</span></p>
+        <p class="id-sticker">
+          <span class="tick"><CherryWeb.Brand.icon name="check" /></span> Mayor de edad
+        </p>
+      </div>
+      <div class="age-copy">
+        <h3 id="tu-documento">No guardamos tu documento. <span>No nos interesa.</span></h3>
+        <p>Solo queremos saber dos cosas:</p>
+        <ul class="age-checks">
+          <li>
+            <span class="tick"><CherryWeb.Brand.icon name="check" /></span>
+            Que eres una persona, no un bot.
+          </li>
+          <li>
+            <span class="tick"><CherryWeb.Brand.icon name="check" /></span>
+            Que tienes 18 años o más.
+          </li>
+        </ul>
+        <p class="age-note">
+          Lo que se lee del documento (nombre, fecha de nacimiento, número y foto) se borra en cuanto termina la comprobación. Solo guardamos que eres mayor de edad, cómo y cuándo lo comprobaste, y una huella cifrada para que cada documento abra una sola cuenta.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="safety-section" aria-labelledby="limites">
+    <.sheet id="hoja-limites" paper="lunares" class="paper-fresa sheet-safety" />
+    <div class="section-copy">
+      <h2 id="limites">Tú pones los límites.</h2>
+      <p>
+        Cherry está hecha para que estés a gusto, no para tenerte enganchado. Lo que necesitas para cuidarte está siempre a mano, en cualquier perfil o chat.
+      </p>
+    </div>
+    <ul class="safety-list">
+      <li>
+        <span class="safety-icon tone-lavanda"><CherryWeb.Brand.icon name="block" /></span>
+        <div>
+          <h3>Bloquear</h3>
+          <p>Esa persona deja de verte y de poder escribirte.</p>
+        </div>
+      </li>
+      <li>
+        <span class="safety-icon tone-limonada"><CherryWeb.Brand.icon name="flag" /></span>
+        <div>
+          <h3>Reportar</h3>
+          <p>Una persona del equipo lo revisa y te cuenta el resultado en tu buzón.</p>
+        </div>
+      </li>
+      <li>
+        <span class="safety-icon tone-cielo"><CherryWeb.Brand.icon name="pause" /></span>
+        <div>
+          <h3>Pausar tu perfil</h3>
+          <p>Desapareces de Descubrir mientras te tomas un respiro.</p>
+        </div>
+      </li>
+      <li>
+        <span class="safety-icon tone-lima"><CherryWeb.Brand.icon name="pin" /></span>
+        <div>
+          <h3>Ubicación aproximada</h3>
+          <p>Usamos una rejilla de 500 metros. Nadie ve dónde estás exactamente.</p>
+        </div>
+      </li>
+      <li>
+        <span class="safety-icon tone-menta"><CherryWeb.Brand.icon name="chat" /></span>
+        <div>
+          <h3>Deshacer un match</h3>
+          <p>Si ya no te apetece hablar, cierras la conversación y listo.</p>
+        </div>
+      </li>
+      <li>
+        <span class="safety-icon tone-tomate"><CherryWeb.Brand.icon name="trash" /></span>
+        <div>
+          <h3>Borrar tu cuenta</h3>
+          <p>
+            Desde Ajustes, con tu perfil, tus fotos y tus conversaciones. <a href={
+              ~p"/eliminar-cuenta"
+            }>Cómo funciona</a>.
+          </p>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <section class="open-section" aria-labelledby="de-todos">
+    <div class="open-card">
+      <.deco shape="star" class="deco-limonada deco-open-star" lift={2} />
+      <div>
+        <h2 id="de-todos">Hecha por y para la gente.</h2>
+        <p>
+          Cherry no es de una gran empresa ni vive de tus datos o de tu tiempo: no tiene anuncios ni nada que venderte. Cómo funciona está a la vista de cualquiera, también cada cambio, así que nadie puede cambiar las reglas a escondidas.
+        </p>
+        <p :if={@instance.source_url} class="open-geek">
+          ¿Te pica la curiosidad técnica? <a href={@instance.source_url} rel="noopener noreferrer">Aquí está todo por dentro</a>.
+        </p>
+      </div>
+      <div class="open-actions">
+        <a class="btn btn-ink" href={~p"/transparencia"}>Cómo funciona Cherry</a>
+        <a class="btn" href={~p"/privacidad"}>Qué pasa con tus datos</a>
+      </div>
+    </div>
+  </section>
+
   <div class="page-width"><.draft /></div>
 </.site>

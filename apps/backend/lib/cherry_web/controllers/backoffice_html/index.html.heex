@@ -1,80 +1,226 @@
-<.shell title="Expedientes" staff={@current_staff}>
-  <div class="heading">
+<.shell title="Expedientes" staff={@current_staff} section="cases" flash={@flash}>
+  <% resolved? = @params["status"] == "resolved" %>
+  <div class="page-head">
     <div>
       <h1>Expedientes</h1>
-      <p>Primero, los casos que necesitan más atención.</p>
+      <p class="muted">
+        {if resolved?,
+          do: "Los resueltos más recientes primero.",
+          else: "Primero, los posibles menores; después, por antigüedad."}
+      </p>
     </div>
-    <nav aria-label="Estado de expedientes">
-      <a href={~p"/backoffice"} aria-current={if @params["status"] != "resolved", do: "page"}>
+    <.form for={%{}} action={~p"/backoffice/cases/next"}>
+      <button class="btn btn-primary" type="submit">
+        Tomar el siguiente <CherryWeb.Brand.icon name="next" />
+      </button>
+    </.form>
+  </div>
+
+  <div class="toolbar">
+    <nav class="segmented" aria-label="Estado de expedientes">
+      <a
+        href={queue_path(@params, %{"status" => nil, "q" => nil})}
+        aria-current={if !resolved? and !@search, do: "page"}
+      >
         Pendientes
       </a>
       <a
-        href={~p"/backoffice?status=resolved"}
-        aria-current={if @params["status"] == "resolved", do: "page"}
+        href={
+          queue_path(@params, %{
+            "status" => "resolved",
+            "q" => nil,
+            "owner" => if(@params["owner"] == "me", do: "me")
+          })
+        }
+        aria-current={if resolved? and !@search, do: "page"}
       >
         Resueltos
       </a>
     </nav>
+    <form class="search" action={~p"/backoffice/cases"} method="get" role="search">
+      <label for="q" class="sr-only">Buscar por referencia</label>
+      <CherryWeb.Brand.icon name="search" />
+      <input
+        id="q"
+        name="q"
+        type="search"
+        value={@params["q"]}
+        placeholder="Referencia, por ejemplo 613b2ff9"
+        maxlength="36"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="btn btn-sm" type="submit">Buscar</button>
+    </form>
   </div>
-  <p :if={@cases == []} class="empty">
-    No hay expedientes en esta página. Comprueba la otra cola o vuelve a la primera página.
-  </p>
-  <div :if={@cases != []} class="table-scroll">
-    <table>
+
+  <div :if={@search} class="search-note">
+    <p :if={@search == :invalid} class="alert alert-warn" role="alert">
+      Busca por la referencia del expediente: al menos sus 4 primeros caracteres (números y letras de la a a la f).
+    </p>
+    <p :if={@search != :invalid}>
+      Resultados para <strong>«{@params["q"]}»</strong>, en pendientes y resueltos.
+    </p>
+    <a href={~p"/backoffice/cases"}>Quitar búsqueda</a>
+  </div>
+
+  <div :if={!@search} class="filters">
+    <nav class="chips" aria-label="Tipo">
+      <a
+        href={queue_path(@params, %{"kind" => nil})}
+        class="chip"
+        aria-current={if !@params["kind"], do: "true"}
+      >
+        Todos <span class="count">{@counts.owners.all}</span>
+      </a>
+      <a
+        :for={kind <- kinds_for(@current_staff)}
+        :if={kind != "measure" or resolved? or Map.get(@counts.kinds, "measure", 0) > 0}
+        href={queue_path(@params, %{"kind" => kind})}
+        class={"chip chip-" <> kind}
+        aria-current={if @params["kind"] == kind, do: "true"}
+      >
+        {kind_plural(kind)} <span class="count">{Map.get(@counts.kinds, kind, 0)}</span>
+      </a>
+    </nav>
+    <nav class="chips" aria-label="Responsable">
+      <a
+        href={queue_path(@params, %{"owner" => nil})}
+        class="chip"
+        aria-current={if @params["owner"] not in ["me", "none"], do: "true"}
+      >
+        De cualquiera
+      </a>
+      <a
+        href={queue_path(@params, %{"owner" => "me"})}
+        class="chip"
+        aria-current={if @params["owner"] == "me", do: "true"}
+      >
+        {if resolved?, do: "Decididos por ti", else: "Míos"}
+        <span class="count">{@counts.owners.me}</span>
+      </a>
+      <a
+        :if={!resolved?}
+        href={queue_path(@params, %{"owner" => "none"})}
+        class="chip"
+        aria-current={if @params["owner"] == "none", do: "true"}
+      >
+        Sin asignar <span class="count">{@counts.owners.none}</span>
+      </a>
+    </nav>
+    <p :if={@params["category"]} class="filter-note">
+      Solo <strong>{label(@params["category"])}</strong>.
+      <a href={queue_path(@params, %{"category" => nil})}>Quitar</a>
+    </p>
+  </div>
+
+  <div :if={@cases == []} class="card empty">
+    <CherryWeb.Brand.mochi size={88} />
+    <h2>
+      {cond do
+        @search -> "Ningún expediente con esa referencia."
+        @offset > 0 -> "No hay más expedientes."
+        resolved? -> "Todavía no hay expedientes resueltos aquí."
+        true -> "Nada pendiente con estos filtros."
+      end}
+    </h2>
+    <p class="muted">
+      {if @search,
+        do: "Comprueba que la has copiado bien. Solo ves los tipos de expediente de tu área.",
+        else: "Prueba con otro filtro o vuelve a la cola completa."}
+    </p>
+    <a class="btn" href={~p"/backoffice/cases"}>Ver la cola completa</a>
+  </div>
+
+  <div :if={@cases != []} class="card table-card">
+    <table class="queue">
       <caption class="sr-only">Expedientes de tu área de trabajo, hasta 50 por página</caption>
       <thead>
         <tr>
-          <th>Expediente</th>
-          <th>Tipo y motivo</th>
-          <th>Recibido</th>
-          <th>Revisión de plazo</th>
-          <th>Responsable</th>
+          <th scope="col">Expediente</th>
+          <th scope="col">Tipo y motivo</th>
+          <th scope="col">Recibido</th>
+          <th scope="col">{if resolved?, do: "Decisión", else: "Plazo y estado"}</th>
+          <th scope="col">{if resolved?, do: "Decidió", else: "Responsable"}</th>
         </tr>
       </thead>
       <tbody>
-        <tr :for={record <- @cases}>
+        <tr
+          :for={record <- @cases}
+          class={record.category == "underage" && record.status == "open" && "is-priority"}
+        >
           <td>
-            <a href={~p"/backoffice/cases/#{record.id}"}>{String.slice(record.id, 0, 8)}</a><span
-              :if={record.category == "underage"}
-              class="priority"
-            >Prioritario</span>
+            <a class="row-link case-id" href={~p"/backoffice/cases/#{record.id}"}>
+              {short_id(record.id)}
+            </a>
+            <span
+              :if={record.category == "underage" and record.status == "open"}
+              class="flag flag-danger"
+            >
+              Prioritario
+            </span>
           </td>
-          <td>{label(record.kind)}<span class="detail">{label(record.category)}</span></td>
-          <td><time>{record.inserted_at}</time></td>
           <td>
-            <time :if={Cherry.Casework.Deadlines.response_date(record)}>
-              {Cherry.Casework.Deadlines.response_date(record)}
+            <.kind_chip record={record} />
+            <span class="detail">{label(record.category)}</span>
+          </td>
+          <td>
+            <span class="age">{ago(record.inserted_at)}</span>
+            <time class="detail" datetime={iso(record.inserted_at)}>
+              {date(DateTime.to_date(record.inserted_at))}
             </time>
-            <span :if={Cherry.Casework.Deadlines.overdue?(record)} class="priority">
-              Revisar vencimiento
-            </span>
-            <span :if={!Cherry.Casework.Deadlines.response_date(record)}>
-              Sin plazo universal
-            </span>
           </td>
           <td>
-            {cond do
-              record.assigned_staff_id == @current_staff.id -> "Asignado a ti"
-              record.assigned_staff_id != nil -> "Otro miembro del equipo"
-              true -> "Sin asignar"
-            end}
+            <%= cond do %>
+              <% record.status == "resolved" -> %>
+                <span class={"outcome-tag outcome-" <> (record.outcome || "none")}>
+                  {case_status(record)}
+                </span>
+                <span class="detail">{ago(record.resolved_at)}</span>
+              <% deadline = Cherry.Casework.Deadlines.response_date(record) -> %>
+                <span class={[
+                  "deadline",
+                  Cherry.Casework.Deadlines.overdue?(record) && "is-late",
+                  due_soon?(deadline) && "is-soon"
+                ]}>
+                  {due(deadline)}
+                </span>
+                <time class="detail" datetime={iso(deadline)}>Recordatorio {date(deadline)}</time>
+              <% true -> %>
+                <span class="muted">{label(record.status)}</span>
+            <% end %>
+          </td>
+          <td>
+            <% owner =
+              if record.status == "resolved",
+                do: record.decided_by_staff_id,
+                else: record.assigned_staff_id %>
+            <span :if={owner == @current_staff.id} class="owner owner-me">Tú</span>
+            <span :if={owner && owner != @current_staff.id} class="owner">
+              {person(@names, owner, @current_staff)}
+            </span>
+            <span :if={is_nil(owner) and record.status == "open"} class="owner owner-none">
+              Sin asignar
+            </span>
+            <span :if={is_nil(owner) and record.status != "open"} class="owner">—</span>
           </td>
         </tr>
       </tbody>
     </table>
   </div>
+
   <nav class="pagination" aria-label="Páginas">
     <a
       :if={@offset > 0}
-      href={
-        ~p"/backoffice?#{%{status: @params["status"] || "open", offset: max(0, @offset - 50)}}"
-      }
+      class="btn btn-sm"
+      href={queue_path(@params, %{"offset" => max(0, @offset - 50)})}
     >
       Anterior
     </a>
     <a
       :if={length(@cases) == 50 and @offset < 10000}
-      href={~p"/backoffice?#{%{status: @params["status"] || "open", offset: @offset + 50}}"}
+      class="btn btn-sm"
+      href={queue_path(@params, %{"offset" => @offset + 50})}
     >
       Siguiente
     </a>

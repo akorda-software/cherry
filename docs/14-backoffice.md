@@ -25,6 +25,23 @@ La API antigua permanece para móviles instalados; no se recompilaron.
 - Un recurso por persona y decisión de reporte/reclamación. No lo puede resolver la misma cuenta de equipo que decidió el original, ni siquiera siendo administrador. Estimarlo para el afectado revoca la suspensión original si sigue vigente; estimarlo para quien reportó o reclamó abre una nueva revisión sin sanción automática y conserva la decisión anterior.
 - Auditoría de altas/bajas/login/logout de equipo y de creación, consulta del detalle, asignación, reasignación y resolución de expedientes. Guarda identificadores y acción, no copias del relato, respuestas, chats ni credenciales. La pantalla muestra los últimos 100 eventos del caso.
 
+## Panel de trabajo (2026-10-20)
+
+Ampliación local, **sin desplegar**. Sigue sin JavaScript y con la misma CSP.
+
+- **Inicio («Para hoy»):** contadores de las áreas del rol (sin asignar, asignados a ti, posibles menores, recursos, privacidad que vence en 7 días, resueltos en 7 días) que abren la cola ya filtrada; lo asignado a ti, los siguientes de la cola y las medidas vigentes. Solo el superusuario ve el resumen del equipo y la actividad reciente, sin consultas ni inicios de sesión.
+- **Tomar el siguiente:** asigna en una transacción el expediente libre más prioritario que el rol puede ver (posibles menores y después antigüedad, `FOR UPDATE SKIP LOCKED`). Excluye los recursos sobre decisiones de esa misma persona.
+- **Cola:** filtros con recuento por tipo, responsable («míos», «sin asignar») y motivo. Búsqueda por referencia: completa abre el expediente; un prefijo de al menos 4 caracteres busca en pendientes y resueltos, siempre dentro del área del rol.
+- **Expediente:** progreso recibido/asignado/resuelto; ficha de la cuenta (texto actual del perfil, suspensión vigente y su expediente, verificación de edad, antigüedad; el ID de cuenta solo en privacidad); otros expedientes sobre la misma cuenta dentro del área, con el aviso de que más reportes no prueban nada; expedientes enlazados; trazabilidad con las consultas seguidas de una misma persona agrupadas. Nunca se muestra quién reportó, ni chats, fotos, documentos o ubicación.
+- **Asignación:** la administración asigna o pasa el expediente a otra persona; el titular o la administración lo liberan. Solo admite personas con acceso activo (ni desactivadas ni con invitación pendiente; las altas por consola entran con códigos), permiso para ese tipo y que no tomaron la decisión original. Los conflictos vuelven al expediente con un aviso.
+- **Decisión:** cada resultado explica su efecto. «Usar modelo» rellena un texto base solo para quien tiene el expediente asignado; el servidor rechaza guardar si quedan huecos `[EN MAYÚSCULAS]`. Suspender exige marcar una confirmación, comprobada en el servidor.
+- **Notas internas:** tabla `casework_notes`, de 3 a 2.000 caracteres, visibles para quien tiene acceso a ese tipo de expediente y nunca enviadas a usuarios. Se escriben sin logging SQL, el parámetro `note` se filtra de los logs Phoenix y la auditoría `case_note_added` no copia el texto. Se borran en cascada con su expediente, también al borrar la cuenta.
+- **Medidas vigentes** (moderación): cuentas suspendidas ahora, con motivo, fecha, recurso y quién decidió. **Actividad** (superusuario): auditoría filtrable por tipo y persona; por defecto sin consultas.
+- **Equipo:** último acceso, expedientes abiertos asignados, estado de invitación o bloqueo y enlace a la actividad de cada persona. **Mi acceso:** sesiones abiertas y «Cerrar mis otras sesiones», auditado como `staff_sessions_revoked` con el recuento.
+- Avisos tras cada acción y páginas de error dentro del panel.
+
+**Despliegue:** requiere la migración `20261020090000_add_casework_notes` (notas e índices de auditoría `inserted_at, id` y `staff_id, action, inserted_at`). Validación local: 850 pruebas backend, compilación con `--warnings-as-errors` y revisión en Chrome de escritorio y 390 px con datos de prueba.
+
 ## Revisión de implementación (2026-10-16)
 
 Responsabilidades separadas detrás de `Cherry.Casework`: `Intake` (recepción), `Inbox` (lecturas privadas), `Review` (permisos/asignación/transacción de decisión), `Resolution` (efectos del resultado) y `Delivery` (avisos privados transaccionales). `Accounts.Restrictions` es dueño de suspensión/restauración. El controlador web desconecta sockets **después** de la decisión confirmada; no hay dependencia de `CherryWeb` dentro de los módulos de casework. Las comprobaciones de BD no dependen de que la desconexión llegue.
@@ -107,7 +124,7 @@ Los códigos de recuperación contienen 256 bits aleatorios, caducan en diez min
   ajustar deliberadamente; debe fallar cerrada. Las respuestas llevan
   `no-transform` para impedir que el CDN inyecte ocultación de correos o scripts
   incompatibles con la CSP.
-- Cookies firmadas, `Secure`, `HttpOnly`, `SameSite=Strict` y ruta `/backoffice`; expiración de servidor, CSRF en todas las mutaciones y renovación de la sesión al entrar. Las respuestas llevan `no-store`, `no-referrer`, `noindex` y CSP sin scripts ni recursos de terceros.
+- Cookies firmadas, `Secure`, `HttpOnly`, `SameSite=Strict` y ruta `/backoffice`; expiración de servidor, CSRF en todas las mutaciones y renovación de la sesión al entrar. Las respuestas llevan `no-store`, `no-referrer`, `noindex` y CSP sin scripts ni recursos de terceros (solo hojas de estilo, fuentes e imágenes propias). La interfaz usa el sistema visual de la app (`apps/mobile/DESIGN.md`) en `priv/static/assets/backoffice.css`.
 - Los códigos y textos se filtran de los logs de parámetros Phoenix. No se conserva otra copia del body crudo para estas rutas.
 - El esquema incluye además `20261017120000` (prueba legal) y
   `20261017121000` (rotación inicial), aplicadas en producción. Activar otro
@@ -136,7 +153,7 @@ La revisión no restaura otra medida que haya sustituido a la original ni una cu
 - **Auditoría y conservación:** append-only para operaciones ordinarias, no un almacén inmutable frente al administrador de BD. La baja borra expedientes vinculados, descendientes, avisos y auditoría, evitando relatos huérfanos. No existe retención indefinida de la identidad borrada. Los expedientes sin baja siguen necesitando plazos, y los backups/reservas legales necesitan cierre específico.
 - **Separación de medidas ajenas (2026-10-17):** aprobada por el titular e implementada. Borrar al denunciante elimina el expediente original, relatos, avisos y auditoría; una suspensión vigente de otra cuenta y su revisión quedan en fichas nuevas mínimas, sin datos ni referencias al denunciante. No cambia la sanción automáticamente ni pierde un recurso pendiente. [Detalle](./15-borrado-y-web-publica.md).
 - **Evidencia:** todavía no se capturan mensajes concretos reportados ni evidencias históricas del perfil. No se debe suspender basándose únicamente en el número de reportes ni asumir que una acusación está acreditada.
-- **Validación:** pruebas de dominio/HTTP y UI con simulaciones; no se ha hecho una revisión visual con navegador real ni una prueba en Android/iPhone. No se compilaron APK/IPA.
+- **Validación:** pruebas de dominio/HTTP y UI con simulaciones. El panel se revisó en Chrome local (escritorio y 390 px) el 2026-10-20, no en producción. No se ha probado la app en Android/iPhone ni se compilaron APK/IPA.
 - **Automatización:** sin bots activos. [Estudio acotado](./compliance/11-agentes-en-reclamaciones.md), sin proveedor contratado ni decisiones automáticas habilitadas.
 
 Detalle contractual: [API](./05-backend-api.md), [OpenAPI](../apps/backend/priv/static/openapi.yaml), `packages/contracts/src/casework.ts` y `packages/mobile-shared/src/api/casework-api.ts`. Pendientes globales: [plan](./compliance/09-plan-backoffice.md) y [checklist de cierre](./compliance/10-cierre-cumplimiento.md).

@@ -3,7 +3,7 @@ defmodule Cherry.Casework do
   Casework boundary. Intake, private inbox, staff review and decision effects
   have separate owners; controllers do not implement workflow or permissions.
   """
-  alias Cherry.Casework.{Case, Inbox, Intake, Pagination, Review}
+  alias Cherry.Casework.{Case, Inbox, Intake, Pagination, Review, Workbench}
 
   defdelegate privacy_categories(), to: Intake
   defdelegate outcomes(record), to: Case
@@ -20,5 +20,16 @@ defmodule Cherry.Casework do
   defdelegate claim(staff, id), to: Review
   defdelegate reassign(staff, id), to: Review
   defdelegate resolve(staff, id, attrs), to: Review
+  defdelegate claim_next(staff), to: Review
+  defdelegate assign(staff, id, target_id), to: Review
+  defdelegate release(staff, id), to: Review
+  defdelegate add_note(staff, id, body), to: Review
+  defdelegate search_term(q), to: Review
+  defdelegate overview(staff), to: Workbench
+  defdelegate queue_counts(staff, params), to: Workbench
+  defdelegate measures(staff, params \\ %{}), to: Workbench
+  defdelegate activity(actor, params \\ %{}), to: Workbench
+  defdelegate activity_groups(), to: Workbench
+  defdelegate staff_names(ids), to: Workbench, as: :names
   defdelegate offset(params), to: Pagination
 end

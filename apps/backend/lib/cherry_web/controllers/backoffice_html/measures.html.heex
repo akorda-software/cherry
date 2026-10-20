@@ -1,0 +1,88 @@
+<.shell title="Medidas vigentes" staff={@current_staff} section="measures" flash={@flash}>
+  <div class="page-head">
+    <div>
+      <h1>Medidas vigentes</h1>
+      <p class="muted">
+        Cuentas suspendidas ahora mismo, de la más antigua a la más reciente. Una suspensión no caduca sola: solo la revoca un recurso estimado.
+      </p>
+    </div>
+  </div>
+
+  <div :if={@measures == []} class="card empty">
+    <CherryWeb.Brand.mochi size={88} />
+    <h2>{if @offset > 0, do: "No hay más medidas.", else: "No hay cuentas suspendidas."}</h2>
+    <p class="muted">Cuando una decisión suspenda una cuenta, aparecerá aquí.</p>
+  </div>
+
+  <div :if={@measures != []} class="card table-card">
+    <table class="queue measures">
+      <caption class="sr-only">Cuentas suspendidas, hasta 50 por página</caption>
+      <thead>
+        <tr>
+          <th scope="col">Cuenta</th>
+          <th scope="col">Motivo</th>
+          <th scope="col">Suspendida</th>
+          <th scope="col">Recurso</th>
+          <th scope="col">Decidió</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={measure <- @measures}>
+          <td>
+            <a class="row-link case-id" href={~p"/backoffice/cases/#{measure.case_id}"}>
+              {measure.display_name || "Sin perfil"}
+            </a>
+            <span class="detail">Expediente {short_id(measure.case_id)}</span>
+          </td>
+          <td>
+            <.kind_chip record={measure} />
+            <span class="detail">{label(measure.category)}</span>
+          </td>
+          <td>
+            <span class="age">{ago(measure.suspended_at)}</span>
+            <time class="detail" datetime={iso(measure.suspended_at)}>
+              {date(DateTime.to_date(measure.suspended_at))}
+            </time>
+          </td>
+          <td>
+            <span :if={measure.appeals == []} class="muted">Sin recurso</span>
+            <a
+              :for={appeal <- measure.appeals}
+              class={["appeal-link", appeal.status == "open" && "is-open"]}
+              href={~p"/backoffice/cases/#{appeal.id}"}
+            >
+              {if appeal.status == "open",
+                do: "Recurso pendiente",
+                else: "Recurso: " <> String.downcase(label(appeal.outcome))}
+            </a>
+          </td>
+          <td>
+            <span :if={measure.decided_by_staff_id == @current_staff.id} class="owner owner-me">
+              Tú
+            </span>
+            <span :if={measure.decided_by_staff_id != @current_staff.id} class="owner">
+              {person(@names, measure.decided_by_staff_id, @current_staff)}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <nav class="pagination" aria-label="Páginas">
+    <a
+      :if={@offset > 0}
+      class="btn btn-sm"
+      href={~p"/backoffice/measures?#{%{offset: max(0, @offset - 50)}}"}
+    >
+      Anterior
+    </a>
+    <a
+      :if={length(@measures) == 50 and @offset < 10000}
+      class="btn btn-sm"
+      href={~p"/backoffice/measures?#{%{offset: @offset + 50}}"}
+    >
+      Siguiente
+    </a>
+  </nav>
+</.shell>

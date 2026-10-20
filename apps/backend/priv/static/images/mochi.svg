@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><title>Cherry</title>
+  <g>
+    <path d="M42 61Q46 34 70 18" stroke="#1D1426" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+    <path d="M81 57Q77 36 70 18" stroke="#1D1426" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+    <path d="M70 18Q84 8 99 16Q88 28 70 18Z" transform="rotate(0 70 18)" fill="#62D98C" stroke="#1D1426" stroke-width="3.15" stroke-linejoin="round"/>
+  </g>
+  <g>
+    <circle cx="45" cy="87" r="22" fill="#1D1426"/>
+    <circle cx="40" cy="82" r="22" fill="#E6493B" stroke="#1D1426" stroke-width="3.5"/>
+  </g>
+  <g>
+    <circle cx="87" cy="83" r="22" fill="#1D1426"/>
+    <circle cx="82" cy="78" r="22" fill="#E6493B" stroke="#1D1426" stroke-width="3.5"/>
+  </g>
+  <path d="M12 20.25C7.4 17.4 3 13.9 3 9.2 3 6.3 5.2 4 8 4c1.7 0 3.1.9 4 2.4.9-1.5 2.3-2.4 4-2.4 2.8 0 5 2.3 5 5.2 0 4.7-4.4 8.2-9 11.05Z" transform="translate(27 74) scale(0.5)" fill="#1D1426"/>
+  <path d="M12 20.25C7.4 17.4 3 13.9 3 9.2 3 6.3 5.2 4 8 4c1.7 0 3.1.9 4 2.4.9-1.5 2.3-2.4 4-2.4 2.8 0 5 2.3 5 5.2 0 4.7-4.4 8.2-9 11.05Z" transform="translate(41 74) scale(0.5)" fill="#1D1426"/>
+  <path d="M12 20.25C7.4 17.4 3 13.9 3 9.2 3 6.3 5.2 4 8 4c1.7 0 3.1.9 4 2.4.9-1.5 2.3-2.4 4-2.4 2.8 0 5 2.3 5 5.2 0 4.7-4.4 8.2-9 11.05Z" transform="translate(70 70) scale(0.5)" fill="#1D1426"/>
+  <path d="M12 20.25C7.4 17.4 3 13.9 3 9.2 3 6.3 5.2 4 8 4c1.7 0 3.1.9 4 2.4.9-1.5 2.3-2.4 4-2.4 2.8 0 5 2.3 5 5.2 0 4.7-4.4 8.2-9 11.05Z" transform="translate(83 70) scale(0.5)" fill="#1D1426"/>
+  <path d="M36 91Q41 95 46 90.5" stroke="#1D1426" stroke-width="2.975" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M78 87Q83 91 88 86.5" stroke="#1D1426" stroke-width="2.975" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

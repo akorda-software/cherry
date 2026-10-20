@@ -4,11 +4,19 @@ defmodule CherryWeb.PageControllerTest do
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
     html = html_response(conn, 200)
-    assert html =~ "Las buenas conexiones no llevan tarifa."
+    assert html =~ "La app para conocer gente que es de"
     assert html =~ "/eliminar-cuenta"
     assert html =~ "textos legales son provisionales"
     refute html =~ "Phoenix Framework"
     refute html =~ "<script"
+  end
+
+  test "the landing says what the age check keeps, fingerprint included", %{conn: conn} do
+    html = conn |> get(~p"/") |> html_response(200)
+
+    assert html =~ "No guardamos tu documento."
+    assert html =~ "Solo guardamos que eres mayor de edad, cómo y cuándo lo comprobaste"
+    assert html =~ "una huella cifrada para que cada documento abra una sola cuenta"
   end
 
   test "every legal and help page is public, explicit about drafts and has no third party scripts" do

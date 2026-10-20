@@ -1,130 +1,455 @@
-<.shell title="Revisión de expediente" staff={@current_staff}>
-  <a href={~p"/backoffice"}>Volver a expedientes</a>
-  <div class="heading">
+<.shell
+  title={"Expediente " <> short_id(@case.id)}
+  staff={@current_staff}
+  section="cases"
+  flash={@flash}
+>
+  <% me = @current_staff
+  open? = @case.status == "open"
+  mine? = @case.assigned_staff_id == me.id
+  others = Enum.reject(@assignable, &(&1.id in [me.id, @case.assigned_staff_id]))
+  open_appeals = Enum.filter(@related.children, &(&1.kind == "appeal" and &1.status == "open")) %>
+  <a class="back-link" href={~p"/backoffice/cases"}>
+    <CherryWeb.Brand.icon name="back" /> Expedientes
+  </a>
+
+  <div class="case-head">
     <div>
-      <h1>{label(@case.kind)}</h1>
-      <p>{label(@case.category)} · {@case.id}</p>
+      <p class="chip-row">
+        <.kind_chip record={@case} />
+        <span class={"state state-" <> @case.status}>{label(@case.status)}</span>
+        <span :if={@case.category == "underage" and open?} class="flag flag-danger">
+          Prioritario
+        </span>
+      </p>
+      <h1>{label(@case.category)}</h1>
+      <p class="case-ref">Referencia <span>{@case.id}</span></p>
     </div>
-    <span class="status">{label(@case.status)}</span>
+    <a :if={open?} class="jump-link" href="#decidir">
+      {if mine?, do: "Ir a la decisión", else: "Ir a la asignación"}
+    </a>
+    <ol class="stepper" aria-label="Progreso del expediente">
+      <li class="is-done">
+        <strong>Recibido</strong>
+        <span>{ago(@case.inserted_at)}</span>
+      </li>
+      <li class={(@case.assigned_staff_id || !open?) && "is-done"}>
+        <strong>Asignado</strong>
+        <span>
+          {if @case.assigned_staff_id,
+            do: person(@names, @case.assigned_staff_id, me),
+            else: "Sin asignar"}
+        </span>
+      </li>
+      <li class={!open? && "is-done"}>
+        <strong>Resuelto</strong>
+        <span>{if open?, do: "Pendiente", else: ago(@case.resolved_at)}</span>
+      </li>
+    </ol>
   </div>
+
   <div class="workspace">
-    <section aria-label="Datos del expediente">
-      <p :if={@case.kind == "measure"} class="hint">
-        Ficha mínima de una suspensión vigente. El relato y los datos de otras personas no se conservan aquí. No es una nueva sanción ni acredita hechos adicionales; su revisión requiere decisión humana.
-      </p>
-      <h2>Solicitud recibida</h2>
-      <p :if={@case.kind == "privacy"} class="hint">
-        Recordatorio: responder antes de {Cherry.Casework.Deadlines.response_date(@case)} (un mes natural desde la recepción en este buzón). Comprueba la recepción original si llegó antes por otro canal. No se aplica una prórroga automática: comunícala y motívala dentro del primer mes si procede. Responder no acredita ejecutar el derecho.
-      </p>
-      <p class="statement">{@case.statement || "Sin detalles adicionales."}</p>
-      <p :if={@case.parent_case_id}>
-        <a href={~p"/backoffice/cases/#{@case.parent_case_id}"}>Consultar decisión recurrida</a>
-      </p>
-      <section :if={@profile} class="profile-excerpt">
-        <h2>Texto actual del perfil</h2>
-        <p><strong>{@profile.display_name}</strong></p>
-        <p class="statement">{@profile.bio}</p>
-        <p class="hint">
-          No es una captura histórica. No se muestra el chat, las fotos ni documentos de identidad.
+    <div class="column">
+      <section :if={!open?} class="card card-resolved" aria-labelledby="decision-title">
+        <h2 id="decision-title">
+          <span class="decision-check"><CherryWeb.Brand.icon name="check" /></span>
+          Decisión: {label(@case.outcome)}
+        </h2>
+        <p class="meta-line">
+          {person(@names, @case.decided_by_staff_id, me)}, el
+          <time datetime={iso(@case.resolved_at)}>{date(@case.resolved_at)}</time>
         </p>
-      </section>
-      <section :if={@case.status == "resolved"}>
-        <h2>Decisión: {label(@case.outcome)}</h2>
-        <p class="statement">{@case.response}</p>
+        <h3 :if={@case.kind == "report"}>
+          {if @case.outcome == "dismissed",
+            do: "Motivo (no se envía a la persona reportada)",
+            else: "Respuesta a la persona reportada"}
+        </h3>
+        <blockquote class="statement">
+          <p>{@case.response}</p>
+        </blockquote>
         <div :if={@case.reporter_response}>
           <h3>Respuesta a quien reportó</h3>
-          <p class="statement">{@case.reporter_response}</p>
+          <blockquote class="statement">
+            <p>{@case.reporter_response}</p>
+          </blockquote>
         </div>
         <p class="hint">
-          Comunicada en el buzón privado de cada destinatario. No se ha enviado correo.
+          Comunicada en el buzón privado de la app de cada destinatario. No se envía correo.
         </p>
       </section>
-      <h2>Trazabilidad</h2>
-      <ol class="timeline">
-        <li :for={event <- @events}>
-          <time>{event.inserted_at}</time><strong>{label(event.action)}</strong>
-          <span>
-            {if event.staff_id,
-              do: "Equipo: #{String.slice(event.staff_id, 0, 8)}",
-              else: "Usuario o sistema"}
-          </span>
-        </li>
-      </ol>
-    </section>
-    <aside :if={@case.status == "open"}>
-      <h2>Revisar y responder</h2>
-      <p :if={@error} role="alert" class="error">{@error}</p>
-      <.form
-        :if={is_nil(@case.assigned_staff_id)}
-        for={%{}}
-        action={~p"/backoffice/cases/#{@case.id}/claim"}
-      >
-        <p>
-          Asígnate el expediente antes de resolverlo. Los recursos requieren una persona distinta de la decisión original.
+
+      <section class="card" aria-labelledby="request-title">
+        <h2 id="request-title">{request_title(@case.kind)}</h2>
+        <p :if={@appeal_by} class="callout">
+          <CherryWeb.Brand.icon name="undo" /> {appeal_by_text(@appeal_by)}
         </p>
-        <button type="submit">Asignarme expediente</button>
-      </.form>
-      <p :if={@case.assigned_staff_id && @case.assigned_staff_id != @current_staff.id}>
-        Este expediente está asignado a otra persona.
-      </p>
-      <.form
-        :if={
-          @case.assigned_staff_id && @case.assigned_staff_id != @current_staff.id &&
-            @current_staff.role in ["admin", "superadmin"]
-        }
-        for={%{}}
-        action={~p"/backoffice/cases/#{@case.id}/reassign"}
-      >
-        <button type="submit" class="secondary">Reasignarme expediente</button>
-      </.form>
-      <.form
-        :if={@case.assigned_staff_id == @current_staff.id}
-        for={%{}}
-        action={~p"/backoffice/cases/#{@case.id}/resolve"}
-      >
-        <label for="outcome">Decisión</label>
-        <select name="outcome" id="outcome" required>
-          <option value="">Seleccionar</option>
-          <option
-            :for={outcome <- @outcomes}
-            value={outcome}
-            selected={@form_values["outcome"] == outcome}
-          >
-            {label(outcome)}
-          </option>
-        </select>
-        <p class="hint">
-          Suspender limita la actividad social, no el acceso a recursos y privacidad. Una revocación puede restaurarla.
+        <p :if={@case.kind == "measure"} class="alert alert-info">
+          Ficha mínima de una suspensión vigente. El relato y los datos de otras personas no se conservan aquí. No es una nueva sanción ni acredita hechos adicionales; su revisión requiere decisión humana.
         </p>
-        <p :if={@case.kind == "appeal"} class="hint">
-          Estimar el recurso de quien reportó o reclamó abre un expediente nuevo, sin sanción automática. Estimar el del afectado revoca la medida original si sigue vigente.
+        <p :if={@case.kind == "privacy"} class="alert alert-warn">
+          Recordatorio: responder antes del {date(Cherry.Casework.Deadlines.response_date(@case))} ({due(
+            Cherry.Casework.Deadlines.response_date(@case)
+          )}), un mes natural desde la recepción en este buzón. Comprueba la recepción original si llegó antes por otro canal. No se aplica una prórroga automática: comunícala y motívala dentro del primer mes si procede. Responder no acredita ejecutar el derecho.
         </p>
-        <label for="response">
-          {if @case.kind == "report",
-            do: "Motivo para la persona afectada",
-            else: "Respuesta a la solicitud"}
-        </label>
-        <textarea name="response" id="response" required minlength="20" maxlength="4000" rows="7">{@form_values["response"]}</textarea>
-        <p class="hint">
-          Explica los hechos acreditados y la norma aplicada. Indica que puede recurrir en su buzón. No identifiques al denunciante ni copies mensajes privados.
+        <blockquote class="statement">
+          <p>{@case.statement || "Sin detalles adicionales."}</p>
+        </blockquote>
+        <p class="meta">
+          Recibido el <time datetime={iso(@case.inserted_at)}>{date(@case.inserted_at)}</time>
         </p>
-        <div :if={@case.kind == "report"}>
-          <label for="reporter_response">Resultado para quien reportó</label>
-          <textarea
-            name="reporter_response"
-            id="reporter_response"
-            required
-            minlength="20"
-            maxlength="4000"
-            rows="5"
-          >{@form_values["reporter_response"]}</textarea>
-          <p class="hint">Solo el resultado necesario, sin datos privados de la otra persona.</p>
+      </section>
+
+      <section :if={@account} class="card account-card" aria-labelledby="account-title">
+        <h2 id="account-title">
+          {if @account.relation == :subject,
+            do: "Cuenta afectada",
+            else: "Cuenta que lo solicita"}
+        </h2>
+        <div :if={@account.profile} class="profile-note">
+          <p class="profile-name">
+            {@account.profile.display_name}<span :if={@account.profile.age}>, {@account.profile.age}</span>
+          </p>
+          <p class="statement-plain">{@account.profile.bio || "Sin biografía."}</p>
         </div>
-        <p :if={@case.kind == "privacy"} class="hint">
-          Responder aquí no exporta ni borra datos. No declares una solicitud atendida si la operación correspondiente no se ha completado.
+        <p :if={!@account.profile} class="muted">Esta cuenta no tiene perfil.</p>
+        <ul class="facts">
+          <li :if={@account.suspended_at} class="fact fact-danger">
+            <CherryWeb.Brand.icon name="pause" />
+            <span>
+              Suspendida desde el {date(DateTime.to_date(@account.suspended_at))}
+              <a
+                :if={@account.suspension_case_id && @account.suspension_case_id != @case.id}
+                href={~p"/backoffice/cases/#{@account.suspension_case_id}"}
+              >
+                por el expediente {short_id(@account.suspension_case_id)}
+              </a>
+              <span :if={@account.suspension_case_id == @case.id}>por este expediente</span>
+            </span>
+          </li>
+          <li :if={!@account.suspended_at and !@account.deleted} class="fact fact-ok">
+            <CherryWeb.Brand.icon name="check" />
+            <span>Cuenta activa</span>
+          </li>
+          <li :if={@account.deleted} class="fact fact-danger">
+            <CherryWeb.Brand.icon name="trash" />
+            <span>Cuenta dada de baja</span>
+          </li>
+          <li
+            :if={@account.profile && @account.profile.is_paused}
+            class="fact"
+          >
+            <CherryWeb.Brand.icon name="pause" />
+            <span>Perfil en pausa por decisión propia</span>
+          </li>
+          <li
+            :if={
+              @account.profile && !@account.profile.is_discoverable && !@account.profile.is_paused &&
+                !@account.suspended_at
+            }
+            class="fact"
+          >
+            <CherryWeb.Brand.icon name="block" />
+            <span>Perfil oculto: incompleto o sin verificar</span>
+          </li>
+          <li class={[
+            "fact",
+            @case.category == "underage" && "fact-key",
+            (!@account.verification or @account.verification.status != "verified") &&
+              @case.category == "underage" && "fact-danger"
+          ]}>
+            <CherryWeb.Brand.icon name="id" />
+            <span>{verification_text(@account.verification)}</span>
+          </li>
+          <li class="fact">
+            <CherryWeb.Brand.icon name="user" />
+            <span>En Cherry desde el {date(DateTime.to_date(@account.member_since))}</span>
+          </li>
+          <li :if={@case.kind == "privacy"} class="fact">
+            <CherryWeb.Brand.icon name="key" />
+            <span>ID de la cuenta: <code class="account-id">{@account.id}</code></span>
+          </li>
+        </ul>
+        <div :if={@account.relation == :subject} class="history">
+          <h3>Otros expedientes sobre esta cuenta</h3>
+          <ul :if={@history != []} class="case-lines">
+            <.case_line
+              :for={record <- @history}
+              record={record}
+              meta={
+                if record.status == "resolved",
+                  do: case_status(record) <> ", " <> date(DateTime.to_date(record.resolved_at)),
+                  else: "Pendiente, " <> ago(record.inserted_at)
+              }
+            />
+          </ul>
+          <p :if={@history == []} class="empty-line">Ninguno. Es el primero.</p>
+          <p :if={@history != []} class="hint">
+            Que haya más reportes no prueba nada por sí solo: decide por lo comprobado en este expediente.
+          </p>
+        </div>
+        <p class="hint">
+          Texto actual del perfil, no una captura histórica. No se muestran chats, fotos, documentos ni ubicación.
         </p>
-        <button type="submit">Guardar decisión y comunicarla</button>
-      </.form>
+      </section>
+
+      <section
+        :if={@related.parent || @related.children != []}
+        class="card"
+        aria-labelledby="related-title"
+      >
+        <h2 id="related-title">Expedientes enlazados</h2>
+        <ul class="case-lines">
+          <.case_line
+            :if={@related.parent}
+            record={@related.parent}
+            meta={"Decisión de origen: " <> String.downcase(case_status(@related.parent))}
+          />
+          <.case_line
+            :for={child <- @related.children}
+            record={child}
+            meta={
+              if(child.kind == "appeal", do: "Recurso: ", else: "Nueva revisión: ") <>
+                String.downcase(case_status(child))
+            }
+          />
+        </ul>
+      </section>
+
+      <section class="card notes-card" id="notas" aria-labelledby="notes-title">
+        <h2 id="notes-title">Notas del equipo</h2>
+        <ol :if={@notes != []} class="notes">
+          <li :for={note <- @notes} class={["note", note.staff_id == me.id && "note-mine"]}>
+            <p class="note-body">{note.body}</p>
+            <p class="note-meta">
+              <strong>{person(@names, note.staff_id, me)}</strong>
+              <time datetime={iso(note.inserted_at)}>{ago(note.inserted_at)}</time>
+            </p>
+          </li>
+        </ol>
+        <p :if={@notes == []} class="empty-line">
+          Todavía no hay notas. Úsalas para dejar constancia de pasos y comprobaciones.
+        </p>
+        <.form for={%{}} action={~p"/backoffice/cases/#{@case.id}/notes"} class="note-form">
+          <label for="note">Añadir una nota</label>
+          <p :if={@note_error} class="alert alert-error" role="alert">{@note_error}</p>
+          <textarea id="note" name="note" rows="3" minlength="3" maxlength="2000" required>{@note_draft}</textarea>
+          <div class="note-actions">
+            <p class="hint">
+              Solo la ve el equipo. Sin copiar mensajes privados ni datos que no hagan falta.
+            </p>
+            <button class="btn btn-sm" type="submit">
+              <CherryWeb.Brand.icon name="note" /> Guardar nota
+            </button>
+          </div>
+        </.form>
+      </section>
+
+      <section class="card" aria-labelledby="trace-title">
+        <h2 id="trace-title">Trazabilidad</h2>
+        <ol class="timeline">
+          <li :for={{event, times} <- fold_views(@events)}>
+            <strong>
+              {label(event.action)}<span :if={times > 1} class="times"> ({times} veces)</span>
+            </strong>
+            <span :if={event_detail(event, @names, me)} class="timeline-detail">
+              {event_detail(event, @names, me)}
+            </span>
+            <span class="timeline-meta">
+              <time datetime={iso(event.inserted_at)}>{date(event.inserted_at)}</time>
+              <span>{actor(event, @names, me)}</span>
+            </span>
+          </li>
+        </ol>
+      </section>
+    </div>
+
+    <aside class="side-panel">
+      <section :if={open?} class="card decision" id="decidir" aria-labelledby="decide-title">
+        <h2 id="decide-title">Revisar y responder</h2>
+        <p :if={@error} role="alert" class="alert alert-error">{@error}</p>
+
+        <div class="assignment">
+          <p class="assignment-who">
+            <span class="avatar avatar-sm" aria-hidden="true">
+              {cond do
+                mine? -> initial(me.email)
+                @case.assigned_staff_id -> initial(person(@names, @case.assigned_staff_id, me))
+                true -> "?"
+              end}
+            </span>
+            <span>
+              {cond do
+                mine? ->
+                  "Lo tienes asignado tú."
+
+                @case.assigned_staff_id ->
+                  "Lo tiene " <> person(@names, @case.assigned_staff_id, me) <> "."
+
+                true ->
+                  "Nadie lo tiene asignado."
+              end}
+            </span>
+          </p>
+          <.form
+            :if={is_nil(@case.assigned_staff_id)}
+            for={%{}}
+            action={~p"/backoffice/cases/#{@case.id}/claim"}
+          >
+            <button class="btn btn-primary btn-block" type="submit">Asignarme expediente</button>
+          </.form>
+          <p :if={is_nil(@case.assigned_staff_id)} class="hint">
+            Asígnatelo antes de resolver. Un recurso lo resuelve una persona distinta de la que decidió.
+          </p>
+          <.form
+            :if={@case.assigned_staff_id && !mine? && reassign?(me)}
+            for={%{}}
+            action={~p"/backoffice/cases/#{@case.id}/reassign"}
+          >
+            <button type="submit" class="btn btn-block">Reasignármelo</button>
+          </.form>
+          <div class="assignment-actions">
+            <.form
+              :if={reassign?(me) && others != []}
+              for={%{}}
+              action={~p"/backoffice/cases/#{@case.id}/assign"}
+              class="assign-form"
+            >
+              <label for="assign-to" class="sr-only">Asignar a otra persona del equipo</label>
+              <select id="assign-to" name="staff_id" required>
+                <option value="" disabled selected>
+                  {if @case.assigned_staff_id, do: "Pasárselo a…", else: "Asignárselo a…"}
+                </option>
+                <option :for={member <- others} value={member.id}>{member.email}</option>
+              </select>
+              <button class="btn btn-sm" type="submit">Asignar</button>
+            </.form>
+            <.form
+              :if={@case.assigned_staff_id && (mine? || reassign?(me))}
+              for={%{}}
+              action={~p"/backoffice/cases/#{@case.id}/release"}
+            >
+              <button class="btn btn-sm btn-quiet" type="submit">
+                <CherryWeb.Brand.icon name="undo" /> Liberar
+              </button>
+            </.form>
+          </div>
+        </div>
+
+        <.form
+          :if={mine?}
+          for={%{}}
+          action={~p"/backoffice/cases/#{@case.id}/resolve"}
+          class="stack decision-form"
+        >
+          <fieldset class="outcomes">
+            <legend>Decisión</legend>
+            <div :for={outcome <- @outcomes} class={"outcome outcome-" <> outcome}>
+              <input
+                type="radio"
+                name="outcome"
+                id={"outcome-" <> outcome}
+                value={outcome}
+                checked={@form_values["outcome"] == outcome}
+                required
+              />
+              <label for={"outcome-" <> outcome}>
+                <strong>{label(outcome)}</strong>
+                <span>{outcome_hint(@case.kind, outcome, @appeal_by)}</span>
+              </label>
+              <a
+                class="outcome-model"
+                href={~p"/backoffice/cases/#{@case.id}?#{%{modelo: outcome}}" <> "#decidir"}
+              >
+                Usar modelo
+              </a>
+            </div>
+          </fieldset>
+          <p class="hint models-hint">
+            «Usar modelo» rellena las respuestas con un texto base y sustituye lo que hayas escrito. Cambia lo que va [EN MAYÚSCULAS] antes de guardar.
+          </p>
+          <div :if={"suspend" in @outcomes} class="confirm-suspend">
+            <input type="checkbox" id="confirm-suspend" name="confirm_suspend" value="true" />
+            <label for="confirm-suspend">
+              Confirmo que los hechos comprobados justifican suspender la cuenta.
+            </label>
+          </div>
+          <div class="field">
+            <label for="response">
+              {cond do
+                @case.kind == "report" -> "Motivo para la persona reportada"
+                @case.kind == "appeal" -> "Respuesta a quien recurre"
+                true -> "Respuesta a la solicitud"
+              end}
+            </label>
+            <textarea
+              name="response"
+              id="response"
+              required
+              minlength="20"
+              maxlength="4000"
+              rows="7"
+            >{@form_values["response"]}</textarea>
+            <p :if={@case.kind == "report"} class="hint">
+              Hechos comprobados y norma aplicada, sin identificar a quien reportó ni copiar mensajes privados. Si no hay infracción, no se le envía.
+            </p>
+            <p :if={@case.kind != "report"} class="hint">
+              Explica qué has comprobado y qué vías le quedan, sin datos de otras personas.
+            </p>
+          </div>
+          <div :if={@case.kind == "report"} class="field">
+            <label for="reporter_response">Respuesta a quien reportó</label>
+            <textarea
+              name="reporter_response"
+              id="reporter_response"
+              required
+              minlength="20"
+              maxlength="4000"
+              rows="5"
+            >{@form_values["reporter_response"]}</textarea>
+            <p class="hint">
+              Solo el resultado necesario, sin datos privados de la otra persona.
+            </p>
+          </div>
+          <p :if={@case.kind == "privacy"} class="alert alert-warn">
+            Responder aquí no exporta ni borra datos. No declares una solicitud atendida si la operación correspondiente no se ha completado.
+          </p>
+          <button class="btn btn-primary btn-block" type="submit">
+            Guardar decisión y comunicarla
+          </button>
+        </.form>
+        <p :if={@case.assigned_staff_id && !mine?} class="hint">
+          Solo quien tiene el expediente asignado puede decidir.
+        </p>
+      </section>
+
+      <section :if={!open?} class="card summary-card" aria-labelledby="summary-title">
+        <h2 id="summary-title">Resuelto</h2>
+        <p class="summary-line">
+          <strong>{label(@case.outcome)}.</strong>
+          {if @case.decided_by_staff_id == me.id,
+            do: "Lo decidiste tú " <> ago(@case.resolved_at) <> ".",
+            else:
+              "Lo decidió " <>
+                person(@names, @case.decided_by_staff_id, me) <>
+                " " <> ago(@case.resolved_at) <> "."}
+        </p>
+        <a
+          :for={appeal <- open_appeals}
+          class="callout callout-link"
+          href={~p"/backoffice/cases/#{appeal.id}"}
+        >
+          <CherryWeb.Brand.icon name="undo" />
+          <span>Recurso pendiente {short_id(appeal.id)}</span>
+        </a>
+        <p :if={@case.kind in ~w(report complaint measure)} class="hint">
+          Cada parte puede pedir una revisión desde su buzón. La resolverá otra persona.
+        </p>
+        <.form for={%{}} action={~p"/backoffice/cases/next"}>
+          <button class="btn btn-primary btn-block" type="submit">
+            Tomar el siguiente <CherryWeb.Brand.icon name="next" />
+          </button>
+        </.form>
+      </section>
     </aside>
   </div>
 </.shell>

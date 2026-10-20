@@ -12,7 +12,7 @@ defmodule CherryWeb.Plugs.BackofficeSession do
       |> put_resp_header("x-robots-tag", "noindex, nofollow")
       |> put_resp_header(
         "content-security-policy",
-        "default-src 'none'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
+        "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
       )
 
     if Application.get_env(:cherry, :backoffice_enabled, false) do
@@ -33,6 +33,9 @@ defmodule CherryWeb.Plugs.BackofficeSession do
       conn |> send_resp(404, "Not found") |> halt()
     end
   end
+
+  @doc "The verified session token of this request, to tell it apart from the member's others."
+  def token(conn), do: conn.cookies[@cookie]
 
   def require_staff(%{assigns: %{current_staff: %Cherry.Backoffice.Staff{}}} = conn, _), do: conn
 

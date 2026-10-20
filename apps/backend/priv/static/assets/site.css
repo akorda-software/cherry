@@ -1,3 +1,9 @@
+/*
+ * Web pública de Cherry. Mismo sistema que la app (apps/mobile/DESIGN.md):
+ * papel blanco roto con puntos, tinta ciruela para texto, contornos y sombras
+ * duras, siete rotuladores con tinta encima y Rubik como única familia.
+ * Sin JavaScript: la CSP pública no admite scripts.
+ */
 @font-face {
   font-family: Rubik;
   src: url('/fonts/Rubik-Regular.ttf') format('truetype');
@@ -6,281 +12,2352 @@
 }
 @font-face {
   font-family: Rubik;
+  src: url('/fonts/Rubik-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: Rubik;
+  src: url('/fonts/Rubik-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: Rubik;
+  src: url('/fonts/Rubik-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: Rubik;
   src: url('/fonts/Rubik-Black.ttf') format('truetype');
   font-weight: 900;
   font-display: swap;
 }
+
 :root {
-  --ink: #29233a;
-  --paper: #fff9fb;
-  --pink: #ffd9e8;
-  --mint: #c5f2d4;
-  --yellow: #ffe89a;
-  --berry: #9b2147;
+  --ink: #1d1426;
+  --ink-soft: #5e5468;
+  --ink-faint: #726980;
+  --paper: #faf6f0;
+  --paper-deep: #f1eae0;
+  --dot: #e6ddce;
+  --white: #fff;
+  --fresa: #ff6b57;
+  --fresa-soft: #ffdbd7;
+  --fresa-deep: #bd240f;
+  --limonada: #ffc53d;
+  --limonada-soft: #fff1d0;
+  --limonada-deep: #89630b;
+  --lavanda: #a58bff;
+  --lavanda-soft: #e9e3ff;
+  --lavanda-deep: #663fef;
+  --cielo: #5ec0ff;
+  --cielo-soft: #d8f0ff;
+  --cielo-deep: #0e6eac;
+  --lima: #b9e53c;
+  --lima-soft: #eef9d0;
+  --lima-deep: #59730f;
+  --menta: #62d98c;
+  --menta-soft: #d9f6e3;
+  --menta-deep: #1e7a3e;
+  --tomate: #f2544f;
+  --tomate-soft: #fcd6d5;
+  --tomate-deep: #c11510;
+
+  --pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --wrap: 1240px;
+  --gutter: clamp(1.25rem, 4vw, 3rem);
+  /* Aire entre apartados: cada uno es una escena aparte de la libreta. */
+  --section-space: clamp(5rem, 10vw, 9rem);
+
   color: var(--ink);
-  background: var(--paper);
-  font: 400 17px/1.65 Rubik, system-ui, sans-serif;
+  background-color: var(--paper);
+  background-image: radial-gradient(var(--dot) 1.5px, transparent 1.7px);
+  background-size: 22px 22px;
+  font: 400 1.0625rem/1.6 Rubik, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', system-ui, sans-serif;
   color-scheme: light;
+  -webkit-text-size-adjust: 100%;
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
+  overflow-x: hidden;
 }
 a {
-  color: var(--berry);
-  text-underline-offset: .22em;
+  color: var(--ink);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
 }
 a:hover {
+  text-decoration-color: var(--fresa);
   text-decoration-thickness: 3px;
 }
 :focus-visible {
-  outline: 3px solid var(--berry);
-  outline-offset: 5px;
+  outline: 3px solid var(--lavanda-deep);
+  outline-offset: 4px;
+  border-radius: 6px;
 }
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   font-weight: 900;
-  line-height: 1.12;
-  letter-spacing: -.035em;
-}
-h1 {
-  font-size: clamp(2.6rem, 5.4vw, 5rem);
-  margin: .4em 0;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  margin: 0;
+  text-wrap: balance;
 }
 h2 {
-  font-size: clamp(1.9rem, 3vw, 3rem);
+  font-size: clamp(2.25rem, 4.6vw, 3.75rem);
 }
 h3 {
-  font-size: 1.25rem;
-  letter-spacing: -.015em;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 p {
-  max-width: 70ch;
+  max-width: 62ch;
+  margin: 0;
+  text-wrap: pretty;
+}
+.icon {
+  width: 1.25em;
+  height: 1.25em;
+  flex: none;
 }
 .skip {
   position: absolute;
+  left: 1rem;
   top: -100px;
-  padding: .7rem;
-  background: white;
-  z-index: 2;
+  padding: 0.6rem 1rem;
+  background: var(--white);
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  font-weight: 700;
+  z-index: 10;
 }
 .skip:focus {
-  top: 0;
+  top: 1rem;
 }
-.site-header, .site-footer, .page-width, .hero, .manifesto, .open-note {
-  max-width: 1180px;
-  margin-inline: auto;
-  padding-inline: clamp(1.25rem, 4vw, 3rem);
-}
-.site-header {
-  display: flex;
+
+/* ── Piezas ─────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-block: 1.5rem;
-}
-.wordmark {
-  font-size: 1.9rem;
-  font-weight: 900;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 52px;
+  padding: 0 1.4rem;
+  background: var(--white);
   color: var(--ink);
-  text-decoration: none;
-  letter-spacing: -.05em;
-}
-.site-header nav, .site-footer nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .5rem 1.5rem;
-}
-.site-header nav {
-  font-size: .9rem;
-}
-.hero {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  align-items: center;
-  gap: 3rem;
-  padding-block: 3.5rem 5rem;
-}
-.lede {
-  font-size: 1.2rem;
-  line-height: 1.6;
-  max-width: 50ch;
-}
-.small {
-  font-size: .85rem;
-  max-width: 43ch;
-  margin-top: 1.5rem;
-}
-.button {
-  display: inline-block;
-  background: var(--mint);
-  color: var(--ink);
-  border: 3px solid var(--ink);
-  padding: .8rem 1.25rem;
-  border-radius: 10px;
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
   box-shadow: 4px 4px 0 var(--ink);
-  font-weight: 900;
+  font: 800 1.0625rem/1.1 Rubik, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', system-ui, sans-serif;
   text-decoration: none;
+  transition:
+    transform 0.12s var(--settle),
+    box-shadow 0.12s var(--settle);
 }
-.button:hover {
+.btn:hover {
   transform: translate(-1px, -1px);
   box-shadow: 5px 5px 0 var(--ink);
 }
-.button:active {
-  transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0 var(--ink);
+.btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--ink);
 }
-.button.secondary {
-  background: var(--paper);
+.btn-lg {
+  min-height: 60px;
+  padding: 0 1.8rem;
+  border-width: 3px;
 }
-.cherry-poster {
-  background: var(--pink);
-  border: 3px solid var(--ink);
-  border-radius: 45% 45% 20px 20px;
-  position: relative;
-  padding: 1rem;
-  box-shadow: 8px 8px 0 var(--ink);
-  transform: rotate(3deg);
+.btn-primary {
+  background: var(--fresa);
 }
-.cherry-poster svg {
-  display: block;
-  width: 100%;
-  height: auto;
+.btn-ink {
+  background: var(--ink);
+  color: var(--white);
+  box-shadow: 4px 4px 0 var(--limonada);
 }
-.poster-sticker {
-  position: absolute;
-  right: -.5rem;
-  bottom: 1.5rem;
-  background: var(--yellow);
-  border: 3px solid var(--ink);
-  padding: .45rem .9rem;
-  border-radius: 7px;
-  font-size: 1.1rem;
-  font-weight: 900;
-  transform: rotate(-8deg);
+.btn-ink:hover {
+  box-shadow: 5px 5px 0 var(--limonada);
 }
-.manifesto {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 4rem;
-  padding-block: 3rem 5rem;
-  border-top: 3px solid var(--ink);
+.btn-ink:active {
+  box-shadow: 0 0 0 var(--limonada);
 }
-.manifesto h2 {
-  max-width: 13ch;
-  margin-top: .5rem;
+
+.sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-height: 40px;
+  padding: 0 0.9rem;
+  background: var(--white);
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 3px var(--white),
+    2px 2px 0 var(--ink);
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  white-space: nowrap;
 }
-.manifesto-list article {
-  display: flex;
-  gap: 1.3rem;
-  border-bottom: 2px solid var(--ink);
-  padding-block: 1rem;
+.sticker-icon {
+  width: 1.05em;
+  height: 1.05em;
+  flex: none;
 }
-.manifesto-list article > span {
-  font-size: 2rem;
+.sticker-liked {
+  background: var(--menta);
 }
-.manifesto-list h3 {
-  margin: .3rem 0;
+.sticker-shared {
+  background: var(--limonada);
 }
-.manifesto-list p {
-  margin: .6rem 0;
+.sticker-blocked {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--tomate-soft) 0 7px,
+    color-mix(in srgb, var(--tomate-soft) 55%, var(--tomate)) 7px 10px
+  );
+  color: var(--tomate-deep);
 }
-.open-note {
+.sticker-blocked s {
+  text-decoration-thickness: 2px;
+}
+
+/* ── Cabecera ───────────────────────────────────────────────────────── */
+
+.site-header {
+  max-width: var(--wrap);
+  margin-inline: auto;
+  padding: 1.25rem var(--gutter);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 3rem;
-  background: var(--mint);
+  gap: 1rem 2rem;
+  flex-wrap: wrap;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 1.65rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+.brand-mochi {
+  flex: none;
+  transition: rotate 0.3s var(--pop);
+}
+.brand:hover .brand-mochi {
+  rotate: -10deg;
+}
+/* Los ojos de corazón de Mochi laten unas veces al llegar y al pasar por encima. */
+.mochi-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .brand-mochi .mochi-eye {
+    animation: beat 1.1s ease-in-out 0.9s 2;
+  }
+  .brand:hover .mochi-eye,
+  .pass:hover .mochi-eye,
+  .footer-brand:hover .mochi-eye {
+    animation: beat-again 1.1s ease-in-out 2;
+  }
+}
+@keyframes beat {
+  18% {
+    scale: 1.32;
+  }
+  32% {
+    scale: 0.94;
+  }
+  48% {
+    scale: 1.18;
+  }
+  64% {
+    scale: 1;
+  }
+}
+@keyframes beat-again {
+  18% {
+    scale: 1.32;
+  }
+  32% {
+    scale: 0.94;
+  }
+  48% {
+    scale: 1.18;
+  }
+  64% {
+    scale: 1;
+  }
+}
+.site-header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.6rem;
+  font-weight: 700;
+}
+.site-header nav a {
+  text-decoration-color: transparent;
+}
+.site-header nav a:hover {
+  text-decoration-color: var(--fresa);
+}
+
+/* ── Portada ────────────────────────────────────────────────────────── */
+
+.hero,
+.pass-section,
+.why-section,
+.tags-section,
+.steps-section,
+.safety-section,
+.open-section,
+.page-width {
+  max-width: var(--wrap);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 2rem 4rem;
+  padding-block: clamp(2rem, 5vw, 4.5rem) var(--section-space);
+}
+.hero h1 {
+  font-size: clamp(3rem, 5.7vw, 5.5rem);
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+  margin-bottom: 1.75rem;
+}
+.hero mark {
+  color: inherit;
+  background: linear-gradient(
+    176deg,
+    transparent 0.12em,
+    var(--limonada) 0.12em,
+    var(--limonada) calc(100% - 0.06em),
+    transparent calc(100% - 0.06em)
+  );
+  padding-inline: 0.08em;
+  margin-inline: -0.04em;
+  border-radius: 0.1em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.lede {
+  font-size: clamp(1.125rem, 1.6vw, 1.3rem);
+  line-height: 1.55;
+  max-width: 34em;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.1rem;
+  margin-top: 2.25rem;
+}
+.status-note {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.75rem;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.status-dot {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--lima);
+  border: 2px solid var(--ink);
+}
+
+/* La escena: dos perfiles, lo que tienen en común y el sello. */
+.scene {
+  position: relative;
+  container-type: inline-size;
+  width: 100%;
+  max-width: 580px;
+  aspect-ratio: 1 / 1.1;
+  justify-self: center;
+}
+.polaroid {
+  position: absolute;
+  width: 50cqw;
+  padding: 3cqw 3cqw 3.4cqw;
+  background: var(--white);
   border: 3px solid var(--ink);
-  border-radius: 16px;
-  padding-block: 2rem;
-  margin-bottom: 3rem;
+  border-radius: 6px;
+  box-shadow: 6px 6px 0 var(--ink);
 }
-.open-note h2 {
-  margin: .3rem 0 1rem;
+.polaroid-a {
+  left: 1%;
+  top: 3%;
+  rotate: -6deg;
+  z-index: 1;
 }
-.open-note p {
-  max-width: 49ch;
+.polaroid-b {
+  right: 1%;
+  top: 19%;
+  rotate: 4deg;
+  z-index: 2;
 }
-.open-note .button {
-  flex-shrink: 0;
+.photo {
+  position: relative;
 }
+.photo svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 240 / 190;
+  border: 3px solid var(--ink);
+  border-radius: 3px;
+}
+.name-sticker {
+  position: absolute;
+  left: 5%;
+  bottom: -0.9em;
+  padding: 0.12em 0.6em 0.16em;
+  background: var(--white);
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--ink);
+  font-size: clamp(1rem, 5cqw, 1.6rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  rotate: -3deg;
+}
+.mini-tags {
+  list-style: none;
+  margin: 6.5cqw 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.6cqw 1.4cqw;
+}
+.mini-tags li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.35em 0.7em;
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--ink);
+  font-size: clamp(0.7rem, 2.6cqw, 0.9rem);
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.mini-tags .shared {
+  background: var(--limonada);
+}
+.mini-tags .shared::after {
+  content: '';
+  width: 0.85em;
+  height: 0.85em;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5c.8 5.4 3.1 7.7 8.5 8.5-5.4.8-7.7 3.1-8.5 8.5-.8-5.4-3.1-7.7-8.5-8.5 5.4-.8 7.7-3.1 8.5-8.5Z' fill='%231D1426'/%3E%3C/svg%3E")
+    center/contain no-repeat;
+}
+.washi {
+  position: absolute;
+  top: -3.2cqw;
+  width: 19cqw;
+  height: 5.6cqw;
+  opacity: 0.88;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    94% 20%,
+    100% 40%,
+    94% 60%,
+    100% 80%,
+    94% 100%,
+    0 100%,
+    6% 80%,
+    0 60%,
+    6% 40%,
+    0 20%
+  );
+  z-index: 1;
+}
+.washi-left {
+  left: -5cqw;
+  rotate: -32deg;
+  background: var(--limonada);
+}
+.washi-right {
+  right: -5cqw;
+  rotate: 34deg;
+  background: var(--menta);
+}
+.stamp {
+  position: absolute;
+  left: 2%;
+  top: 70%;
+  z-index: 3;
+  padding: 5px;
+  border: 4px solid var(--fresa-deep);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fresa-soft) 88%, transparent);
+  color: var(--fresa-deep);
+  rotate: -12deg;
+}
+.stamp span {
+  display: block;
+  padding: 0.08em 0.45em 0.12em;
+  border: 2.5px dashed var(--fresa-deep);
+  border-radius: 5px;
+  font-size: clamp(1.6rem, 8cqw, 2.9rem);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.bubble {
+  position: absolute;
+  right: 4%;
+  bottom: 0;
+  z-index: 3;
+  max-width: 62cqw;
+  padding: 0.7em 1.05em;
+  background: var(--fresa);
+  border: 2.5px solid var(--ink);
+  border-radius: 22px 22px 6px 22px;
+  box-shadow: 4px 4px 0 var(--ink);
+  font-size: clamp(0.95rem, 3.6cqw, 1.2rem);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* «Escribiendo…»: solo existe mientras se anima, antes de que llegue el mensaje. */
+.typing {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Caen y se pegan con washi sobre la hoja. */
+  .polaroid-a {
+    animation: land-a 0.75s var(--pop) 0.1s both;
+  }
+  .polaroid-b {
+    animation: land-b 0.75s var(--pop) 0.35s both;
+  }
+  .typing {
+    position: absolute;
+    right: 4%;
+    bottom: 0;
+    z-index: 3;
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    padding: 0.95em 1.15em;
+    background: var(--fresa);
+    border: 2.5px solid var(--ink);
+    border-radius: 22px 22px 6px 22px;
+    box-shadow: 4px 4px 0 var(--ink);
+    font-size: clamp(0.95rem, 3.6cqw, 1.2rem);
+    transform-origin: 90% 100%;
+    animation: typing 1.5s var(--settle) 2.2s both;
+  }
+  .typing span {
+    width: 0.55em;
+    height: 0.55em;
+    border-radius: 50%;
+    background: var(--ink);
+    animation: typing-dot 0.55s ease-in-out 2.45s 2;
+  }
+  .typing span:nth-child(2) {
+    animation-delay: 2.57s;
+  }
+  .typing span:nth-child(3) {
+    animation-delay: 2.69s;
+  }
+  .polaroid-a .shared,
+  .polaroid-b .shared {
+    animation: spark 0.5s var(--pop) both;
+  }
+  .polaroid-a .shared:nth-child(1) {
+    animation-delay: 1.05s;
+  }
+  .polaroid-b .shared:nth-child(2) {
+    animation-delay: 1.15s;
+  }
+  .polaroid-a .shared:nth-child(2) {
+    animation-delay: 1.25s;
+  }
+  .polaroid-b .shared:nth-child(1) {
+    animation-delay: 1.35s;
+  }
+  .stamp {
+    animation: stamp 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.25) 1.75s both;
+  }
+  .bubble {
+    transform-origin: 90% 100%;
+    animation: bubble 0.5s var(--pop) 3.55s both;
+  }
+}
+@keyframes typing {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  14%,
+  86% {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+@keyframes typing-dot {
+  50% {
+    transform: translateY(-0.35em);
+  }
+}
+@keyframes land-a {
+  from {
+    opacity: 0;
+    translate: -40px 50px;
+    rotate: -16deg;
+  }
+}
+@keyframes land-b {
+  from {
+    opacity: 0;
+    translate: 50px 50px;
+    rotate: 14deg;
+  }
+}
+@keyframes spark {
+  from {
+    background: var(--white);
+    scale: 1;
+  }
+  50% {
+    scale: 1.14;
+  }
+  to {
+    background: var(--limonada);
+    scale: 1;
+  }
+}
+@keyframes stamp {
+  from {
+    opacity: 0;
+    scale: 1.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes bubble {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+}
+
+/* ── Profundidad ────────────────────────────────────────────────────── */
+
+/* La portada es una libreta en capas: hojas de distintos papeles pegadas bajo
+   cada ilustración, las piezas encima y unas pocas pegatinas en el aire. La
+   altura se dibuja con la sombra dura (más alta, más separada) y, donde el
+   navegador ata animaciones al scroll, también con la velocidad: las hojas se
+   quedan atrás y las pegatinas se adelantan. Nada se mueve solo en bucle.
+   Hojas y pegatinas se salen hacia los márgenes: main recorta en horizontal sin
+   volverse una caja con scroll (la columna fija de «Límites» sigue funcionando). */
+main {
+  overflow-x: clip;
+}
+.hero,
+.pass-section,
+.why-section,
+.tags-section,
+.steps-section,
+.safety-section,
+.open-section {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Hojas de libreta: cada papel con su trama, su borde y una sombra corta,
+   porque están pegadas al papel de puntos. */
+.sheet {
+  --sheet-bg: var(--white);
+  --sheet-rule: var(--dot);
+  --sheet-major: var(--sheet-rule);
+  --sheet-margin: color-mix(in srgb, var(--fresa) 75%, var(--white));
+  --lag: 22px;
+  position: absolute;
+  z-index: -1;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+}
+.sheet-shadow {
+  fill: var(--ink);
+}
+.sheet-paper,
+.sheet-face:not([fill]) {
+  fill: var(--sheet-bg);
+}
+.sheet-rule {
+  fill: none;
+  stroke: var(--sheet-rule);
+  stroke-width: 1.6;
+}
+.sheet-major {
+  fill: none;
+  stroke: var(--sheet-major);
+  stroke-width: 2.4;
+}
+.sheet-dots {
+  fill: var(--sheet-rule);
+}
+.sheet-margin {
+  fill: none;
+  stroke: var(--sheet-margin);
+  stroke-width: 2.5;
+}
+.sheet-stitch {
+  fill: none;
+  stroke: var(--sheet-rule);
+  stroke-width: 3;
+  stroke-dasharray: 11 9;
+  stroke-linecap: round;
+}
+.sheet-edge {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.paper-cielo {
+  --sheet-bg: var(--cielo-soft);
+  --sheet-rule: color-mix(in srgb, var(--cielo) 50%, var(--cielo-soft));
+}
+.paper-limonada {
+  --sheet-bg: var(--limonada-soft);
+  --sheet-rule: color-mix(in srgb, var(--limonada) 60%, var(--limonada-soft));
+}
+.paper-lavanda {
+  --sheet-bg: var(--lavanda-soft);
+  --sheet-rule: var(--lavanda);
+}
+.paper-menta {
+  --sheet-bg: var(--menta-soft);
+  --sheet-rule: color-mix(in srgb, var(--menta) 55%, var(--menta-soft));
+}
+.paper-fresa {
+  --sheet-bg: var(--fresa-soft);
+  --sheet-rule: color-mix(in srgb, var(--fresa) 45%, var(--fresa-soft));
+}
+.paper-lima {
+  --sheet-bg: var(--lima-soft);
+  --sheet-rule: color-mix(in srgb, var(--lima) 40%, var(--lima-soft));
+  --sheet-major: color-mix(in srgb, var(--lima) 80%, var(--lima-soft));
+}
+
+/* Pegatinas sueltas: nunca sobre texto. La sombra crece con la altura (lift). */
+.deco {
+  --deco: var(--fresa);
+  --lag: 0px;
+  position: absolute;
+  z-index: 0;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+}
+.lift-2 {
+  --lag: -32px;
+}
+.lift-3 {
+  --lag: -80px;
+  z-index: 4;
+}
+.deco-shadow {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.deco-face {
+  fill: var(--deco);
+  stroke: var(--ink);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.deco-stem {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.deco-leaf {
+  fill: var(--menta);
+  stroke: var(--ink);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.deco-fresa {
+  --deco: var(--fresa);
+}
+.deco-limonada {
+  --deco: var(--limonada);
+}
+.deco-cielo {
+  --deco: var(--cielo);
+}
+.deco-lavanda {
+  --deco: var(--lavanda);
+}
+.deco-menta {
+  --deco: var(--menta);
+}
+
+/* Portada: una hoja rayada de libreta de anillas con las polaroids encima y,
+   debajo, una cuadriculada de borde dentado que asoma. Una estrella grande
+   vuela muy cerca, cortada por el borde de la pantalla. */
+.sheet-hero-a {
+  --lag: 20px;
+  width: 128cqw;
+  top: 1%;
+  left: 9%;
+  rotate: 3deg;
+}
+.sheet-hero-b {
+  --lag: 34px;
+  width: 62cqw;
+  top: 62%;
+  left: 0;
+  rotate: -7deg;
+}
+.deco-hero-heart {
+  width: 11cqw;
+  top: -4%;
+  left: 47%;
+  rotate: 14deg;
+}
+.deco-hero-sparkle {
+  width: 9cqw;
+  bottom: -2%;
+  left: 4%;
+  rotate: -10deg;
+}
+.deco-hero-star {
+  width: 150px;
+  top: 6.5rem;
+  left: calc(50% + 50vw - 74px);
+  rotate: -16deg;
+}
+
+/* ── Secciones ──────────────────────────────────────────────────────── */
+
+.pass-section,
+.why-section,
+.tags-section,
+.safety-section {
+  display: grid;
+  gap: 3rem clamp(3rem, 7vw, 6rem);
+  align-items: center;
+  padding-block: var(--section-space);
+}
+.section-copy h2 {
+  margin-bottom: 1.5rem;
+}
+.section-copy p {
+  font-size: 1.125rem;
+}
+.section-copy p + p {
+  margin-top: 1rem;
+}
+
+/* El carné: todo, para todo el mundo. */
+.pass-section {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+}
+.pass-wrap {
+  position: relative;
+  justify-self: center;
+  width: min(100%, 420px);
+  padding: 1rem 1.5rem 1.5rem 0;
+}
+/* Un sello festoneado asoma detrás del carné y gira al pasar con el scroll. */
+.pass-seal {
+  position: absolute;
+  z-index: 0;
+  top: -72px;
+  right: -96px;
+  width: 300px;
+  height: auto;
+  overflow: visible;
+  rotate: 10deg;
+}
+.seal-shadow {
+  fill: var(--ink);
+}
+.seal-face {
+  fill: var(--limonada);
+  stroke: var(--ink);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.seal-ring {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.5px;
+  stroke-dasharray: 7 7;
+  vector-effect: non-scaling-stroke;
+}
+/* Bajo el sello, una hoja lisa cosida a máquina que se sale por la derecha. */
+.sheet-pass {
+  width: 140%;
+  top: -6%;
+  left: 16%;
+  rotate: -7deg;
+}
+.deco-pass-plus {
+  width: 58px;
+  left: -3.2rem;
+  bottom: 3rem;
+  rotate: 18deg;
+}
+.pass {
+  z-index: 1;
+  position: relative;
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 8px 8px 0 var(--ink);
+  rotate: 2deg;
+  overflow: visible;
+}
+.pass-head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.1rem 1.4rem;
+  background: var(--cielo);
+  border-bottom: 3px solid var(--ink);
+  border-radius: 19px 19px 0 0;
+}
+.pass-head svg {
+  flex: none;
+  padding: 3px;
+  background: var(--white);
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+}
+.pass-head p {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.pass-title {
+  font-size: 1.45rem !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+.pass-rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  border-bottom: 2.5px dashed var(--ink);
+}
+.pass-rows div {
+  padding: 0.9rem 1.4rem;
+}
+.pass-rows div + div {
+  border-left: 2.5px dashed var(--ink);
+}
+.pass-rows dt {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.pass-rows dd {
+  margin: 0.1rem 0 0;
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.pass-list {
+  list-style: none;
+  margin: 0;
+  padding: 1.1rem 1.4rem 2.6rem;
+  display: grid;
+  gap: 0.7rem;
+  font-weight: 700;
+}
+.pass-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.tick {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  background: var(--menta);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+.tick .icon {
+  width: 16px;
+  height: 16px;
+}
+/* Laminado holográfico: unas franjas planas cruzan el carné al hacer scroll. */
+.pass-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 19px;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+.pass-shine::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: 0;
+  width: 46%;
+  background: linear-gradient(
+    104deg,
+    transparent 0 16%,
+    var(--lavanda-soft) 16% 38%,
+    var(--cielo-soft) 38% 50%,
+    transparent 50% 60%,
+    var(--menta-soft) 60% 68%,
+    transparent 68%
+  );
+  transform: translateX(-110%);
+}
+.pass-stamp {
+  z-index: 2;
+  position: absolute;
+  right: -1.6rem;
+  bottom: -1.4rem;
+  padding: 4px;
+  border: 4px solid var(--lavanda-deep);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--lavanda-soft) 90%, transparent);
+  color: var(--lavanda-deep);
+  rotate: -14deg;
+}
+.pass-stamp span {
+  display: block;
+  padding: 0.05em 0.45em 0.1em;
+  border: 2.5px dashed var(--lavanda-deep);
+  border-radius: 5px;
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Por qué ves a quien ves. */
+.why-section {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.why-art {
+  position: relative;
+  container-type: inline-size;
+  width: 100%;
+  max-width: 540px;
+  aspect-ratio: 1 / 0.92;
+  justify-self: center;
+}
+/* Un foco detrás de Marta: el círculo se acerca y se aleja con el scroll. */
+.why-spot {
+  position: absolute;
+  z-index: 0;
+  top: -4%;
+  left: 14%;
+  width: 84cqw;
+  height: auto;
+  overflow: visible;
+}
+.spot-shadow {
+  fill: var(--ink);
+}
+.spot-face {
+  fill: var(--lavanda-soft);
+  stroke: var(--ink);
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+}
+.spot-ring {
+  fill: none;
+  stroke: var(--lavanda);
+  stroke-width: 2.5px;
+  stroke-dasharray: 3 9;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+/* Bajo Marta, una hoja rayada arrancada que se sale por la izquierda. */
+.sheet-why {
+  width: 104cqw;
+  top: -10%;
+  left: -40cqw;
+  rotate: -4deg;
+}
+.deco-why-heart {
+  width: 11cqw;
+  left: 4%;
+  bottom: 6%;
+  rotate: -12deg;
+}
+.polaroid-why {
+  left: 0;
+  top: 2%;
+  width: 54cqw;
+  rotate: -4deg;
+}
+.why-note {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 62cqw;
+  padding: 1.2rem 1.3rem 1.1rem;
+  background: var(--limonada);
+  border: 3px solid var(--ink);
+  border-radius: 4px 4px 26px 4px;
+  box-shadow: 5px 5px 0 var(--ink);
+  rotate: 2.5deg;
+  z-index: 2;
+}
+.why-note-title {
+  font-size: clamp(1.1rem, 4.4cqw, 1.45rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 0.7rem;
+}
+.why-note ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 700;
+  font-size: clamp(0.9rem, 3.2cqw, 1.05rem);
+}
+.why-note li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.why-icon {
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+}
+.why-note-foot {
+  margin-top: 0.85rem;
+  padding-top: 0.7rem;
+  border-top: 2px dashed var(--ink);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+.why-section .section-copy a {
+  font-weight: 700;
+}
+
+/* Etiquetas */
+.tags-section {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+.legend {
+  list-style: none;
+  padding: 0;
+  margin: 2rem 0 0;
+  display: grid;
+  gap: 0.85rem;
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  color: var(--ink-soft);
+}
+.legend .sticker {
+  color: var(--ink);
+  min-width: 9.5rem;
+}
+.legend .sticker-blocked {
+  color: var(--tomate-deep);
+}
+.tag-board {
+  position: relative;
+  margin: 1rem 0 0;
+  padding: 2.4rem clamp(1.25rem, 3vw, 2.25rem) 1.75rem;
+  min-width: 0;
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 6px 6px 0 var(--ink);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem 0.65rem;
+  counter-reset: likes;
+}
+/* Bajo el tablero, papel milimetrado que se sale por la derecha. */
+.sheet-tags {
+  width: 125%;
+  top: -4%;
+  left: 14%;
+  rotate: 4deg;
+}
+.deco-tags-cherry {
+  width: 76px;
+  top: -48px;
+  right: -26px;
+  rotate: -8deg;
+}
+.tag-board legend {
+  position: absolute;
+  top: 0;
+  left: 1.5rem;
+  translate: 0 -55%;
+  padding: 0.4em 1em;
+  background: var(--limonada);
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--ink);
+  font-weight: 800;
+  rotate: -2deg;
+}
+.tag-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.tag-input:checked {
+  counter-increment: likes;
+}
+.sticker-pick {
+  --tint: var(--white);
+  min-height: 44px;
+  padding-right: 0.45rem;
+  background: var(--tint);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    transform 0.12s var(--settle),
+    box-shadow 0.12s var(--settle);
+}
+.sticker-pick:nth-of-type(3n + 1) {
+  rotate: -1.5deg;
+}
+.sticker-pick:nth-of-type(3n + 2) {
+  rotate: 1deg;
+}
+.sticker-pick:active {
+  transform: translate(2px, 2px);
+  box-shadow:
+    inset 0 0 0 3px var(--white),
+    0 0 0 var(--ink);
+}
+.cat-interests {
+  --tint: color-mix(in srgb, var(--cielo-soft) 55%, var(--cielo));
+}
+.cat-active {
+  --tint: color-mix(in srgb, var(--menta-soft) 55%, var(--menta));
+}
+.cat-lifestyle {
+  --tint: color-mix(in srgb, var(--lima-soft) 55%, var(--lima));
+}
+.cat-values {
+  --tint: color-mix(in srgb, var(--lavanda-soft) 55%, var(--lavanda));
+}
+.cat-personality {
+  --tint: color-mix(in srgb, var(--limonada-soft) 55%, var(--limonada));
+}
+.cat-pets {
+  --tint: color-mix(in srgb, var(--fresa-soft) 55%, var(--fresa));
+}
+.cat-relationship {
+  --tint: color-mix(in srgb, var(--tomate-soft) 55%, var(--tomate));
+}
+.pick-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: 0.15rem;
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  font-weight: 900;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.pick-mark > * {
+  grid-area: 1 / 1;
+}
+.pick-heart {
+  display: none;
+  width: 15px;
+  height: 15px;
+}
+.tag-input:checked + .sticker-pick {
+  background: var(--menta);
+}
+.tag-input:checked + .sticker-pick .pick-mark {
+  background: var(--ink);
+  color: var(--white);
+}
+.tag-input:checked + .sticker-pick .pick-heart {
+  display: block;
+}
+.tag-input:checked + .sticker-pick .pick-plus {
+  display: none;
+}
+.tag-input:focus-visible + .sticker-pick {
+  outline: 3px solid var(--lavanda-deep);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tag-input:checked + .sticker-pick {
+    animation: peel 0.42s var(--pop);
+  }
+}
+@keyframes peel {
+  from {
+    scale: 1.14;
+    rotate: -5deg;
+  }
+}
+.tag-count {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+  padding-top: 1rem;
+  border-top: 2px dashed var(--dot);
+  font-weight: 800;
+  color: var(--menta-deep);
+  max-width: none;
+}
+.tag-counter::before {
+  content: counter(likes);
+}
+.tag-limit {
+  display: none;
+  flex-basis: 100%;
+  font-weight: 700;
+  color: var(--tomate-deep);
+}
+.tag-board:has(
+    .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+  )
+  .tag-limit {
+  display: block;
+}
+.tag-board:has(
+    .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+      ~ .tag-input:checked
+  )
+  .tag-count {
+  color: var(--tomate-deep);
+}
+
+/* Pasos: una tira de cuatro casillas y, debajo, el paso 2 en detalle, porque
+   es el único que pide algo delicado: el documento. */
+.steps-section {
+  position: relative;
+  padding-block: var(--section-space);
+}
+.deco-steps-sparkle {
+  width: 96px;
+  top: clamp(3.5rem, 7vw, 6rem);
+  right: 14%;
+  rotate: 10deg;
+}
+.steps-section h2 {
+  max-width: 14em;
+}
+/* Una tira troquelada: cada paso es una casilla y el número asoma por arriba. */
+.steps {
+  list-style: none;
+  margin: clamp(4.5rem, 7vw, 5.5rem) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 8px 8px 0 var(--ink);
+}
+.step {
+  --tone: var(--white);
+  position: relative;
+  padding: 3.4rem 1.5rem 1.7rem;
+}
+.step + .step {
+  border-left: 2.5px dashed var(--ink);
+}
+.step h3 {
+  margin-bottom: 0.6rem;
+}
+.step-link {
+  display: inline-block;
+  margin-top: 0.9rem;
+  font-weight: 700;
+}
+.step-number {
+  position: absolute;
+  top: -0.62em;
+  left: 1.1rem;
+  font-size: 5.25rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--tone);
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 4px 4px 0 var(--ink);
+}
+.step-cielo {
+  --tone: var(--cielo);
+}
+.step-lavanda {
+  --tone: var(--lavanda);
+  background: var(--lavanda-soft);
+}
+.step-lima {
+  --tone: var(--lima);
+}
+.step-fresa {
+  --tone: var(--fresa);
+}
+
+/* El paso 2 en detalle: un documento tachado entero menos lo único que se
+   queda. Los datos son de mentira y solo se ven mientras se tachan. */
+.age-check {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 3rem clamp(3rem, 6vw, 5.5rem);
+  margin-top: clamp(4rem, 7vw, 6rem);
+}
+.age-art {
+  position: relative;
+  container-type: inline-size;
+  width: 100%;
+  max-width: 540px;
+  aspect-ratio: 1 / 0.8;
+  justify-self: center;
+}
+/* Bajo el documento, una hoja cuadriculada que se sale por la izquierda. */
+.sheet-steps {
+  width: 112cqw;
+  top: -2%;
+  left: -46cqw;
+  rotate: -5deg;
+}
+.idcard {
+  position: absolute;
+  top: 9%;
+  left: 3%;
+  width: 86cqw;
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: 4cqw;
+  box-shadow: 7px 7px 0 var(--ink);
+  rotate: -4deg;
+  overflow: hidden;
+}
+.idcard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: none;
+  padding: 2.2cqw 4cqw;
+  background: var(--lavanda);
+  border-bottom: 3px solid var(--ink);
+  font-size: 3.4cqw;
+  font-weight: 800;
+  line-height: 1.2;
+}
+/* El chip: un contacto dorado con sus pistas. */
+.idcard-chip {
+  width: 9cqw;
+  height: 6.6cqw;
+  background:
+    linear-gradient(var(--ink), var(--ink)) 50% 0 / 2px 100% no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 0 50% / 100% 2px no-repeat,
+    var(--limonada);
+  border: 2.5px solid var(--ink);
+  border-radius: 1.4cqw;
+}
+.idcard-body {
+  display: grid;
+  grid-template-columns: 22cqw minmax(0, 1fr);
+  align-items: start;
+  gap: 4.5cqw;
+  padding: 3.6cqw 4cqw 0;
+}
+.idcard-photo {
+  position: relative;
+  display: block;
+  aspect-ratio: 3 / 4;
+  background: var(--lavanda-soft);
+  border: 2.5px solid var(--ink);
+  border-radius: 1.6cqw;
+  overflow: hidden;
+}
+.idcard-photo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: var(--lavanda);
+  stroke: var(--ink);
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
+}
+.idcard-photo svg * {
+  vector-effect: non-scaling-stroke;
+}
+.idcard-fields {
+  display: grid;
+  gap: 2.4cqw;
+  margin: 0;
+}
+.idcard-fields dt {
+  font-size: 2.6cqw;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ink-soft);
+}
+.idcard-fields dd {
+  position: relative;
+  width: fit-content;
+  margin: 0.4cqw 0 0;
+  font-size: 4.2cqw;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.idcard-mrz {
+  max-width: none;
+  margin: 0;
+  padding: 2.4cqw 4cqw 3.2cqw;
+  font-size: 3.4cqw;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.idcard-mrz > span {
+  position: relative;
+  margin-inline: 0.2em;
+}
+/* El tachón: rotulador de tinta encima de cada dato. Sobre la foto, la franja
+   de los ojos. */
+.redact {
+  position: absolute;
+  inset: -0.12em -0.3em;
+  background: var(--ink);
+  border-radius: 0.28em 0.4em 0.32em 0.45em;
+  transform-origin: 0 50%;
+  rotate: -1.5deg;
+}
+.idcard-fields div:nth-child(2) .redact {
+  rotate: 1deg;
+}
+.idcard-photo .redact {
+  inset: 27% -6% auto;
+  height: 17%;
+  rotate: -6deg;
+}
+.id-stamp {
+  position: absolute;
+  z-index: 2;
+  top: 42%;
+  right: 1%;
+  margin: 0;
+  padding: 5px;
+  border: 4px solid var(--tomate-deep);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tomate-soft) 90%, transparent);
+  color: var(--tomate-deep);
+  rotate: -13deg;
+}
+.id-stamp span {
+  display: block;
+  padding: 0.05em 0.45em 0.1em;
+  border: 2.5px dashed var(--tomate-deep);
+  border-radius: 5px;
+  font-size: clamp(1.4rem, 7.5cqw, 2.5rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+/* Lo único que sale del documento: la pegatina de mayor de edad. */
+.id-sticker {
+  position: absolute;
+  z-index: 3;
+  left: 12%;
+  bottom: 2%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
+  max-width: none;
+  margin: 0;
+  padding: 0.4em 1em 0.4em 0.45em;
+  background: var(--white);
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 4px 4px 0 var(--ink);
+  font-size: clamp(1rem, 4.4cqw, 1.4rem);
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  rotate: 4deg;
+}
+.age-copy h3 {
+  scroll-margin-top: 2rem;
+  margin-bottom: 1.5rem;
+  font-size: clamp(2rem, 3.6vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+.age-copy h3 span {
+  display: block;
+}
+.age-copy > p {
+  font-size: 1.125rem;
+}
+.age-checks {
+  list-style: none;
+  margin: 1rem 0 1.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.age-checks li {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.age-checks .tick {
+  width: 36px;
+  height: 36px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.age-checks .tick .icon {
+  width: 20px;
+  height: 20px;
+}
+.age-copy .age-note {
+  padding-top: 1.25rem;
+  border-top: 2.5px dashed var(--dot);
+  color: var(--ink-soft);
+  font-size: 1rem;
+}
+
+/* Límites */
+.safety-section {
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+  align-items: start;
+}
+/* Detrás de la lista asoma una hoja de lunares que se sale por la derecha. */
+.sheet-safety {
+  width: min(52%, 640px);
+  top: 12%;
+  right: -12%;
+  rotate: 5deg;
+}
+.safety-section .section-copy {
+  position: sticky;
+  top: 2rem;
+}
+.safety-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.safety-list li {
+  display: flex;
+  gap: 1rem;
+  padding: 1.4rem 1.6rem;
+  border-top: 2px dashed var(--dot);
+}
+.safety-list li:nth-child(-n + 2) {
+  border-top: 0;
+}
+.safety-list li:nth-child(odd) {
+  border-right: 2px dashed var(--dot);
+}
+.safety-list h3 {
+  font-size: 1.15rem;
+  margin: 0.55rem 0 0.35rem;
+}
+.safety-list p {
+  color: var(--ink-soft);
+}
+.safety-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.safety-icon .icon {
+  width: 24px;
+  height: 24px;
+}
+.tone-lavanda {
+  background: var(--lavanda);
+}
+.tone-limonada {
+  background: var(--limonada);
+}
+.tone-cielo {
+  background: var(--cielo);
+}
+.tone-lima {
+  background: var(--lima);
+}
+.tone-menta {
+  background: var(--menta);
+}
+.tone-tomate {
+  background: var(--tomate);
+}
+
+/* Código abierto */
+.open-section {
+  padding-block: clamp(3rem, 6vw, 5.5rem) clamp(3rem, 6vw, 5rem);
+}
+.deco-open-star {
+  width: 84px;
+  top: -44px;
+  right: 3.5rem;
+  rotate: -14deg;
+}
+/* Debajo de la tarjeta asoman otras dos, como un taco de fichas. */
+.open-card::before,
+.open-card::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border: 3px solid var(--ink);
+  border-radius: 28px;
+  box-shadow: 5px 5px 0 var(--ink);
+  pointer-events: none;
+}
+.open-card::before {
+  background: var(--limonada);
+  rotate: -2.5deg;
+  translate: -12px 16px;
+}
+.open-card::after {
+  background: var(--fresa);
+  rotate: 1.8deg;
+  translate: 16px -12px;
+}
+.open-card {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2rem 3rem;
+  padding: clamp(1.75rem, 4vw, 3.25rem);
+  background: var(--lavanda);
+  border: 3px solid var(--ink);
+  border-radius: 28px;
+  box-shadow: 8px 8px 0 var(--ink);
+}
+.open-card h2 {
+  max-width: 13em;
+  margin-bottom: 1.25rem;
+}
+.open-card p {
+  font-size: 1.125rem;
+  max-width: 50ch;
+}
+.open-card .open-geek {
+  margin-top: 1rem;
+  font-size: 1rem;
+}
+.open-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Aviso de borrador: una nota adhesiva. */
 .draft {
-  background: var(--yellow);
-  border-left: 4px solid var(--ink);
-  padding: 1rem 1.25rem;
-  margin-block: 2rem;
-  font-size: .9rem;
+  position: relative;
+  max-width: 760px;
+  margin: 2rem 0;
+  padding: 1.1rem 1.4rem 1.2rem;
+  background: var(--limonada-soft);
+  border: 2.5px solid var(--ink);
+  border-radius: 4px 4px 22px 4px;
+  box-shadow: 3px 3px 0 var(--ink);
+  font-size: 0.95rem;
+  rotate: -0.6deg;
+}
+.document .draft {
+  rotate: none;
+}
+.draft strong {
+  font-weight: 800;
 }
 .draft p {
-  margin: .4rem 0 0;
+  margin-top: 0.35rem;
 }
+
+/* ── Documentos ─────────────────────────────────────────────────────── */
+
 .document {
-  max-width: 810px;
-  margin: 2rem auto 5rem;
-  padding-inline: 1.5rem;
+  max-width: 860px;
+  margin: 1.5rem auto 2rem;
+  padding: clamp(1.75rem, 5vw, 4rem);
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 8px 8px 0 var(--ink);
+}
+.document > a:first-child,
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 40px;
+  padding: 0 1rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--ink);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  margin-bottom: 1.5rem;
 }
 .document h1 {
-  font-size: clamp(2.3rem, 5vw, 4rem);
+  font-size: clamp(2.3rem, 5vw, 3.75rem);
+  letter-spacing: -0.045em;
+  margin-bottom: 1rem;
+}
+.document .lede {
+  color: var(--ink-soft);
 }
 .document h2 {
-  font-size: 1.55rem;
-  margin: 2.2rem 0 .6rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  font-size: 1.45rem;
+  letter-spacing: -0.025em;
+  margin: 2.5rem 0 0.75rem;
+}
+.document h2::before {
+  content: '';
+  flex: none;
+  width: 0.62em;
+  height: 0.62em;
+  background: var(--fresa);
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  rotate: -8deg;
+  translate: 0 0.04em;
+}
+.document section:nth-of-type(4n + 2) h2::before,
+.document h2:nth-of-type(4n + 2)::before {
+  background: var(--cielo);
+}
+.document section:nth-of-type(4n + 3) h2::before,
+.document h2:nth-of-type(4n + 3)::before {
+  background: var(--lima);
+}
+.document section:nth-of-type(4n) h2::before,
+.document h2:nth-of-type(4n)::before {
+  background: var(--lavanda);
 }
 .document p {
   overflow-wrap: anywhere;
 }
+.document p + p {
+  margin-top: 0.9rem;
+}
+.document > p:last-child {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px dashed var(--dot);
+}
+
+/* ── Pie ────────────────────────────────────────────────────────────── */
+
 .site-footer {
-  border-top: 3px solid var(--ink);
-  margin-top: 4rem;
-  padding-block: 2rem 3rem;
+  margin-top: clamp(3rem, 6vw, 5rem);
+  background: var(--ink);
+  color: var(--paper);
+}
+.footer-inner {
+  max-width: var(--wrap);
+  margin-inline: auto;
+  padding: 3.5rem var(--gutter) 3rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) minmax(0, 0.8fr);
+  gap: 2.5rem 3rem;
+}
+.site-footer a {
+  color: var(--paper);
+  text-decoration-color: color-mix(in srgb, var(--paper) 35%, transparent);
+}
+.site-footer a:hover {
+  text-decoration-color: var(--limonada);
+}
+.footer-brand svg {
+  display: block;
+  padding: 6px;
+  background: var(--limonada);
+  border: 3px solid var(--paper);
+  border-radius: 50%;
+  box-shadow: 4px 4px 0 var(--fresa);
+}
+.footer-name {
+  margin: 1rem 0 0.4rem;
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+.footer-brand p:last-child {
+  color: color-mix(in srgb, var(--paper) 78%, var(--ink));
+  max-width: 30ch;
 }
 .site-footer nav {
-  font-size: .9rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem 2rem;
+  align-content: start;
+  font-weight: 500;
 }
-.site-footer .wordmark {
-  margin: 0;
+.footer-meta {
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--paper) 78%, var(--ink));
 }
-.site-footer > p:last-child {
-  font-size: .85rem;
+
+/* ── Movimiento ligado al scroll ────────────────────────────────────── */
+
+/* Solo donde el navegador sabe atar animaciones al scroll; en el resto todo
+   queda quieto y visible. Cada pieza termina de entrar antes de estar entera
+   en pantalla, así nunca se queda a medias. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* Al salir de la portada, sello y mensaje suben más deprisa que las fotos,
+       y las hojas de debajo se quedan atrás: capas de profundidad. */
+    .scene {
+      view-timeline: --scene block;
+    }
+    .stamp {
+      animation:
+        stamp 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.25) 1.75s both,
+        lift linear both;
+      animation-timeline: auto, --scene;
+      animation-range: normal, exit 0% exit 100%;
+    }
+    .bubble {
+      animation:
+        bubble 0.5s var(--pop) 3.55s both,
+        lift linear both;
+      animation-timeline: auto, --scene;
+      animation-range: normal, exit 0% exit 100%;
+    }
+    .sheet,
+    .deco {
+      animation: depth linear both;
+      animation-timeline: view();
+    }
+    .pass-seal {
+      animation: seal-turn linear both;
+      animation-timeline: view();
+    }
+    .pass {
+      view-timeline: --pass block;
+    }
+    .pass-shine::before {
+      animation: sheen linear both;
+      animation-timeline: --pass;
+      animation-range: entry 35% entry 100%;
+    }
+    .why-spot {
+      animation: spot-zoom linear both;
+      animation-timeline: view();
+    }
+    .why-note {
+      view-timeline: --note block;
+    }
+    .why-note li,
+    .why-note-foot {
+      animation: reason-in linear both;
+      animation-timeline: --note;
+    }
+    .why-note li:nth-child(1) {
+      animation-range: entry 25% entry 50%;
+    }
+    .why-note li:nth-child(2) {
+      animation-range: entry 37% entry 62%;
+    }
+    .why-note li:nth-child(3) {
+      animation-range: entry 49% entry 74%;
+    }
+    .why-note li:nth-child(4) {
+      animation-range: entry 61% entry 86%;
+    }
+    .why-note-foot {
+      animation-range: entry 75% entry 100%;
+    }
+    /* El documento se tacha dato a dato al entrar; después cae el sello y
+       sale la pegatina, lo único que se queda. */
+    .age-art {
+      view-timeline: --age block;
+    }
+    .redact {
+      animation: redact linear both;
+      animation-timeline: --age;
+      animation-range: entry 30% entry 46%;
+    }
+    .idcard-fields div:nth-child(1) .redact {
+      animation-range: entry 40% entry 54%;
+    }
+    .idcard-fields div:nth-child(2) .redact {
+      animation-range: entry 48% entry 62%;
+    }
+    .idcard-fields div:nth-child(3) .redact {
+      animation-range: entry 56% entry 70%;
+    }
+    .idcard-mrz .redact {
+      animation-range: entry 64% entry 78%;
+    }
+    .id-stamp {
+      animation: stamp linear both;
+      animation-timeline: --age;
+      animation-range: entry 76% entry 90%;
+    }
+    .id-sticker {
+      animation: sticker linear both;
+      animation-timeline: --age;
+      animation-range: entry 86% entry 100%;
+    }
+  }
 }
-@media (max-width: 760px) {
-  .site-header {
-    align-items: flex-start;
-    flex-direction: column;
+@keyframes lift {
+  to {
+    translate: 0 -70px;
   }
-  .hero {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    padding-top: 1.5rem;
+}
+@keyframes depth {
+  from {
+    translate: 0 calc(-1 * var(--lag));
   }
-  .cherry-poster {
-    max-width: 360px;
-    width: 90%;
-    margin: 0 auto;
+  to {
+    translate: 0 var(--lag);
   }
-  .manifesto {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+}
+@keyframes seal-turn {
+  from {
+    transform: rotate(-50deg);
   }
-  .manifesto h2 {
-    max-width: 22ch;
+  to {
+    transform: rotate(40deg);
   }
-  .open-note {
-    flex-direction: column;
-    align-items: flex-start;
-    margin-inline: 1.25rem;
-    padding-inline: 1.5rem;
-    gap: 1rem;
+}
+@keyframes sheen {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(240%);
+  }
+}
+@keyframes spot-zoom {
+  from {
+    transform: scale(0.82) rotate(-30deg);
+  }
+  to {
+    transform: scale(1.04) rotate(30deg);
+  }
+}
+@keyframes reason-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+@keyframes redact {
+  from {
+    scale: 0 1;
+  }
+}
+@keyframes sticker {
+  from {
+    opacity: 0;
+    scale: 0.3;
+    rotate: -24deg;
+  }
+  60% {
+    opacity: 1;
+    scale: 1.08;
+  }
+}
+
+/* ── Adaptación ─────────────────────────────────────────────────────── */
+
+@media (max-width: 1000px) {
+  /* En dos filas el número entra en su casilla: por arriba taparía la de encima. */
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 3rem;
+  }
+  .step {
+    padding-top: 1.4rem;
+  }
+  .step:nth-child(odd) {
+    border-left: 0;
+  }
+  .step:nth-child(n + 3) {
+    border-top: 2.5px dashed var(--ink);
+  }
+  .step-number {
+    position: static;
+    display: block;
+    margin-bottom: 0.7rem;
+    font-size: 4rem;
+  }
+  .step-lavanda {
+    border-top-right-radius: 19px;
+  }
+  .footer-inner {
+    grid-template-columns: 1fr 1fr;
+  }
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 860px) {
+  .hero,
+  .pass-section,
+  .why-section,
+  .tags-section,
+  .safety-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .why-section .section-copy {
+    order: -1;
+  }
+  .safety-section .section-copy {
+    position: static;
+  }
+  .scene {
+    max-width: 520px;
+  }
+  /* En una columna el texto va encima de cada ilustración: las hojas empiezan
+     por debajo de él y nunca se meten entre las líneas. */
+  .sheet-pass {
+    top: 4%;
+    left: 12%;
+    width: 132%;
+  }
+  .sheet {
+    --lag: 14px;
+  }
+  .sheet-why {
+    top: auto;
+    bottom: -3%;
+    width: 86cqw;
+  }
+  /* Más pequeña: entera, no cabe bajo el tablero y bajaría hasta los pasos. */
+  .sheet-tags {
+    top: 10%;
+    left: 45%;
+    width: 70%;
+  }
+  .sheet-safety {
+    top: auto;
+    bottom: 4%;
+    right: -14%;
+    width: min(78%, 560px);
+  }
+  .deco-hero-star {
+    display: none;
+  }
+  .age-check {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .age-copy {
+    order: -1;
+  }
+}
+@media (max-width: 640px) {
+  .scene {
+    aspect-ratio: 1 / 1.26;
+  }
+  .tag-board {
+    gap: 0.6rem 0.45rem;
+  }
+  .sticker-pick {
+    min-height: 40px;
+    font-size: 0.875rem;
+    padding-left: 0.7rem;
+  }
+  .tag-input:nth-of-type(n + 13),
+  .sticker-pick:nth-of-type(n + 13) {
+    display: none;
+  }
+  .site-header nav {
+    gap: 0.25rem 1.1rem;
+    font-size: 0.95rem;
+  }
+  .actions .btn {
+    flex: 1 1 100%;
+  }
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 3.4rem minmax(0, 1fr);
+    column-gap: 1rem;
+    padding: 1.3rem 1.25rem 1.4rem 1.1rem;
+  }
+  .step + .step {
+    border-left: 0;
+    border-top: 2.5px dashed var(--ink);
+  }
+  .step-number {
+    grid-row: span 2;
+    margin: -0.15em 0 0;
+    font-size: 3.4rem;
+  }
+  .step-link {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .step-lavanda {
+    border-top-right-radius: 0;
+  }
+  .why-art {
+    aspect-ratio: auto;
+    margin-top: 1rem;
+  }
+  .polaroid-why {
+    position: relative;
+    width: 64cqw;
+  }
+  .why-note {
+    position: relative;
+    width: 84cqw;
+    margin: 1.4rem 0 0 auto;
+  }
+  .safety-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .safety-list li:nth-child(2) {
+    border-top: 2px dashed var(--dot);
+  }
+  .safety-list li:nth-child(odd) {
+    border-right: 0;
+  }
+  .footer-inner {
+    grid-template-columns: minmax(0, 1fr);
   }
   .document {
-    margin-top: 1rem;
+    border-radius: 16px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .deco-pass-plus,
+  .deco-why-heart,
+  .deco-steps-sparkle {
+    display: none;
+  }
+  .pass-seal {
+    top: -44px;
+    right: -54px;
+    width: 210px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     scroll-behavior: auto !important;
     transition: none !important;
+    animation: none !important;
   }
 }

@@ -43,10 +43,22 @@ defmodule Cherry.Casework.Case do
     |> validate_inclusion(:outcome, outcomes)
     |> validate_length(:response, min: 20, max: 4000)
     |> validate_length(:reporter_response, min: 20, max: 4000)
+    |> validate_change(:response, &no_template_gaps/2)
+    |> validate_change(:reporter_response, &no_template_gaps/2)
     |> then(fn changeset ->
       if case_record.kind == "report",
         do: validate_required(changeset, [:reporter_response]),
         else: changeset
     end)
   end
+
+  # Panel models mark what staff must fill in as «[EN MAYÚSCULAS]». A reply
+  # that still contains one would reach the person unfinished.
+  def template_gap?(text) when is_binary(text),
+    do: Regex.match?(~r/\[[[:upper:]][^\[\]a-z]{5,}\]/u, text)
+
+  def template_gap?(_), do: false
+
+  defp no_template_gaps(field, text),
+    do: if(template_gap?(text), do: [{field, "contains template gaps"}], else: [])
 end

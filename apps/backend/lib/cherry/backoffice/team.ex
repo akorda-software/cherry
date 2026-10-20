@@ -12,6 +12,46 @@ defmodule Cherry.Backoffice.Team do
     end)
   end
 
+  @doc """
+  Operational signals per member: last sign-in, open cases assigned and the
+  expiry of a pending invitation. Never credentials or session tokens.
+  """
+  def signals(actor, ids) do
+    Repo.transaction(fn ->
+      Access.authorize!(actor, :manage_team)
+
+      %{
+        last_login:
+          Repo.all(
+            from(a in Audit,
+              where: a.action == "staff_login" and a.staff_id in ^ids,
+              group_by: a.staff_id,
+              select: {a.staff_id, max(a.inserted_at)}
+            )
+          )
+          |> Map.new(),
+        open_cases:
+          Repo.all(
+            from(c in Cherry.Casework.Case,
+              where: c.status == "open" and c.assigned_staff_id in ^ids,
+              group_by: c.assigned_staff_id,
+              select: {c.assigned_staff_id, count(c.id)}
+            )
+          )
+          |> Map.new(),
+        invitations:
+          Repo.all(
+            from(c in Credential,
+              where: c.kind == "invite" and c.staff_id in ^ids,
+              group_by: c.staff_id,
+              select: {c.staff_id, max(c.expires_at)}
+            )
+          )
+          |> Map.new()
+      }
+    end)
+  end
+
   def invite(actor, attrs) do
     manage(actor, fn actor ->
       changeset = Staff.changeset(%Staff{}, Map.take(attrs, ["email", "role"]))

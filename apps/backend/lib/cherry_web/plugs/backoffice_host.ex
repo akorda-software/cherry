@@ -49,6 +49,20 @@ defmodule CherryWeb.Plugs.BackofficeHost do
             do: conn,
             else: not_found(conn)
 
+        # The panel's own typeface and favicon; nothing else from the product.
+        {method, ["fonts", file]} when method in ["GET", "HEAD"] ->
+          if Regex.match?(
+               ~r/\ARubik-(?:Regular|Medium|Bold|ExtraBold|Black)(?:-[0-9a-f]{32})?\.ttf\z/,
+               file
+             ),
+             do: conn,
+             else: not_found(conn)
+
+        {method, ["images", file]} when method in ["GET", "HEAD"] ->
+          if Regex.match?(~r/\Amochi(?:-[0-9a-f]{32})?\.svg\z/, file),
+            do: conn,
+            else: not_found(conn)
+
         _ ->
           not_found(conn)
       end

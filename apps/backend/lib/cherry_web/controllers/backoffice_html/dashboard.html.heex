@@ -1,0 +1,188 @@
+<.shell title="Inicio" staff={@current_staff} section="home" flash={@flash}>
+  <div class="page-head">
+    <div>
+      <h1>Para hoy</h1>
+      <p class="muted">
+        <span class="today">{String.capitalize(long_date(Date.utc_today()))}.</span>
+        {if @overview.counts.open == 0,
+          do: "No hay nada pendiente en tus áreas.",
+          else:
+            plural(@overview.counts.open, "1 expediente pendiente", "%d expedientes pendientes") <>
+              ", " <> plural(@overview.counts.unassigned, "1 sin asignar.", "%d sin asignar.")}
+      </p>
+    </div>
+    <.form for={%{}} action={~p"/backoffice/cases/next"} class="next-form">
+      <button
+        class="btn btn-primary btn-lg"
+        type="submit"
+        disabled={@overview.counts.unassigned == 0}
+      >
+        Tomar el siguiente <CherryWeb.Brand.icon name="next" />
+      </button>
+      <span class="hint">
+        {if @overview.counts.unassigned == 0,
+          do: "No queda nada sin asignar.",
+          else: "Por prioridad: posibles menores y después los más antiguos."}
+      </span>
+    </.form>
+  </div>
+
+  <section class="tiles" aria-label="Resumen de trabajo">
+    <a
+      class={["tile tile-unassigned", @overview.counts.unassigned == 0 && "is-zero"]}
+      href={~p"/backoffice/cases?owner=none"}
+    >
+      <span class="tile-number">{@overview.counts.unassigned}</span>
+      <span class="tile-label">Sin asignar</span>
+    </a>
+    <a
+      class={["tile tile-mine", @overview.counts.mine == 0 && "is-zero"]}
+      href={~p"/backoffice/cases?owner=me"}
+    >
+      <span class="tile-number">{@overview.counts.mine}</span>
+      <span class="tile-label">Asignados a ti</span>
+    </a>
+    <a
+      :if={moderation?(@current_staff)}
+      class={[
+        "tile tile-priority",
+        if(@overview.counts.priority > 0, do: "is-hot", else: "is-zero")
+      ]}
+      href={~p"/backoffice/cases?category=underage"}
+    >
+      <span class="tile-number">{@overview.counts.priority}</span>
+      <span class="tile-label">Posibles menores</span>
+    </a>
+    <a
+      :if={moderation?(@current_staff)}
+      class={["tile tile-appeals", @overview.counts.appeals == 0 && "is-zero"]}
+      href={~p"/backoffice/cases?kind=appeal"}
+    >
+      <span class="tile-number">{@overview.counts.appeals}</span>
+      <span class="tile-label">Recursos pendientes</span>
+    </a>
+    <a
+      :if={@overview.privacy}
+      class={[
+        "tile tile-privacy",
+        @overview.privacy.overdue > 0 && "is-hot",
+        @overview.privacy.due_soon + @overview.privacy.overdue == 0 && "is-zero"
+      ]}
+      href={~p"/backoffice/cases?kind=privacy"}
+    >
+      <span class="tile-number">{@overview.privacy.due_soon + @overview.privacy.overdue}</span>
+      <span class="tile-label">
+        {if @overview.privacy.overdue > 0,
+          do:
+            plural(
+              @overview.privacy.overdue,
+              "Privacidad: 1 vencida",
+              "Privacidad: %d vencidas"
+            ),
+          else: "Privacidad: vencen en 7 días"}
+      </span>
+    </a>
+    <a
+      class={["tile tile-done", @overview.counts.resolved_week == 0 && "is-zero"]}
+      href={~p"/backoffice/cases?status=resolved"}
+    >
+      <span class="tile-number">{@overview.counts.resolved_week}</span>
+      <span class="tile-label">Resueltos en 7 días</span>
+    </a>
+  </section>
+
+  <div class="board">
+    <div class="column">
+      <section class="card" aria-labelledby="mine-title">
+        <div class="card-head">
+          <h2 id="mine-title">Lo tuyo</h2>
+          <a :if={@overview.counts.mine > 0} href={~p"/backoffice/cases?owner=me"}>Ver todos</a>
+        </div>
+        <ul :if={@overview.mine != []} class="case-lines">
+          <.case_line
+            :for={record <- @overview.mine}
+            record={record}
+            meta={
+              if record.kind == "privacy",
+                do: due(Cherry.Casework.Deadlines.response_date(record)),
+                else: ago(record.inserted_at)
+            }
+          />
+        </ul>
+        <p :if={@overview.mine == []} class="empty-line">
+          No tienes expedientes asignados. Cuando puedas, toma el siguiente de la cola.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="next-title">
+        <div class="card-head">
+          <h2 id="next-title">Siguientes en la cola</h2>
+          <a href={~p"/backoffice/cases"}>Toda la cola</a>
+        </div>
+        <ul :if={@overview.next != []} class="case-lines">
+          <.case_line :for={record <- @overview.next} record={record} />
+        </ul>
+        <p :if={@overview.next == []} class="empty-line">
+          <CherryWeb.Brand.mochi size={44} /> Nada esperando sin asignar.
+        </p>
+      </section>
+    </div>
+
+    <aside class="column">
+      <section
+        :if={@overview.measures}
+        class="card card-measures"
+        aria-labelledby="measures-title"
+      >
+        <h2 id="measures-title">Medidas vigentes</h2>
+        <p class="big-line">
+          <strong>{@overview.measures}</strong>
+          {plural(@overview.measures, "cuenta suspendida", "cuentas suspendidas")}
+        </p>
+        <p class="hint">No caducan solas: revísalas de vez en cuando.</p>
+        <a class="btn btn-sm" href={~p"/backoffice/measures"}>Ver medidas</a>
+      </section>
+
+      <section :if={@overview.team} class="card card-team" aria-labelledby="team-title">
+        <h2 id="team-title">Equipo</h2>
+        <ul class="stat-list">
+          <li>
+            <strong>{@overview.team.active}</strong>
+            {plural(@overview.team.active, "persona con acceso", "personas con acceso")}
+          </li>
+          <li :if={@overview.team.pending > 0}>
+            <strong>{@overview.team.pending}</strong>
+            {plural(@overview.team.pending, "invitación sin aceptar", "invitaciones sin aceptar")}
+          </li>
+          <li :if={@overview.team.blocked > 0} class="is-warn">
+            <strong>{@overview.team.blocked}</strong>
+            {plural(@overview.team.blocked, "bloqueada por intentos", "bloqueadas por intentos")}
+          </li>
+        </ul>
+        <a class="btn btn-sm" href={~p"/backoffice/team"}>Gestionar equipo</a>
+      </section>
+
+      <section :if={@overview.team} class="card" aria-labelledby="activity-title">
+        <div class="card-head">
+          <h2 id="activity-title">Actividad reciente</h2>
+          <a href={~p"/backoffice/activity"}>Ver todo</a>
+        </div>
+        <ol :if={@overview.activity != []} class="mini-log">
+          <li :for={event <- @overview.activity}>
+            <span class="mini-log-what">
+              <strong>{label(event.action)}</strong>
+              <a :if={event.case_id} href={~p"/backoffice/cases/#{event.case_id}"}>
+                {short_id(event.case_id)}
+              </a>
+            </span>
+            <span class="mini-log-who">
+              {actor(event, @overview.names, @current_staff)},
+              <time datetime={iso(event.inserted_at)}>{ago(event.inserted_at)}</time>
+            </span>
+          </li>
+        </ol>
+        <p :if={@overview.activity == []} class="empty-line">Sin actividad todavía.</p>
+      </section>
+    </aside>
+  </div>
+</.shell>

@@ -27,7 +27,7 @@ defmodule CherryWeb.Plugs.BackofficeHostTest do
           "127.0.0.1",
           "admin.cherry.example.evil.test"
         ] do
-      assert request(host, "/") |> html_response(200) =~ "Las buenas conexiones"
+      assert request(host, "/") |> html_response(200) =~ "La app para conocer gente que es de"
       assert request(host, "/privacidad") |> html_response(200) =~ "privacidad"
       assert request(host, "/api/config") |> json_response(200)
       assert request(host, "/healthz") |> json_response(200)
@@ -77,8 +77,14 @@ defmodule CherryWeb.Plugs.BackofficeHostTest do
     assert response(conn, 404) == "Not found"
   end
 
-  test "only the panel stylesheet and deny-all robots are served as staff assets" do
+  test "only the panel stylesheet, typeface, favicon and deny-all robots are served as staff assets" do
     assert request("admin.cherry.example", "/assets/backoffice.css") |> response(200)
+    assert request("admin.cherry.example", "/fonts/Rubik-Black.ttf") |> response(200)
+    assert request("admin.cherry.example", "/images/mochi.svg") |> response(200)
+
+    for path <- ["/assets/site.css", "/fonts/OFL.txt", "/images/logo.svg", "/openapi.yaml"] do
+      assert request("admin.cherry.example", path) |> response(404)
+    end
 
     conn = request("admin.cherry.example", "/robots.txt")
     assert response(conn, 200) == "User-agent: *\nDisallow: /\n"

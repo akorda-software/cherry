@@ -27,7 +27,7 @@ La API antigua permanece para móviles instalados; no se recompilaron.
 
 ## Panel de trabajo (2026-10-20)
 
-Ampliación local, **sin desplegar**. Sigue sin JavaScript y con la misma CSP.
+**Desplegado en producción** el 2026-10-20 (`32fd6ee`). Sigue sin JavaScript y con la misma CSP.
 
 - **Inicio («Para hoy»):** contadores de las áreas del rol (sin asignar, asignados a ti, posibles menores, recursos, privacidad que vence en 7 días, resueltos en 7 días) que abren la cola ya filtrada; lo asignado a ti, los siguientes de la cola y las medidas vigentes. Solo el superusuario ve el resumen del equipo y la actividad reciente, sin consultas ni inicios de sesión.
 - **Tomar el siguiente:** asigna en una transacción el expediente libre más prioritario que el rol puede ver (posibles menores y después antigüedad, `FOR UPDATE SKIP LOCKED`). Excluye los recursos sobre decisiones de esa misma persona.
@@ -40,7 +40,7 @@ Ampliación local, **sin desplegar**. Sigue sin JavaScript y con la misma CSP.
 - **Equipo:** último acceso, expedientes abiertos asignados, estado de invitación o bloqueo y enlace a la actividad de cada persona. **Mi acceso:** sesiones abiertas y «Cerrar mis otras sesiones», auditado como `staff_sessions_revoked` con el recuento.
 - Avisos tras cada acción y páginas de error dentro del panel.
 
-**Despliegue:** requiere la migración `20261020090000_add_casework_notes` (notas e índices de auditoría `inserted_at, id` y `staff_id, action, inserted_at`). Validación local: 850 pruebas backend, compilación con `--warnings-as-errors` y revisión en Chrome de escritorio y 390 px con datos de prueba.
+**Despliegue:** la migración `20261020090000_add_casework_notes` (notas e índices de auditoría `inserted_at, id` y `staff_id, action, inserted_at`) se aplicó al arrancar. Validación: 851 pruebas backend en CI, compilación con `--warnings-as-errors` y revisión en Chrome de escritorio y 390 px con datos de prueba. En producción solo se comprobó sin sesión: login 200 con CSRF y las rutas nuevas redirigen al login.
 
 ## Revisión de implementación (2026-10-16)
 

@@ -1,6 +1,6 @@
 # Backoffice y cumplimiento — plan de implementación
 
-**Estado: primer lote interno implementado localmente el 2026-10-16; sin desplegar.** El propietario ha aplazado expresamente las fotos para investigarlas por separado y ha pedido avanzar en lo que no depende de proveedores externos. Están implementados el panel, permisos, expedientes, decisiones, suspensión reversible, buzón, recursos y recepción/gestión de solicitudes de privacidad. [Estado técnico y límites](../14-backoffice.md). Este documento no autoriza cambios de producción, alta de servicios de pago ni el envío de fotos reales a terceros.
+**Estado: primer lote interno implementado el 2026-10-16 y activado en producción el 2026-10-17 (`4ce5ad0`); panel de trabajo desplegado el 2026-10-20 (`32fd6ee`).** El propietario ha aplazado expresamente las fotos para investigarlas por separado y ha pedido avanzar en lo que no depende de proveedores externos. Están implementados el panel, permisos, expedientes, decisiones, suspensión reversible, buzón, recursos y recepción/gestión de solicitudes de privacidad. [Estado técnico y límites](../14-backoffice.md). Este documento no autoriza cambios de producción, alta de servicios de pago ni el envío de fotos reales a terceros.
 
 La carpeta `compliance/` mezcla investigación y propuestas. Sus afirmaciones legales previas no constituyen una auditoría ni se deben convertir automáticamente en reglas de producto: antes de cerrar el lanzamiento hay que revisar aplicabilidad, excepciones y procedimientos con asesoría jurídica.
 

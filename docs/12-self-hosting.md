@@ -8,7 +8,7 @@ Guía genérica para montar una instancia propia de Cherry: backend Phoenix + Po
 
 | Pieza | Versión probada | Notas |
 |---|---|---|
-| PostgreSQL + PostGIS | PostgreSQL 18 + PostGIS 3.6 (funciona desde la 17) | Las migraciones crean las extensiones `postgis`, `uuid-ossp` y `pgcrypto` |
+| PostgreSQL + PostGIS | PostgreSQL 18 + PostGIS 3.6 | Las migraciones crean las extensiones `postgis`, `uuid-ossp` y `pgcrypto` |
 | Backend | Imagen Docker de `apps/backend/Dockerfile` o release de Elixir (Elixir 1.18, OTP 28) | Escucha HTTP en `PORT` (4000 por defecto) |
 | Proxy TLS | Cualquiera (Caddy, nginx, Traefik…) | Termina HTTPS y reenvía a Phoenix, con WebSocket |
 | Almacenamiento de fotos | Disco local (volumen persistente) o bucket S3 compatible | `STORAGE_ADAPTER=local` o `r2` |

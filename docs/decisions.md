@@ -6,13 +6,6 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
-## D-2026-10-21b — PostgreSQL 18
-
-- **Decisión:** la base de datos pasa de PostgreSQL 17 a **18** (con PostGIS 3.6) en la instancia oficial, en CI y en el compose de desarrollo, con las sumas de verificación de datos activadas. Se hace ahora, antes del lanzamiento, mientras la base es pequeña y la parada dura segundos.
-- **Motivación:** E/S asíncrona, conserva las estadísticas del planificador al actualizar de versión y mejoras de índices; la 17 tenía soporte hasta 2029, así que no era urgente, pero después costaría más. La 19 se deja para cuando lleve una o dos versiones de corrección y PostGIS la soporte del todo.
-
----
-
 ## D-2026-10-21 — NFC sin foto, sin permisos de residencia y Didit con máximo mensual
 
 - **NFC sin foto:** la lectura NFC solo coge DG1 (MRZ) y el SOD; la foto del chip (DG2) no se lee ni se envía, y el servidor ignora la que manden apps antiguas. Para la edad basta la fecha firmada por el Estado. Se aplaza la comparación selfie ↔ DG2 prevista en D-2026-10-09: con un selfie y una prueba de vida, el alta deja de ser casi instantánea, y la comparación con la foto del chip es poco fiable y delicada (licencias de los modelos, datos biométricos del art. 9). Se acepta que el NFC prueba un documento auténtico de un adulto, no que quien usa el móvil sea su titular; lo limita «un documento, una cuenta». Se podrá retomar si el volumen de usuarios hace asumible más fricción.

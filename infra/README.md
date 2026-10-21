@@ -27,22 +27,6 @@ Con el backend en el host, apunta a esta base de datos con `DATABASE_URL=ecto://
 
 La imagen trae PostGIS y **las migraciones crean las extensiones** (`postgis`, `uuid-ossp`, `pgcrypto`): basta con `mix setup` (o `mix ecto.migrate`). En esta base de datos de desarrollo el usuario `postgres` es superusuario, así que no hace falta nada más.
 
-### Venir de PostgreSQL 17
-
-La 18 usa un volumen nuevo (`postgres18-data`): el antiguo `postgres-data` no se toca ni se lee.
-Para conservar tus datos de desarrollo, vuélcalos antes con la 17 y cárgalos en la 18:
-
-```bash
-# Con el contenedor de la 17 aún en marcha
-docker exec <contenedor-postgres-17> pg_dumpall -U postgres > /tmp/dev-pg17.sql
-docker stop <contenedor-postgres-17>
-docker compose -f infra/docker-compose.yml up postgres -d
-docker compose -f infra/docker-compose.yml exec -T postgres psql -U postgres -X -q < /tmp/dev-pg17.sql
-```
-
-Si no necesitas los datos, basta con `mix setup` sobre la base nueva. Cuando ya no te haga falta,
-borra el volumen antiguo con `docker volume rm <proyecto>_postgres-data`.
-
 ## Ports
 
 - `5510` en el host (solo `127.0.0.1`) → `5432` en el contenedor — Postgres de desarrollo.

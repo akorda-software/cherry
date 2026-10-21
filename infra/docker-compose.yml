@@ -41,9 +41,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
-    # Desde PostgreSQL 18 la imagen guarda los datos en /var/lib/postgresql/18/docker:
-    # el volumen se monta en /var/lib/postgresql. Volumen nuevo: el de la 17
-    # (`postgres-data`) no sirve con la 18; ver infra/README.md.
+    # La imagen guarda los datos en /var/lib/postgresql/18/docker.
     volumes:
       - postgres18-data:/var/lib/postgresql
 

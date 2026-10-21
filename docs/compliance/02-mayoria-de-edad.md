@@ -91,7 +91,7 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 
 1. [~] Prototipo NFC: leer DG1 y SOD de un DNI real en Android y iPhone desde un módulo Expo. *Módulo escrito (`apps/mobile/modules/document-nfc`); Android compila; iOS sin compilar; sin probar con un DNI real.*
 2. [x] Autenticación pasiva en el backend con los certificados CSCA españoles. *Probada con PKI sintética y fixtures de OpenSSL; falta un SOD español real.*
-3. [-] Comparación de caras selfie ↔ DG2 con modelo de código abierto en el servidor. *Descartada el 2026-10-21: la foto del chip ya no se lee (D-2026-10-21). Investigación hecha ([resumen](#investigación-selfie--dg2-y-prueba-de-vida-sin-construir)); sin construir.*
+3. [-] Comparación de caras selfie ↔ DG2 con modelo de código abierto en el servidor. *Aplazada el 2026-10-21 (D-2026-10-21): añade fricción a un alta que hoy es casi instantánea; se podrá retomar con más volumen de usuarios. Mientras, la foto del chip no se lee. Investigación hecha ([resumen](#investigación-selfie--dg2-y-prueba-de-vida-sin-construir)); sin construir.*
 4. [x] Modelo de datos: estado de verificación del perfil + huella del documento; borrado inmediato del resto.
 5. [x] Pantallas de verificación tras el onboarding (antes de que el perfil sea visible). *Decisión del 2026-10-13: el onboarding no cambia; al terminarlo, el perfil queda «pendiente de verificar» (ver [abajo](#perfil-pendiente-de-verificar)).*
 6. [~] Integración del proveedor de respaldo. *Backend con Didit hecho (selfie + documento, consulta y webhook); falta la configuración de la consola, el DPA y la prueba real en producción.*

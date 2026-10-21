@@ -13,7 +13,7 @@ export interface VerificationApi {
   get(): Promise<AgeVerificationResponse>;
   /** Países cuyos documentos se pueden comprobar por NFC. */
   nfcCountries(): Promise<NfcCountriesResponse>;
-  /** Envía DG1, DG2 y SOD leídos del chip (base64). Errores en `AgeVerificationErrorCode`. */
+  /** Envía DG1 y SOD leídos del chip (base64). Errores en `AgeVerificationErrorCode`. */
   verifyNfc(request: NfcVerificationRequest): Promise<AgeVerificationResponse>;
   /** Abre una sesión con el proveedor (selfie + documento). `callback`: adónde vuelve el navegador. */
   startProvider(callback?: string): Promise<ProviderSessionResponse>;
@@ -32,7 +32,6 @@ export function createVerificationApi(httpClient: HttpClient): VerificationApi {
     verifyNfc(request) {
       return httpClient.post<AgeVerificationResponse>("/api/me/verification/nfc", {
         dg1: request.dg1,
-        dg2: request.dg2,
         sod: request.sod
       });
     },

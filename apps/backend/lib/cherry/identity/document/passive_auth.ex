@@ -2,7 +2,7 @@ defmodule Cherry.Identity.Document.PassiveAuth do
   @moduledoc """
   Passive authentication of an eMRTD (ICAO 9303-11 §5.1) on the server.
 
-  Given the raw DG1, DG2 and EF.SOD read from the chip:
+  Given the raw DG1 and EF.SOD read from the chip:
 
     1. parses the SOD (CMS SignedData with an LDSSecurityObject);
     2. finds the Document Signer certificate inside the SOD and verifies the
@@ -10,12 +10,13 @@ defmodule Cherry.Identity.Document.PassiveAuth do
     3. validates the Document Signer against a trusted CSCA (issuer, key
        identifiers, signature, validity periods, key usage, unknown critical
        extensions);
-    4. checks that the hashes of DG1 and DG2 match the ones signed in the SOD;
+    4. checks that the hash of DG1 matches the one signed in the SOD;
     5. parses the MRZ of DG1.
 
   It proves the data was issued by the State and not altered. It does not prove
   the chip is the original (active/chip authentication) nor that the holder is
-  the person using the phone (selfie comparison, a later phase).
+  the person using the phone. DG2 (the photo) is not needed for the age and is
+  never read.
 
   Nothing here logs or stores its input: callers must discard the data groups
   once this returns.
@@ -52,10 +53,9 @@ defmodule Cherry.Identity.Document.PassiveAuth do
       must then refuse the document itself (after looking at the age, so that
       a minor's old document is still treated as a minor's).
   """
-  @spec verify(%{dg1: binary(), dg2: binary(), sod: binary()}, keyword()) ::
+  @spec verify(%{dg1: binary(), sod: binary()}, keyword()) ::
           {:ok, result()} | {:error, error()}
-  def verify(%{dg1: dg1, dg2: dg2, sod: sod}, opts \\ [])
-      when is_binary(dg1) and is_binary(dg2) and is_binary(sod) do
+  def verify(%{dg1: dg1, sod: sod}, opts \\ []) when is_binary(dg1) and is_binary(sod) do
     now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
     anchors = Keyword.get_lazy(opts, :trust_anchors, &TrustStore.anchors/0)
 
@@ -63,7 +63,6 @@ defmodule Cherry.Identity.Document.PassiveAuth do
          :ok <- content_type(sod),
          {:ok, signer, csca, expired} <- verify_signers(sod, anchors, now),
          :ok <- data_group(sod, 1, dg1),
-         :ok <- data_group(sod, 2, dg2),
          {:ok, mrz} <- Mrz.parse_dg1(dg1, DateTime.to_date(now)),
          :ok <- check_expired(expired, Keyword.get(opts, :allow_expired_certificates, false)) do
       {:ok, %{mrz: mrz, document_signer: signer, csca: csca, certificate_expired: expired}}
@@ -88,7 +87,7 @@ defmodule Cherry.Identity.Document.PassiveAuth do
   Public, non-personal facts about an EF.SOD for debugging a rejection in
   development: the Document Signer certificate (issuer, subject, validity,
   algorithms), the LDS digest and which data groups the chip has. These are
-  shared by every document of a series; nothing read from DG1/DG2, no hash and
+  shared by every document of a series; nothing read from DG1, no hash and
   no document number is included.
   """
   @spec diagnose(binary()) :: map()

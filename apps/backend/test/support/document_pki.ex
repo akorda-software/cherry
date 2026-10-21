@@ -481,7 +481,8 @@ defmodule Cherry.TestSupport.DocumentPKI do
   end
 
   @doc """
-  A complete valid document: `%{csca, ds, dg1, dg2, sod, anchors}`.
+  A complete valid document: `%{csca, ds, dg1, dg2, sod, anchors}`. The SOD
+  signs DG2 too, as on real chips, although the server never takes it.
   Options are passed to `td1/1` (or `td3/1` with `format: :td3`) and `sod/3`.
   """
   def document(opts \\ []) do

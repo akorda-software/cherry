@@ -69,6 +69,8 @@ Extensión PostGIS + uuid-ossp. Tablas:
 - `verification_provider_sessions`: sesión de verificación externa y usuario, para poder eliminar sesiones nuevas aunque el usuario no vuelva a consultar. Al borrar la cuenta, la referencia pasa a `erasure_tasks` y desaparece la vinculación al usuario.
 - `backoffice_login_attempts` (`20261016130000`): límite temporal por hash de la IP de conexión, sin aceptar cabeceras de IP aportadas por clientes. La misma migración añade contraseña/bloqueo y el rol `superadmin`.
 
+`20261021100000` añade `verification_provider_usage`: sesiones de Didit empezadas por mes natural (UTC; PK `month`, primer día del mes) para el máximo mensual (`DIDIT_MONTHLY_LIMIT`). Solo la cuenta: sin usuario, sesión ni documento.
+
 Siguen pendientes conservación de cuentas activas, backups y reservas legales. [Detalle](./14-backoffice.md).
 
 `20261017100000` añade el tipo de expediente `measure`: ficha nueva, resuelta e inmutable desde la resolución ordinaria, para mantener exclusivamente una suspensión vigente de otra cuenta y su recurso al borrar al denunciante. Sin solicitante, reporte, padre, relato ni respuesta al denunciante; categoría genérica, medida/fecha/decisor y comunicación fija. Un recurso pendiente o resuelto se traslada a un registro nuevo mínimo sin textos históricos. Estas filas dependen solo de la cuenta afectada y desaparecen al borrarla; no se conserva la identidad de la persona borrada. `Lifecycle` coordina recepción/decisiones y borrado para que el grafo sea estable.

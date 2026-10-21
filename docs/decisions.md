@@ -6,6 +6,13 @@ Convención: una decisión por entrada, orden cronológico inverso. Solo se anot
 
 ---
 
+## D-2026-10-21 — NFC sin foto, sin permisos de residencia y Didit con máximo mensual
+
+- **NFC sin foto:** la lectura NFC solo coge DG1 (MRZ) y el SOD; la foto del chip (DG2) no se lee ni se envía, y el servidor ignora la que manden apps antiguas. Para la edad bastan la fecha firmada por el Estado. Se descarta la comparación selfie ↔ DG2 prevista en D-2026-10-09: se acepta que el NFC prueba un documento auténtico de un adulto, no que quien usa el móvil sea su titular; lo limita «un documento, una cuenta».
+- **Documentos:** se aceptan DNI y documentos de identidad de otros países y pasaportes. Los permisos de residencia (TIE y similares) se rechazan por los dos métodos; quien tenga TIE usa su pasaporte. `AGE_VERIFICATION_DOCUMENTS` admite `residence_permit` para instancias que los quieran.
+- **Máximo mensual de Didit:** cada sesión cuesta dinero (unos 0,10–0,30 €). Hasta cerrar condiciones con Didit, la instancia oficial permite 400 sesiones nuevas al mes (`DIDIT_MONTHLY_LIMIT`, mes natural en UTC). Al llegar, solo queda el NFC hasta el mes siguiente; las sesiones ya empezadas se resuelven igual.
+- **Sustituye:** en parte a D-2026-10-09 (comparación con selfie en la vía NFC). [Detalle](./compliance/02-mayoria-de-edad.md).
+
 ## D-2026-10-17b — Fotos privadas y copias mínimas de recuperación
 
 - **Decisión expresa:** R2 privado con GET firmado de cinco minutos tras autorización,

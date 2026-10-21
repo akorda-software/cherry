@@ -8,7 +8,7 @@ defmodule Cherry.Identity.Document.PassiveAuthTest do
 
   defp verify(doc, opts \\ []) do
     PassiveAuth.verify(
-      %{dg1: doc.dg1, dg2: doc.dg2, sod: doc.sod},
+      %{dg1: doc.dg1, sod: doc.sod},
       Keyword.put_new(opts, :trust_anchors, doc.anchors)
     )
   end
@@ -16,12 +16,6 @@ defmodule Cherry.Identity.Document.PassiveAuthTest do
   defp anchor(%{der: der}) do
     {:ok, cert} = Certificate.parse(der)
     cert
-  end
-
-  defp flip_last_byte(bin) do
-    size = byte_size(bin) - 1
-    <<head::binary-size(size), last>> = bin
-    head <> <<Bitwise.bxor(last, 1)>>
   end
 
   describe "valid documents" do
@@ -123,7 +117,6 @@ defmodule Cherry.Identity.Document.PassiveAuthTest do
     PassiveAuth.verify(
       %{
         dg1: File.read!(Path.join(@fixtures, "dg1.der")),
-        dg2: File.read!(Path.join(@fixtures, "dg2.der")),
         sod: File.read!(Path.join(@fixtures, sod))
       },
       trust_anchors: [anchor]
@@ -167,17 +160,20 @@ defmodule Cherry.Identity.Document.PassiveAuthTest do
       assert {:error, :data_group_mismatch} = verify(%{doc | dg1: adult})
     end
 
-    test "an altered DG2 is rejected" do
+    test "the photo (DG2) is not needed: DG1 and the SOD are enough" do
       doc = PKI.document()
-      assert {:error, :data_group_mismatch} = verify(%{doc | dg2: flip_last_byte(doc.dg2)})
+      assert Map.has_key?(doc, :dg2)
+
+      assert {:ok, _} =
+               PassiveAuth.verify(Map.take(doc, [:dg1, :sod]), trust_anchors: doc.anchors)
     end
 
-    test "a data group the SOD does not sign is rejected" do
+    test "a DG1 the SOD does not sign is rejected" do
       csca = PKI.csca()
       ds = PKI.document_signer(csca)
       dg1 = PKI.dg1(PKI.td1())
-      sod = PKI.sod(%{1 => dg1}, ds)
-      doc = %{dg1: dg1, dg2: PKI.dg2(), sod: sod, anchors: [anchor(csca)]}
+      sod = PKI.sod(%{2 => PKI.dg2()}, ds)
+      doc = %{dg1: dg1, sod: sod, anchors: [anchor(csca)]}
 
       assert {:error, :data_group_mismatch} = verify(doc)
     end
@@ -188,12 +184,10 @@ defmodule Cherry.Identity.Document.PassiveAuthTest do
       <<head::binary-14, digit, rest::binary>> = PKI.td1()
       bad = head <> <<if(digit == ?9, do: ?0, else: digit + 1)>> <> rest
       dg1 = PKI.dg1(bad)
-      dg2 = PKI.dg2()
 
       doc = %{
         dg1: dg1,
-        dg2: dg2,
-        sod: PKI.sod(%{1 => dg1, 2 => dg2}, ds),
+        sod: PKI.sod(%{1 => dg1, 2 => PKI.dg2()}, ds),
         anchors: [anchor(csca)]
       }
 
@@ -367,12 +361,10 @@ defmodule Cherry.Identity.Document.PassiveAuthTest do
       csca = PKI.csca()
       ds = PKI.document_signer(csca)
       dg1 = PKI.tlv(0x61, PKI.tlv(<<0x5F, 0x1F>>, "NOT A MRZ"))
-      dg2 = PKI.dg2()
 
       doc = %{
         dg1: dg1,
-        dg2: dg2,
-        sod: PKI.sod(%{1 => dg1, 2 => dg2}, ds),
+        sod: PKI.sod(%{1 => dg1, 2 => PKI.dg2()}, ds),
         anchors: [anchor(csca)]
       }
 

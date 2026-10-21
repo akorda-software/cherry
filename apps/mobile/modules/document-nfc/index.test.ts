@@ -20,7 +20,7 @@ import {
 function fakeNative(overrides: Partial<DocumentNfcNativeModule> = {}): DocumentNfcNativeModule {
   return {
     getStatus: vi.fn().mockResolvedValue("enabled"),
-    read: vi.fn().mockResolvedValue({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k" }),
+    read: vi.fn().mockResolvedValue({ dg1: "ZGcx", sod: "c29k" }),
     cancel: vi.fn().mockResolvedValue(undefined),
     openSettings: vi.fn().mockResolvedValue(undefined),
     addListener: vi.fn().mockReturnValue({ remove: vi.fn() }),
@@ -58,12 +58,12 @@ describe("without the native module (web, Expo Go, old dev client)", () => {
 });
 
 describe("with the native module", () => {
-  it("reads with the CAN and returns only the three files", async () => {
+  it("reads with the CAN and returns only DG1 and the SOD", async () => {
     native.current = fakeNative({
-      read: vi.fn().mockResolvedValue({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k", extra: "x" })
+      read: vi.fn().mockResolvedValue({ dg1: "ZGcx", sod: "c29k", extra: "x" })
     });
 
-    await expect(readDocument({ can: " 123456 " })).resolves.toEqual({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k" });
+    await expect(readDocument({ can: " 123456 " })).resolves.toEqual({ dg1: "ZGcx", sod: "c29k" });
     expect(native.current.read).toHaveBeenCalledWith(
       { can: "123456" },
       expect.objectContaining({ timeoutMs: 90_000 })
@@ -104,7 +104,7 @@ describe("with the native module", () => {
     native.current = fakeNative({ read: vi.fn().mockRejectedValue(new Error("boom")) });
     await expect(readDocument({ can: "123456" })).rejects.toMatchObject({ code: "UNKNOWN", message: "boom" });
 
-    native.current = fakeNative({ read: vi.fn().mockResolvedValue({ dg1: "ZGcx", dg2: "", sod: "c29k" }) });
+    native.current = fakeNative({ read: vi.fn().mockResolvedValue({ dg1: "ZGcx", sod: "" }) });
     await expect(readDocument({ can: "123456" })).rejects.toMatchObject({ code: "UNKNOWN" });
 
     expect(toDocumentNfcError("weird").code).toBe("UNKNOWN");

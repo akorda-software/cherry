@@ -31,7 +31,7 @@ describe("createVerificationApi", () => {
     expect(http.get).toHaveBeenCalledWith("/api/me/verification/nfc/countries");
   });
 
-  it("POSTs only the three chip files", async () => {
+  it("POSTs only DG1 and the SOD", async () => {
     const http = createMockHttpClient();
     vi.mocked(http.post).mockResolvedValueOnce(verified);
     const request = { dg1: "ZGcx", dg2: "ZGcy", sod: "c29k", can: "123456" } as never;
@@ -39,7 +39,6 @@ describe("createVerificationApi", () => {
     await expect(createVerificationApi(http).verifyNfc(request)).resolves.toEqual(verified);
     expect(http.post).toHaveBeenCalledWith("/api/me/verification/nfc", {
       dg1: "ZGcx",
-      dg2: "ZGcy",
       sod: "c29k"
     });
   });

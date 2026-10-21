@@ -72,6 +72,27 @@ describe("age verification flow", () => {
     expect(screen.getByTestId("pathname")).toHaveTextContent(verificationRoutes.selfie);
   });
 
+  it("says the selfie is out for this month when the monthly limit is reached", async () => {
+    stubBackend(() => ({ status: 404, body: {} }));
+    renderRoute(<VerificationMethodsScreen />, {
+      initialPath: verificationRoutes.methods,
+      services: { bootstrapSession: { execute: async () => sessionFixture } },
+      appBootstrapService: bootstrapWith({
+        required: true,
+        status: "unverified",
+        providerAvailable: false,
+        providerLimitReached: true
+      })
+    });
+
+    const selfie = screen.getByTestId("verify-method-selfie_provider");
+    await vi.waitFor(() => expect(within(selfie).getByText("No disponible este mes")).toBeInTheDocument());
+    expect(selfie).toHaveTextContent("Vuelve a partir del día 1");
+
+    fireEvent.click(selfie);
+    expect(screen.getByTestId("pathname")).toHaveTextContent(verificationRoutes.methods);
+  });
+
   it("the info button lists the NFC countries without starting the DNI flow", async () => {
     stubBackend(({ path }) =>
       path === "/api/me/verification/nfc/countries"

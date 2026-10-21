@@ -9,7 +9,7 @@
 
 export const AGE_VERIFICATION_METHODS = ["nfc_dni", "nfc_passport", "provider", "eu_wallet"] as const;
 
-/** `nfc_dni` cubre las tarjetas de identidad (DNI y TIE con NIE). */
+/** `nfc_dni` cubre las tarjetas de identidad (el DNI y las de otros países). */
 export type AgeVerificationMethod = (typeof AGE_VERIFICATION_METHODS)[number];
 
 export type AgeVerificationStatus = "unverified" | "verified" | "revoked";
@@ -24,16 +24,26 @@ export interface AgeVerificationResponse {
   verification: AgeVerification;
   /** Si la instancia exige verificarse (`AGE_VERIFICATION_REQUIRED`, desactivado por defecto). */
   required: boolean;
-  /** Si hay verificación con selfie + documento (Didit) configurada. Solo en `GET /api/me/verification`. */
+  /**
+   * Si se puede empezar ahora una verificación con selfie + documento (Didit): está configurada y no
+   * se ha llegado al máximo del mes. Solo en `GET /api/me/verification`.
+   */
   providerAvailable?: boolean;
+  /** Didit está configurado pero ya se ha llegado al máximo de este mes. Solo en `GET /api/me/verification`. */
+  providerLimitReached?: boolean;
 }
 
 /** `ageVerification` de `GET /api/bootstrap`. */
 export interface AgeVerificationState {
   required: boolean;
   status: AgeVerificationStatus;
-  /** Si hay verificación con selfie + documento (Didit) configurada. */
+  /** Si se puede empezar ahora una verificación con selfie + documento (Didit). */
   providerAvailable: boolean;
+  /**
+   * Didit está configurado pero ya se ha llegado al máximo de verificaciones de este mes
+   * (`DIDIT_MONTHLY_LIMIT`): solo queda el NFC hasta el mes siguiente. Ausente en servidores anteriores.
+   */
+  providerLimitReached?: boolean;
 }
 
 /**
@@ -73,12 +83,13 @@ export type ProviderCheckResponse =
   | { result: "pending" }
   | { result: "in_review" };
 
-/** Body de `POST /api/me/verification/nfc`: los ficheros del chip tal cual, en base64. */
+/**
+ * Body de `POST /api/me/verification/nfc`: los ficheros del chip tal cual, en base64. La foto (DG2)
+ * no se lee ni se envía; si una app antigua la manda, el servidor la ignora.
+ */
 export interface NfcVerificationRequest {
   /** DG1 (MRZ). Máx. 1 KB decodificado. */
   dg1: string;
-  /** DG2 (foto del documento). Máx. 256 KB decodificado. */
-  dg2: string;
   /** EF.SOD (firma del Estado). Máx. 32 KB decodificado. */
   sod: string;
 }
@@ -93,8 +104,7 @@ export const DOCUMENT_NOT_VERIFIED_REASONS = [
   "certificate_expired",
   "data_group_mismatch",
   "malformed_dg1",
-  "invalid_check_digit",
-  "unsupported_document"
+  "invalid_check_digit"
 ] as const;
 
 export type DocumentNotVerifiedReason = (typeof DOCUMENT_NOT_VERIFIED_REASONS)[number];
@@ -102,14 +112,16 @@ export type DocumentNotVerifiedReason = (typeof DOCUMENT_NOT_VERIFIED_REASONS)[n
 /**
  * Errores de verificación (`error` del cuerpo):
  * - 422 `invalid_payload` | `underage` (+ `accountDeleted`: la cuenta se ha borrado entera) |
- *   `document_expired` | `document_not_verified` (+ `reason`)
+ *   `document_expired` | `document_not_verified` (+ `reason`) | `unsupported_document` (no es un
+ *   DNI o documento de identidad ni un pasaporte: permiso de residencia o TIE, visado, carné de conducir)
  * - 422 (solo proveedor) `verification_declined` (Didit lo rechazó) | `session_expired` (caducada o
- *   abandonada: empezar otra) | `unsupported_document` (no es DNI/TIE/tarjeta de identidad ni pasaporte)
+ *   abandonada: empezar otra)
  * - 409 `document_already_used` (otra cuenta) | `already_verified` (con otro documento)
  * - 403 `verification_revoked`
  * - 404 `session_not_found` (proveedor: sesión desconocida, borrada o de otro usuario)
  * - 429 `too_many_attempts` (+ `retryAfter` en segundos y cabecera `Retry-After`)
- * - 503 `age_verification_unavailable` (la instancia no tiene clave de huella o no tiene Didit)
+ * - 503 `age_verification_unavailable` (la instancia no tiene clave de huella o no tiene Didit) |
+ *   `provider_limit_reached` (solo al empezar con Didit: máximo del mes alcanzado; queda el NFC)
  * - 502 `provider_error` (Didit ha fallado o no responde)
  * - 500 `verification_error`
  *
@@ -133,7 +145,8 @@ export type AgeVerificationErrorCode =
   | "session_expired"
   | "unsupported_document"
   | "session_not_found"
-  | "provider_error";
+  | "provider_error"
+  | "provider_limit_reached";
 
 /** Si `response` es un verificado del proveedor (`result: "verified"`). */
 export function isProviderVerified(

@@ -4,10 +4,12 @@ defmodule Cherry.Identity.Document.Mrz do
 
       DG1 ::= [APPLICATION 1] { [APPLICATION 31 (5F1F)] MRZ characters }
 
-  Supported formats: TD1 (identity cards such as the Spanish DNI and TIE,
-  3 × 30), TD2 (some foreign identity cards, 2 × 36) and TD3 (passports,
-  2 × 44). Every check digit is verified, including the composite one. Visas
-  (document code `V`) are not identity documents and are refused.
+  Supported formats: TD1 (identity cards such as the Spanish DNI, and
+  residence permits such as the TIE, 3 × 30), TD2 (some foreign identity
+  cards, 2 × 36) and TD3 (passports, 2 × 44). Every check digit is verified,
+  including the composite one. Visas (document code `V`) are not identity
+  documents and are refused. `residence_permit?/1` tells residence permits
+  apart from identity cards.
 
   For the Spanish DNI (and the TIE of foreign residents) the document number is
   the card's own number, which changes with each renewal, and the DNI/NIE
@@ -204,6 +206,23 @@ defmodule Cherry.Identity.Document.Mrz do
   end
 
   defp personal_number(_state, _optional1, _optional2), do: nil
+
+  @doc """
+  True for a residence permit rather than an identity card: the document code
+  of residence permits ends in `R` (`IR`, `AR`, `CR`, as in the EU uniform
+  format), and a Spanish card holding a NIE instead of a DNI is a TIE
+  whatever its code.
+  """
+  @spec residence_permit?(t()) :: boolean()
+  def residence_permit?(%__MODULE__{format: :td3}), do: false
+
+  def residence_permit?(%__MODULE__{document_code: code} = mrz) do
+    String.at(code, 1) == "R" or
+      (mrz.issuing_state == "ESP" and nie?(mrz.personal_number))
+  end
+
+  defp nie?(<<prefix, _rest::binary>>) when prefix in ~c"XYZ", do: true
+  defp nie?(_number), do: false
 
   @control_letters "TRWAGMYFPDXBNJZSQVHLCKE"
 

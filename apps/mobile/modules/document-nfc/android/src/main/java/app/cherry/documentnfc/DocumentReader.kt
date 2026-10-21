@@ -21,10 +21,12 @@ sealed class AccessKey {
 
 class ReadException(val code: String, message: String, cause: Throwable? = null) : Exception(message, cause)
 
-data class RawDocument(val dg1: ByteArray, val dg2: ByteArray, val sod: ByteArray)
+data class RawDocument(val dg1: ByteArray, val sod: ByteArray)
 
 /**
- * Reads DG1, DG2 and EF.SOD with JMRTD (ICAO 9303-11):
+ * Reads DG1 and EF.SOD with JMRTD (ICAO 9303-11). DG2 (the photo) is never
+ * read: the age only needs the MRZ in DG1 and the State's signature in EF.SOD.
+ *
  * PACE with the CAN, or PACE/BAC with the MRZ (passports and cards without CAN),
  * trying each PACE variant the chip offers. No parsing and no
  * verification here: passive authentication happens on the server.
@@ -99,13 +101,11 @@ class DocumentReader(private val onStep: (String) -> Unit) {
 
       onStep("reading_dg1")
       val dg1 = readFile(service, cardService, PassportService.EF_DG1)
-      onStep("reading_dg2")
-      val dg2 = readFile(service, cardService, PassportService.EF_DG2)
       onStep("reading_sod")
       val sod = readFile(service, cardService, PassportService.EF_SOD)
       onStep("done")
 
-      return RawDocument(dg1, dg2, sod)
+      return RawDocument(dg1, sod)
     } catch (e: ReadException) {
       throw e
     } catch (e: Exception) {

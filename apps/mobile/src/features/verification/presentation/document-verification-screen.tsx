@@ -66,7 +66,7 @@ function useVerificationDeps(): DocumentVerificationDeps {
  * Verificación de edad con el DNI (o pasaporte) por NFC, paso a paso: qué hace falta → CAN →
  * cómo colocarlo → lectura → resultado. Se llega desde «Comprobar tu edad» (`/verify`).
  *
- * Lo normal es una tarjeta con CAN (DNI, TIE y casi todos los documentos de identidad europeos).
+ * Lo normal es una tarjeta con CAN (el DNI y casi todos los documentos de identidad europeos).
  * Los casos raros quedan a un toque: «Tengo pasaporte» y «Mi documento no tiene CAN», que abren el
  * chip con los datos de la MRZ; si el CAN falla, el error también ofrece probar con esos datos.
  */

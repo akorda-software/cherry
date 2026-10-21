@@ -307,7 +307,7 @@ defmodule CherryWeb.BackofficeHTML do
   def verification_text(%{status: "revoked"}), do: "Verificación de edad revocada"
   def verification_text(_), do: "Edad sin verificar"
 
-  defp method_label("nfc_dni"), do: "DNI o NIE por NFC"
+  defp method_label("nfc_dni"), do: "documento de identidad por NFC"
   defp method_label("nfc_passport"), do: "pasaporte por NFC"
   defp method_label("provider"), do: "un proveedor externo"
   defp method_label("eu_wallet"), do: "la cartera europea"

@@ -1029,12 +1029,14 @@ paths:
   /api/me/verification/nfc:
     post:
       tags: [Verification]
-      summary: Verify age with an identity document read by NFC (DNI, TIE or passport).
+      summary: Verify age with an identity document read by NFC (DNI, identity card or passport).
       description: |
-        The app reads DG1, DG2 and EF.SOD from the chip (PACE with the CAN, or
-        BAC/PACE with the MRZ for passports) and sends them in base64. The server
+        The app reads DG1 and EF.SOD from the chip (PACE with the CAN, or
+        BAC/PACE with the MRZ for passports) and sends them in base64; DG2 (the
+        photo) is not read, and a `dg2` sent by older apps is ignored. The server
         performs passive authentication against the trusted CSCA certificates,
-        checks the holder is 18 or older and stores only status, method, date and
+        checks the holder is 18 or older, refuses residence permits (TIE and the
+        like) unless the instance accepts them, and stores only status, method, date and
         a keyed fingerprint of the document (one document, one account). The data
         groups are never stored nor logged. Limit: 5 attempts per hour and 10 per
         day per user. A successful verification makes a pending profile
@@ -1074,11 +1076,12 @@ paths:
           description: |
             `invalid_payload`; `underage` with `accountDeleted` (true: the account,
             its profile, photos and sessions were erased; the app must log out);
-            `document_expired`; or `document_not_verified` with `reason`:
-            `malformed_sod`, `unsupported_algorithm`, `missing_document_signer`,
-            `invalid_signature`, `untrusted_certificate`, `certificate_expired`,
-            `data_group_mismatch`, `malformed_dg1`, `invalid_check_digit`,
-            `unsupported_document`.
+            `document_expired`; `unsupported_document` (a kind the instance does
+            not accept: residence permit, visa); or `document_not_verified` with
+            `reason`: `malformed_sod`, `unsupported_algorithm`,
+            `missing_document_signer`, `invalid_signature`, `untrusted_certificate`,
+            `certificate_expired`, `data_group_mismatch`, `malformed_dg1`,
+            `invalid_check_digit`.
           content:
             application/json:
               schema:
@@ -1162,7 +1165,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
-          description: '`age_verification_unavailable` (no Didit credentials or no DOCUMENT_FINGERPRINT_KEY).'
+          description: |
+            `age_verification_unavailable` (no Didit credentials or no
+            DOCUMENT_FINGERPRINT_KEY); `provider_limit_reached` (this month's
+            DIDIT_MONTHLY_LIMIT is used up; not counted as an attempt, NFC is left).
           content:
             application/json:
               schema:
@@ -1223,8 +1229,8 @@ paths:
             `accountDeleted` (the account was erased; the app must log out);
             `document_expired`; `verification_declined` (Didit declined it);
             `session_expired` (expired or abandoned: start a new one);
-            `unsupported_document` (not an identity card, residence permit or
-            passport).
+            `unsupported_document` (not an identity card or passport; residence
+            permits only where the instance accepts them).
           content:
             application/json:
               schema:
@@ -1804,7 +1810,7 @@ components:
           type: string
           nullable: true
           enum: [nfc_dni, nfc_passport, provider, eu_wallet, null]
-          description: '`nfc_dni` covers identity cards (DNI, and TIE/NIE).'
+          description: '`nfc_dni` covers identity cards (the DNI or a foreign one).'
         verifiedAt:
           type: string
           format: date-time
@@ -1821,7 +1827,14 @@ components:
         providerAvailable:
           type: boolean
           description: |
-            Whether selfie + document verification (Didit) is configured. Only in
+            Whether a selfie + document verification (Didit) can start now:
+            configured and under this month's limit. Only in
+            `GET /api/me/verification`.
+        providerLimitReached:
+          type: boolean
+          description: |
+            Didit is configured but this month's limit (DIDIT_MONTHLY_LIMIT) is
+            used up: only NFC is left until next month. Only in
             `GET /api/me/verification`.
     ProviderSessionRequest:
       type: object
@@ -1862,16 +1875,13 @@ components:
           description: Only with `verified`.
     NfcVerificationRequest:
       type: object
-      required: [dg1, dg2, sod]
+      required: [dg1, sod]
+      description: The photo (DG2) is not read; a `dg2` sent by older apps is ignored.
       properties:
         dg1:
           type: string
           format: byte
           description: DG1 (MRZ) as read from the chip, base64. Max 1 KB decoded.
-        dg2:
-          type: string
-          format: byte
-          description: DG2 (facial image) as read from the chip, base64. Max 256 KB decoded.
         sod:
           type: string
           format: byte
@@ -2090,7 +2100,10 @@ components:
           enum: [unverified, verified, revoked]
         providerAvailable:
           type: boolean
-          description: Whether selfie + document verification (Didit) is configured.
+          description: Whether a selfie + document verification (Didit) can start now.
+        providerLimitReached:
+          type: boolean
+          description: Didit is configured but this month's limit is used up.
     ProfileState:
       type: object
       required: [exists, isComplete, isDiscoverable, isPaused, onboardingRequired]

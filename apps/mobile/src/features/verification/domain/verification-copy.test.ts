@@ -40,13 +40,25 @@ describe("verification copy", () => {
     expect(placementSteps("android", "id_card")).toEqual(
       expect.arrayContaining([expect.stringContaining("a la altura de la cámara"), expect.stringContaining("funda")])
     );
-    expect(placementSteps("ios", "passport")[0]).toContain("abierto por la página de la foto");
+    expect(placementSteps("ios", "passport")[0]).toContain("abierto por la página de tus datos");
   });
 
   it("covers every read step, including the automatic retry", () => {
     expect(READ_STEP_COPY.retrying).toContain("lo intentamos otra vez");
     expect(READ_STEP_PROGRESS.done).toBe(1);
     expect(READ_STEP_PROGRESS.waiting).toBe(0);
+  });
+
+  it("never mentions the photo while reading the chip: it is not read", () => {
+    for (const text of Object.values(READ_STEP_COPY)) {
+      expect(text).not.toMatch(/foto/i);
+    }
+  });
+
+  it("says the selfie is out until next month when the monthly limit is reached", () => {
+    expect(serverErrorCopy("provider_limit_reached")).toMatchObject({ title: "No disponible hasta el mes que viene", action: "none" });
+    expect(serverErrorCopy("provider_limit_reached").message).toContain("NFC");
+    expect(serverErrorCopy("unsupported_document").message).toContain("El TIE");
   });
 
   it("maps NFC errors to an action", () => {

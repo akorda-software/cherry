@@ -159,7 +159,6 @@ class DocumentNfcModule : Module() {
           it.resolve(
             mapOf(
               "dg1" to Base64.encodeToString(document.dg1, Base64.NO_WRAP),
-              "dg2" to Base64.encodeToString(document.dg2, Base64.NO_WRAP),
               "sod" to Base64.encodeToString(document.sod, Base64.NO_WRAP)
             )
           )

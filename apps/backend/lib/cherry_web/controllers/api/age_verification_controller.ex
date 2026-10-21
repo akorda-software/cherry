@@ -6,9 +6,15 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
   starts a session the app opens in a browser and `POST
   /api/me/verification/provider/check` reads its decision.
 
-  The NFC body carries DG1, DG2 and EF.SOD in base64 (`dg1`, `dg2`, `sod`).
-  They are filtered from the request logs (`:filter_parameters`) and dropped
-  after the response; see `Cherry.Identity.AgeVerifications`.
+  The NFC body carries DG1 and EF.SOD in base64 (`dg1`, `sod`). Older apps
+  also send DG2 (`dg2`, the photo): it is ignored, never decoded. All of them
+  are filtered from the request logs (`:filter_parameters`) and dropped after
+  the response; see `Cherry.Identity.AgeVerifications`.
+
+  A document the instance does not accept (a residence permit, a visa, a
+  driving licence) answers 422 `unsupported_document` with either method.
+  Starting a Didit session once the month's limit is used up answers 503
+  `provider_limit_reached`.
 
   A minor's document erases the whole account (`Cherry.Accounts.purge_account/1`)
   and answers 422 `{"error": "underage", "accountDeleted": true}`, whatever
@@ -19,9 +25,9 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
   alias Cherry.Accounts
   alias Cherry.Identity.{AgeVerification, AgeVerifications}
 
-  # Generous bounds for real chips: DG1 is ~100 bytes, DG2 a 10–60 KB JPEG or
-  # JPEG 2000 photo, EF.SOD 2–5 KB with the Document Signer certificate.
-  @fields [{"dg1", :dg1, 1_024}, {"dg2", :dg2, 262_144}, {"sod", :sod, 32_768}]
+  # Generous bounds for real chips: DG1 is ~100 bytes, EF.SOD 2–5 KB with the
+  # Document Signer certificate.
+  @fields [{"dg1", :dg1, 1_024}, {"sod", :sod, 32_768}]
 
   # Passive authentication failures: the document could not be proven genuine.
   @not_authentic [
@@ -33,8 +39,7 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
     :certificate_expired,
     :data_group_mismatch,
     :malformed_dg1,
-    :invalid_check_digit,
-    :unsupported_document
+    :invalid_check_digit
   ]
 
   def show(conn, _params) do
@@ -43,7 +48,8 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
     json(conn, %{
       verification: serialize(AgeVerifications.get(user.id)),
       required: AgeVerifications.required?(),
-      providerAvailable: AgeVerifications.provider_available?()
+      providerAvailable: AgeVerifications.provider_available?(),
+      providerLimitReached: AgeVerifications.provider_limit_reached?()
     })
   end
 
@@ -140,9 +146,6 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
 
   defp provider_error(conn, user, :underage), do: underage(conn, user)
 
-  defp provider_error(conn, _user, :unsupported_document),
-    do: send_error(conn, 422, "unsupported_document")
-
   defp provider_error(conn, _user, :verification_declined),
     do: send_error(conn, 422, "verification_declined")
 
@@ -154,6 +157,9 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
 
   defp provider_error(conn, _user, :provider_error),
     do: send_error(conn, 502, "provider_error")
+
+  defp provider_error(conn, _user, :provider_limit_reached),
+    do: send_error(conn, 503, "provider_limit_reached")
 
   defp provider_error(conn, _user, reason), do: error(conn, reason)
 
@@ -184,6 +190,7 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationController do
   defp error(conn, reason) when reason in @not_authentic,
     do: send_error(conn, 422, "document_not_verified", %{reason: Atom.to_string(reason)})
 
+  defp error(conn, :unsupported_document), do: send_error(conn, 422, "unsupported_document")
   defp error(conn, :document_expired), do: send_error(conn, 422, "document_expired")
   defp error(conn, :document_already_used), do: send_error(conn, 409, "document_already_used")
   defp error(conn, :already_verified), do: send_error(conn, 409, "already_verified")

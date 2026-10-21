@@ -72,7 +72,7 @@ Reglas estructurales:
 - `shared/ui` no contiene lógica de producto; `shared/ui/app-shell/routes.ts` define las pestañas y las rutas canónicas.
 - Tokens de sesión solo en secure storage (Keychain/Keystore).
 - Sistema de diseño «Libreta kawaii»: `08-identidad-visual.md`.
-- Módulos nativos propios en `apps/mobile/modules/` (Expo Modules API, autolinking local): `document-nfc` lee DG1/DG2/SOD del chip de DNI y pasaportes (JMRTD en Android, NFCPassportReader incorporado en iOS); ver su `README.md`.
+- Módulos nativos propios en `apps/mobile/modules/` (Expo Modules API, autolinking local): `document-nfc` lee DG1 y SOD (nunca la foto, DG2) del chip de DNI y pasaportes (JMRTD en Android, NFCPassportReader incorporado en iOS); ver su `README.md`.
 
 ## Paquetes
 

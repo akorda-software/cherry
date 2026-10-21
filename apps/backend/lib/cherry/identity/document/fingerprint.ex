@@ -8,7 +8,8 @@ defmodule Cherry.Identity.Document.Fingerprint do
 
   Input, versioned so the scheme can change without mixing values:
 
-    * Spanish identity cards (DNI, and TIE with NIE): `v1|ESP|ID|<DNI/NIE>`.
+    * Spanish identity cards (DNI, and TIE with NIE where residence permits
+      are accepted): `v1|ESP|ID|<DNI/NIE>`.
       The DNI number survives renewals and is the same in every card.
     * Any other document: `v1|<issuing state>|<code letter>|<document number>`.
       Passports change number on renewal (see `Mrz` for why their personal

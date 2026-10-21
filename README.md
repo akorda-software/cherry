@@ -76,7 +76,7 @@ Código auditable bajo AGPL-3.0. Cualquiera puede montar su propio Cherry para s
 
 - **Login** con Google y Apple; sesiones propias con refresco rotatorio.
 - **Comprobación de la edad** tras el onboarding, explicada paso a paso:
-  - **DNI por NFC** (recomendada): el móvil lee el chip del DNI, TIE o pasaporte y el servidor comprueba la firma del Estado. Sin coste y sin terceros.
+  - **DNI por NFC** (recomendada): el móvil lee los datos del chip del DNI o el pasaporte (no la foto) y el servidor comprueba la firma del Estado. Sin coste y sin terceros.
   - **Selfie y foto del documento** con [Didit](https://didit.me), para quien no tiene NFC.
   - Solo se guarda «mayor de edad: sí», la fecha y una huella cifrada del documento. Si el documento es de un menor, se borra la cuenta entera.
 - **Onboarding en 11 pasos**: nombre, cumpleaños, género, a quién quieres conocer, qué buscas, fotos, etiquetas, etiquetas bloqueadas, bio y ubicación aproximada.

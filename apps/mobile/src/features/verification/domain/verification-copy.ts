@@ -19,7 +19,7 @@ export interface VerificationErrorCopy {
 export type DocumentKind = "id_card" | "passport";
 
 /**
- * Con qué se abre el chip: el CAN (DNI, TIE y la mayoría de documentos de identidad) o los datos
+ * Con qué se abre el chip: el CAN (el DNI y la mayoría de documentos de identidad) o los datos
  * de la MRZ (pasaportes y tarjetas sin CAN).
  */
 export type DocumentAccess = "can" | "mrz";
@@ -71,7 +71,7 @@ export const VERIFICATION_METHODS: readonly {
     id: "nfc",
     icon: "shield-check",
     title: "Con tu DNI y el NFC del móvil",
-    body: "Tarda menos de un minuto. Sirven el DNI desde 2015, el TIE y los pasaportes y documentos con chip de muchos países.",
+    body: "Tarda menos de un minuto. Sirven el DNI desde 2015 y los pasaportes y documentos de identidad con chip de muchos países. El TIE y los permisos de residencia, no.",
     available: true,
     recommended: true
   },
@@ -93,11 +93,15 @@ export const VERIFICATION_METHODS: readonly {
   }
 ];
 
+/** Texto del selfie cuando se ha llegado al máximo de comprobaciones del mes. */
+export const PROVIDER_LIMIT_REACHED_BODY =
+  "Este mes ya no quedan comprobaciones con selfie. Vuelve a partir del día 1 o hazlo con el DNI o el pasaporte por NFC.";
+
 /** Qué hace falta antes de empezar con el DNI. */
 export const NFC_REQUIREMENTS = [
   {
     icon: "shield-check",
-    text: "Un DNI de 2015 o posterior, un TIE o un pasaporte o documento de identidad con chip, en vigor."
+    text: "Un DNI de 2015 o posterior, o un pasaporte o documento de identidad con chip, en vigor. El TIE no sirve."
   },
   { icon: "check-circle", text: "El NFC del móvil activado." },
   { icon: "clock", text: "Un minuto y una mesa donde apoyarte." }
@@ -106,25 +110,25 @@ export const NFC_REQUIREMENTS = [
 /** Pasos de cómo colocar el documento, según la plataforma. */
 export function placementSteps(platform: string, kind: DocumentKind): string[] {
   const document = kind === "passport" ? "el pasaporte" : "el DNI";
-  const where = kind === "passport" ? "abierto por la página de la foto" : "por cualquier cara";
+  const where = kind === "passport" ? "abierto por la página de tus datos" : "por cualquier cara";
 
   return platform === "ios"
     ? [
         `Deja ${document} sobre la mesa, ${where}.`,
         "Apoya encima la parte de arriba del iPhone (donde está la cámara).",
-        "Cuando empiece a leer, no muevas nada hasta que termine. Tarda unos 10 segundos."
+        "Cuando empiece a leer, no muevas nada hasta que termine. Tarda unos segundos."
       ]
     : [
         "Si la funda es gruesa o tiene metal, quítala.",
         `Apoya ${document} en la parte de atrás del móvil, a la altura de la cámara.`,
         "Si no lo detecta, deslízalo despacio hacia el centro.",
-        "Cuando empiece a leer, no lo muevas hasta que termine. Tarda unos 10 segundos."
+        "Cuando empiece a leer, no lo muevas hasta que termine. Tarda unos segundos."
       ];
 }
 
 /** Qué hace falta para la vía del selfie. */
 export const PROVIDER_REQUIREMENTS = [
-  { icon: "shield-check", text: "Tu DNI, TIE o pasaporte en vigor, a mano." },
+  { icon: "shield-check", text: "Tu DNI o pasaporte en vigor, a mano. El TIE no sirve." },
   { icon: "camera", text: "Buena luz y la cara despejada: sin gafas de sol ni gorra." },
   { icon: "clock", text: "Un par de minutos." }
 ] as const;
@@ -165,7 +169,7 @@ export const DATA_SUMMARY = [
   {
     icon: "eye",
     title: "Qué se lee",
-    body: "Los datos de la zona de abajo del documento (entre ellos, tu fecha de nacimiento), tu foto y la firma digital del Estado."
+    body: "Los datos de la zona de abajo del documento (entre ellos, tu fecha de nacimiento) y la firma digital del Estado. La foto del chip no se lee."
   },
   {
     icon: "shield-check",
@@ -184,20 +188,18 @@ export const READ_STEP_COPY: Record<DocumentReadStep, string> = {
   connecting: "Conectando con el chip…",
   authenticating: "Abriendo el chip…",
   reading_dg1: "Leyendo los datos…",
-  reading_dg2: "Leyendo la foto (es lo que más tarda)…",
   reading_sod: "Leyendo la firma…",
   retrying: "Se ha cortado la conexión. No lo muevas: lo intentamos otra vez…",
   done: "Lectura completa."
 };
 
-/** Avance aproximado de la lectura (0–1) para la barra. La foto es lo más largo. */
+/** Avance aproximado de la lectura (0–1) para la barra. La firma es lo más largo. */
 export const READ_STEP_PROGRESS: Record<DocumentReadStep, number> = {
   waiting: 0,
   connecting: 0.1,
   authenticating: 0.25,
-  reading_dg1: 0.4,
-  reading_dg2: 0.55,
-  reading_sod: 0.9,
+  reading_dg1: 0.45,
+  reading_sod: 0.65,
   retrying: 0.1,
   done: 1
 };
@@ -236,7 +238,7 @@ export function readErrorCopy(
       if (kind === "passport") {
         return {
           title: "Los datos no coinciden",
-          message: "Revisa el número del pasaporte y las dos fechas, tal como aparecen en la página de la foto.",
+          message: "Revisa el número del pasaporte y las dos fechas, tal como aparecen en la página de tus datos.",
           action: "edit_key"
         };
       }
@@ -250,7 +252,7 @@ export function readErrorCopy(
         : {
             title: "El CAN no coincide",
             message:
-              "Revisa las 6 cifras: en el DNI y el TIE están en la cara de la foto, abajo a la derecha. Si tu documento no tiene CAN, usa sus datos.",
+              "Revisa las 6 cifras: en el DNI están en la cara delantera, abajo a la derecha. Si tu documento no tiene CAN, usa sus datos.",
             action: "edit_key",
             offerMrz: true
           };
@@ -272,7 +274,7 @@ export function readErrorCopy(
       return {
         title: "No podemos leer este documento",
         message:
-          "Hace falta un documento con chip: DNI desde 2015 (DNI 3.0 o 4.0), TIE, pasaporte electrónico o documento de identidad con chip.",
+          "Hace falta un documento con chip: DNI desde 2015 (DNI 3.0 o 4.0), pasaporte electrónico o documento de identidad con chip.",
         action: "retry"
       };
     case "TIMEOUT":
@@ -308,7 +310,7 @@ export function serverErrorCopy(
     case "document_expired":
       return {
         title: "El documento está caducado",
-        message: "Usa un documento en vigor: un DNI, TIE, pasaporte o documento de identidad sin caducar.",
+        message: "Usa un documento en vigor: un DNI, un pasaporte o un documento de identidad sin caducar.",
         action: "none"
       };
     case "document_already_used":
@@ -358,7 +360,8 @@ export function serverErrorCopy(
     case "unsupported_document":
       return {
         title: "Ese documento no nos sirve",
-        message: "Usa un DNI, un TIE, un pasaporte o un documento de identidad. El carné de conducir no vale.",
+        message:
+          "Sirven el DNI, el pasaporte y los documentos de identidad de otros países. El TIE, los permisos de residencia y el carné de conducir, no.",
         action: "retry"
       };
     case "session_not_found":
@@ -372,6 +375,12 @@ export function serverErrorCopy(
         title: "No podemos conectar con Didit",
         message: "Su servicio no responde ahora mismo. Inténtalo de nuevo en un rato.",
         action: "retry"
+      };
+    case "provider_limit_reached":
+      return {
+        title: "No disponible hasta el mes que viene",
+        message: "Ya se han hecho todas las comprobaciones con selfie de este mes. Mientras, puedes hacerlo con el DNI o el pasaporte por NFC.",
+        action: "none"
       };
     case "age_verification_unavailable":
       return {

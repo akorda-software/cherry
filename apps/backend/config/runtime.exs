@@ -536,7 +536,9 @@ config :cherry,
 # por defecto). CSCA_PATHS: rutas separadas por comas con los CSCA de confianza.
 # CSCA_COUNTRIES: country folders of the bundled priv/csca to trust (e.g. es).
 # AGE_VERIFICATION_MINIMUM_AGE (18): also the minimum age of a profile.
-# AGE_VERIFICATION_DOCUMENTS: id_card and/or passport (both by default).
+# AGE_VERIFICATION_DOCUMENTS: id_card, passport and/or residence_permit
+# (identity cards and passports by default; residence permits such as the TIE
+# only if listed).
 minimum_age =
   case Integer.parse(optional_env.("AGE_VERIFICATION_MINIMUM_AGE") || "18") do
     {age, ""} when age in 18..99 -> age
@@ -546,7 +548,7 @@ minimum_age =
 accepted_documents =
   case split_csv_env.("AGE_VERIFICATION_DOCUMENTS", "id_card,passport") do
     [] ->
-      raise "AGE_VERIFICATION_DOCUMENTS must list id_card and/or passport"
+      raise "AGE_VERIFICATION_DOCUMENTS must list id_card, passport and/or residence_permit"
 
     documents ->
       Enum.map(documents, fn
@@ -556,8 +558,11 @@ accepted_documents =
         "passport" ->
           :passport
 
+        "residence_permit" ->
+          :residence_permit
+
         other ->
-          raise "invalid AGE_VERIFICATION_DOCUMENTS entry #{inspect(other)}: expected id_card or passport"
+          raise "invalid AGE_VERIFICATION_DOCUMENTS entry #{inspect(other)}: expected id_card, passport or residence_permit"
       end)
       |> Enum.uniq()
   end
@@ -621,7 +626,21 @@ end
 # Sin ellas, POST /api/me/verification/provider responde 503. DIDIT_WEBHOOK_SECRET:
 # secreto del destino de webhook de Didit (POST /api/webhooks/didit); sin él, las
 # sesiones que la app no vuelve a consultar (cerrada a medias, revisión manual)
-# no se resuelven ni se borran en Didit.
+# no se resuelven ni se borran en Didit. DIDIT_MONTHLY_LIMIT: máximo de sesiones
+# de Didit por mes natural (UTC); al llegar, solo queda el NFC hasta el mes
+# siguiente. Vacía: sin límite.
+didit_monthly_limit =
+  case optional_env.("DIDIT_MONTHLY_LIMIT") do
+    nil ->
+      nil
+
+    value ->
+      case Integer.parse(value) do
+        {limit, ""} when limit >= 0 -> limit
+        _invalid -> raise "DIDIT_MONTHLY_LIMIT must be a non-negative integer"
+      end
+  end
+
 if config_env() != :test do
   config :cherry, :age_verification,
     fingerprint_key: fingerprint_key,
@@ -631,7 +650,8 @@ if config_env() != :test do
   config :cherry, :didit,
     api_key: optional_env.("DIDIT_API_KEY"),
     workflow_id: optional_env.("DIDIT_WORKFLOW_ID"),
-    webhook_secret: optional_env.("DIDIT_WEBHOOK_SECRET")
+    webhook_secret: optional_env.("DIDIT_WEBHOOK_SECRET"),
+    monthly_limit: didit_monthly_limit
 
   config :cherry, :features, age_verification_required: age_verification_required
 

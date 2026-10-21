@@ -1,9 +1,11 @@
 /**
- * Lectura NFC de documentos de identidad electrónicos (ICAO 9303): DNI 3.0/4.0, TIE y pasaportes.
+ * Lectura NFC de documentos de identidad electrónicos (ICAO 9303): DNI 3.0/4.0, otros documentos
+ * de identidad y pasaportes.
  *
  * Abre el canal seguro con el chip (PACE con el CAN; PACE o BAC con la MRZ en pasaportes) y
- * devuelve DG1, DG2 y EF.SOD sin interpretar, en base64. La autenticación pasiva se hace en el
- * servidor (`POST /api/me/verification/nfc`), nunca aquí: una app manipulada podría mentir.
+ * devuelve DG1 y EF.SOD sin interpretar, en base64. La foto del chip (DG2) no se lee. La
+ * autenticación pasiva se hace en el servidor (`POST /api/me/verification/nfc`), nunca aquí: una
+ * app manipulada podría mentir.
  *
  * El CAN y la MRZ solo viven en memoria durante la lectura: no se guardan ni se envían.
  * Android usa JMRTD; iOS, NFCPassportReader (AndyQ) incorporado con soporte de CAN. Ver README.md.
@@ -58,7 +60,7 @@ export async function getNfcStatus(): Promise<NfcStatus> {
   }
 }
 
-/** Lee DG1, DG2 y SOD. Rechaza con `DocumentNfcError` (ver `DocumentNfcErrorCode`). */
+/** Lee DG1 y SOD (nunca la foto). Rechaza con `DocumentNfcError` (ver `DocumentNfcErrorCode`). */
 export async function readDocument(key: DocumentAccessKey, options: ReadDocumentOptions = {}): Promise<DocumentReadResult> {
   const native = loadNativeModule();
   if (!native) {
@@ -89,11 +91,11 @@ export async function readDocument(key: DocumentAccessKey, options: ReadDocument
       success: options.messages?.success
     });
 
-    if (!result || !result.dg1 || !result.dg2 || !result.sod) {
+    if (!result || !result.dg1 || !result.sod) {
       throw new DocumentNfcError("UNKNOWN", "Incomplete read");
     }
 
-    return { dg1: result.dg1, dg2: result.dg2, sod: result.sod };
+    return { dg1: result.dg1, sod: result.sod };
   } catch (error) {
     throw toDocumentNfcError(error);
   }

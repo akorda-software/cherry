@@ -21,7 +21,7 @@ final class DocumentNfcException: GenericException<(code: String, message: Strin
   override var reason: String { param.message }
 }
 
-/// Expo module: reads DG1, DG2 and EF.SOD with the vendored NFCPassportReader
+/// Expo module: reads DG1 and EF.SOD (never DG2, the photo) with the vendored NFCPassportReader
 /// (AndyQ, MIT; CAN support patched in, see NFCPassportReader/PATCHES.md).
 /// No verification here: passive authentication happens on the server.
 public final class DocumentNfcModule: Module {
@@ -59,7 +59,6 @@ public final class DocumentNfcModule: Module {
           guard let document else { return }
           promise.resolve([
             "dg1": Data(document.dg1).base64EncodedString(),
-            "dg2": Data(document.dg2).base64EncodedString(),
             "sod": Data(document.sod).base64EncodedString()
           ])
         } catch let error as DocumentNfcException {
@@ -87,13 +86,13 @@ public final class DocumentNfcModule: Module {
 
   private struct RawDocument {
     let dg1: [UInt8]
-    let dg2: [UInt8]
     let sod: [UInt8]
   }
 
   private func read(key: ReadKey, messages: Messages) async throws -> RawDocument {
     let reader = PassportReader()
-    let tags: [DataGroupId] = [.COM, .DG1, .DG2, .SOD]
+    // Never DG2 (the photo): the age only needs the MRZ and the signature.
+    let tags: [DataGroupId] = [.COM, .DG1, .SOD]
 
     let display: (NFCViewDisplayMessage) -> String? = { [weak self] message in
       switch message {
@@ -106,7 +105,6 @@ public final class DocumentNfcModule: Module {
       case .readingDataGroupProgress(let group, _):
         switch group {
         case .DG1: self?.emit("reading_dg1")
-        case .DG2: self?.emit("reading_dg2")
         case .SOD: self?.emit("reading_sod")
         default: break
         }
@@ -140,12 +138,11 @@ public final class DocumentNfcModule: Module {
 
     guard
       let dg1 = passport.getDataGroup(.DG1)?.data,
-      let dg2 = passport.getDataGroup(.DG2)?.data,
       let sod = passport.getDataGroup(.SOD)?.data
     else {
-      throw DocumentNfcException((code: "UNSUPPORTED_DOCUMENT", message: "DG1, DG2 or EF.SOD could not be read"))
+      throw DocumentNfcException((code: "UNSUPPORTED_DOCUMENT", message: "DG1 or EF.SOD could not be read"))
     }
-    return RawDocument(dg1: dg1, dg2: dg2, sod: sod)
+    return RawDocument(dg1: dg1, sod: sod)
   }
 
   /// BAC/PACE MRZ information: number (padded to 9) + check, birth + check, expiry + check.

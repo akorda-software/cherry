@@ -9,7 +9,7 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
   alias Cherry.Accounts.User
   alias Cherry.Dating
   alias Cherry.Dating.{Match, Profile, ProfilePhoto}
-  alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt}
+  alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt, AgeVerifications}
   alias Cherry.Identity.Document.TrustStore
   alias Cherry.Repo
   alias Cherry.TestSupport.DiditStub
@@ -45,19 +45,22 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
   defp body(doc) do
     %{
       "dg1" => Base.encode64(doc.dg1),
-      "dg2" => Base.encode64(doc.dg2),
       "sod" => Base.encode64(doc.sod)
     }
   end
 
   defp document(ctx, opts \\ []), do: PKI.document([csca: ctx.csca, ds: ctx.ds] ++ opts)
 
+  # A DG1 the SOD does not sign: it fails passive authentication.
+  defp tampered(doc), do: %{doc | dg1: PKI.dg1(PKI.td1(document_number: "ZZZ999998"))}
+
   describe "GET /api/me/verification" do
     test "unverified by default", %{conn: conn} do
       assert %{
                "verification" => %{"status" => "unverified", "method" => nil, "verifiedAt" => nil},
                "required" => false,
-               "providerAvailable" => true
+               "providerAvailable" => true,
+               "providerLimitReached" => false
              } = conn |> get("/api/me/verification") |> json_response(200)
     end
 
@@ -134,13 +137,22 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
             Map.delete(valid, "sod"),
             %{valid | "dg1" => "not base64!"},
             %{valid | "dg1" => ""},
-            %{valid | "dg2" => 42},
+            %{valid | "sod" => 42},
             %{valid | "dg1" => Base.encode64(:binary.copy(<<0>>, 2_000))},
             %{valid | "sod" => Base.encode64(:binary.copy(<<0>>, 40_000))}
           ] do
         assert %{"error" => "invalid_payload"} =
                  conn |> post("/api/me/verification/nfc", payload) |> json_response(422)
       end
+    end
+
+    test "the photo older apps still send is ignored, never decoded", %{conn: conn} = ctx do
+      doc = document(ctx)
+
+      assert %{"verification" => %{"status" => "verified"}} =
+               conn
+               |> post("/api/me/verification/nfc", Map.put(body(doc), "dg2", "not even base64!"))
+               |> json_response(200)
     end
 
     test "base64 with line breaks is accepted", %{conn: conn} = ctx do
@@ -163,7 +175,7 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
 
       assert %{"error" => "document_not_verified", "reason" => "data_group_mismatch"} =
                conn
-               |> post("/api/me/verification/nfc", body(%{doc | dg2: PKI.dg2()}))
+               |> post("/api/me/verification/nfc", body(tampered(doc)))
                |> json_response(422)
 
       other = PKI.csca(cn: "CSCA UNKNOWN", key: PKI.key({:ec, :secp256r1}))
@@ -216,6 +228,18 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
                |> json_response(422)
     end
 
+    test "residence permits such as the TIE are not accepted", %{conn: conn, user: user} = ctx do
+      assert %{"error" => "unsupported_document"} =
+               conn
+               |> post(
+                 "/api/me/verification/nfc",
+                 body(document(ctx, code: "IR", personal_number: "X0000000T"))
+               )
+               |> json_response(422)
+
+      refute AgeVerifications.verified?(user.id)
+    end
+
     test "a document already used by another account", %{conn: conn} = ctx do
       doc = document(ctx)
       assert conn |> post("/api/me/verification/nfc", body(doc)) |> json_response(200)
@@ -227,7 +251,7 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
     end
 
     test "too many attempts", %{conn: conn} = ctx do
-      bad = body(%{document(ctx) | dg2: PKI.dg2()})
+      bad = body(tampered(document(ctx)))
       for _ <- 1..5, do: conn |> post("/api/me/verification/nfc", bad) |> json_response(422)
 
       response = conn |> post("/api/me/verification/nfc", bad)
@@ -514,6 +538,32 @@ defmodule CherryWeb.Controllers.Api.AgeVerificationControllerTest do
 
       assert %{"error" => "too_many_attempts", "retryAfter" => _} =
                conn |> post("/api/me/verification/provider", %{}) |> json_response(429)
+    end
+
+    test "the month's limit used up: only NFC is left", %{conn: conn} do
+      Application.put_env(
+        :cherry,
+        :didit,
+        Keyword.put(Application.get_env(:cherry, :didit), :monthly_limit, 0)
+      )
+
+      DiditStub.stub()
+
+      assert %{"providerAvailable" => false, "providerLimitReached" => true} =
+               conn |> get("/api/me/verification") |> json_response(200)
+
+      assert %{
+               "ageVerification" => %{
+                 "providerAvailable" => false,
+                 "providerLimitReached" => true
+               }
+             } =
+               conn |> get("/api/bootstrap") |> json_response(200)
+
+      assert %{"error" => "provider_limit_reached"} =
+               conn |> post("/api/me/verification/provider", %{}) |> json_response(503)
+
+      refute_receive {:didit, _, _, _}
     end
 
     test "provider errors", %{conn: conn} do

@@ -3,7 +3,8 @@ defmodule Cherry.Identity.AgeVerification do
   "Adult: yes" for a user (D-2026-10-09). Only status, method, date and the
   keyed document fingerprint; nothing read from the document is stored.
 
-  Methods: `nfc_dni` (identity card read by NFC: DNI, or TIE/NIE),
+  Methods: `nfc_dni` (identity card read by NFC: the DNI or a foreign one;
+  residence permits such as the TIE only where the instance accepts them),
   `nfc_passport`, `provider` (external fallback) and `eu_wallet` (EU age
   verification app). Only the NFC ones exist today.
   """

@@ -71,8 +71,8 @@ config :cherry, :instance,
 # fingerprint_key: DOCUMENT_FINGERPRINT_KEY (runtime). Without it the NFC
 # verification endpoint answers 503. minimum_age (AGE_VERIFICATION_MINIMUM_AGE)
 # also applies to the birth date of a profile. accepted_documents
-# (AGE_VERIFICATION_DOCUMENTS): :id_card (identity cards and residence
-# permits) and/or :passport. Attempt limits: {max, window in seconds}.
+# (AGE_VERIFICATION_DOCUMENTS): :id_card, :passport and :residence_permit
+# (TIE and the like, not by default). Attempt limits: {max, window in seconds}.
 config :cherry, :age_verification,
   fingerprint_key: nil,
   minimum_age: 18,
@@ -85,10 +85,13 @@ config :cherry, :age_verification,
 # answers 503. webhook_secret: DIDIT_WEBHOOK_SECRET, the secret of the webhook
 # destination (POST /api/webhooks/didit answers 503 without it). allow_sandbox:
 # accept decisions of Didit's sandbox (made-up documents); only dev and test.
+# monthly_limit: DIDIT_MONTHLY_LIMIT, sessions per calendar month (UTC), nil
+# for no limit (Cherry.Identity.ProviderUsage).
 config :cherry, :didit,
   api_key: nil,
   workflow_id: nil,
   webhook_secret: nil,
+  monthly_limit: nil,
   base_url: "https://verification.didit.me",
   allow_sandbox: false
 

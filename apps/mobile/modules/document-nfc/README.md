@@ -1,9 +1,10 @@
 # document-nfc
 
 Módulo Expo local (Expo Modules API) que lee por NFC el chip de documentos de identidad
-ICAO 9303: DNI 3.0/4.0, TIE (NIE) y pasaportes. Devuelve **DG1, DG2 y EF.SOD sin interpretar**,
+ICAO 9303: DNI 3.0/4.0, documentos de identidad y pasaportes. Devuelve **DG1 y EF.SOD sin interpretar**,
 en base64, para enviarlos a `POST /api/me/verification/nfc`. La autenticación pasiva se hace en el
-servidor: el móvil no decide nada (una app manipulada podría mentir).
+servidor: el móvil no decide nada (una app manipulada podría mentir). La foto del chip (DG2) no
+se lee: para la edad bastan la MRZ y la firma del Estado.
 
 Diseño y estado: `docs/compliance/02-mayoria-de-edad.md`. Pruebas con documento real:
 `docs/compliance/02-nfc-pruebas-manana.md`.
@@ -12,7 +13,7 @@ Diseño y estado: `docs/compliance/02-mayoria-de-edad.md`. Pruebas con documento
 
 ```ts
 getNfcStatus(): Promise<"unavailable" | "disabled" | "enabled">
-readDocument({ can: "123456" }): Promise<{ dg1, dg2, sod }>            // DNI / TIE
+readDocument({ can: "123456" }): Promise<{ dg1, sod }>                  // DNI y tarjetas con CAN
 readDocument({ mrz: { documentNumber, dateOfBirth, dateOfExpiry } })   // pasaportes y tarjetas sin CAN (AAMMDD)
 cancelRead(); openNfcSettings(); addReadProgressListener(fn)
 ```

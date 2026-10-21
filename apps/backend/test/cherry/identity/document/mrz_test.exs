@@ -210,6 +210,30 @@ defmodule Cherry.Identity.Document.MrzTest do
     end
   end
 
+  describe "residence_permit?/1" do
+    defp parsed(mrz) do
+      {:ok, parsed} = Mrz.parse(mrz, @today)
+      parsed
+    end
+
+    test "identity cards and passports are not" do
+      refute Mrz.residence_permit?(parsed(PKI.td1(personal_number: PKI.dni(12_345_678))))
+      refute Mrz.residence_permit?(parsed(PKI.td1(state: "PRT", personal_number: "")))
+      refute Mrz.residence_permit?(parsed(@icao_td2))
+      refute Mrz.residence_permit?(parsed(PKI.td3(personal_number: "X1234567L")))
+    end
+
+    test "codes ending in R, and Spanish cards with a NIE (the TIE)" do
+      for code <- ["IR", "AR", "CR"] do
+        assert Mrz.residence_permit?(
+                 parsed(PKI.td1(code: code, state: "DEU", personal_number: ""))
+               )
+      end
+
+      assert Mrz.residence_permit?(parsed(PKI.td1(code: "ID", personal_number: "X1234567L")))
+    end
+  end
+
   describe "age/2" do
     test "counts completed years" do
       assert Mrz.age(~D[2008-10-09], ~D[2026-10-09]) == 18

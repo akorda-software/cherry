@@ -20,8 +20,10 @@ export interface AppBootstrapAgeVerification {
   /** Si la instancia exige verificarse para usar la app (`AGE_VERIFICATION_REQUIRED`). */
   required: boolean;
   status: "unverified" | "verified" | "revoked";
-  /** Si el servidor tiene proveedor externo (selfie + documento) configurado. */
+  /** Si se puede empezar ahora la verificación con proveedor externo (selfie + documento). */
   providerAvailable?: boolean;
+  /** El proveedor está configurado pero se ha llegado al máximo de este mes: solo queda el NFC. */
+  providerLimitReached?: boolean;
 }
 
 export interface AppBootstrap {

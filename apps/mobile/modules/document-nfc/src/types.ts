@@ -15,7 +15,6 @@ export type DocumentAccessKey =
 /** Ficheros del chip tal cual, en base64: lo que espera `POST /api/me/verification/nfc`. */
 export interface DocumentReadResult {
   dg1: string;
-  dg2: string;
   sod: string;
 }
 
@@ -30,7 +29,6 @@ export type DocumentReadStep =
   | "connecting"
   | "authenticating"
   | "reading_dg1"
-  | "reading_dg2"
   | "reading_sod"
   | "retrying"
   | "done";

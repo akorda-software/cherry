@@ -4,7 +4,7 @@ defmodule Cherry.Identity.AgeVerificationsTest do
   import ExUnit.CaptureLog
   import Cherry.TestSupport.DatingFixtures
 
-  alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt, AgeVerifications}
+  alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt, AgeVerifications, ProviderUsage}
   alias Cherry.Identity.Document.TrustStore
   alias Cherry.TestSupport.DiditStub
   alias Cherry.TestSupport.DocumentPKI, as: PKI
@@ -31,10 +31,21 @@ defmodule Cherry.Identity.AgeVerificationsTest do
   defp verify(user, doc, opts \\ []) do
     AgeVerifications.verify_nfc(
       user,
-      Map.take(doc, [:dg1, :dg2, :sod]),
+      Map.take(doc, [:dg1, :sod]),
       Keyword.merge([now: @now, trust_anchors: doc.anchors], opts)
     )
   end
+
+  defp accept_documents(kinds) do
+    Application.put_env(
+      :cherry,
+      :age_verification,
+      Keyword.put(Application.get_env(:cherry, :age_verification), :accepted_documents, kinds)
+    )
+  end
+
+  # A DG1 the SOD does not sign: it fails passive authentication.
+  defp tampered(doc), do: %{doc | dg1: PKI.dg1(PKI.td1(document_number: "ZZZ999998"))}
 
   defp attempts(user),
     do: Repo.aggregate(from(a in AgeVerificationAttempt, where: a.user_id == ^user.id), :count)
@@ -201,6 +212,35 @@ defmodule Cherry.Identity.AgeVerificationsTest do
       assert {:ok, %{method: "nfc_dni"}} = verify(user, document(ctx))
     end
 
+    test "residence permits (the TIE and the like) are refused by default", ctx do
+      user = user_fixture()
+
+      # A Spanish card with a NIE is a TIE whatever its code; other cards by their code.
+      for doc <- [
+            document(ctx, code: "IR", personal_number: "X0000000T"),
+            document(ctx, code: "ID", personal_number: "Y0000000Z"),
+            document(ctx, code: "IR", state: "PRT", personal_number: "")
+          ] do
+        assert {:error, :unsupported_document} = verify(user, doc)
+      end
+
+      # The age still goes first.
+      assert {:error, :underage} =
+               verify(user, document(ctx, code: "IR", birth: ~D[2012-01-01]))
+
+      refute AgeVerifications.verified?(user.id)
+
+      accept_documents([:id_card, :passport, :residence_permit])
+
+      assert {:ok, %{method: "nfc_dni"}} =
+               verify(user, document(ctx, personal_number: "X0000000T"))
+    end
+
+    test "identity cards of other countries are accepted", ctx do
+      assert {:ok, %{method: "nfc_dni"}} =
+               verify(user_fixture(), document(ctx, state: "PRT", personal_number: ""))
+    end
+
     test "verifying again with the same document is idempotent", ctx do
       user = user_fixture()
       doc = document(ctx)
@@ -274,7 +314,7 @@ defmodule Cherry.Identity.AgeVerificationsTest do
       doc = document(ctx)
 
       assert {:ok, _} =
-               AgeVerifications.verify_nfc(user_fixture(), Map.take(doc, [:dg1, :dg2, :sod]))
+               AgeVerifications.verify_nfc(user_fixture(), Map.take(doc, [:dg1, :sod]))
     end
 
     test "a crash never logs the document", _ctx do
@@ -285,7 +325,6 @@ defmodule Cherry.Identity.AgeVerificationsTest do
           assert {:error, :internal_error} =
                    AgeVerifications.verify_nfc(user, %{
                      dg1: {"SECRET-MARKER"},
-                     dg2: "SECRET-MARKER",
                      sod: "SECRET-MARKER"
                    })
         end)
@@ -304,7 +343,7 @@ defmodule Cherry.Identity.AgeVerificationsTest do
       )
 
       doc = document(ctx, document_number: "ZZZ424242", personal_number: PKI.dni(42_424_242))
-      tampered = %{doc | dg2: PKI.dg2()}
+      tampered = tampered(doc)
 
       log =
         capture_log(fn ->
@@ -327,7 +366,7 @@ defmodule Cherry.Identity.AgeVerificationsTest do
     end
 
     test "are off by default and skip errors that are not about the certificate", ctx do
-      log = capture_log(fn -> verify(user_fixture(), %{document(ctx) | dg2: PKI.dg2()}) end)
+      log = capture_log(fn -> verify(user_fixture(), tampered(document(ctx))) end)
       refute log =~ "diagnostics"
 
       Application.put_env(
@@ -349,7 +388,7 @@ defmodule Cherry.Identity.AgeVerificationsTest do
   describe "attempt limits" do
     test "5 per hour and 10 per day, also when they fail", ctx do
       user = user_fixture()
-      bad = %{document(ctx) | dg2: PKI.dg2()}
+      bad = tampered(document(ctx))
 
       for _ <- 1..5, do: assert({:error, :data_group_mismatch} = verify(user, bad))
 
@@ -372,7 +411,7 @@ defmodule Cherry.Identity.AgeVerificationsTest do
 
     test "old attempts are pruned", ctx do
       user = user_fixture()
-      bad = %{document(ctx) | dg2: PKI.dg2()}
+      bad = tampered(document(ctx))
 
       verify(user, bad, now: DateTime.add(@now, -2, :day))
       verify(user, bad)
@@ -447,6 +486,80 @@ defmodule Cherry.Identity.AgeVerificationsTest do
         assert {:error, :provider_error} = AgeVerifications.start_provider(user_fixture(), nil)
       end)
     end
+
+    @tag :capture_log
+    test "stops at the monthly limit until the next month" do
+      monthly_limit(2)
+      DiditStub.stub()
+
+      for _ <- 1..2 do
+        assert {:ok, _} = AgeVerifications.start_provider(user_fixture(), nil, now: @now)
+      end
+
+      assert ProviderUsage.limit_reached?(@now)
+
+      user = user_fixture()
+      flush_didit()
+
+      assert {:error, :provider_limit_reached} =
+               AgeVerifications.start_provider(user, nil, now: @now)
+
+      # Neither an attempt of the user nor a session at Didit.
+      assert attempts(user) == 0
+      refute_receive {:didit, _, _, _}
+
+      next_month = ~U[2026-11-01 00:00:00Z]
+      assert {:ok, _} = AgeVerifications.start_provider(user, nil, now: next_month)
+      assert ProviderUsage.used(@now) == 2
+      assert ProviderUsage.used(next_month) == 1
+    end
+
+    @tag :capture_log
+    test "a session Didit did not create gives its slot back" do
+      monthly_limit(1)
+      DiditStub.stub(create_status: 500)
+
+      capture_log(fn ->
+        assert {:error, :provider_error} =
+                 AgeVerifications.start_provider(user_fixture(), nil, now: @now)
+      end)
+
+      assert ProviderUsage.used(@now) == 0
+
+      DiditStub.stub()
+      assert {:ok, _} = AgeVerifications.start_provider(user_fixture(), nil, now: @now)
+    end
+
+    @tag :capture_log
+    test "sessions started before the limit are still settled" do
+      monthly_limit(1)
+      DiditStub.stub()
+      user = user_fixture()
+
+      assert {:ok, %{session_id: session_id}} =
+               AgeVerifications.start_provider(user, nil, now: @now)
+
+      assert ProviderUsage.limit_reached?(@now)
+
+      DiditStub.stub(decision: DiditStub.decision(user.id, "Approved"))
+      assert {:ok, _} = AgeVerifications.check_provider(user, session_id, now: @now)
+    end
+  end
+
+  defp monthly_limit(limit) do
+    Application.put_env(
+      :cherry,
+      :didit,
+      Keyword.put(Application.get_env(:cherry, :didit), :monthly_limit, limit)
+    )
+  end
+
+  defp flush_didit do
+    receive do
+      {:didit, _, _, _} -> flush_didit()
+    after
+      0 -> :ok
+    end
   end
 
   describe "check_provider/3" do
@@ -510,6 +623,9 @@ defmodule Cherry.Identity.AgeVerificationsTest do
     end
 
     test "a TIE uses the NIE and a passport its number, as with NFC", ctx do
+      # Only on instances that accept residence permits.
+      accept_documents([:id_card, :passport, :residence_permit])
+
       assert {:ok, _} =
                verify(user_fixture(), document(ctx, code: "IR", personal_number: "X0000000T"))
 
@@ -653,14 +769,20 @@ defmodule Cherry.Identity.AgeVerificationsTest do
                check(user, DiditStub.decision(user.id, "Approved", %{"expiration_date" => nil}))
     end
 
-    test "documents other than identity cards, residence permits and passports" do
-      user = user_fixture()
+    test "documents other than identity cards and passports" do
+      for type <- ["Driver's License", "Residence Permit"] do
+        user = user_fixture()
 
-      decision =
-        DiditStub.decision(user.id, "Approved", %{"document_type" => "Driver's License"})
+        decision =
+          DiditStub.decision(user.id, "Approved", %{
+            "document_type" => type,
+            "personal_number" => "X0000000T"
+          })
 
-      assert {:error, :unsupported_document} = check(user, decision)
-      assert_erased()
+        assert {:error, :unsupported_document} = check(user, decision)
+        refute AgeVerifications.verified?(user.id)
+        assert_erased()
+      end
     end
 
     test "documents the instance does not accept are unsupported, after the age check" do

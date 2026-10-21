@@ -27,7 +27,7 @@ function makeDeps(overrides: Partial<DocumentVerificationDeps> = {}) {
   let progress: ((event: DocumentReadProgress) => void) | null = null;
   const deps: DocumentVerificationDeps = {
     getNfcStatus: vi.fn().mockResolvedValue("enabled"),
-    readDocument: vi.fn().mockResolvedValue({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k" }),
+    readDocument: vi.fn().mockResolvedValue({ dg1: "ZGcx", sod: "c29k" }),
     cancelRead: vi.fn().mockResolvedValue(undefined),
     openNfcSettings: vi.fn().mockResolvedValue(undefined),
     addReadProgressListener: vi.fn((listener) => {
@@ -56,7 +56,7 @@ describe("useDocumentVerification", () => {
     await act(() => result.current.beginRead());
 
     expect(deps.readDocument).toHaveBeenCalledWith({ can: "123456" }, { messages: undefined });
-    expect(deps.verify).toHaveBeenCalledWith({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k" });
+    expect(deps.verify).toHaveBeenCalledWith({ dg1: "ZGcx", sod: "c29k" });
     expect(result.current.state).toMatchObject({ phase: "success", verification: verified.verification });
   });
 
@@ -73,10 +73,10 @@ describe("useDocumentVerification", () => {
     });
     expect(result.current.state).toMatchObject({ phase: "reading", step: "waiting" });
 
-    act(() => emit({ step: "reading_dg2" }));
-    expect(result.current.state.step).toBe("reading_dg2");
+    act(() => emit({ step: "reading_sod" }));
+    expect(result.current.state.step).toBe("reading_sod");
 
-    await act(async () => finish({ dg1: "a", dg2: "b", sod: "c" }));
+    await act(async () => finish({ dg1: "a", sod: "c" }));
     await waitFor(() => expect(result.current.state.phase).toBe("success"));
   });
 
@@ -100,7 +100,7 @@ describe("useDocumentVerification", () => {
       .fn()
       .mockRejectedValueOnce(new DocumentNfcError("ACCESS_DENIED"))
       .mockRejectedValueOnce(new DocumentNfcError("TAG_LOST"))
-      .mockResolvedValueOnce({ dg1: "a", dg2: "b", sod: "c" });
+      .mockResolvedValueOnce({ dg1: "a", sod: "c" });
     const { deps } = makeDeps({ readDocument });
     const { result } = renderHook(() => useDocumentVerification(deps));
 

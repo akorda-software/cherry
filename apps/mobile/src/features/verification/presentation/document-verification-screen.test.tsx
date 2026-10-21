@@ -16,7 +16,7 @@ vi.mock("../../../../modules/document-nfc/src/native", () => ({ loadNativeModule
 function fakeNative(overrides: Partial<DocumentNfcNativeModule> = {}): DocumentNfcNativeModule {
   return {
     getStatus: vi.fn().mockResolvedValue("enabled"),
-    read: vi.fn().mockResolvedValue({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k" }),
+    read: vi.fn().mockResolvedValue({ dg1: "ZGcx", sod: "c29k" }),
     cancel: vi.fn().mockResolvedValue(undefined),
     openSettings: vi.fn().mockResolvedValue(undefined),
     addListener: vi.fn().mockReturnValue({ remove: vi.fn() }),
@@ -85,7 +85,7 @@ describe("DocumentVerificationScreen", () => {
     expect(await screen.findByTestId("verify-success")).toHaveTextContent("Listo: tu perfil ya está activo");
     expect(native.current?.read).toHaveBeenCalledWith({ can: "123456" }, expect.objectContaining({ timeoutMs: 90_000 }));
     // Only the chip files reach the server: never the CAN.
-    expect(backend.callsTo("/api/me/verification/nfc", "POST")[0]?.body).toEqual({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k" });
+    expect(backend.callsTo("/api/me/verification/nfc", "POST")[0]?.body).toEqual({ dg1: "ZGcx", sod: "c29k" });
   });
 
   it("the read button waits for six digits", async () => {
@@ -158,7 +158,7 @@ describe("DocumentVerificationScreen", () => {
       read: vi
         .fn()
         .mockRejectedValueOnce(Object.assign(new Error("PACE failed"), { code: "ACCESS_DENIED" }))
-        .mockResolvedValue({ dg1: "ZGcx", dg2: "ZGcy", sod: "c29k" })
+        .mockResolvedValue({ dg1: "ZGcx", sod: "c29k" })
     });
     renderScreen();
     await enterCan("123456");

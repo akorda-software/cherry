@@ -2,11 +2,15 @@ defmodule Cherry.Identity.AgeVerifications do
   @moduledoc """
   Age verification of users (D-2026-10-09, docs/compliance/02-mayoria-de-edad.md).
 
-  `verify_nfc/3` receives DG1, DG2 and EF.SOD read from an identity document
-  by the app, runs passive authentication, checks the holder is an adult and
-  stores only "adult: yes", the method, the date and the keyed document
-  fingerprint. The data groups never reach the database nor the logs and are
-  dropped when the call returns.
+  `verify_nfc/3` receives DG1 and EF.SOD read from an identity document by
+  the app (never DG2, the photo: the age does not need it), runs passive
+  authentication, checks the holder is an adult and stores only "adult: yes",
+  the method, the date and the keyed document fingerprint. The data groups
+  never reach the database nor the logs and are dropped when the call returns.
+
+  Identity cards and passports are accepted by default; residence permits
+  (such as the Spanish TIE) only if the instance lists them in
+  `AGE_VERIFICATION_DOCUMENTS`.
 
   Making verification mandatory is prepared but off: the
   `:age_verification_required` feature flag (`AGE_VERIFICATION_REQUIRED`) is
@@ -21,7 +25,10 @@ defmodule Cherry.Identity.AgeVerifications do
   The app opens the session's URL and then asks for the decision; the outcome
   is stored exactly as with NFC (method `provider`) and the fingerprint is the
   same one NFC computes for that document, so one document is one account
-  whatever the method. Didit's session is erased after a final decision.
+  whatever the method. Didit's session is erased after a final decision. Each
+  session costs money: new ones stop when the month reaches
+  `DIDIT_MONTHLY_LIMIT` (`Cherry.Identity.ProviderUsage`), and sessions
+  already started are still settled.
   Sessions the app does not ask about again (closed during the flow, decided
   after a manual review) are settled by Didit's webhook through the same
   check (`Cherry.Identity.ProviderDecisionWorker`).
@@ -36,7 +43,7 @@ defmodule Cherry.Identity.AgeVerifications do
 
   alias Cherry.Accounts.User
   alias Cherry.Dating.Profile
-  alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt, Didit}
+  alias Cherry.Identity.{AgeVerification, AgeVerificationAttempt, Didit, ProviderUsage}
   alias Cherry.Identity.Document.{Fingerprint, Mrz, PassiveAuth}
   alias Cherry.Repo
 
@@ -64,6 +71,7 @@ defmodule Cherry.Identity.AgeVerifications do
           | :document_expired
           | :document_already_used
           | :provider_error
+          | :provider_limit_reached
           | :internal_error
 
   @default_attempt_limits [{5, 3600}, {10, 86_400}]
@@ -78,8 +86,17 @@ defmodule Cherry.Identity.AgeVerifications do
   @doc "Whether NFC verification can run (a fingerprint key is configured)."
   def available?, do: Fingerprint.configured?()
 
-  @doc "Whether verification through the external provider (Didit) can run."
-  def provider_available?, do: Fingerprint.configured?() and Didit.configured?()
+  @doc "Whether verification through the external provider (Didit) is configured."
+  def provider_configured?, do: Fingerprint.configured?() and Didit.configured?()
+
+  @doc """
+  Whether a new verification with the external provider can start now:
+  configured and under this month's limit.
+  """
+  def provider_available?, do: provider_configured?() and not ProviderUsage.limit_reached?()
+
+  @doc "Whether the provider is configured but this month's limit is used up."
+  def provider_limit_reached?, do: provider_configured?() and ProviderUsage.limit_reached?()
 
   @doc "The user's verification, if any."
   @spec get(Ecto.UUID.t()) :: AgeVerification.t() | nil
@@ -114,9 +131,9 @@ defmodule Cherry.Identity.AgeVerifications do
 
   Options: `:now` (`DateTime`), `:trust_anchors` (passed to `PassiveAuth`).
   """
-  @spec verify_nfc(User.t(), %{dg1: binary(), dg2: binary(), sod: binary()}, keyword()) ::
+  @spec verify_nfc(User.t(), %{dg1: binary(), sod: binary()}, keyword()) ::
           {:ok, AgeVerification.t()} | {:error, error()}
-  def verify_nfc(%User{id: user_id}, %{dg1: _, dg2: _, sod: _} = document, opts \\ []) do
+  def verify_nfc(%User{id: user_id}, %{dg1: _, sod: _} = document, opts \\ []) do
     now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0) |> DateTime.truncate(:second)
 
     result =
@@ -153,6 +170,8 @@ defmodule Cherry.Identity.AgeVerifications do
   Starts a verification with the external provider: a Didit session the app
   opens in a browser. `callback` is the URL Didit sends the user back to.
   Counts as an attempt (same limits as NFC); asking for the decision does not.
+  Takes one session of the month's limit (`{:error, :provider_limit_reached}`
+  once used up), given back if Didit does not create the session.
   """
   @spec start_provider(User.t(), String.t() | nil, keyword()) ::
           {:ok, %{session_id: String.t(), url: String.t()}} | {:error, provider_error()}
@@ -161,12 +180,23 @@ defmodule Cherry.Identity.AgeVerifications do
 
     with :ok <- check_provider_available(),
          :ok <- check_unverified(user_id),
-         :ok <- register_attempt(user_id, now) do
+         # Read first so that a used-up month does not count as an attempt.
+         :ok <- check_provider_capacity(now),
+         :ok <- register_attempt(user_id, now),
+         {:ok, month} <- ProviderUsage.reserve(now) do
       case Didit.create_session(user_id, callback) do
-        {:ok, session} -> register_provider_session(user_id, session)
-        error -> error
+        {:ok, session} ->
+          register_provider_session(user_id, session)
+
+        error ->
+          ProviderUsage.release(month)
+          error
       end
     end
+  end
+
+  defp check_provider_capacity(now) do
+    if ProviderUsage.limit_reached?(now), do: {:error, :provider_limit_reached}, else: :ok
   end
 
   defp register_provider_session(user_id, session) do
@@ -229,8 +259,10 @@ defmodule Cherry.Identity.AgeVerifications do
 
   defp settled_before(result, _user_id), do: result
 
+  # Configured is enough here: sessions started before the month's limit was
+  # reached must still be settled.
   defp check_provider_available do
-    if provider_available?(), do: :ok, else: {:error, :unavailable}
+    if provider_configured?(), do: :ok, else: {:error, :unavailable}
   end
 
   defp check_unverified(user_id) do
@@ -341,7 +373,7 @@ defmodule Cherry.Identity.AgeVerifications do
   defp document_kind(type) do
     case type && String.downcase(type) do
       "identity card" -> {:ok, :id_card, "I"}
-      "residence permit" -> {:ok, :id_card, "I"}
+      "residence permit" -> {:ok, :residence_permit, "I"}
       "passport" -> {:ok, :passport, "P"}
       _other -> {:error, :unsupported_document}
     end
@@ -451,7 +483,7 @@ defmodule Cherry.Identity.AgeVerifications do
 
   # Development only (`diagnostics: true` in config/dev.exs): public metadata
   # of the Document Signer certificate to understand a rejection of a real
-  # document. Never DG1/DG2, hashes or document numbers (PassiveAuth.diagnose/1).
+  # document. Never DG1, hashes or document numbers (PassiveAuth.diagnose/1).
   defp maybe_diagnose(reason, %{sod: sod})
        when reason in @passive_auth_errors and is_binary(sod) do
     if Application.get_env(:cherry, :age_verification, [])[:diagnostics] do
@@ -597,7 +629,7 @@ defmodule Cherry.Identity.AgeVerifications do
   end
 
   # Kinds of document the instance accepts (`AGE_VERIFICATION_DOCUMENTS`):
-  # `:id_card` (identity cards and residence permits, TD1) and `:passport`.
+  # `:id_card`, `:passport` and `:residence_permit` (not by default).
   defp check_document_accepted(kind) do
     accepted =
       Application.get_env(:cherry, :age_verification, [])
@@ -606,8 +638,10 @@ defmodule Cherry.Identity.AgeVerifications do
     if kind in accepted, do: :ok, else: {:error, :unsupported_document}
   end
 
-  defp nfc_document_kind(%Mrz{format: format}) when format in [:td1, :td2], do: :id_card
   defp nfc_document_kind(%Mrz{format: :td3}), do: :passport
+
+  defp nfc_document_kind(%Mrz{} = mrz),
+    do: if(Mrz.residence_permit?(mrz), do: :residence_permit, else: :id_card)
 
   defp method(%Mrz{format: format}) when format in [:td1, :td2], do: "nfc_dni"
   defp method(%Mrz{format: :td3}), do: "nfc_passport"

@@ -13,7 +13,7 @@
 <br>
 [![Expo SDK 54](https://img.shields.io/badge/Expo_SDK_54-1D1426?style=for-the-badge&logo=expo&logoColor=FAF6F0)](./apps/mobile)
 [![Elixir y Phoenix](https://img.shields.io/badge/Elixir_%C2%B7_Phoenix-A58BFF?style=for-the-badge&logo=elixir&logoColor=1D1426&labelColor=A58BFF)](./apps/backend)
-[![PostgreSQL 17 con PostGIS](https://img.shields.io/badge/PostgreSQL_17_%C2%B7_PostGIS-5EC0FF?style=for-the-badge&logo=postgresql&logoColor=1D1426)](./infra/docker-compose.yml)
+[![PostgreSQL 18 con PostGIS](https://img.shields.io/badge/PostgreSQL_18_%C2%B7_PostGIS-5EC0FF?style=for-the-badge&logo=postgresql&logoColor=1D1426)](./infra/docker-compose.yml)
 [![iOS y Android](https://img.shields.io/badge/iOS_%C2%B7_Android-B9E53C?style=for-the-badge&logo=android&logoColor=1D1426)](./apps/mobile)
 
 **[Qué es](#qué-es-cherry)** · **[La app](#la-app)** · **[Un Cherry por país](#un-cherry-por-país)** · **[Arrancarlo](#arrancarlo-en-tu-ordenador)** · **[Montar tu instancia](#montar-tu-instancia)** · **[Contribuir](#contribuir)** · **[Licencia](#licencia)**
@@ -112,7 +112,7 @@ Las personas de una instancia solo ven a las de esa misma instancia. Para una ap
 |---|---|
 | [`apps/mobile`](./apps/mobile) | Expo SDK 54 (React Native, Expo Router) y un módulo nativo propio para leer el chip del DNI |
 | [`apps/backend`](./apps/backend) | Elixir y Phoenix: API REST, chat por WebSocket, fotos y verificación de documentos |
-| Base de datos | PostgreSQL 17 con PostGIS |
+| Base de datos | PostgreSQL 18 con PostGIS |
 | [`packages/contracts`](./packages/contracts) | Tipos compartidos entre la app y el servidor |
 | [`packages/mobile-shared`](./packages/mobile-shared) | Clientes de la API y utilidades de la app |
 | [`docs/`](./docs/README.md) | Documentación: producto, arquitectura, API, cumplimiento legal y despliegue |
@@ -124,7 +124,7 @@ Requisitos: Node 24 y pnpm 10, Elixir 1.18 con OTP 28 y Docker. Las versiones ex
 ```bash
 pnpm install
 
-# 1. PostgreSQL 17 + PostGIS en localhost:5510
+# 1. PostgreSQL 18 + PostGIS en localhost:5510
 docker compose -f infra/docker-compose.yml up postgres -d
 
 # 2. Backend: variables, base de datos y datos de demo

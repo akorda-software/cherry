@@ -27,7 +27,7 @@ Cuatro pruebas con conexiones PostgreSQL reales cubren suspensión→borrado, bo
 
 ## Entorno del backend
 
-Sin variables, los tests usan **PostgreSQL 17 + PostGIS** en `localhost:5432` (usuario/pass `postgres`, DB `cherry_test`; ver `config/test.exs`). Con el PostGIS del compose de `infra/` (puerto 5510):
+Sin variables, los tests usan **PostgreSQL 18 + PostGIS** en `localhost:5432` (usuario/pass `postgres`, DB `cherry_test`; ver `config/test.exs`). Con el PostGIS del compose de `infra/` (puerto 5510):
 
 ```bash
 cd apps/backend
@@ -36,7 +36,7 @@ TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_test mix test
 
 `DATABASE_URL` solo se usa en tests si el nombre de la BD contiene `_test` (p. ej. `cherry_test_fix` para una copia aislada); si apunta a otra (p. ej. `cherry_dev` exportado en la shell), `mix test` se niega a arrancar en vez de machacarla. `mix test` crea y migra la DB automáticamente. Para correr la suite en paralelo con un servidor de desarrollo, usa otra BD y otro directorio de build: `TEST_DATABASE_URL=…/cherry_test_x MIX_BUILD_ROOT=_build_x mix test`.
 
-En CI (`.github/workflows/ci.yml`) el backend se prueba contra un servicio `postgis/postgis:17-3.5` en el puerto 5432.
+En CI (`.github/workflows/ci.yml`) el backend se prueba contra un servicio `postgis/postgis:18-3.6` en el puerto 5432.
 
 Cobertura: umbral 90 % configurado en `mix.exs` (`mix test --cover`).
 

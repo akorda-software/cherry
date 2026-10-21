@@ -83,7 +83,7 @@ Reglas estructurales:
 
 ## Entorno e infraestructura
 
-- `infra/docker-compose.yml`: Postgres 17 + PostGIS expuesto en **localhost:5510** (estandarizado; ver D-2026-07-29 en `progress.md`). Perfiles `mobile` y `backend` con imágenes node/elixir para trabajo contenerizado.
+- `infra/docker-compose.yml`: Postgres 18 + PostGIS expuesto en **localhost:5510** (estandarizado; ver D-2026-07-29 en `progress.md`). Perfiles `mobile` y `backend` con imágenes node/elixir para trabajo contenerizado.
 - Tests del backend: por defecto `localhost:5432`; con el compose, `TEST_DATABASE_URL=ecto://postgres:postgres@localhost:5510/cherry_test` (ver `09-estrategia-pruebas.md`).
 - Puertos dev estandarizados (pg=5510, backend 4000); variables por `.env.example` en cada app.
 - Producción e instancias propias: `12-self-hosting.md`.

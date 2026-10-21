@@ -6,10 +6,13 @@ export interface NfcCountry {
   flag: string;
 }
 
-/** Bandera emoji de un código alfa-2. Kosovo firma como `KS`, pero su bandera es `XK`. */
+/**
+ * Bandera emoji de un código alfa-2. Kosovo firma como `KS`, pero su bandera es `XK`. La Orden de
+ * Malta (`XO`) no tiene emoji.
+ */
 export function flagEmoji(code: string): string {
   const flagCode = code === "KS" ? "XK" : code;
-  if (!/^[A-Z]{2}$/.test(flagCode)) {
+  if (!/^[A-Z]{2}$/.test(flagCode) || flagCode === "XO") {
     return "";
   }
   return String.fromCodePoint(...[...flagCode].map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65));

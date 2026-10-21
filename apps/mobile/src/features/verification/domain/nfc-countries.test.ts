@@ -10,6 +10,7 @@ describe("flagEmoji", () => {
 
   it("uses the XK flag for Kosovo and nothing for odd codes", () => {
     expect(flagEmoji("KS")).toBe("🇽🇰");
+    expect(flagEmoji("XO")).toBe("");
     expect(flagEmoji("E1")).toBe("");
   });
 });
@@ -26,10 +27,11 @@ describe("nfcCountryList", () => {
     expect(nfcCountryList(["QQ"])).toEqual([{ code: "QQ", name: "QQ", flag: "🇶🇶" }]);
   });
 
-  it("gives the laissez-passer and Kosovo a readable name", () => {
-    expect(nfcCountryList(["EU", "UN", "KS"]).map((country) => country.name)).toEqual([
+  it("gives the laissez-passer, Kosovo and the Order of Malta a readable name", () => {
+    expect(nfcCountryList(["EU", "UN", "KS", "XO"]).map((country) => country.name)).toEqual([
       "Kosovo",
       "Naciones Unidas (salvoconducto)",
+      "Orden de Malta",
       "Unión Europea (salvoconducto)"
     ]);
   });

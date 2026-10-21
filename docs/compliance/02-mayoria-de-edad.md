@@ -29,7 +29,7 @@ La fricción se asume como rasgo de marca: un sitio donde todo el mundo está ve
 
 ## 1. Lectura NFC del documento
 
-**Qué documentos:** DNI 3.0 y 4.0 (desde 2015) y pasaportes electrónicos; también los pasaportes y documentos de identidad con chip de los unos 129 emisores de las listas maestras públicas (D-2026-10-14). **No se aceptan permisos de residencia** (TIE y similares; D-2026-10-21): quien tenga TIE usa su pasaporte. Se reconocen por el código de la MRZ acabado en `R` (`IR`, `AR`, `CR`) o, en tarjetas españolas, por llevar un NIE en vez de un DNI. Una instancia puede aceptarlos con `AGE_VERIFICATION_DOCUMENTS=…,residence_permit`. Todos siguen el estándar ICAO 9303 (eMRTD). La app enseña la lista de países con la «i» del método NFC (`GET /api/me/verification/nfc/countries`).
+**Qué documentos:** DNI 3.0 y 4.0 (desde 2015) y pasaportes electrónicos; también los pasaportes y documentos de identidad con chip de los unos 136 emisores de las listas maestras públicas (D-2026-10-14). **No se aceptan permisos de residencia** (TIE y similares; D-2026-10-21): quien tenga TIE usa su pasaporte. Se reconocen por el código de la MRZ acabado en `R` (`IR`, `AR`, `CR`) o, en tarjetas españolas, por llevar un NIE en vez de un DNI. Una instancia puede aceptarlos con `AGE_VERIFICATION_DOCUMENTS=…,residence_permit`. Todos siguen el estándar ICAO 9303 (eMRTD). La app enseña la lista de países con la «i» del método NFC (`GET /api/me/verification/nfc/countries`).
 
 **Cómo funciona:**
 
@@ -132,7 +132,7 @@ Limitación: solo da sí/no, **no evita cuentas duplicadas** ni comprueba que la
 - **Lector DER y X.509 propios** (`Der`, `Certificate`). OTP 28 (`:public_key`) no decodifica certificados EC con parámetros explícitos, que es lo que recomienda ICAO (OpenSSL 3 tampoco los valida por defecto). Firmas con `:crypto`.
   - Comprobado contra los **385 CSCA autofirmados reales** de la master list alemana: 279 RSA (también PSS) y 106 EC, la mayoría con parámetros explícitos. Todas las firmas verifican.
 - **Almacén de CSCA** (`TrustStore`): `priv/csca`, PEM/DER, `CSCA_PATHS`.
-  - Incluye los CSCA españoles 2, 3 y 4 (RSA-4096), con las huellas comprobadas contra la web de la Policía, y los de las listas maestras del BSI y de los Países Bajos (638 certificados de 129 emisores, 2026-10-14), importados solo tras comprobar la firma de cada lista.
+  - Incluye los CSCA españoles 2, 3 y 4 (RSA-4096), con las huellas comprobadas contra la web de la Policía, y los de las listas maestras de Alemania (BSI), Países Bajos (NPKD), Italia y Suecia (697 certificados de 136 emisores, 2026-10-21), importados solo tras comprobar la firma de cada lista.
   - `mix cherry.csca` los lista y los extrae de una master list.
   - Procedencia y actualización: `apps/backend/priv/csca/README.md`.
 - **Huella** (`Fingerprint`): HMAC-SHA256 con `DOCUMENT_FINGERPRINT_KEY`.

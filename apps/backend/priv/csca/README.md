@@ -10,23 +10,34 @@ Un CSCA (Country Signing CA) es la raíz con la que un Estado firma los certific
 firmantes de documentos, que a su vez firman el SOD de cada DNI o pasaporte. Son certificados
 **públicos**: no son secretos ni datos personales.
 
-## Contenido (revisado el 2026-10-14)
+## Contenido (revisado el 2026-10-21)
 
-Una carpeta por país (código ISO alfa-2 del `C` del certificado, en minúsculas): 638 certificados
-de 129 emisores, incluidos los salvoconductos de la UE (`eu`) y la ONU (`un`) y Kosovo (`ks`).
-Vienen de dos listas maestras públicas, importadas solo después de comprobar su firma
-(ver [Actualizar](#actualizar)):
+Una carpeta por país (código ISO alfa-2 del `C` del certificado, en minúsculas): 697 certificados
+de 136 emisores, incluidos los salvoconductos de la UE (`eu`) y la ONU (`un`), Kosovo (`ks`) y la
+Orden de Malta (`xo`). Vienen de cuatro listas maestras públicas de Estados, importadas solo
+después de comprobar su firma (ver [Actualizar](#actualizar)):
 
 | Lista | Fecha | Certificados | CSCA que la firma (SHA-256, comprobada con su web oficial) |
 |---|---|---|---|
 | BSI (Alemania), `DE_ML_2026-10-01-11-50-52.ml` | 2026-10-01 | 609 (600 nuevos, 6 descartados) | `csca-germany` 10/2024: `2084AED7A991B3158E63AD750D3DC38BC6C9DCF5958F28D1162F49884E91ADA8` |
 | NPKD (Países Bajos), `NL_MASTERLIST.mls` | 2026-07-22 | 411 (35 nuevos) | `CSCA NL` serialNumber=7: `411356D206B99DA15EFADF4B84149F8600EE6260C6727CD6BC230D6B6E151A24` |
+| Ministero dell'Interno (Italia), `IT_MasterListCSCA.ml` | 2026-09-07 | 668 (52 nuevos, 6 descartados, 2 retirados a mano) | `Italian Country Signer CA` (CSCA05): `615BD40CD7BC63AEB572CF168CCB78162003B31CD98130DD71F7D2D69C83FA3A` |
+| Polisen (Suecia), `SWE.ml` | 2026-09-29 | 652 (6 nuevos, 5 descartados) | `Swedish Country Signing CA v2`: `353BD3863BB526A3F8A0A36EADE08365ECCBA03FF13A5F7AC8FAC539A7DB17FF` |
+| NPKD (Países Bajos), `NL_MASTERLIST.mls` | 2026-10-20 | 413 (1 nuevo) | El mismo `CSCA NL` serialNumber=7 |
 
-Las dos listas se avalan entre sí: el CSCA neerlandés está en la lista alemana y el alemán en la
-neerlandesa. Los 6 descartados de la lista alemana son certificados de enlace de Camerún,
-Portugal, Turquía y Luxemburgo marcados como «no CA» (no pueden anclar una cadena; esos países
-tienen sus CSCA en otros ficheros). Los ficheros importados se llaman
+Las listas se avalan entre sí: el CSCA neerlandés está en la lista alemana y el alemán en la
+neerlandesa, y los CSCA italiano y sueco que firman sus listas están en las dos. Los descartados
+son certificados de enlace de Camerún, Portugal, Turquía y Luxemburgo marcados como «no CA» (no
+pueden anclar una cadena; esos países tienen sus CSCA en otros ficheros) y, en la italiana, dos
+que no se leen. De la lista italiana se retiraron a mano dos certificados indios que no son CSCA
+de producción: `CN=UAT-CSCA-India, O=UAT-Government of India` (de pruebas, SHA-256 `3A2EA1B5…`) y
+`CN=Services SPOC CA-India` (`E24B944E…`). Los ficheros importados se llaman
 `csca-<país>-<16 primeros caracteres del SHA-256>.pem`.
+
+Gambia (`gm`), Kirguistán (`kg`), Corea del Norte (`kp`), Pakistán (`pk`), Sierra Leona (`sl`),
+Senegal (`sn`) y la Orden de Malta (`xo`) solo están en las listas italiana y sueca (la Orden de
+Malta, solo en la italiana); esos Estados no publican su CSCA, así que el único aval es la firma
+de esas listas. La de Suecia dice expresamente que solo afirma haber recibido cada CSCA.
 
 ### España
 
@@ -67,6 +78,19 @@ los certificados de enlace que traen las listas no estorban (tienen la misma cla
   `files/ml/NL_MASTERLIST.mls`, con su SHA-256 publicado en la página). Solo certificados
   autofirmados. Firmada por el «Masterlist Signer NL», que emite el CSCA NL; los CSCA
   neerlandeses están en `files/nl-csca-certificates.zip` de la misma web.
+- **Ministero dell'Interno (Italia):** <https://csca-ita.interno.gov.it/certificatiCSCA/IT_MasterListCSCA.zip>
+  (dentro, `IT_MasterListCSCA.ml`). Sin licencia expresa; por el art. 52.2 del Código de la
+  Administración Digital italiano, lo que la administración publica sin licencia es dato abierto.
+  Firmada por el «MasterListSigner» 004, que emite el CSCA05 italiano (SHA-1 publicada en la
+  portada de esa web).
+- **Polisen (Suecia):** <http://cert.polisen.se/CSCA/SWE.ml> (solo HTTP; la SHA-1 del fichero y
+  la del CSCA sueco están en `cert.polisen.se`). Se regenera a diario. Sin licencia específica.
+  Firmada por el «Swedish Master List Signer», que emite el `Swedish Country Signing CA v2`, con
+  ECDSA y parámetros explícitos (como la del BSI). Trae los mismos certificados de pruebas
+  indios que la italiana: descártalos también.
+- **Suiza (fedpol):** publica su lista en `pki.admin.ch`, pero las condiciones de admin.ch exigen
+  permiso escrito para reproducirla; no se usa. Lo que añadiría (Pakistán, Senegal) ya está por
+  las listas italiana y sueca, y el CSCA suizo de 2026 llega por la neerlandesa.
 - **ICAO PKD:** descarga gratuita pero con términos de uso no comercial y sin redistribución;
   no se usa.
 
@@ -75,7 +99,7 @@ los certificados de enlace que traen las listas no estorban (tienen la misma cla
 Cada pocos meses (las listas se renuevan cada 1–3 meses; España publicará previsiblemente un
 CSCA 5 hacia 2027, cuando acaba el periodo de uso de la clave de CSCA 4, el 2027-05-18):
 
-1. Descarga las dos listas y el CSCA vigente de cada Estado que las firma (enlaces en
+1. Descarga las cuatro listas y el CSCA vigente de cada Estado que las firma (enlaces en
    [Fuentes](#fuentes)). Fuera del repositorio, p. ej. en `/tmp/csca`.
 2. Comprueba el CSCA de cada Estado contra la huella de su web oficial:
    `openssl x509 -inform DER -in csca.cer -noout -fingerprint -sha256`. Si el Estado ha renovado
@@ -87,9 +111,13 @@ CSCA 5 hacia 2027, cuando acaba el periodo de uso de la clave de CSCA 4, el 2027
    cd apps/backend
    mix cherry.csca /tmp/csca/DE_ML_*.ml --signed-by /tmp/csca/de-csca.pem --export-countries priv/csca
    mix cherry.csca /tmp/csca/NL_MASTERLIST.mls --signed-by /tmp/csca/nl-csca.pem --export-countries priv/csca
+   mix cherry.csca /tmp/csca/IT_MasterListCSCA.ml --signed-by /tmp/csca/it-csca.pem --export-countries priv/csca
+   mix cherry.csca /tmp/csca/SWE.ml --signed-by /tmp/csca/se-csca.pem --export-countries priv/csca
    ```
 
-4. Revisa los descartados que lista la tarea, actualiza la tabla de [Contenido](#contenido-revisado-el-2026-10-14)
+4. Revisa los descartados que lista la tarea y los nuevos (`openssl x509 -noout -subject` de cada
+   fichero sin seguimiento en git): borra los de pruebas o los que no sean CSCA, como los indios
+   de [Contenido](#contenido-revisado-el-2026-10-21), y actualiza esa tabla
    y pasa los tests (`mix test test/cherry/identity`). Despliega: los certificados se cargan
    al primer uso; tras cambiar ficheros en caliente, reinicia el backend.
 5. No borres CSCA antiguos mientras haya documentos en vigor firmados bajo ellos (un DNI dura

@@ -1,7 +1,8 @@
 /**
  * Nombre en español de cada país (ISO 3166-1 alfa-2), para la lista de países del NFC. Sale de
  * `Intl.DisplayNames` de Node (Hermes no lo trae), con retoques: «Costa de Marfil», `KS` (el
- * código que usa Kosovo en sus certificados) y los salvoconductos de la UE y la ONU.
+ * código que usa Kosovo en sus certificados), `XO` (la Orden de Malta) y los salvoconductos de la
+ * UE y la ONU.
  */
 export const COUNTRY_NAMES: Readonly<Record<string, string>> = {
   AC: "Isla de la Ascensión",
@@ -270,6 +271,7 @@ export const COUNTRY_NAMES: Readonly<Record<string, string>> = {
   WF: "Wallis y Futuna",
   WS: "Samoa",
   XK: "Kosovo",
+  XO: "Orden de Malta",
   YD: "Yemen",
   YE: "Yemen",
   YT: "Mayotte",

@@ -1,9 +1,6 @@
-# Infrastructure
+# Servicios de desarrollo
 
-Documentación y servicios de infraestructura del monorepo.
-
-- [Monta tu instancia](../docs/12-self-hosting.md): guía genérica de self-hosting.
-- `docker-compose.yml`: servicios de desarrollo local descritos debajo.
+`docker-compose.yml` levanta los servicios de desarrollo local y `load/` contiene las pruebas de carga.
 
 ## Services
 

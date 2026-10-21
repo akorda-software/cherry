@@ -59,10 +59,16 @@ defmodule Cherry.Dating.MatchExpiry do
       |> order_by([m], asc: m.expires_at, asc: m.id)
       |> limit(^limit)
       |> lock("FOR UPDATE SKIP LOCKED")
-      |> select([m], m.id)
+      |> select([m], %{id: m.id})
 
+    # The batch is picked once, in a materialized CTE. As `id IN (subquery)`
+    # the planner may run the locking subquery again for every row (a nested
+    # loop semi join); each run skips the rows this statement already updated
+    # and takes the next ones, so the update went past `limit`.
     {count, _rows} =
-      from(m in Match, where: m.id in subquery(batch))
+      Match
+      |> with_cte("expiry_batch", as: ^batch, materialized: true)
+      |> join(:inner, [m], b in "expiry_batch", on: b.id == m.id)
       |> Repo.update_all(set: [status: "expired", updated_at: now])
 
     count

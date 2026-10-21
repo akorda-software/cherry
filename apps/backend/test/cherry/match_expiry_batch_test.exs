@@ -30,6 +30,18 @@ defmodule Cherry.Dating.MatchExpiryBatchTest do
     assert expired_count(matches) == 5
   end
 
+  test "the batch stays bounded when the planner would re-run it per row", %{matches: matches} do
+    # The plan that once updated every stale match for a batch of 2: a nested
+    # loop semi join that runs the locking batch query again for each row.
+    # SET LOCAL lasts until the sandbox rolls the test back.
+    for setting <-
+          ~w(enable_hashjoin enable_mergejoin enable_material enable_hashagg enable_sort enable_seqscan),
+        do: Repo.query!("SET LOCAL #{setting} = off")
+
+    assert MatchExpiry.expire_batch(DateTime.utc_now(), 2) == 2
+    assert expired_count(matches) == 2
+  end
+
   test "a message, future expiry and inactive status exclude matches", %{matches: [a, b, c | _]} do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
     Repo.update_all(from(m in Match, where: m.id == ^a.id), set: [first_message_at: now])

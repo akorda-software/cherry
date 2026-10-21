@@ -5,7 +5,9 @@ defmodule Cherry.Identity.Didit do
   Didit's hosted flow and the backend reads the decision (API v3).
 
   Config `:cherry, :didit`: `api_key` (`DIDIT_API_KEY`), `workflow_id`
-  (`DIDIT_WORKFLOW_ID`), `base_url` and `req_options` (tests plug `Req.Test`).
+  (`DIDIT_WORKFLOW_ID`), `webhook_secret` (`DIDIT_WEBHOOK_SECRET`, see
+  `CherryWeb.Controllers.Api.DiditWebhookController`), `base_url` and
+  `req_options` (tests plug `Req.Test`).
   The flow is shown in the language of the instance (`Cherry.Instance.language/0`).
 
   Nothing here is logged except HTTP status codes: decisions carry the
@@ -85,6 +87,31 @@ defmodule Cherry.Identity.Didit do
   end
 
   @doc """
+  Erases everything Didit keeps of a session: the user record Didit builds
+  from the sessions of one `vendor_data` (full name, birth date, issuing
+  states), which outlives them, and then the session itself (`delete_session/1`).
+  `:ok` also when Didit no longer knows them; retry on errors.
+  """
+  @spec erase(String.t()) :: :ok | {:error, pos_integer() | :transport | :provider_error}
+  def erase(session_id) do
+    with :ok <- delete_user_of(session_id) do
+      case delete_session(session_id) do
+        {:error, 404} -> :ok
+        result -> result
+      end
+    end
+  end
+
+  defp delete_user_of(session_id) do
+    case get_decision(session_id) do
+      {:ok, %{vendor_data: nil}} -> :ok
+      {:ok, %{vendor_data: vendor_data}} -> delete_user(vendor_data)
+      {:error, :not_found} -> :ok
+      {:error, :provider_error} -> {:error, :provider_error}
+    end
+  end
+
+  @doc """
   Erases the session at Didit (`privacy_erasure`: photos, selfie and extracted
   data). `{:error, status}` when it fails; 503 means "retry later".
   """
@@ -94,6 +121,20 @@ defmodule Cherry.Identity.Didit do
            json: %{deletion_instruction: "privacy_erasure"}
          ) do
       {:ok, %{status: status}} when status in 200..299 -> :ok
+      {:ok, %{status: status}} -> {:error, status}
+      {:error, _} -> {:error, :transport}
+    end
+  end
+
+  @doc """
+  Deletes Didit's user record of a `vendor_data` (and any face template kept
+  for it). Its sessions are not deleted. `:ok` when there is none.
+  """
+  @spec delete_user(String.t()) :: :ok | {:error, pos_integer() | :transport}
+  def delete_user(vendor_data) do
+    case request(:post, "/v3/users/delete/", json: %{vendor_data_list: [vendor_data]}) do
+      {:ok, %{status: status}} when status in 200..299 -> :ok
+      {:ok, %{status: 404}} -> :ok
       {:ok, %{status: status}} -> {:error, status}
       {:error, _} -> {:error, :transport}
     end

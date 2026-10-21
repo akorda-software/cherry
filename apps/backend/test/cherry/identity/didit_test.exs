@@ -152,4 +152,38 @@ defmodule Cherry.Identity.DiditTest do
       assert {:error, 503} = Didit.delete_session(DiditStub.session_id())
     end
   end
+
+  describe "erase/1" do
+    test "deletes the user record Didit built from vendor_data, then the session" do
+      DiditStub.stub(decision: DiditStub.decision(@user_id, "Approved"))
+      assert :ok = Didit.erase(DiditStub.session_id())
+
+      decision = "/v3/session/#{DiditStub.session_id()}/decision/"
+      assert_receive {:didit, "GET", ^decision, _}
+      assert_receive {:didit, "POST", "/v3/users/delete/", %{"vendor_data_list" => [@user_id]}}
+
+      path = "/v3/session/#{DiditStub.session_id()}/delete/"
+      assert_receive {:didit, "DELETE", ^path, %{"deletion_instruction" => "privacy_erasure"}}
+    end
+
+    test "a session Didit no longer knows is already erased" do
+      DiditStub.stub(delete_status: 404)
+      assert :ok = Didit.erase(DiditStub.session_id())
+      refute_receive {:didit, "POST", "/v3/users/delete/", _}
+    end
+
+    test "keeps the session until the user record is deleted" do
+      DiditStub.stub(decision: DiditStub.decision(@user_id, "Approved"), delete_user_status: 503)
+      assert {:error, 503} = Didit.erase(DiditStub.session_id())
+      refute_receive {:didit, "DELETE", _, _}
+
+      DiditStub.stub(decision: {:status, 500})
+
+      capture_log(fn ->
+        assert {:error, :provider_error} = Didit.erase(DiditStub.session_id())
+      end)
+
+      refute_receive {:didit, "DELETE", _, _}
+    end
+  end
 end

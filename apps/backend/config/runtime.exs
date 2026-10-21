@@ -618,9 +618,10 @@ if config_env() == :prod do
 end
 
 # DIDIT_API_KEY y DIDIT_WORKFLOW_ID: verificación con selfie y documento (Didit).
-# Sin ellas, POST /api/me/verification/provider responde 503. DIDIT_WEBHOOK_SECRET
-# aún no se usa (en dev se consulta la decisión; producción necesitará el webhook
-# para las sesiones «In Review»).
+# Sin ellas, POST /api/me/verification/provider responde 503. DIDIT_WEBHOOK_SECRET:
+# secreto del destino de webhook de Didit (POST /api/webhooks/didit); sin él, las
+# sesiones que la app no vuelve a consultar (cerrada a medias, revisión manual)
+# no se resuelven ni se borran en Didit.
 if config_env() != :test do
   config :cherry, :age_verification,
     fingerprint_key: fingerprint_key,
@@ -629,7 +630,8 @@ if config_env() != :test do
 
   config :cherry, :didit,
     api_key: optional_env.("DIDIT_API_KEY"),
-    workflow_id: optional_env.("DIDIT_WORKFLOW_ID")
+    workflow_id: optional_env.("DIDIT_WORKFLOW_ID"),
+    webhook_secret: optional_env.("DIDIT_WEBHOOK_SECRET")
 
   config :cherry, :features, age_verification_required: age_verification_required
 

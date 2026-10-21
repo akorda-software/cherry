@@ -71,14 +71,9 @@ defmodule Cherry.Accounts.ErasureTasks do
     do: Cherry.Identity.AppleRevocation.revoke(encrypted)
 
   defp erase(%{kind: "provider", reference: id}) do
-    if Cherry.Identity.Didit.configured?() do
-      case Cherry.Identity.Didit.delete_session(id) do
-        {:error, 404} -> :ok
-        result -> result
-      end
-    else
-      {:error, :provider_unavailable}
-    end
+    if Cherry.Identity.Didit.configured?(),
+      do: Cherry.Identity.Didit.erase(id),
+      else: {:error, :provider_unavailable}
   end
 
   defp finish(%{kind: "apple"} = task, :ok, at) do

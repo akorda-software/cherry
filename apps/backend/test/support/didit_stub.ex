@@ -3,8 +3,8 @@ defmodule Cherry.TestSupport.DiditStub do
   Fake Didit API for tests (`Req.Test`, no network). Decisions are built from
   made-up documents only.
 
-  `stub/1` serves session creation, decisions and deletion. Every request is
-  sent to the test process as `{:didit, method, path, body}`.
+  `stub/1` serves session creation, decisions and the deletion of sessions and
+  users. Every request is sent to the test process as `{:didit, method, path, body}`.
   """
 
   @session_id "11111111-2222-4333-8444-555555555555"
@@ -13,7 +13,8 @@ defmodule Cherry.TestSupport.DiditStub do
 
   @doc """
   Options: `:decision` (map served by GET .../decision/, or `:not_found`),
-  `:create_status` (default 201), `:delete_status` (default 200).
+  `:create_status` (default 201), `:delete_status` (default 200),
+  `:delete_user_status` (default 200).
   """
   def stub(opts \\ []) do
     owner = self()
@@ -37,6 +38,12 @@ defmodule Cherry.TestSupport.DiditStub do
       "vendor_data" => body["vendor_data"],
       "workflow_id" => body["workflow_id"]
     })
+  end
+
+  defp respond(%{method: "POST", request_path: "/v3/users/delete/"} = conn, opts, _body) do
+    conn
+    |> Plug.Conn.put_status(Keyword.get(opts, :delete_user_status, 200))
+    |> Req.Test.json(%{"deleted" => 1})
   end
 
   defp respond(%{method: "GET"} = conn, opts, _body) do

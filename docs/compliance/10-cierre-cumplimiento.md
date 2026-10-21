@@ -60,7 +60,7 @@ obligatoriedad móvil sigue apagada hasta distribución y revisión.
 
 - [ ] Inventario real de hosting, almacenamiento/CDN, identidad/verificación, correo/push/telemetría y futuros moderadores de fotos. Determinar roles: no todo OAuth/SDK es automáticamente un encargado.
 - [ ] DPA/contratos art. 28 cuando corresponda, subencargados, regiones, conservación, supresión, asistencia en derechos/incidentes y mecanismos/garantías de transferencias internacionales.
-- [ ] Didit: cerrar retención/contrato y caducidad de sesiones abandonadas con cuenta activa. Las sesiones nuevas ya se registran y su borrado final o con la baja tiene reintentos durables; falta reconciliar sesiones históricas y verificar el comportamiento real del proveedor. No afirmar «no queda nada» durante una caída o sin evidencia externa.
+- [ ] Didit: cerrar retención/contrato. Las sesiones nuevas se registran; el webhook resuelve las caducadas, abandonadas o decididas sin que la app vuelva a preguntar, y su borrado (sesión y ficha de usuario de Didit) tiene reintentos durables, también con la baja. Falta verificar el borrado real en producción y fijar la retención máxima en la consola. No afirmar «no queda nada» durante una caída o sin evidencia externa.
 - [ ] Confidencialidad, formación, instrucciones y acceso mínimo/revocable del personal/voluntarios. Dos personas disponibles si se promete recurso independiente; dos cuentas no acreditan independencia humana.
 
 ## 8. Edad y seguridad infantil — titular + desarrollo + asesoría

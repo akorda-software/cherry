@@ -120,6 +120,12 @@ defmodule CherryWeb.Router do
     put("/uploads/:token", UploadController, :create)
   end
 
+  # Didit's server, not the app: authenticated by the signature of the raw body.
+  # Not logged: the body carries the holder's identity data.
+  scope "/api/webhooks", CherryWeb.Controllers.Api do
+    post("/didit", DiditWebhookController, :create, log: false)
+  end
+
   scope "/api", CherryWeb.Controllers.Api do
     pipe_through(:authenticated_api)
 

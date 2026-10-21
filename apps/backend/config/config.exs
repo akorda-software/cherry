@@ -82,11 +82,13 @@ config :cherry, :age_verification,
 # External age verification method: selfie + document with Didit
 # (Cherry.Identity.Didit). api_key/workflow_id: DIDIT_API_KEY and
 # DIDIT_WORKFLOW_ID (runtime); without them POST /api/me/verification/provider
-# answers 503. allow_sandbox: accept decisions of Didit's sandbox (made-up
-# documents); only dev and test.
+# answers 503. webhook_secret: DIDIT_WEBHOOK_SECRET, the secret of the webhook
+# destination (POST /api/webhooks/didit answers 503 without it). allow_sandbox:
+# accept decisions of Didit's sandbox (made-up documents); only dev and test.
 config :cherry, :didit,
   api_key: nil,
   workflow_id: nil,
+  webhook_secret: nil,
   base_url: "https://verification.didit.me",
   allow_sandbox: false
 
@@ -106,7 +108,7 @@ config :cherry, :expo_push,
 
 config :cherry, Oban,
   repo: Cherry.Repo,
-  queues: [push: 4],
+  queues: [push: 4, verification: 2],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 86_400},
     {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(5)}

@@ -104,6 +104,7 @@ config :cherry, :age_verification,
 config :cherry, :didit,
   api_key: "test-didit-api-key",
   workflow_id: "test-didit-workflow",
+  webhook_secret: "test-didit-webhook-secret",
   base_url: "https://didit.test",
   allow_sandbox: true,
   req_options: [plug: {Req.Test, Cherry.Identity.Didit}]

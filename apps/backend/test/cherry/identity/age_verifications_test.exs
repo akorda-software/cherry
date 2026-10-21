@@ -456,6 +456,7 @@ defmodule Cherry.Identity.AgeVerificationsTest do
     end
 
     defp assert_erased do
+      assert_receive {:didit, "POST", "/v3/users/delete/", %{"vendor_data_list" => [_]}}
       path = "/v3/session/#{DiditStub.session_id()}/delete/"
       assert_receive {:didit, "DELETE", ^path, %{"deletion_instruction" => "privacy_erasure"}}
     end
@@ -734,6 +735,14 @@ defmodule Cherry.Identity.AgeVerificationsTest do
       user = user_fixture()
       assert {:ok, %{id: id}} = check(user, DiditStub.decision(user.id, "Approved"))
       assert {:ok, %{id: ^id}} = check(user, DiditStub.decision(user.id, "Approved"))
+    end
+
+    test "a session Didit's webhook already settled and erased still reports the verification" do
+      user = user_fixture()
+      assert {:ok, %{id: id}} = check(user, DiditStub.decision(user.id, "Approved"))
+
+      assert {:ok, %{id: ^id}} = check(user, :not_found)
+      assert {:error, :session_not_found} = check(user_fixture(), :not_found)
     end
   end
 end

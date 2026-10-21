@@ -10,7 +10,7 @@ import { appShellRoutes, Button, Icon, LoadingDots, Mascot, Screen, Stack, Surfa
 import { refreshBootstrap } from "../../app-bootstrap";
 import { useAuthedApi, useLogoutAction } from "../../auth/presentation";
 import { type ProviderVerificationDeps, useProviderVerification } from "../application/use-provider-verification";
-import { PROVIDER_DATA_SUMMARY, PROVIDER_REQUIREMENTS, PROVIDER_STEPS } from "../domain/verification-copy";
+import { PROVIDER_CONSENT, PROVIDER_DATA_SUMMARY, PROVIDER_REQUIREMENTS, PROVIDER_STEPS } from "../domain/verification-copy";
 import { PROVIDER_RETURN_PATH } from "./verification-routes";
 
 /** `<esquema de la app>://verify/selfie/return`: adónde manda el proveedor al terminar. */
@@ -59,7 +59,7 @@ export function ProviderVerificationScreen() {
       case "intro":
         return (
           <Button fullWidth icon="external" onPress={() => void flow.open()} size="lg" testID="provider-start">
-            Empezar
+            Aceptar y empezar
           </Button>
         );
       case "pending":
@@ -172,6 +172,9 @@ export function ProviderVerificationScreen() {
               </Stack>
             </View>
           ))}
+          <Text color="muted" testID="provider-consent" variant="callout">
+            {PROVIDER_CONSENT}
+          </Text>
         </Stack>
       ) : null}
 
@@ -205,7 +208,7 @@ export function ProviderVerificationScreen() {
             Lo está revisando una persona
           </Text>
           <Text align="center" color="muted">
-            Las fotos no eran del todo claras y Didit lo revisa a mano. Suele tardar unos minutos: vuelve en un rato y
+            Las fotos no eran del todo claras y una persona lo revisa a mano. Puede tardar un rato: vuelve más tarde y
             compruébalo.
           </Text>
         </Stack>

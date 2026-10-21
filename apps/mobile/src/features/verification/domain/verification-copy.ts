@@ -156,6 +156,10 @@ export const PROVIDER_DATA_SUMMARY = [
   }
 ] as const;
 
+/** Consentimiento expreso para la comparación facial (dato biométrico) antes de abrir Didit. */
+export const PROVIDER_CONSENT =
+  "Al pulsar «Aceptar y empezar» aceptas que Didit compare tu cara con la foto del documento, un dato biométrico, solo para esta comprobación. Si prefieres que no se trate tu imagen, usa el DNI con NFC.";
+
 /** Qué se lee, qué se guarda y qué se borra (pantalla inicial). */
 export const DATA_SUMMARY = [
   {

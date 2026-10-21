@@ -22,6 +22,9 @@ defmodule Cherry.Identity.AgeVerifications do
   is stored exactly as with NFC (method `provider`) and the fingerprint is the
   same one NFC computes for that document, so one document is one account
   whatever the method. Didit's session is erased after a final decision.
+  Sessions the app does not ask about again (closed during the flow, decided
+  after a manual review) are settled by Didit's webhook through the same
+  check (`Cherry.Identity.ProviderDecisionWorker`).
 
   A minor's document is answered with `{:error, :underage}`; the caller erases
   the whole account (`Cherry.Accounts.purge_account/1`).
@@ -211,8 +214,20 @@ defmodule Cherry.Identity.AgeVerifications do
          :ok <- check_owner(decision, user_id) do
       decide(decision, user_id, session_id, now)
     end
+    |> settled_before(user_id)
     |> tap(&log_provider_outcome/1)
   end
+
+  # Didit's webhook (`ProviderDecisionWorker`) may have settled and erased the
+  # session first: a user it verified is told so instead of "not found".
+  defp settled_before({:error, :session_not_found} = error, user_id) do
+    case get(user_id) do
+      %AgeVerification{status: "verified"} = verification -> {:ok, verification}
+      _ -> error
+    end
+  end
+
+  defp settled_before(result, _user_id), do: result
 
   defp check_provider_available do
     if provider_available?(), do: :ok, else: {:error, :unavailable}

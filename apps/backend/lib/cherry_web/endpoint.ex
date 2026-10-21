@@ -81,7 +81,8 @@ defmodule CherryWeb.Endpoint do
   end
 
   @doc """
-  Custom body reader that caches the raw body for webhook signature verification.
+  Custom body reader that caches the raw body for webhook signature verification
+  (Didit's, `POST /api/webhooks/didit`, lives only for the request).
   """
   def read_body_cache(conn, opts) do
     {:ok, body, conn} = Plug.Conn.read_body(conn, opts)

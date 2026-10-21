@@ -99,6 +99,7 @@ Solo con `STORAGE_ADAPTER=local` (`Cherry.Storage.Local`, D-2026-09-29):
 | Ruta | Descripción |
 |---|---|
 | `PUT /api/uploads/:token` | Destino de `uploadUrl`. Sin Bearer: el token firmado del intent autoriza una storage key, MIME, tamaño máximo y caducidad. Cuerpo crudo por fragmentos, cabecera JPEG/PNG/WebP, escritura atómica en `pending/<storageKey>` sin sobrescritura (tampoco si la foto ya se publicó). 200 `{ok: true}`; 403 `upload_token_invalid`/`upload_token_expired`; 413 `upload_too_large`; 415 `upload_content_type_mismatch`; 422 `upload_invalid_image`; 412 `upload_already_exists`; 404 con otro adaptador |
+| `POST /api/webhooks/didit` | Webhook de Didit (evento `status.updated`, v3). Sin Bearer: HMAC-SHA256 del cuerpo crudo con `DIDIT_WEBHOOK_SECRET` (`X-Signature`, hex) y `X-Timestamp` a ±300 s; si no, 401 `invalid_signature` (Didit no reintenta). Sin secreto, 503 `webhook_unavailable`. Un estado final (aprobada, rechazada, caducada, abandonada) programa a los 60 s la misma comprobación que `…/provider/check` (`ProviderDecisionWorker`, cola `verification`), que pide la decisión a Didit y no se fía del cuerpo; el resto se ignora. 200 vacío. La ruta no se registra en el log |
 | `GET /uploads/<storageKey>` | `Plug.Static` sobre `UPLOADS_DIR`: solo fotos publicadas (`photos/` y las antiguas `profiles/`; nunca `pending/` ni `.tmp/`), `Cache-Control: public, max-age=86400` (las fotos borradas desaparecen del disco, así que ya no es «immutable» de un año), `nosniff`, sin listados |
 
 ## WebSocket chat
